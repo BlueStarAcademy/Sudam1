@@ -172,7 +172,9 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
     <div className="bg-primary text-primary flex flex-col flex-1 p-2 sm:p-4 lg:p-6 max-w-full mx-auto">
       <header className="flex justify-between items-center mb-4 flex-shrink-0">
         <div className="flex-1">
-          <Button onClick={onBackToLobby} colorScheme="gray"> &larr; 로비로</Button>
+          <button onClick={onBackToLobby} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
+            <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+          </button>
         </div>
         <div className='flex-1 text-center flex items-center justify-center'>
           <h1 className="text-3xl font-bold">{mode} 대기실</h1>

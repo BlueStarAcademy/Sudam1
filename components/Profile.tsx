@@ -12,6 +12,8 @@ import { calculateUserEffects } from '../services/effectService.js';
 import { useAppContext } from '../hooks/useAppContext.js';
 import QuickAccessSidebar from './QuickAccessSidebar.js';
 import ChatWindow from './waiting-room/ChatWindow.js';
+import GameRankingBoard from './GameRankingBoard.js';
+import BadukRankingBoard from './BadukRankingBoard.js';
 
 interface ProfileProps {
 }
@@ -141,8 +143,8 @@ const PveCard: React.FC<{ title: string; imageUrl: string; layout: 'grid' | 'tal
                 Coming Soon
             </div>
             <h2 className="text-base font-bold text-purple-300 mt-1 h-6 mb-1">{title}</h2>
-            <div className={`w-full rounded-md flex-1 items-center justify-center text-tertiary overflow-hidden transition-transform duration-300 group-hover:scale-105 bg-black/20`}>
-                <img src={imageUrl} alt={title} className={`w-full h-full rounded-md p-2 ${isTall ? 'object-contain' : 'object-cover'}`} />
+            <div className={`w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden transition-transform duration-300 group-hover:scale-105 bg-black/20`}>
+                <img src={imageUrl} alt={title} className={`w-full h-full object-contain p-2 ${isTall ? 'object-contain' : 'object-cover'}`} />
             </div>
             {footerContent && (
                 <div className="w-full bg-tertiary/50 rounded-md p-1 text-xs mt-2">
@@ -402,6 +404,9 @@ const Profile: React.FC<ProfileProps> = () => {
                             title="프로필 수정"
                         >
                             <span className="text-sm">✏️</span>
+                            {!currentUserWithStatus.mbti && (
+                                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-red-500 rounded-full"></span>
+                            )}
                         </button>
                     </div>
                     <div className="flex flex-col items-center w-full">
@@ -409,7 +414,7 @@ const Profile: React.FC<ProfileProps> = () => {
                             <h2 className="text-base font-bold truncate" title={nickname}>{nickname}</h2>
                         </div>
                          <p className="text-xs text-tertiary mt-0.5">
-                            MBTI: {currentUserWithStatus.isMbtiPublic && currentUserWithStatus.mbti ? currentUserWithStatus.mbti : '비공개'}
+                            MBTI: {currentUserWithStatus.mbti ? currentUserWithStatus.mbti : '미설정'}
                         </p>
                     </div>
                 </div>
@@ -430,6 +435,13 @@ const Profile: React.FC<ProfileProps> = () => {
             </div>
 
             <div className="flex-grow flex flex-col min-h-0 border-t border-color mt-2 pt-2">
+                <div className="bg-tertiary/30 p-2 rounded-md text-center mb-2">
+                    {currentUserWithStatus.guildId ? (
+                        <Button onClick={() => window.location.hash = '#/guild'} colorScheme="green" className="w-full">길드 입장</Button>
+                    ) : (
+                        <Button onClick={() => window.location.hash = '#/guild'} colorScheme="blue" className="w-full">길드 가입</Button>
+                    )}
+                </div>
                  <div className="flex justify-between items-center mb-1 flex-shrink-0">
                     <h3 className="font-semibold text-secondary text-sm">능력치</h3>
                     <div className="text-xs flex items-center gap-2">
@@ -451,7 +463,7 @@ const Profile: React.FC<ProfileProps> = () => {
                         return (
                             <div key={stat} className="bg-tertiary/40 p-1 rounded-md flex items-center justify-between text-xs">
                                 <span className="font-semibold text-secondary">{stat}</span>
-                                <span className="font-mono font-bold" title={`기본+분배: ${baseValue}, 장비: ${bonus}`}>
+                                <span className="font-mono font-bold" title={`기본: ${baseValue}, 장비: ${bonus}`}>
                                     {finalValue}
                                     {bonus > 0 && <span className="text-green-400 text-xs ml-0.5">(+{bonus})</span>}
                                 </span>
@@ -463,99 +475,6 @@ const Profile: React.FC<ProfileProps> = () => {
         </>
     ), [currentUserWithStatus, handlers, mannerRank, mannerStyle, totalMannerScore, availablePoints, coreStatBonuses]);
     
-    const EquipmentPanelContent = useMemo(() => (
-        <div className="flex flex-col lg:flex-row gap-4 h-full">
-            <div className="flex flex-col w-full lg:w-[240px] flex-shrink-0 gap-2">
-                <div className="bg-tertiary/30 p-2 rounded-md">
-                    <h3 className="text-center font-semibold mb-2 text-secondary text-sm flex-shrink-0">장착 장비</h3>
-                    <div className="grid grid-cols-3 gap-2">
-                        {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
-                            const item = getItemForSlot(slot);
-                            return (
-                                <div key={slot} className="w-full">
-                                    <EquipmentSlotDisplay
-                                        slot={slot}
-                                        item={item}
-                                        onClick={() => item && handlers.openViewingItem(item, true)}
-                                    />
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-                <div className="flex-1 bg-tertiary/30 p-2 rounded-md flex-col min-h-0 hidden lg:flex">
-                    <h4 className="text-center font-semibold mb-1 text-sm flex-shrink-0 text-yellow-300">주옵션 합계</h4>
-                    <div className="flex-grow overflow-y-auto pr-1 space-y-1 text-xs">
-                        {Object.values(CoreStat).map(stat => {
-                            const bonus = mainOptionBonuses[stat];
-                            const displayValue = bonus
-                                ? `+${bonus.value.toFixed(bonus.isPercentage ? 1 : 0).replace(/\.0$/, '')}${bonus.isPercentage ? '%' : ''}`
-                                : `+0`;
-                            return (
-                                 <div key={stat} className="flex justify-between items-baseline">
-                                    <span className="text-tertiary">{coreStatAbbreviations[stat] || stat}</span>
-                                    <span className={`font-mono font-semibold text-right ${!bonus ? 'text-tertiary' : ''}`}>
-                                        {displayValue}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            </div>
-    
-            <div className="flex-1 lg:flex flex-col gap-2 min-h-0 hidden">
-                <StatSummaryPanel title="전투 부옵션 합계" color="text-blue-300">
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                        {Object.values(CoreStat).map(stat => {
-                            const bonus = combatSubOptionBonuses[stat];
-                            const displayValue = bonus
-                                ? `+${bonus.value.toFixed(bonus.isPercentage ? 1 : 0).replace(/\.0$/, '')}${bonus.isPercentage ? '%' : ''}`
-                                : `+0`;
-                            return (
-                                <div key={stat} className="flex justify-between items-baseline">
-                                    <span className="text-tertiary">{coreStatAbbreviations[stat] || stat}</span>
-                                    <span className={`font-mono font-semibold text-right ${!bonus ? 'text-tertiary' : ''}`}>
-                                        {displayValue}
-                                    </span>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </StatSummaryPanel>
-                <StatSummaryPanel title="특수 능력치 합계" color="text-green-300">
-                    <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                        {Object.entries(specialStatBonuses).map(([stat, bonus]) => {
-                            if (bonus.flat === 0 && bonus.percent === 0) return null;
-                            const statEnum = stat as SpecialStat;
-                            const name = SPECIAL_STATS_DATA[statEnum].name;
-                            const abbr = specialStatAbbreviations[statEnum];
-                            return (
-                                <div key={stat} className="flex justify-between items-baseline" title={name}>
-                                    <span className="text-tertiary truncate">{abbr}</span>
-                                    <span className="font-mono font-semibold text-right text-green-300">
-                                        {bonus.flat > 0 && `+${bonus.flat.toFixed(0)}`}
-                                        {bonus.percent > 0 && (bonus.flat > 0 ? ', ' : '') + `+${bonus.percent.toFixed(1)}%`}
-                                    </span>
-                                </div>
-                            )
-                        })}
-                    </div>
-                </StatSummaryPanel>
-                <StatSummaryPanel title="신화 능력치 합계" color="text-red-400">
-                    {Object.entries(aggregatedMythicStats).map(([stat, data]) => {
-                        if (data.count === 0) return null;
-                        return (
-                            <div key={stat} className="text-red-300 text-[10px] leading-tight">
-                                {formatMythicStat(stat as MythicStat, data)}
-                            </div>
-                        )
-                    })}
-                </StatSummaryPanel>
-            </div>
-        </div>
-    ), [currentUserWithStatus, handlers, mainOptionBonuses, combatSubOptionBonuses, specialStatBonuses, aggregatedMythicStats]);
-
     const LobbyCards = (
         <div className="grid grid-cols-10 grid-rows-2 lg:grid-rows-7 gap-4 h-full">
             <div className="col-span-5 row-span-1 lg:col-span-5 lg:row-span-3">
@@ -568,111 +487,43 @@ const Profile: React.FC<ProfileProps> = () => {
     
             <div className="col-span-4 row-span-1 lg:col-span-4 lg:row-span-4">
                 <div onClick={onSelectTournamentLobby} className="bg-panel border border-color rounded-lg p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full text-on-panel">
-                    <h2 className="text-base font-bold h-6 mb-1">자동대국 챔피언십</h2>
+                    <h2 className="text-base font-bold h-6 mb-1">챔피언십</h2>
                     <div className="w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden">
-                        <img src={TOURNAMENT_LOBBY_IMG} alt="자동대국 챔피언십" className="w-full h-full object-cover" />
+                        <img src={TOURNAMENT_LOBBY_IMG} alt="챔피언십" className="w-full h-full object-cover" />
                     </div>
                     <div className="w-full bg-tertiary/50 rounded-md p-1 text-xs mt-2" title="챔피언십 정보">
                          <span>점수: {currentUserWithStatus.tournamentScore.toLocaleString()} / 리그: {currentUserWithStatus.league}</span>
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div className="col-span-4 row-span-1 lg:col-span-4 lg:row-span-4">
-                <div onClick={onSelectSinglePlayerLobby} className="bg-panel border border-color rounded-lg p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-green-500/30 cursor-pointer h-full text-on-panel">
-                    <h2 className="text-base font-bold h-6 mb-1">싱글플레이</h2>
-                    <div className="w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden">
-                        <img src={SINGLE_PLAYER_LOBBY_IMG} alt="싱글플레이" className="w-full h-full object-cover" />
-                    </div>
-                    <div className="w-full bg-tertiary/50 rounded-md p-1 text-xs mt-2" title="싱글플레이 정보">
-                         <span>진행도: {currentUserWithStatus.singlePlayerProgress ?? 0} / {SINGLE_PLAYER_STAGES.length}</span>
+                
+                <div className="col-span-4 row-span-1 lg:col-span-4 lg:row-span-4">
+                    <div onClick={onSelectSinglePlayerLobby} className="bg-panel border border-color rounded-lg p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-green-500/30 cursor-pointer h-full text-on-panel">
+                        <h2 className="text-base font-bold h-6 mb-1">싱글플레이</h2>
+                        <div className="w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden">
+                            <img src={SINGLE_PLAYER_LOBBY_IMG} alt="싱글플레이" className="w-full h-full object-cover" />
+                        </div>
+                        <div className="w-full bg-tertiary/50 rounded-md p-1 text-xs mt-2" title="싱글플레이 정보">
+                             <span>진행도: {currentUserWithStatus.singlePlayerProgress ?? 0} / {SINGLE_PLAYER_STAGES.length}</span>
+                        </div>
                     </div>
                 </div>
+                
+                <div className="col-span-2 row-span-1 lg:col-span-2 lg:row-span-4">
+                    <PveCard 
+                        title="도전의 탑" 
+                        imageUrl={TOWER_CHALLENGE_LOBBY_IMG} 
+                        layout="tall" 
+                        footerContent={
+                            <div className="flex flex-col items-center">
+                                <span>현재 층: 1층</span>
+                                <span className="text-tertiary">{towerTimeLeft}</span>
+                            </div>
+                        }
+                    />
+                </div>
             </div>
-            
-            <div className="col-span-2 row-span-1 lg:col-span-2 lg:row-span-4">
-                <PveCard 
-                    title="도전의 탑" 
-                    imageUrl={TOWER_CHALLENGE_LOBBY_IMG} 
-                    layout="tall" 
-                    footerContent={
-                        <div className="flex flex-col items-center">
-                            <span>현재 층: 1층</span>
-                            <span className="text-tertiary">{towerTimeLeft}</span>
-                        </div>
-                    }
-                />
-            </div>
-        </div>
-    );
-    
-    const EquippedEffectsPanel = useMemo(() => (
-        <div className="bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col gap-2">
-          <h3 className="text-center font-semibold text-secondary text-sm flex-shrink-0">장비 장착 효과</h3>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <StatSummaryPanel title="주옵션" color="text-yellow-300">
-                {Object.values(CoreStat).map(stat => {
-                    const bonus = mainOptionBonuses[stat];
-                    const displayValue = bonus
-                        ? `+${bonus.value.toFixed(bonus.isPercentage ? 1 : 0).replace(/\.0$/, '')}${bonus.isPercentage ? '%' : ''}`
-                        : `+0`;
-                    return (
-                         <div key={stat} className="flex justify-between items-baseline">
-                            <span className="text-tertiary">{coreStatAbbreviations[stat] || stat}</span>
-                            <span className={`font-mono font-semibold text-right ${!bonus ? 'text-tertiary' : ''}`}>
-                                {displayValue}
-                            </span>
-                        </div>
-                    );
-                })}
-            </StatSummaryPanel>
-            <StatSummaryPanel title="전투 부옵션" color="text-blue-300">
-                {Object.values(CoreStat).map(stat => {
-                    const bonus = combatSubOptionBonuses[stat];
-                    const displayValue = bonus
-                        ? `+${bonus.value.toFixed(bonus.isPercentage ? 1 : 0).replace(/\.0$/, '')}${bonus.isPercentage ? '%' : ''}`
-                        : `+0`;
-                    return (
-                        <div key={stat} className="flex justify-between items-baseline">
-                            <span className="text-tertiary">{coreStatAbbreviations[stat] || stat}</span>
-                            <span className={`font-mono font-semibold text-right ${!bonus ? 'text-tertiary' : ''}`}>
-                                {displayValue}
-                            </span>
-                        </div>
-                    );
-                })}
-            </StatSummaryPanel>
-            <StatSummaryPanel title="특수 능력치" color="text-green-300">
-                {Object.entries(specialStatBonuses).map(([stat, bonus]) => {
-                    if (bonus.flat === 0 && bonus.percent === 0) return null;
-                    const statEnum = stat as SpecialStat;
-                    const name = SPECIAL_STATS_DATA[statEnum].name;
-                    const abbr = specialStatAbbreviations[statEnum];
-                    return (
-                        <div key={stat} className="flex justify-between items-baseline" title={name}>
-                            <span className="text-tertiary truncate">{abbr}</span>
-                            <span className="font-mono font-semibold text-right text-green-300">
-                                {bonus.flat > 0 && `+${bonus.flat.toFixed(0)}`}
-                                {bonus.percent > 0 && (bonus.flat > 0 ? ', ' : '') + `+${bonus.percent.toFixed(1)}%`}
-                            </span>
-                        </div>
-                    )
-                })}
-            </StatSummaryPanel>
-            <StatSummaryPanel title="신화 능력치" color="text-red-400">
-                {Object.entries(aggregatedMythicStats).map(([stat, data]) => {
-                    if (data.count === 0) return null;
-                    return (
-                        <div key={stat} className="text-red-300 text-[10px] leading-tight">
-                            {formatMythicStat(stat as MythicStat, data)}
-                        </div>
-                    )
-                })}
-            </StatSummaryPanel>
-          </div>
-        </div>
-    ), [mainOptionBonuses, combatSubOptionBonuses, specialStatBonuses, aggregatedMythicStats]);
-
+        );
     return (
         <div className="bg-primary text-primary p-2 sm:p-4 lg:p-2 max-w-screen-2xl mx-auto w-full h-full flex flex-col">
             <header className="flex justify-between items-center mb-2 px-2 flex-shrink-0">
@@ -698,10 +549,42 @@ const Profile: React.FC<ProfileProps> = () => {
                 {/* --- DESKTOP LAYOUT --- */}
                 <div className="hidden lg:flex flex-col h-full gap-2">
                     <div className="flex flex-row gap-2">
-                        <div className="w-[30%] bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col gap-1">{ProfilePanelContent}</div>
-                         <div className="flex-1 flex flex-row gap-2 min-w-0">
-                             <div className="flex-1 bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col">{EquipmentPanelContent}</div>
-                             <div className="w-24 flex-shrink-0">
+                        <div className="w-[25%] bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col gap-1">{ProfilePanelContent}</div>
+                        {/* New structure for equipped items, ranking boards, and quick access */}
+                        <div className="flex-1 flex flex-row gap-2 min-w-0">
+                            <div className="w-[240px] bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col">
+                                <h3 className="text-center font-semibold text-secondary text-sm flex-shrink-0 mb-2">장착 장비</h3>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
+                                        const item = getItemForSlot(slot);
+                                        return (
+                                            <div key={slot} className="w-full">
+                                                <EquipmentSlotDisplay
+                                                    slot={slot}
+                                                    item={item}
+                                                    onClick={() => item && handlers.openViewingItem(item, true)}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <Button 
+                                    onClick={handlers.openEquipmentEffectsModal} 
+                                    colorScheme="blue" 
+                                    className="mt-2 !text-xs"
+                                >
+                                    장비 효과 보기
+                                </Button>
+                            </div>
+                            <div className="flex-1 flex flex-row gap-2">
+                                <div className="flex-1">
+                                    <GameRankingBoard />
+                                </div>
+                                <div className="flex-1">
+                                    <BadukRankingBoard />
+                                </div>
+                            </div>
+                            <div className="w-24 flex-shrink-0">
                                 <QuickAccessSidebar />
                             </div>
                         </div>
@@ -721,10 +604,36 @@ const Profile: React.FC<ProfileProps> = () => {
                     <div className="flex flex-col gap-2 flex-1 min-h-0 overflow-y-auto">
                         <div className="flex flex-row gap-2">
                             <div className="w-1/2 bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col gap-1">{ProfilePanelContent}</div>
-                            <div className="w-1/2 bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col">{EquipmentPanelContent}</div>
+                            <div className="w-1/2 bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col">
+                                <h3 className="text-center font-semibold text-secondary text-sm flex-shrink-0 mb-2">장착 장비</h3>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
+                                        const item = getItemForSlot(slot);
+                                        return (
+                                            <div key={slot} className="w-full">
+                                                <EquipmentSlotDisplay
+                                                    slot={slot}
+                                                    item={item}
+                                                    onClick={() => item && handlers.openViewingItem(item, true)}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <Button 
+                                    onClick={handlers.openEquipmentEffectsModal} 
+                                    colorScheme="blue" 
+                                    className="mt-2 !text-xs"
+                                >
+                                    장비 효과 보기
+                                </Button>
+                            </div>
                         </div>
                         
-                        {EquippedEffectsPanel}
+                        <div className="flex flex-col gap-2">
+                            <GameRankingBoard />
+                            <BadukRankingBoard />
+                        </div>
 
                         <div className="flex-shrink-0 h-[50vh]">
                             {LobbyCards}

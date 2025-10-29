@@ -169,10 +169,13 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onVi
                         </div>
                          <div className="flex items-center gap-2 text-sm text-gray-400 mt-1">
                             <span>MBTI:</span>
-                            <span className="font-semibold text-gray-200">
-                                {user.isMbtiPublic && user.mbti ? user.mbti : '비공개'}
+                            <span className="font-semibold text-gray-200 flex items-center gap-1">
+                                {user.mbti ? user.mbti : '미설정'}
+                                {!user.mbti && (
+                                    <span className="w-2 h-2 bg-red-500 rounded-full"></span>
+                                )}
                             </span>
-                            {user.isMbtiPublic && user.mbti && (
+                            {user.mbti && (
                                 <button onClick={() => setShowMbtiHelp(true)} className="w-4 h-4 text-xs bg-gray-600 rounded-full text-white flex items-center justify-center hover:bg-gray-500">?</button>
                             )}
                         </div>

@@ -25,13 +25,13 @@ const RewardSummaryModal: React.FC<RewardSummaryModalProps> = ({ summary, onClos
                 <div className="space-y-3 bg-gray-900/50 p-4 rounded-lg text-lg">
                     {(reward.gold ?? 0) > 0 && (
                         <div className="flex justify-between items-center">
-                            <span className="flex items-center gap-1"><img src="/images/Gold.png" alt="골드" className="w-5 h-5" /> 골드:</span>
+                            <span className="flex items-center gap-1"><img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5" /> 골드:</span>
                             <span className="font-bold text-yellow-300">+{reward.gold!.toLocaleString()}</span>
                         </div>
                     )}
                     {(reward.diamonds ?? 0) > 0 && (
                          <div className="flex justify-between items-center">
-                            <span className="flex items-center gap-1"><img src="/images/Zem.png" alt="다이아" className="w-5 h-5" /> 다이아:</span>
+                            <span className="flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5" /> 다이아:</span>
                             <span className="font-bold text-cyan-300">+{reward.diamonds!.toLocaleString()}</span>
                         </div>
                     )}

@@ -400,7 +400,7 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ session, currentUse
                                 <div className="grid grid-cols-2 gap-2 text-sm text-center">
                                      <div className="bg-gray-800 p-2 rounded-md">
                                         <p className="font-semibold flex items-center justify-center gap-1">
-                                            <img src="/images/Gold.png" alt="골드" className="w-4 h-4" /> {(mySummary.gold ?? 0).toLocaleString()} 골드
+                                            <img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" /> {(mySummary.gold ?? 0).toLocaleString()} 골드
                                         </p>
                                     </div>
                                     <div className="bg-gray-800 p-2 rounded-md flex items-center justify-center">

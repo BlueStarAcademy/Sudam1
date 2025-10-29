@@ -2,7 +2,7 @@
 import { GameMode } from './enums.js';
 
 export type AppRoute = {
-    view: 'login' | 'register' | 'profile' | 'lobby' | 'waiting' | 'game' | 'admin' | 'tournament' | 'singleplayer';
+    view: 'login' | 'register' | 'profile' | 'lobby' | 'waiting' | 'game' | 'admin' | 'tournament' | 'singleplayer' | 'guild';
     params: any;
 };
 

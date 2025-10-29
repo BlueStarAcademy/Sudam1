@@ -2,60 +2,87 @@ import { randomUUID } from 'crypto';
 import { InventoryItem, InventoryItemType } from '../types.js';
 import { CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../constants.js';
 
-export const addItemsToInventory = (inventory: InventoryItem[], inventorySlots: number, itemsToAdd: InventoryItem[]): { success: boolean, addedItems: InventoryItem[] } => {
-    const tempInventory = JSON.parse(JSON.stringify(inventory));
-    
-    const nonStackableItems = itemsToAdd.filter(item => item.type === 'equipment');
-    const stackableItems = itemsToAdd.filter(item => item.type !== 'equipment');
-    
-    let neededSlots = nonStackableItems.length;
+export const addItemsToInventory = (currentInventory: InventoryItem[], inventorySlots: { equipment: number; consumable: number; material: number; }, itemsToAdd: InventoryItem[]): { success: boolean, finalItemsToAdd: InventoryItem[] } => {
+    const tempInventory = JSON.parse(JSON.stringify(currentInventory));
+    const finalItemsToAdd: InventoryItem[] = [];
 
-    const stackableToAdd: Record<string, number> = {};
-    for(const item of stackableItems) {
-        stackableToAdd[item.name] = (stackableToAdd[item.name] || 0) + (item.quantity || 1);
+    const itemsByType = {
+        equipment: itemsToAdd.filter(item => item.type === 'equipment'),
+        consumable: itemsToAdd.filter(item => item.type === 'consumable'),
+        material: itemsToAdd.filter(item => item.type === 'material'),
+    };
+
+    // First, check space for non-stackable items (equipment)
+    const currentEquipmentCount = tempInventory.filter((item: InventoryItem) => item.type === 'equipment').length;
+    if (itemsByType.equipment.length > (inventorySlots.equipment - currentEquipmentCount)) {
+        return { success: false, finalItemsToAdd: [] };
     }
-    
-    for (const name in stackableToAdd) {
-        let quantityToPlace = stackableToAdd[name];
-        for (const existingItem of tempInventory) {
-            if (existingItem.name === name && (existingItem.quantity || 0) < 100) {
-                const space = 100 - (existingItem.quantity || 0);
-                quantityToPlace -= Math.min(quantityToPlace, space);
+    finalItemsToAdd.push(...itemsByType.equipment);
+
+    // Then, check space and process stackable items (consumables and materials)
+    for (const category of ['consumable', 'material'] as const) {
+        const items = itemsByType[category];
+        if (items.length === 0) continue;
+
+        const currentCategoryItems = tempInventory.filter((item: InventoryItem) => item.type === category);
+        let currentCategorySlotsUsed = currentCategoryItems.length;
+
+        const stackableToAdd: Record<string, number> = {};
+        for(const item of items) {
+            stackableToAdd[item.name] = (stackableToAdd[item.name] || 0) + (item.quantity || 1);
+        }
+
+        let neededNewSlots = 0;
+        for (const name in stackableToAdd) {
+            let quantityToPlace = stackableToAdd[name];
+            
+            // Try to stack into existing items first
+            for (const existingItem of currentCategoryItems) {
+                if (quantityToPlace <= 0) break;
+                if (existingItem.name === name && (existingItem.quantity || 0) < 100) {
+                    const space = 100 - (existingItem.quantity || 0);
+                    const toAdd = Math.min(quantityToPlace, space);
+                    // Simulate stacking in temp inventory
+                    existingItem.quantity = (existingItem.quantity || 0) + toAdd;
+                    quantityToPlace -= toAdd;
+                }
+            }
+            // If still quantity left, new slots are needed
+            if (quantityToPlace > 0) {
+                neededNewSlots += Math.ceil(quantityToPlace / 100);
             }
         }
-        if (quantityToPlace > 0) {
-            neededSlots += Math.ceil(quantityToPlace / 100);
+
+        if ((currentCategorySlotsUsed + neededNewSlots) > inventorySlots[category]) {
+            return { success: false, finalItemsToAdd: [] };
         }
-    }
-    
-    if (inventorySlots - inventory.length < neededSlots) {
-        return { success: false, addedItems: [] };
-    }
 
-    inventory.push(...nonStackableItems);
-
-    for (const item of stackableItems) {
-        let quantityLeft = item.quantity || 1;
-        for (const existingItem of inventory) {
-            if (quantityLeft <= 0) break;
-            if (existingItem.name === item.name && (existingItem.quantity || 0) < 100) {
-                const canAdd = 100 - (existingItem.quantity || 0);
-                const toAdd = Math.min(quantityLeft, canAdd);
-                existingItem.quantity = (existingItem.quantity || 0) + toAdd;
+        // If successful, add stackable items to finalItemsToAdd, handling new stacks
+        for (const item of items) {
+            let quantityLeft = item.quantity || 1;
+            // Try to stack into items already in finalItemsToAdd (from this batch)
+            for (const finalItem of finalItemsToAdd) {
+                if (quantityLeft <= 0) break;
+                if (finalItem.name === item.name && (finalItem.quantity || 0) < 100) {
+                    const space = 100 - (finalItem.quantity || 0);
+                    const toAdd = Math.min(quantityLeft, space);
+                    finalItem.quantity = (finalItem.quantity || 0) + toAdd;
+                    quantityLeft -= toAdd;
+                }
+            }
+            // If still quantity left, add as new items
+            while (quantityLeft > 0) {
+                const toAdd = Math.min(quantityLeft, 100);
+                const template = [...Object.values(CONSUMABLE_ITEMS), ...Object.values(MATERIAL_ITEMS)].find(t => t.name === item.name) as Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'>;
+                if (template) {
+                     finalItemsToAdd.push({ ...template, id: `item-${randomUUID()}`, quantity: toAdd, createdAt: Date.now(), isEquipped: false, stars: 0, level: 1 });
+                }
                 quantityLeft -= toAdd;
             }
         }
-        while (quantityLeft > 0) {
-            const toAdd = Math.min(quantityLeft, 100);
-            const template = [...Object.values(CONSUMABLE_ITEMS), ...Object.values(MATERIAL_ITEMS)].find(t => t.name === item.name) as Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'>;
-            if (template) {
-                 inventory.push({ ...template, id: `item-${randomUUID()}`, quantity: toAdd, createdAt: Date.now(), isEquipped: false, stars: 0, level: 1 });
-            }
-            quantityLeft -= toAdd;
-        }
     }
 
-    return { success: true, addedItems: itemsToAdd };
+    return { success: true, finalItemsToAdd };
 };
 
 export const createItemInstancesFromReward = (itemRefs: (InventoryItem | { itemId: string; quantity: number })[]): InventoryItem[] => {

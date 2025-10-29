@@ -52,7 +52,7 @@ const ActionPointCard: React.FC<{ currentUser: UserWithStatus, onBuy: () => void
             <div className="flex flex-col items-center justify-center gap-2 my-3 w-full">
                 <Button onClick={handlePurchase} disabled={!canPurchase} colorScheme="green" className="w-full">
                     {canPurchase ? (
-                        <span className="flex items-center justify-center gap-1"><img src="/images/Zem.png" alt="다이아" className="w-4 h-4" /> {cost.toLocaleString()}</span>
+                        <span className="flex items-center justify-center gap-1"><img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" /> {cost.toLocaleString()}</span>
                     ) : (
                         '오늘 구매 한도 초과'
                     )}
@@ -65,13 +65,12 @@ const ActionPointCard: React.FC<{ currentUser: UserWithStatus, onBuy: () => void
 
 const EquipmentBoxCard: React.FC<{ name: string; description: string; price: { gold?: number, diamonds?: number }; image: string; onBuy: (quantity: number) => void; currentUser: UserWithStatus }> = ({ name, description, price, image, onBuy, currentUser }) => {
     const isGold = !!price.gold;
-    const priceAmount = (price.gold || price.diamonds || 0);
-
-    const PriceIcon = isGold ? <img src="/images/Gold.png" alt="골드" className="w-4 h-4" /> : <img src="/images/Zem.png" alt="다이아" className="w-4 h-4" />;
+    const priceAmount = price.gold || price.diamonds || 0;
+    const PriceIcon = isGold ? <img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" /> : <img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" />;
 
     const handleBuy = (quantity: number) => {
         const itemsToReceive = quantity === 10 ? 11 : quantity;
-        const hasSpace = currentUser.inventory.length + itemsToReceive <= currentUser.inventorySlots;
+        const hasSpace = currentUser.inventory.length + itemsToReceive <= currentUser.inventorySlots.equipment;
             
         if (!hasSpace) {
             alert('가방에 공간이 부족합니다.');
@@ -117,7 +116,7 @@ const EquipmentBoxCard: React.FC<{ name: string; description: string; price: { g
 const MaterialBoxCard: React.FC<{ itemId: string; name: string; description: string; price: { gold?: number; diamonds?: number }; image: string; dailyLimit?: number; weeklyLimit?: number; onBuy: (itemId: string, quantity: number) => void; currentUser: UserWithStatus; }> = ({ itemId, name, description, price, image, dailyLimit, weeklyLimit, onBuy, currentUser }) => {
     const isGold = !!price.gold;
     const priceAmount = price.gold || price.diamonds || 0;
-    const PriceIcon = isGold ? <img src="/images/Gold.png" alt="골드" className="w-4 h-4" /> : <img src="/images/Zem.png" alt="다이아" className="w-4 h-4" />;
+    const PriceIcon = isGold ? <img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" /> : <img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" />;
     
     const now = Date.now();
     const purchaseRecord = currentUser.dailyShopPurchases?.[itemId];

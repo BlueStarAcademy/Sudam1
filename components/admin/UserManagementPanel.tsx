@@ -257,7 +257,9 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ allUsers, onA
             {managingUser && <UserManagementModal user={managingUser} currentUser={currentUser} onClose={() => setManagingUser(null)} onAction={onAction} />}
             <header className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold">사용자 관리</h1>
-                <Button onClick={onBack} colorScheme="gray">&larr; 대시보드로</Button>
+                <button onClick={onBack} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
+                    <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+                </button>
             </header>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

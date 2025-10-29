@@ -21,8 +21,8 @@ const starImages = [
 ];
 
 const uiImages = [
-    '/images/Gold.png',
-    '/images/Zem.png',
+    '/images/icon/Gold.png',
+    '/images/icon/Zem.png',
     '/images/quest.png',
     '/images/gibo.png',
     '/images/mail.png',

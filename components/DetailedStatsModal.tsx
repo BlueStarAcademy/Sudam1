@@ -78,7 +78,7 @@ const DetailedStatsModal: React.FC<DetailedStatsModalProps> = ({ currentUser, st
             <div className="mt-4 pt-4 border-t border-gray-700 text-center">
                 <p className="text-sm mb-2 text-gray-300">
                     보유 다이아: 
-                    <span className="font-bold text-cyan-300 ml-2 flex items-center justify-center gap-1"><img src="/images/Zem.png" alt="다이아" className="w-4 h-4" /> {diamonds.toLocaleString()}</span>
+                    <span className="font-bold text-cyan-300 ml-2 flex items-center justify-center gap-1"><img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" /> {diamonds.toLocaleString()}</span>
                 </p>
                 <Button 
                     onClick={handleResetAll} 

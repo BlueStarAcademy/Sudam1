@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { UserWithStatus, ServerAction, CoreStat } from '../types.js';
+import { UserWithStatus, CoreStat, ServerAction } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import RadarChart from './RadarChart.js';
@@ -23,6 +23,18 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
             [CoreStat.Stability]: 0,
         }
     );
+
+    const resetCost = 1000;
+    const maxDailyResets = 2;
+    const currentDay = new Date().toDateString();
+    const lastResetDate = currentUser.lastStatResetDate;
+    const statResetCountToday = currentUser.statResetCountToday || 0;
+
+    const canReset = useMemo(() => {
+        if (currentUser.diamonds < resetCost) return false;
+        if (lastResetDate === currentDay && statResetCountToday >= maxDailyResets) return false;
+        return true;
+    }, [currentUser.diamonds, lastResetDate, statResetCountToday, currentDay]);
 
     const levelPoints = (currentUser.strategyLevel - 1) * 2 + (currentUser.playfulLevel - 1) * 2;
     const masteryBonus = currentUser.mannerMasteryApplied ? 20 : 0;
@@ -49,7 +61,11 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
     };
 
     const handleReset = () => {
-        if (window.confirm('다이아 500개를 사용하여 모든 보너스 포인트를 초기화하시겠습니까?')) {
+        if (!canReset) {
+            alert("능력치 초기화 조건을 충족하지 못했습니다. 다이아가 부족하거나 일일 초기화 횟수를 초과했습니다.");
+            return;
+        }
+        if (window.confirm(`다이아 ${resetCost}개를 사용하여 모든 보너스 포인트를 초기화하시겠습니까? (오늘 ${maxDailyResets - statResetCountToday}회 남음)`)) {
             onAction({ type: 'RESET_STAT_POINTS' });
             onClose();
         }
@@ -119,7 +135,10 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
                         })}
                     </div>
                     <div className="flex justify-between mt-4 pt-4 border-t border-gray-700">
-                        <Button onClick={handleReset} colorScheme="red">초기화 (💎500)</Button>
+                        <div className="flex flex-col items-start">
+                            <Button onClick={handleReset} colorScheme="red" disabled={!canReset}>초기화 (💎{resetCost})</Button>
+                            <p className="text-xs text-gray-400 mt-1">일일 변경제한: {maxDailyResets - statResetCountToday}/{maxDailyResets}</p>
+                        </div>
                         <div className="flex gap-2">
                             <Button onClick={onClose} colorScheme="gray">취소</Button>
                             <Button onClick={handleConfirm} colorScheme="green">분배</Button>

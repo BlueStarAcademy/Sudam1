@@ -88,10 +88,10 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
                 if (bundleInfo.type === 'gold') {
                     user.gold += amount;
-                    obtainedItem = { name: '골드', quantity: amount, image: '/images/Gold.png', type: 'material', grade: 'uncommon' };
+                    obtainedItem = { name: '골드', quantity: amount, image: '/images/icon/Gold.png', type: 'material', grade: 'uncommon' };
                 } else { // diamonds
                     user.diamonds += amount;
-                    obtainedItem = { name: '다이아', quantity: amount, image: '/images/Zem.png', type: 'material', grade: 'rare' };
+                    obtainedItem = { name: '다이아', quantity: amount, image: '/images/icon/Zem.png', type: 'material', grade: 'rare' };
                 }
 
                 if (item.quantity && item.quantity > 1) {
@@ -115,16 +115,15 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                 tempInventory.push({ ...item, quantity: item.quantity - 1 });
             }
 
-            const { success } = addItemsToInventoryUtil([...tempInventory], user.inventorySlots, itemsArray);
-            if (!success) return { error: '인벤토리 공간이 부족합니다.' };
-            
+            const tempInventoryAfterUse = user.inventory.filter(i => i.id !== itemId);
             if (item.quantity && item.quantity > 1) {
-                item.quantity--;
-            } else {
-                user.inventory.splice(itemIndex, 1);
+                tempInventoryAfterUse.push({ ...item, quantity: item.quantity - 1 });
             }
 
-            addItemsToInventoryUtil(user.inventory, user.inventorySlots, itemsArray);
+            const { success, finalItemsToAdd } = addItemsToInventoryUtil(tempInventoryAfterUse, user.inventorySlots, itemsArray);
+            if (!success) return { error: '인벤토리 공간이 부족합니다.' };
+            
+            user.inventory = [...tempInventoryAfterUse, ...finalItemsToAdd];
             
             await db.updateUser(user);
             return { clientResponse: { obtainedItemsBulk: itemsArray, updatedUser: user } };
@@ -162,23 +161,22 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             // Then, check for inventory space
             const inventoryAfterRemoval = user.inventory.filter(i => i.name !== itemName);
-            const { success: hasSpace } = addItemsToInventoryUtil([...inventoryAfterRemoval], user.inventorySlots, allObtainedItems);
+            const { success: hasSpace, finalItemsToAdd } = addItemsToInventoryUtil(inventoryAfterRemoval, user.inventorySlots, allObtainedItems);
             if (!hasSpace) {
                 return { error: '모든 아이템을 받기에 가방 공간이 부족합니다.' };
             }
 
             // If space is sufficient, apply all changes
-            user.inventory = inventoryAfterRemoval;
+            user.inventory = [...inventoryAfterRemoval, ...finalItemsToAdd];
             user.gold += totalGoldGained;
             user.diamonds += totalDiamondsGained;
-            addItemsToInventoryUtil(user.inventory, user.inventorySlots, allObtainedItems);
 
             await db.updateUser(user);
             
             // Prepare client response
             const clientResponseItems = [...allObtainedItems];
-            if (totalGoldGained > 0) clientResponseItems.push({ name: '골드', quantity: totalGoldGained, image: '/images/Gold.png', type: 'material', grade: 'uncommon' } as any);
-            if (totalDiamondsGained > 0) clientResponseItems.push({ name: '다이아', quantity: totalDiamondsGained, image: '/images/Zem.png', type: 'material', grade: 'rare' } as any);
+            if (totalGoldGained > 0) clientResponseItems.push({ name: '골드', quantity: totalGoldGained, image: '/images/icon/Gold.png', type: 'material', grade: 'uncommon' } as any);
+            if (totalDiamondsGained > 0) clientResponseItems.push({ name: '다이아', quantity: totalDiamondsGained, image: '/images/icon/Zem.png', type: 'material', grade: 'rare' } as any);
 
             return { clientResponse: { obtainedItemsBulk: clientResponseItems, updatedUser: user } };
         }
@@ -404,8 +402,10 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             }));
             
             user.inventory = user.inventory.filter(item => !itemsToRemove.includes(item.id));
-            const { success } = addItemsToInventoryUtil(user.inventory, user.inventorySlots, itemsToAdd);
+            const { success, finalItemsToAdd } = addItemsToInventoryUtil(user.inventory, user.inventorySlots, itemsToAdd);
             if (!success) return { error: '재료를 받기에 인벤토리 공간이 부족합니다.' };
+
+            user.inventory.push(...finalItemsToAdd);
 
             await db.updateUser(user);
 
@@ -444,13 +444,13 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                 ...toAddTemplate, id: `item-${randomUUID()}`, quantity: toYield, createdAt: 0, isEquipped: false, level: 1, stars: 0
             }];
         
-            const { success } = addItemsToInventoryUtil(tempUser.inventory, tempUser.inventorySlots, itemsToAdd);
+            const { success, finalItemsToAdd } = addItemsToInventoryUtil(tempUser.inventory, tempUser.inventorySlots, itemsToAdd);
             if (!success) {
                 return { error: '인벤토리에 공간이 부족합니다.' };
             }
         
             // All checks passed, apply changes to the real user object
-            user.inventory = tempUser.inventory;
+            user.inventory = [...tempUser.inventory, ...finalItemsToAdd];
             
             updateQuestProgress(user, 'craft_attempt');
             await db.updateUser(user);
@@ -464,6 +464,29 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                     }
                 }
             };
+        }
+
+        case 'EXPAND_INVENTORY': {
+            const { category } = payload as { category: 'equipment' | 'consumable' | 'material' };
+            if (!category) return { error: '확장할 인벤토리 탭을 지정해야 합니다.' };
+
+            const EXPANSION_COST_DIAMONDS = 100;
+            const EXPANSION_AMOUNT = 10;
+            const MAX_INVENTORY_SIZE = 100;
+
+            if (user.inventorySlots[category] >= MAX_INVENTORY_SIZE) {
+                return { error: '이미 최대치까지 확장했습니다.' };
+            }
+
+            if (user.diamonds < EXPANSION_COST_DIAMONDS) {
+                return { error: '다이아가 부족합니다.' };
+            }
+
+            user.diamonds -= EXPANSION_COST_DIAMONDS;
+            user.inventorySlots[category] += EXPANSION_AMOUNT;
+
+            await db.updateUser(user);
+            return {};
         }
 
         default:

@@ -23,6 +23,7 @@ const CurlingArena = forwardRef<CurlingBoardHandle, CurlingArenaProps>((props, r
     const animationFrameRef = useRef<number | null>(null);
     const powerGaugeAnimFrameRef = useRef<number | null>(null);
     const gaugeStartTimeRef = useRef<number | null>(null);
+    const powerGaugeRef = useRef<HTMLDivElement>(null);
     const lastAnimationTimestampRef = useRef(0);
     const powerRef = useRef(0);
 
@@ -128,7 +129,9 @@ const CurlingArena = forwardRef<CurlingBoardHandle, CurlingArenaProps>((props, r
                 newPower = (2 - progressInCycle) * 100;
             }
     
-            setPower(newPower);
+            if (powerGaugeRef.current) {
+                powerGaugeRef.current.style.width = `${newPower}%`;
+            }
             powerRef.current = newPower;
             powerGaugeAnimFrameRef.current = requestAnimationFrame(animateGauge);
         };
@@ -361,6 +364,7 @@ const CurlingArena = forwardRef<CurlingBoardHandle, CurlingArenaProps>((props, r
                 {(dragStartPoint || flickPower !== null) && (
                     <div className={`bg-gray-900/50 rounded-full h-6 border-2 border-gray-500 ${flickPower !== null ? 'animate-flick-power-pulse' : ''}`}>
                         <div 
+                            ref={powerGaugeRef}
                             className="bg-gradient-to-r from-yellow-400 to-red-500 h-full rounded-full" 
                             style={{ width: `${displayedPower}%` }}
                         />

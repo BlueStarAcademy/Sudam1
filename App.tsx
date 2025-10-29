@@ -27,6 +27,7 @@ import { audioService } from './services/audioService.js';
 import SettingsModal from './components/SettingsModal.js';
 import ClaimAllSummaryModal from './components/ClaimAllSummaryModal.js';
 import MbtiInfoModal from './components/MbtiInfoModal.js';
+import BlacksmithModal from './components/BlacksmithModal.js';
 
 function usePrevious<T>(value: T): T | undefined {
     const ref = useRef<T | undefined>(undefined);
@@ -66,6 +67,13 @@ const AppContent: React.FC = () => {
             return () => clearTimeout(timer);
         }
     }, [hasClaimableQuest, prevHasClaimableQuest, settings.features.questNotifications]);
+
+    useEffect(() => {
+        if (showQuestToast) {
+            const timer = setTimeout(() => setShowQuestToast(false), 3000);
+            return () => clearTimeout(timer);
+        }
+    }, [showQuestToast]);
 
 
     useEffect(() => {
@@ -112,15 +120,17 @@ const AppContent: React.FC = () => {
         if (modals.moderatingUser) ids.push('moderatingUser');
         if (modals.viewingItem) ids.push('viewingItem');
         if (modals.enhancingItem) ids.push('enhancingItem');
+        if (modals.isBlacksmithModalOpen) ids.push('blacksmith');
         return ids;
     }, [modals, activeNegotiation]);
 
     const topmostModalId = activeModalIds.length > 0 ? activeModalIds[activeModalIds.length - 1] : null;
     
     const isGameView = currentRoute.view === 'game';
+    const backgroundClass = currentUser ? 'bg-primary' : 'bg-login-background';
 
     return (
-        <div className="font-sans bg-primary text-primary h-dvh flex flex-col">
+        <div className={`font-sans ${backgroundClass} text-primary h-dvh flex flex-col`}>
             {isPreloading && (
                 <div className="fixed inset-0 bg-tertiary z-[100] flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
@@ -185,6 +195,8 @@ const AppContent: React.FC = () => {
                     {modals.viewingItem && <ItemDetailModal item={modals.viewingItem.item} isOwnedByCurrentUser={modals.viewingItem.isOwnedByCurrentUser} onClose={handlers.closeViewingItem} onStartEnhance={handlers.openEnhancementFromDetail} isTopmost={topmostModalId === 'viewingItem'} />}
                     {modals.enhancingItem && <EnhancementModal item={modals.enhancingItem} currentUser={currentUserWithStatus} onClose={handlers.closeEnhancementModal} onAction={handlers.handleAction} enhancementOutcome={enhancementOutcome} onOutcomeConfirm={handlers.clearEnhancementOutcome} isTopmost={topmostModalId === 'enhancingItem'} />}
                     {activeNegotiation && <NegotiationModal negotiation={activeNegotiation} currentUser={currentUserWithStatus} onAction={handlers.handleAction} onlineUsers={onlineUsers} isTopmost={topmostModalId === 'negotiation'} />}
+                    {modals.isMbtiInfoModalOpen && <MbtiInfoModal onClose={handlers.closeMbtiInfoModal} isTopmost={topmostModalId === 'mbtiInfo'} />}
+                    {modals.isBlacksmithModalOpen && <BlacksmithModal onClose={handlers.closeBlacksmithModal} isTopmost={topmostModalId === 'blacksmith'} onStartEnhance={handlers.openEnhancingItem} />}
                 </>
             )}
         </div>

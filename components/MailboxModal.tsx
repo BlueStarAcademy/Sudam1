@@ -156,8 +156,8 @@ const MailboxModal: React.FC<MailboxModalProps> = ({ currentUser, onClose, onAct
                                         ) : (
                                             <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
                                                 {(selectedMail.attachments?.actionPoints ?? 0) > 0 && <span>⚡ {selectedMail.attachments.actionPoints!.toLocaleString()} 행동력</span>}
-                                                {(selectedMail.attachments?.gold ?? 0) > 0 && <span className="flex items-center gap-1"><img src="/images/Gold.png" alt="골드" className="w-4 h-4" /> {selectedMail.attachments.gold!.toLocaleString()} 골드</span>}
-                                                {(selectedMail.attachments?.diamonds ?? 0) > 0 && <span className="flex items-center gap-1"><img src="/images/Zem.png" alt="다이아" className="w-4 h-4" /> {selectedMail.attachments.diamonds!.toLocaleString()} 다이아</span>}
+                                                {(selectedMail.attachments?.gold ?? 0) > 0 && <span className="flex items-center gap-1"><img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" /> {selectedMail.attachments.gold!.toLocaleString()} 골드</span>}
+                                                {(selectedMail.attachments?.diamonds ?? 0) > 0 && <span className="flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" /> {selectedMail.attachments.diamonds!.toLocaleString()} 다이아</span>}
                                                 {selectedMail.attachments.items?.map((item, index) => {
                                                     const inventoryItem = item as InventoryItem;
                                                     return (

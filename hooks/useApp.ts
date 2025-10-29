@@ -160,6 +160,9 @@ export const useApp = () => {
     const exitToastTimer = useRef<number | null>(null);
     const [isProfileEditModalOpen, setIsProfileEditModalOpen] = useState(false);
     const [moderatingUser, setModeratingUser] = useState<UserWithStatus | null>(null);
+    const [isMbtiInfoModalOpen, setIsMbtiInfoModalOpen] = useState(false);
+    const [isEquipmentEffectsModalOpen, setIsEquipmentEffectsModalOpen] = useState(false);
+    const [isBlacksmithModalOpen, setIsBlacksmithModalOpen] = useState(false);
 
     // --- Derived State ---
     const allUsers = useMemo(() => Object.values(usersMap), [usersMap]);
@@ -580,6 +583,9 @@ export const useApp = () => {
             pastRankingsInfo, enhancingItem, viewingItem, isProfileEditModalOpen, moderatingUser,
             isClaimAllSummaryOpen,
             claimAllSummary,
+            isMbtiInfoModalOpen,
+            isEquipmentEffectsModalOpen,
+            isBlacksmithModalOpen,
         },
         handlers: {
             handleAction,
@@ -621,6 +627,12 @@ export const useApp = () => {
             clearEnhancementAnimation: () => setEnhancementAnimationTarget(null),
             openModerationModal,
             closeModerationModal,
+            openMbtiInfoModal: () => setIsMbtiInfoModalOpen(true),
+            closeMbtiInfoModal: () => setIsMbtiInfoModalOpen(false),
+            openEquipmentEffectsModal: () => setIsEquipmentEffectsModalOpen(true),
+            closeEquipmentEffectsModal: () => setIsEquipmentEffectsModalOpen(false),
+            openBlacksmithModal: () => setIsBlacksmithModalOpen(true),
+            closeBlacksmithModal: () => setIsBlacksmithModalOpen(false),
         },
     };
 };

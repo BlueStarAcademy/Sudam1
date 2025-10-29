@@ -576,3 +576,24 @@ input[type="range"]::-moz-range-thumb {
     background-position: center;
     background-color: rgb(var(--bg-tertiary)); /* Fallback color */
 }
+
+.bg-login-background {
+    background-image: url('/images/bg/loginbg.png');
+    background-size: cover;
+    background-position: center;
+    background-color: rgb(var(--bg-tertiary));
+}
+
+.bg-strategic-background {
+    background-image: url('/images/bg/strategicbg.png');
+    background-size: cover;
+    background-position: center;
+    background-color: rgb(var(--bg-tertiary));
+}
+
+.bg-playful-background {
+    background-image: url('/images/bg/playfulbg.png');
+    background-size: cover;
+    background-position: center;
+    background-color: rgb(var(--bg-tertiary));
+}

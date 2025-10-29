@@ -57,7 +57,7 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
                         const borderClass = gradeBorderStyles[item.grade];
                         const requiredLevel = item.type === 'equipment' ? GRADE_LEVEL_REQUIREMENTS[item.grade] : null;
                         const titleText = `${item.name}${requiredLevel ? ` (착용 레벨 합: ${requiredLevel})` : ''}`;
-                        const isCurrency = item.image === '/images/Gold.png' || item.image === '/images/Zem.png';
+                        const isCurrency = item.image === '/images/icon/Gold.png' || item.image === '/images/icon/Zem.png';
 
                         return (
                             <div key={index} className="relative aspect-square rounded-md overflow-hidden" title={titleText}>

@@ -34,7 +34,7 @@ const InfoModal: React.FC<InfoModalProps> = ({ onClose, isTopmost }) => {
                             <p className="text-sm">주사위 바둑, 알까기 등 운과 순발력이 필요한 캐주얼 모드입니다. 가볍게 즐기며 새로운 재미를 느껴보세요. 각 게임의 자세한 규칙은 대기실의 '?' 버튼을 눌러 확인할 수 있습니다.</p>
                         </div>
                          <div>
-                            <h3 className="font-bold text-lg text-purple-300">자동대국 챔피언십</h3>
+                            <h3 className="font-bold text-lg text-purple-300">챔피언십</h3>
                             <p className="text-sm">AI 시뮬레이션으로 진행되는 자동 대회입니다. 자신의 능력치와 장비 세팅으로 가상의 선수들과 실력을 겨루고, 결과에 따라 보상을 획득할 수 있습니다. 매일 다른 종류의 대회에 참가할 수 있습니다.</p>
                         </div>
                     </div>
@@ -48,7 +48,7 @@ const InfoModal: React.FC<InfoModalProps> = ({ onClose, isTopmost }) => {
                         </div>
                         <div>
                             <h3 className="font-bold text-lg text-green-300">스탯 포인트</h3>
-                            <p className="text-sm">전략 레벨과 놀이 레벨이 오를 때마다 각각 2포인트씩 보너스 스탯 포인트를 획득합니다. 프로필 화면의 '포인트 분배' 버튼을 눌러 6가지 핵심 능력치에 투자하고, 자동대국 챔피언십에서 더 좋은 성적을 거두세요.</p>
+                            <p className="text-sm">전략 레벨과 놀이 레벨이 오를 때마다 각각 2포인트씩 보너스 스탯 포인트를 획득합니다. 프로필 화면의 '포인트 분배' 버튼을 눌러 6가지 핵심 능력치에 투자하고, 챔피언십에서 더 좋은 성적을 거두세요.</p>
                         </div>
                     </div>
                 );

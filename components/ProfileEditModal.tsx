@@ -8,6 +8,7 @@ import Button from './Button.js';
 import Avatar from './Avatar.js';
 import { containsProfanity } from '../profanity.js';
 import ToggleSwitch from './ui/ToggleSwitch.js';
+import { useAppContext } from '../hooks/useAppContext.js';
 
 
 interface ProfileEditModalProps {
@@ -16,6 +17,7 @@ interface ProfileEditModalProps {
     onAction: (action: ServerAction) => void;
     isTopmost?: boolean;
 }
+
 
 type EditTab = 'avatar' | 'border' | 'nickname' | 'mbti';
 type BorderCategory = '기본' | '레벨제한' | '구매테두리' | '전시즌보상';
@@ -39,10 +41,12 @@ type MbtiState = {
 };
 
 const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClose, onAction, isTopmost }) => {
+    const { handlers } = useAppContext();
     const [activeTab, setActiveTab] = useState<EditTab>('border');
     const [selectedAvatarId, setSelectedAvatarId] = useState(currentUser.avatarId);
     const [selectedBorderId, setSelectedBorderId] = useState(currentUser.borderId);
     const [newNickname, setNewNickname] = useState(currentUser.nickname);
+    const [isMbtiPublic, setIsMbtiPublic] = useState(currentUser.isMbtiPublic || false);
     
     const parseMbti = (mbtiString: string | null | undefined): MbtiState => {
         if (mbtiString && mbtiString.length === 4) {
@@ -57,7 +61,6 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
     };
 
     const [mbti, setMbti] = useState<MbtiState>(parseMbti(currentUser.mbti));
-    const [isMbtiPublic, setIsMbtiPublic] = useState(currentUser.isMbtiPublic ?? false);
     
     const nicknameChangeCost = 150;
     const canAffordNicknameChange = currentUser.diamonds >= nicknameChangeCost;
@@ -91,7 +94,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                 const newMbtiString = `${mbti.ei}${mbti.sn}${mbti.tf}${mbti.jp}`;
                 onAction({
                     type: 'UPDATE_MBTI',
-                    payload: { mbti: newMbtiString, isMbtiPublic: isMbtiPublic }
+                    payload: { mbti: newMbtiString, isMbtiPublic: true }
                 });
                 break;
         }
@@ -104,11 +107,11 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
             case 'nickname': return newNickname === currentUser.nickname || !canAffordNicknameChange || newNickname.trim().length < 2 || newNickname.trim().length > 12;
             case 'mbti': {
                 const newMbtiString = `${mbti.ei}${mbti.sn}${mbti.tf}${mbti.jp}`;
-                return newMbtiString === (currentUser.mbti || '') && isMbtiPublic === (currentUser.isMbtiPublic ?? false);
+                return newMbtiString === (currentUser.mbti || '');
             }
             default: return true;
         }
-    }, [activeTab, selectedAvatarId, selectedBorderId, newNickname, currentUser, canAffordNicknameChange, mbti, isMbtiPublic]);
+    }, [activeTab, selectedAvatarId, selectedBorderId, newNickname, currentUser, canAffordNicknameChange, mbti]);
 
     const categorizedBorders = useMemo(() => {
         const isShopItem = (b: BorderInfo) => SHOP_BORDER_ITEMS.some(sb => sb.id === b.id);
@@ -229,7 +232,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                                                         )}
                                                          {isPurchasable && (
                                                             <div className="absolute bottom-0 inset-x-0 bg-black/70 rounded-b-md text-xs py-0.5 text-center flex items-center justify-center gap-1">
-                                                                {shopItem.price.gold ? <img src="/images/Gold.png" alt="골드" className="w-3 h-3" /> : <img src="/images/Zem.png" alt="다이아" className="w-3 h-3" />}
+                                                                {shopItem.price.gold ? <img src="/images/icon/Gold.png" alt="골드" className="w-3 h-3" /> : <img src="/images/icon/Zem.png" alt="다이아" className="w-3 h-3" />}
                                                                 <span>{shopItem.price.gold?.toLocaleString() || shopItem.price.diamonds?.toLocaleString()}</span>
                                                             </div>
                                                         )}
@@ -270,11 +273,11 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                         <div className="text-sm p-3 rounded-md bg-gray-900/50">
                             <div className="flex justify-between">
                                 <span>비용:</span>
-                                <span className={`font-bold flex items-center gap-1 ${canAffordNicknameChange ? 'text-cyan-300' : 'text-red-400'}`}><img src="/images/Zem.png" alt="다이아" className="w-4 h-4" /> {nicknameChangeCost}</span>
+                                <span className={`font-bold flex items-center gap-1 ${canAffordNicknameChange ? 'text-cyan-300' : 'text-red-400'}`}><img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" /> {nicknameChangeCost}</span>
                             </div>
                              <div className="flex justify-between mt-1">
                                 <span>보유 다이아:</span>
-                                <span className="font-bold flex items-center gap-1"><img src="/images/Zem.png" alt="다이아" className="w-4 h-4" /> {currentUser.diamonds.toLocaleString()}</span>
+                                <span className="font-bold flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" /> {currentUser.diamonds.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
@@ -349,8 +352,11 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
             <div className="flex flex-col h-[70vh]">
                 <div className="flex bg-gray-900/70 p-1 rounded-lg mb-4 flex-shrink-0">
                     {tabs.map(tab => (
-                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === tab.id ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}>
+                        <button key={tab.id} onClick={() => setActiveTab(tab.id)} className={`relative flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === tab.id ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}>
                             {tab.label}
+                            {tab.id === 'mbti' && !currentUser.mbti && (
+                                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                            )}
                         </button>
                     ))}
                 </div>

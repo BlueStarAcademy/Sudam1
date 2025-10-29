@@ -359,8 +359,8 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             await db.updateUser(user);
 
             const allObtainedItems = [...itemsToCreate];
-            if (itemReward.gold) allObtainedItems.unshift({ name: `${itemReward.gold} 골드`, image: '/images/Gold.png' } as InventoryItem);
-            if (itemReward.diamonds) allObtainedItems.unshift({ name: `${itemReward.diamonds} 다이아`, image: '/images/Zem.png' } as InventoryItem);
+            if (itemReward.gold) allObtainedItems.unshift({ name: `${itemReward.gold} 골드`, image: '/images/icon/Gold.png' } as InventoryItem);
+            if (itemReward.diamonds) allObtainedItems.unshift({ name: `${itemReward.diamonds} 다이아`, image: '/images/icon/Zem.png' } as InventoryItem);
 
             return { clientResponse: { obtainedItemsBulk: allObtainedItems }};
         }

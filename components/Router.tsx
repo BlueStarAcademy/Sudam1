@@ -12,6 +12,7 @@ import Game from '../Game.js';
 import Admin from './Admin.js';
 import TournamentLobby from './TournamentLobby.js';
 import SinglePlayerLobby from './SinglePlayerLobby.js';
+import Guild from './Guild.js';
 
 const Router: React.FC = () => {
     const { currentRoute, currentUser, activeGame } = useAppContext();
@@ -56,6 +57,8 @@ const Router: React.FC = () => {
             return <TournamentLobby />;
         case 'singleplayer':
              return <SinglePlayerLobby />;
+        case 'guild':
+            return <Guild />;
         default:
             window.location.hash = '#/profile';
             return null;

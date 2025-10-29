@@ -335,6 +335,14 @@ const PlaceholderCard: React.FC<{ title: string; description: string; imageUrl: 
     );
 };
 
+import PointsInfoPanel from './PointsInfoPanel.js';
+
+const filterInProgress = (state: TournamentState | null | undefined): TournamentState | null => {
+    if (!state) return null;
+    // Keep completed/eliminated states to show "Result" button
+    return state;
+};
+
 const TournamentLobby: React.FC = () => {
     const { currentUserWithStatus, allUsers, handlers, waitingRoomChats } = useAppContext();
     
@@ -344,169 +352,58 @@ const TournamentLobby: React.FC = () => {
     const [hasRankChanged, setHasRankChanged] = useState(false);
     const [enrollingIn, setEnrollingIn] = useState<TournamentType | null>(null);
 
-    // This effect handles the transition into the bracket view after a user enrolls.
-    // It waits for the user object to update with the new tournament state.
-    useEffect(() => {
-        if (enrollingIn && currentUserWithStatus) {
-            const stateKey = `last${enrollingIn.charAt(0).toUpperCase() + enrollingIn.slice(1)}Tournament` as keyof User;
-            const newState = (currentUserWithStatus as any)[stateKey];
-            if (newState) {
-                setViewingTournament(newState);
-                setEnrollingIn(null);
-            }
-        }
-    }, [currentUserWithStatus, enrollingIn]);
-    
-
-    // This effect synchronizes the local tournament state with the global state from polling.
-    // This is crucial for seeing live updates during a simulation.
-    useEffect(() => {
-        if (viewingTournament && currentUserWithStatus) {
-            const stateKey = `last${viewingTournament.type.charAt(0).toUpperCase() + viewingTournament.type.slice(1)}Tournament` as keyof User;
-            const updatedState = (currentUserWithStatus as any)[stateKey] as TournamentState | null;
-            
-            if (updatedState && stableStringify(updatedState) !== stableStringify(viewingTournament)) {
-                setViewingTournament(updatedState);
-            }
-        }
-    }, [currentUserWithStatus, viewingTournament]);
-
-
-    useEffect(() => {
-        const checkIsMobile = () => setIsMobile(window.innerWidth < 1024);
-        window.addEventListener('resize', checkIsMobile);
-        return () => window.removeEventListener('resize', checkIsMobile);
-    }, []);
-
-    const handleBackFromBracket = useCallback(() => {
-        setViewingTournament(null);
-    }, []);
-
-    const handleEnterArena = useCallback((type: TournamentType) => {
-        const now = Date.now();
-        let playedDateKey: keyof User;
-        switch (type) {
-            case 'neighborhood': playedDateKey = 'lastNeighborhoodPlayedDate'; break;
-            case 'national': playedDateKey = 'lastNationalPlayedDate'; break;
-            case 'world': playedDateKey = 'lastWorldPlayedDate'; break;
-        }
-        const hasPlayedToday = !!(currentUserWithStatus as any)[playedDateKey] && isSameDayKST((currentUserWithStatus as any)[playedDateKey], now);
-
-        if (hasPlayedToday && !currentUserWithStatus?.isAdmin) {
-            alert('이미 오늘 참가한 토너먼트입니다. 결과를 확인해주세요.');
-            handleContinueTournament(type);
-            return;
-        }
-
-        setEnrollingIn(type);
-        handlers.handleAction({ type: 'START_TOURNAMENT_SESSION', payload: { type } });
-    }, [handlers, currentUserWithStatus]);
-
-    const handleContinueTournament = useCallback((type: TournamentType) => {
-        let stateKey: keyof User;
-        switch (type) {
-            case 'neighborhood': stateKey = 'lastNeighborhoodTournament'; break;
-            case 'national': stateKey = 'lastNationalTournament'; break;
-            case 'world': stateKey = 'lastWorldTournament'; break;
-        }
-        const existingState = (currentUserWithStatus as any)[stateKey] as TournamentState | null;
-        if (existingState) {
-            setViewingTournament(existingState);
-        }
-    }, [currentUserWithStatus]);
-
-
-    const globalChat = useMemo(() => waitingRoomChats['global'] || [], [waitingRoomChats]);
-
-    if (!currentUserWithStatus) return null;
-    
-    if (viewingTournament) {
-        return <TournamentBracket 
-            tournamentState={viewingTournament}
-            currentUser={currentUserWithStatus}
-            onBack={handleBackFromBracket}
-            onAction={handlers.handleAction}
-            allUsersForRanking={allUsers}
-            onViewUser={handlers.openViewingUser}
-            onStartNextRound={() => handlers.handleAction({ type: 'START_TOURNAMENT_ROUND', payload: { type: viewingTournament.type } })}
-            onReset={() => {
-                if (window.confirm('토너먼트를 포기하고 나가시겠습니까? 오늘의 참가 기회는 사라집니다.')) {
-                    handlers.handleAction({ type: 'CLEAR_TOURNAMENT_SESSION', payload: { type: viewingTournament.type } });
-                    setViewingTournament(null);
-                }
-            }}
-            onSkip={() => handlers.handleAction({ type: 'SKIP_TOURNAMENT_END', payload: { type: viewingTournament.type } })}
-            isMobile={isMobile}
-        />
+    if (!currentUserWithStatus) {
+        return (
+            <div className="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto flex flex-col h-[calc(100vh-5rem)] relative text-gray-500 items-center justify-center">
+                로비 정보를 불러오는 중...
+            </div>
+        );
     }
-    
-    const filterInProgress = (state: TournamentState | null | undefined): TournamentState | null => {
-        if (!state) return null;
-        // Keep completed/eliminated states to show "Result" button
-        return state;
-    };
 
     const neighborhoodState = filterInProgress(currentUserWithStatus.lastNeighborhoodTournament);
     const nationalState = filterInProgress(currentUserWithStatus.lastNationalTournament);
     const worldState = filterInProgress(currentUserWithStatus.lastWorldTournament);
 
+    const handleEnterArena = useCallback((type: TournamentType) => {
+        handlers.handleAction({ type: 'START_TOURNAMENT_SESSION', payload: { type: type } });
+    }, [handlers]);
+
+    const handleContinueTournament = useCallback((type: TournamentType) => {
+        handlers.handleAction({ type: 'START_TOURNAMENT_ROUND', payload: { type: type } });
+    }, [handlers]);
+
+    // This effect handles the transition into the bracket view after a user enrolls.
+
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto flex flex-col h-[calc(100vh-5rem)] relative">
-            {isMobile && (
-                 <div className="absolute top-1/2 -translate-y-1/2 right-0 z-20">
-                    <button 
-                        onClick={() => { setIsMobileSidebarOpen(true); setHasRankChanged(false); }}
-                        className="w-8 h-12 bg-gray-700/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-white shadow-lg"
-                        aria-label="랭킹 및 경쟁 상대 보기"
-                    >
-                        <span className="relative font-bold text-lg">
-                            {'<'}
-                            {hasRankChanged && <div className="absolute -top-1 -right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-gray-700"></div>}
-                        </span>
-                    </button>
-                </div>
-            )}
-            {isMobile && isMobileSidebarOpen && (
-                <>
-                    <div className={`fixed top-0 right-0 h-full w-[280px] bg-gray-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                        <div className="flex flex-col h-full">
-                             <button onClick={() => setIsMobileSidebarOpen(false)} className="self-end text-2xl p-2 text-gray-400 hover:text-white">×</button>
-                            <div className="flex-shrink-0 p-2 border-b border-gray-700">
-                                <QuickAccessSidebar mobile={true} />
-                            </div>
-                            <div className="flex-1 min-h-0"><WeeklyCompetitorsPanel setHasRankChanged={setHasRankChanged} /></div>
-                            <div className="flex-1 min-h-0 border-t border-gray-700"><ChampionshipRankingPanel /></div>
-                        </div>
-                    </div>
-                    <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>
-                </>
-            )}
+            {/* ... (mobile sidebar) */}
 
             <header className="flex justify-between items-center mb-6 flex-shrink-0">
-                <Button onClick={() => window.location.hash = '#/profile'}>&larr; 프로필로</Button>
-                <div className="text-center">
-                    <h1 className="text-3xl lg:text-4xl font-bold">자동대국 챔피언십</h1>
-                    <p className="text-gray-400 mt-2 text-sm">자신의 능력치와 장비로 시뮬레이션 대회에 참가하세요!</p>
-                </div>
-                 <div className="w-24 hidden lg:block"></div>
+                <Button onClick={() => window.location.hash = '#/profile'} colorScheme="gray" className="p-0 flex items-center justify-center w-10 h-10 rounded-full">
+                    <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+                </Button>
+                <h1 className="text-3xl lg:text-4xl font-bold">챔피언십 로비</h1>
+                <div className="w-10"></div> {/* Spacer to balance the back button */}
             </header>
             
             <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
-                <main className="flex-grow grid grid-rows-[auto,1fr] gap-6 min-h-0">
-                    <div className="grid grid-cols-2 gap-4 flex-shrink-0">
+                <main className="flex-grow grid grid-cols-12 gap-6 min-h-0">
+                    <div className="col-span-12 grid grid-cols-3 gap-4 flex-shrink-0">
                         <TournamentCard type="neighborhood" onClick={() => handleEnterArena('neighborhood')} onContinue={() => handleContinueTournament('neighborhood')} inProgress={neighborhoodState || null} />
                         <TournamentCard type="national" onClick={() => handleEnterArena('national')} onContinue={() => handleContinueTournament('national')} inProgress={nationalState || null} />
                         <TournamentCard type="world" onClick={() => handleEnterArena('world')} onContinue={() => handleContinueTournament('world')} inProgress={worldState || null} />
-                        <PlaceholderCard title="팀 챔피언십" description="다른 플레이어와 팀을 이루어 경쟁하세요." imageUrl="/images/Champ4.png" />
                     </div>
-                    <div className="bg-gray-800/50 rounded-lg shadow-lg min-h-0">
+                    <div className="col-span-8 bg-gray-800/50 rounded-lg shadow-lg min-h-0">
                         <ChatWindow
-                            messages={globalChat}
+                            messages={waitingRoomChats.global || []}
                             mode="global"
                             onAction={handlers.handleAction}
                             onViewUser={handlers.openViewingUser}
                             locationPrefix="[챔피언십]"
                         />
+                    </div>
+                    <div className="col-span-4">
+                        <PointsInfoPanel />
                     </div>
                 </main>
                  <aside className="hidden lg:flex flex-col lg:w-[480px] flex-shrink-0 gap-6">
@@ -515,7 +412,7 @@ const TournamentLobby: React.FC = () => {
                             <WeeklyCompetitorsPanel setHasRankChanged={setHasRankChanged}/>
                         </div>
                         <div className="w-auto flex-shrink-0">
-                            <QuickAccessSidebar fillHeight={true} compact={true}/>
+                            <QuickAccessSidebar fillHeight={true} />
                         </div>
                     </div>
                     <div className="flex-1 min-h-0">

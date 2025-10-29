@@ -47,12 +47,12 @@ const ActionPointTimer: React.FC<{ user: UserWithStatus }> = ({ user }) => {
 
 
 const Header: React.FC = () => {
-    const { currentUserWithStatus, handlers } = useAppContext();
+    const { currentUserWithStatus, handlers, unreadMailCount } = useAppContext();
 
     if (!currentUserWithStatus) return null;
 
-    const { handleLogout, openShop, openSettingsModal } = handlers;
-    const { actionPoints, gold, diamonds, isAdmin, avatarId, borderId } = currentUserWithStatus;
+    const { handleLogout, openShop, openSettingsModal, openProfileEditModal, openMailbox } = handlers;
+    const { actionPoints, gold, diamonds, isAdmin, avatarId, borderId, mbti } = currentUserWithStatus;
     
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === avatarId)?.url, [avatarId]);
     const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === borderId)?.url, [borderId]);
@@ -60,12 +60,15 @@ const Header: React.FC = () => {
     return (
         <header className="flex-shrink-0 bg-primary/80 backdrop-blur-sm shadow-lg">
             <div className="p-2 flex justify-between items-center gap-2 h-[60px]">
-                <div className="flex items-center gap-2 sm:gap-3 flex-shrink min-w-0">
+                <div className="flex items-center gap-2 sm:gap-3 flex-shrink min-w-0 cursor-pointer relative" onClick={openProfileEditModal}>
                      <Avatar userId={currentUserWithStatus.id} userName={currentUserWithStatus.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={40} />
                      <div className="hidden sm:block min-w-0">
                         <h1 className="font-bold text-primary truncate">{currentUserWithStatus.nickname}</h1>
                         <p className="text-xs text-tertiary truncate">전략 Lv.{currentUserWithStatus.strategyLevel} / 놀이 Lv.{currentUserWithStatus.playfulLevel}</p>
                      </div>
+                     {!mbti && (
+                        <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
+                     )}
                 </div>
 
                 <div className="flex items-center justify-end flex-wrap gap-1 sm:gap-2">
@@ -74,12 +77,22 @@ const Header: React.FC = () => {
                         <ActionPointTimer user={currentUserWithStatus} />
                         <button onClick={openShop} className="ml-1 w-6 h-6 flex-shrink-0 rounded-full bg-green-600 hover:bg-green-500 text-white font-bold flex items-center justify-center text-lg shadow-md transition-transform hover:scale-110 active:scale-95" title="행동력 구매">+</button>
                     </div>
-                    <ResourceDisplay icon={<img src="/images/Gold.png" alt="골드" className="w-5 h-5 object-contain" />} value={gold.toLocaleString()} />
-                    <ResourceDisplay icon={<img src="/images/Zem.png" alt="다이아" className="w-5 h-5 object-contain" />} value={diamonds.toLocaleString()} />
+                    <ResourceDisplay icon={<img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 object-contain" />} value={gold.toLocaleString()} />
+                    <ResourceDisplay icon={<img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 object-contain" />} value={diamonds.toLocaleString()} />
                     
                     <div className="h-9 w-px bg-border-color mx-1 sm:mx-2"></div>
                     
                     {isAdmin && <Button onClick={() => window.location.hash = '#/admin'} colorScheme="purple" className="text-xs sm:text-sm">관리자</Button>}
+                    <button
+                        onClick={openMailbox}
+                        className="relative p-2 rounded-lg text-xl hover:bg-secondary transition-colors"
+                        title="우편함"
+                    >
+                        <img src="/images/icon/mail.png" alt="우편함" className="w-6 h-6" />
+                        {unreadMailCount > 0 && (
+                            <span className="absolute top-1 right-1 bg-red-500 rounded-full w-2.5 h-2.5 border-2 border-primary"></span>
+                        )}
+                    </button>
                     <button
                         onClick={openSettingsModal}
                         className="p-2 rounded-lg text-xl hover:bg-secondary transition-colors"

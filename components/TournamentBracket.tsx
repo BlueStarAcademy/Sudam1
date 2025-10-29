@@ -783,13 +783,13 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         }
         
         if (status === 'complete') {
-            return <Button onClick={onBack} colorScheme="blue">나가기</Button>;
+            return <button onClick={onBack} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5"><img src="/images/button/back.png" alt="Back" className="w-6 h-6" /></button>;
         }
 
         if (status === 'eliminated') {
              return (
                 <div className="flex items-center justify-center gap-4">
-                    <Button onClick={onBack} colorScheme="gray">나가기</Button>
+                    <button onClick={onBack} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5"><img src="/images/button/back.png" alt="Back" className="w-6 h-6" /></button>
                     <Button onClick={onSkip} colorScheme="yellow">결과 스킵</Button>
                 </div>
             );
@@ -895,7 +895,9 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     return (
         <div className="w-full p-2 flex flex-col gap-2 bg-gray-900 text-white min-h-full">
             <header className="flex items-center justify-between flex-shrink-0">
-                <Button onClick={handleBackClick}>&larr; 경기장 선택</Button>
+                <button onClick={handleBackClick} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
+                    <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+                </button>
                 <h1 className="text-xl md:text-2xl font-bold">{tournamentState.title}</h1>
                 <div className="w-28" />
             </header>

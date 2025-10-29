@@ -18,11 +18,11 @@ const QuickAccessSidebar: React.FC<QuickAccessSidebarProps> = ({ mobile = false,
     const hasUnreadMail = unreadMailCount > 0;
 
     const allButtons = [
-        { label: '퀘스트', iconUrl: '/images/quest.png', handler: handlers.openQuests, disabled: false, notification: hasClaimableQuest },
-        { label: '기보', iconUrl: '/images/gibo.png', handler: () => alert('기보보기 기능은 구현 예정입니다.'), disabled: true, notification: false },
-        { label: '우편함', iconUrl: '/images/mail.png', handler: handlers.openMailbox, disabled: false, notification: hasUnreadMail, count: unreadMailCount },
-        { label: '상점', iconUrl: '/images/store.png', handler: handlers.openShop, disabled: false, notification: false },
-        { label: '가방', iconUrl: '/images/bag.png', handler: handlers.openInventory, disabled: false, notification: false },
+        { label: '퀘스트', iconUrl: '/images/quickmenu/quest.png', handler: handlers.openQuests, disabled: false, notification: hasClaimableQuest },
+        { label: '기보', iconUrl: '/images/quickmenu/gibo.png', handler: () => alert('기보보기 기능은 구현 예정입니다.'), disabled: true, notification: false },
+        { label: '대장간', iconUrl: '/images/quickmenu/enhance.png', handler: handlers.openBlacksmithModal, disabled: false, notification: false },
+        { label: '상점', iconUrl: '/images/quickmenu/store.png', handler: handlers.openShop, disabled: false, notification: false },
+        { label: '가방', iconUrl: '/images/quickmenu/bag.png', handler: handlers.openInventory, disabled: false, notification: false },
     ];
     
     const containerClass = mobile 

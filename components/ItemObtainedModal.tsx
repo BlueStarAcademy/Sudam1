@@ -71,7 +71,7 @@ const ItemObtainedModal: React.FC<ItemObtainedModalProps> = ({ item, onClose, is
     const requiredLevel = item.type === 'equipment' ? GRADE_LEVEL_REQUIREMENTS[item.grade] : null;
     const starInfo = getStarDisplayInfo(item.stars);
     const borderClass = gradeBorderStyles[item.grade];
-    const isCurrency = item.image === '/images/Gold.png' || item.image === '/images/Zem.png';
+    const isCurrency = item.image === '/images/icon/Gold.png' || item.image === '/images/icon/Zem.png';
 
     useEffect(() => {
         if (['epic', 'legendary', 'mythic'].includes(item.grade)) {

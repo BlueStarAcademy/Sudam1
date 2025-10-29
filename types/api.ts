@@ -3,7 +3,7 @@ import {
     AdminLog, Announcement, OverrideAnnouncement, InventoryItem,
     QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus
 } from './entities.js';
-import { GameMode, RPSChoice, Point, Player, UserStatus, TournamentType } from './enums.js';
+import { GameMode, RPSChoice, Point, Player, UserStatus, TournamentType, InventoryItemType } from './enums.js';
 
 export type ChatMessage = {
   id: string;
@@ -157,6 +157,7 @@ export type ServerAction =
     | { type: 'DELETE_MAIL', payload: { mailId: string } }
     | { type: 'DELETE_ALL_CLAIMED_MAIL', payload?: never }
     | { type: 'MARK_MAIL_AS_READ', payload: { mailId: string } }
+    | { type: 'CLAIM_MBTI_REWARD', payload?: never }
     | { type: 'CLAIM_QUEST_REWARD', payload: { questId: string } }
     | { type: 'CLAIM_ACTIVITY_MILESTONE', payload: { milestoneIndex: number, questType: 'daily' | 'weekly' | 'monthly' } }
     // Shop
@@ -164,7 +165,7 @@ export type ServerAction =
     | { type: 'BUY_SHOP_ITEM_BULK', payload: { itemId: string, quantity: number } }
     | { type: 'BUY_MATERIAL_BOX', payload: { itemId: string, quantity: number } }
     | { type: 'PURCHASE_ACTION_POINTS', payload?: never }
-    | { type: 'EXPAND_INVENTORY', payload?: never }
+    | { type: 'EXPAND_INVENTORY', payload: { category: InventoryItemType } }
     | { type: 'BUY_BORDER', payload: { borderId: string } }
     // Admin
     | { type: 'ADMIN_APPLY_SANCTION', payload: { targetUserId: string; sanctionType: 'chat' | 'connection'; durationMinutes: number } }

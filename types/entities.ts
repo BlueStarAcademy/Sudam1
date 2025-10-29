@@ -235,7 +235,7 @@ export type User = {
   baseStats: Record<CoreStat, number>;
   spentStatPoints: Record<CoreStat, number>;
   inventory: InventoryItem[];
-  inventorySlots: number;
+  inventorySlots: { equipment: number; consumable: number; material: number; };
   equipment: Equipment;
   actionPoints: { current: number; max: number };
   lastActionPointUpdate: number;
@@ -277,9 +277,15 @@ export type User = {
   monthlyGoldBuffExpiresAt?: number | null;
   mbti?: string | null;
   isMbtiPublic?: boolean;
+  statResetCountToday?: number;
+  lastStatResetDate?: string;
   singlePlayerProgress?: number;
   bonusStatPoints?: number;
   singlePlayerMissions?: Record<string, SinglePlayerMissionState>;
+  guildId?: string;
+  blacksmithLevel: number;
+  blacksmithXp: number;
+  cumulativeRankingScore?: Record<string, number>;
 };
 
 export type UserWithStatus = User & UserStatusInfo;

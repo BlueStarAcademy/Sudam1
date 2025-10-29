@@ -71,7 +71,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                             }
                             {summary.gold && summary.gold > 0 &&
                                 <div className="flex items-center gap-2">
-                                    <img src="/images/Gold.png" alt="골드" className="w-8 h-8" />
+                                    <img src="/images/icon/Gold.png" alt="골드" className="w-8 h-8" />
                                     <span className="font-bold text-yellow-400 sparkle-animation">+{summary.gold.toLocaleString()}</span>
                                 </div>
                             }

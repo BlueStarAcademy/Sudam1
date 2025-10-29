@@ -37,7 +37,7 @@ const LeagueTierInfoModal: React.FC<LeagueTierInfoModalProps> = ({ onClose, isTo
                 <span className="font-semibold">{rankText}</span>
                 <div className="flex items-center gap-3">
                     <span className="flex items-center gap-1 text-yellow-300">
-                        <img src="/images/Zem.png" alt="다이아" className="w-4 h-4" />
+                        <img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" />
                         {rewardTier.diamonds}
                     </span>
                     <span className={`font-bold w-12 text-center ${outcomeColor}`}>{outcomeText}</span>

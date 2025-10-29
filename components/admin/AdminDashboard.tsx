@@ -23,7 +23,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onBackToPro
         <div className="bg-primary text-primary">
             <header className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">관리자 대시보드</h1>
-                <Button onClick={onBackToProfile} colorScheme="gray">&larr; 프로필로 돌아가기</Button>
+                <button onClick={onBackToProfile} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
+                    <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+                </button>
             </header>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <div onClick={() => onNavigate('userManagement')} className="bg-blue-800/50 hover:bg-blue-700/50 p-6 rounded-lg shadow-lg cursor-pointer transition-all transform hover:-translate-y-1 border border-color">

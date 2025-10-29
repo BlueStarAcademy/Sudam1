@@ -50,7 +50,7 @@ const QuestItem: React.FC<{ quest: Quest, onClaim: (id: string) => void }> = ({ 
                     <span className="text-yellow-300 font-semibold flex items-center gap-1">📜 +{quest.activityPoints}</span>
                     {quest.reward.gold && (
                         <span className="text-yellow-300 font-semibold flex items-center gap-1">
-                            <img src="/images/Gold.png" alt="골드" className="w-3 h-3" /> +{quest.reward.gold}
+                            <img src="/images/icon/Gold.png" alt="골드" className="w-3 h-3" /> +{quest.reward.gold}
                         </span>
                     )}
                 </div>

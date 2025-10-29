@@ -57,7 +57,7 @@ const StageSelectionModal: React.FC<StageSelectionModalProps> = ({ currentUser, 
                                     <div className="flex items-center justify-center gap-2 mt-1 text-xs">
                                         {stage.rewards.firstClear.gold > 0 && (
                                             <span className="flex items-center gap-1">
-                                                <img src="/images/Gold.png" alt="골드" className="w-4 h-4" />
+                                                <img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" />
                                                 {stage.rewards.firstClear.gold}
                                             </span>
                                         )}
