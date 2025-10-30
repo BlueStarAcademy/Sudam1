@@ -34,14 +34,6 @@ const getStarDisplayInfo = (stars: number) => {
     return { text: "", colorClass: "text-white" };
 };
 
-const OptionSection: React.FC<{ title: string; options: ItemOption[]; color: string; }> = ({ title, options, color }) => (
-    <div>
-        <h5 className={`font-semibold ${color} border-b border-gray-600 pb-1 mb-1`}>{title}</h5>
-        <ul className="list-disc list-inside space-y-0.5 text-gray-300">
-            {options.map((opt, i) => <li key={i}>{opt.display}</li>)}
-        </ul>
-    </div>
-);
 
 
 const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, isOwnedByCurrentUser, onClose, onStartEnhance, isTopmost }) => {
@@ -50,31 +42,49 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, isOwnedByCurren
 
     return (
         <DraggableWindow title="장비 상세 정보" onClose={onClose} windowId={`item-detail-${item.id}`} initialWidth={350} isTopmost={isTopmost}>
-            <div className="flex flex-col items-center text-center">
-                <div className="relative w-32 h-32 rounded-lg mb-4">
-                    <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
-                    {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-4"/>}
+            <div className="flex flex-col h-full">
+                {/* Top Section: Image (left), Name & Main Option (right) */}
+                <div className="flex items-start justify-between mb-4">
+                    {/* Left: Image */}
+                    <div className="relative w-24 h-24 rounded-lg flex-shrink-0">
+                        <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
+                        {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-2"/>}
+                    </div>
+                    {/* Right: Name & Main Option */}
+                    <div className="flex-grow text-right ml-4">
+                        <div className="flex items-baseline justify-end gap-1">
+                            <h3 className={`text-xl font-bold ${starInfo.colorClass}`}>{item.name}</h3>
+                            {item.stars > 0 && <span className={`text-lg font-bold ${starInfo.colorClass}`}>{starInfo.text}</span>}
+                        </div>
+                        <p className="text-gray-400 text-sm">[{styles.name}]</p>
+                        {item.options?.main && (
+                            <p className="font-semibold text-yellow-300 text-sm">{item.options.main.display}</p>
+                        )}
+                    </div>
                 </div>
-                <div className="flex items-baseline justify-center gap-2">
-                    <h3 className={`text-2xl font-bold ${starInfo.colorClass}`}>{item.name}</h3>
-                    {item.stars > 0 && <span className={`text-xl font-bold ${starInfo.colorClass}`}>{starInfo.text}</span>}
-                </div>
-                <div className="flex items-baseline justify-center gap-4 mb-4 text-sm">
-                    <p className="text-gray-400">[{styles.name}]</p>
-                    {item.options?.main && (
-                        <p className="font-semibold text-yellow-300">{item.options.main.display}</p>
-                    )}
-                </div>
-                
-                <div className="w-full text-sm text-left space-y-3 bg-gray-900/50 p-3 rounded-lg">
+
+                {/* Bottom Section: Sub Options */}
+                <div className="w-full text-sm text-left space-y-2 bg-gray-900/50 p-3 rounded-lg flex-grow overflow-y-auto">
                     {item.options?.combatSubs && item.options.combatSubs.length > 0 && (
-                         <OptionSection title="전투 부옵션" options={item.options.combatSubs} color="text-blue-300" />
+                        <div className="space-y-0.5">
+                            {item.options.combatSubs.map((opt, i) => (
+                                <p key={i} className="text-blue-300">{opt.display}</p>
+                            ))}
+                        </div>
                     )}
                     {item.options?.specialSubs && item.options.specialSubs.length > 0 && (
-                         <OptionSection title="특수 부옵션" options={item.options.specialSubs} color="text-green-300" />
+                        <div className="space-y-0.5">
+                            {item.options.specialSubs.map((opt, i) => (
+                                <p key={i} className="text-green-300">{opt.display}</p>
+                            ))}
+                        </div>
                     )}
                     {item.options?.mythicSubs && item.options.mythicSubs.length > 0 && (
-                         <OptionSection title="신화 부옵션" options={item.options.mythicSubs} color="text-red-400" />
+                        <div className="space-y-0.5">
+                            {item.options.mythicSubs.map((opt, i) => (
+                                <p key={i} className="text-red-400">{opt.display}</p>
+                            ))}
+                        </div>
                     )}
                 </div>
 

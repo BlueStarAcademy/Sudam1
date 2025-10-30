@@ -5,13 +5,13 @@ import react from '@vitejs/plugin-react';
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '0.0.0.0',
+    host: true, // This ensures Vite listens on all network interfaces
     proxy: {
-      // Proxy requests from /api to the backend server
-      '/api': {
-        target: 'http://localhost:4000',
-        changeOrigin: true,
-      }
+      '/api': 'http://localhost:4000',
     },
-  }
-});
+    watch: {
+      ignored: ['**/vite.config.ts'],
+      usePolling: true,
+    },
+  },
+})

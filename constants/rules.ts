@@ -1,4 +1,14 @@
 import { ActionButton, GameMode } from '../types.js';
+import type { ItemGrade } from '../types/enums.js';
+
+type CombinationGreatSuccessRates = {
+    'normal'?: number;
+    'uncommon'?: number;
+    'rare'?: number;
+    'epic'?: number;
+    'legendary'?: number;
+    'mythic'?: number;
+};
 
 // --- Action Point Costs ---
 export const STRATEGIC_ACTION_POINT_COST = 5;
@@ -65,3 +75,110 @@ export const NO_CONTEST_MOVE_THRESHOLD = 10;
 export const NO_CONTEST_TIME_THRESHOLD_SECONDS = 180;
 export const NO_CONTEST_MANNER_PENALTY = 20;
 export const NO_CONTEST_RANKING_PENALTY = 50;
+
+// --- Blacksmith XP Gain ---
+export const BLACKSMITH_MAX_LEVEL = 20;
+
+export const BLACKSMITH_COMBINATION_XP_GAIN: Record<ItemGrade, [number, number]> = {
+    normal: [10, 30],
+    uncommon: [20, 50],
+    rare: [30, 80],
+    epic: [50, 150],
+    legendary: [100, 300],
+    mythic: [200, 500],
+};
+
+export const BLACKSMITH_ENHANCEMENT_XP_GAIN: Record<ItemGrade, [number, number]> = {
+    normal: [1, 10],
+    uncommon: [5, 20],
+    rare: [10, 30],
+    epic: [20, 50],
+    legendary: [50, 100],
+    mythic: [100, 300],
+};
+
+export const BLACKSMITH_DISASSEMBLY_XP_GAIN: Record<ItemGrade, [number, number]> = {
+    normal: [1, 5],
+    uncommon: [5, 10],
+    rare: [10, 20],
+    epic: [20, 40],
+    legendary: [50, 100],
+    mythic: [100, 300],
+};
+
+export const BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL: ItemGrade[] = [
+    'uncommon', // Level 1: 고급 이하 (Uncommon or lower)
+    'rare',     // Level 2: 희귀 이하 (Rare or lower)
+    'epic',     // Level 3: 에픽 이하 (Epic or lower)
+    'legendary',// Level 4: 전설 이하 (Legendary or lower)
+    'mythic',   // Level 5: 모든 장비 (All equipment)
+    'mythic',   // Level 6
+    'mythic',   // Level 7
+    'mythic',   // Level 8
+    'mythic',   // Level 9
+    'mythic',   // Level 10
+    'mythic',   // Level 11
+    'mythic',   // Level 12
+    'mythic',   // Level 13
+    'mythic',   // Level 14
+    'mythic',   // Level 15
+    'mythic',   // Level 16
+    'mythic',   // Level 17
+    'mythic',   // Level 18
+    'mythic',   // Level 19
+    'mythic',   // Level 20
+];
+
+export const BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES: CombinationGreatSuccessRates[] = [
+    // Level 1
+    { 'normal': 50, 'uncommon': 30 },
+    // Level 2
+    { 'normal': 50, 'uncommon': 30, 'rare': 20 },
+    // Level 3
+    { 'normal': 50, 'uncommon': 30, 'rare': 20, 'epic': 10 },
+    // Level 4
+    { 'normal': 50, 'uncommon': 30, 'rare': 20, 'epic': 10, 'legendary': 1 },
+    // Level 5
+    { 'normal': 50, 'uncommon': 30, 'rare': 20, 'epic': 10, 'legendary': 1.5, 'mythic': 25 },
+    // Level 6
+    { 'normal': 65, 'uncommon': 40, 'rare': 25, 'epic': 12.5, 'legendary': 2, 'mythic': 30 },
+    // Level 7
+    { 'normal': 80, 'uncommon': 50, 'rare': 30, 'epic': 15, 'legendary': 2.5, 'mythic': 35 },
+    // Level 8
+    { 'normal': 95, 'uncommon': 60, 'rare': 35, 'epic': 17.5, 'legendary': 3, 'mythic': 40 },
+    // Level 9
+    { 'normal': 100, 'uncommon': 70, 'rare': 40, 'epic': 20, 'legendary': 3.5, 'mythic': 45 },
+    // Level 10
+    { 'normal': 100, 'uncommon': 80, 'rare': 45, 'epic': 22.5, 'legendary': 4, 'mythic': 50 },
+    // Level 11
+    { 'normal': 100, 'uncommon': 90, 'rare': 50, 'epic': 25, 'legendary': 4.5, 'mythic': 55 },
+    // Level 12
+    { 'normal': 100, 'uncommon': 100, 'rare': 55, 'epic': 27.5, 'legendary': 5, 'mythic': 60 },
+    // Level 13
+    { 'normal': 100, 'uncommon': 100, 'rare': 60, 'epic': 30, 'legendary': 5.5, 'mythic': 65 },
+    // Level 14
+    { 'normal': 100, 'uncommon': 100, 'rare': 65, 'epic': 32.5, 'legendary': 6, 'mythic': 70 },
+    // Level 15
+    { 'normal': 100, 'uncommon': 100, 'rare': 70, 'epic': 35, 'legendary': 6.5, 'mythic': 75 },
+    // Level 16
+    { 'normal': 100, 'uncommon': 100, 'rare': 75, 'epic': 37.5, 'legendary': 7, 'mythic': 80 },
+    // Level 17
+    { 'normal': 100, 'uncommon': 100, 'rare': 80, 'epic': 40, 'legendary': 7.5, 'mythic': 85 },
+    // Level 18
+    { 'normal': 100, 'uncommon': 100, 'rare': 85, 'epic': 42.5, 'legendary': 8, 'mythic': 90 },
+    // Level 19
+    { 'normal': 100, 'uncommon': 100, 'rare': 90, 'epic': 45, 'legendary': 8.5, 'mythic': 95 },
+    // Level 20
+    { 'normal': 100, 'uncommon': 100, 'rare': 100, 'epic': 50, 'legendary': 10, 'mythic': 100 },
+];
+
+export const BLACKSMITH_DISASSEMBLY_JACKPOT_RATES: number[] = [
+    2, 4, 6, 8, 10, 12, 14, 16, 18, 20,
+    22, 24, 26, 28, 30, 32, 34, 36, 38, 40,
+];
+
+export const BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP = (level: number): number => {
+    if (level < 1) return 0; // No XP needed for level 0 or less
+    if (level >= BLACKSMITH_MAX_LEVEL) return Infinity; // Max level, no more XP needed
+    return level * 10000;
+};

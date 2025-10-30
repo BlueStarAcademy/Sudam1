@@ -448,6 +448,42 @@ const startServer = async () => {
                 return res.status(401).json({ message: '세션이 만료되었습니다. 다시 로그인해주세요.' });
             }
 
+            // --- Inventory Slots Migration Logic ---
+            let inventorySlotsUpdated = false;
+            if (!user.inventorySlotsMigrated) {
+                let currentEquipmentSlots = 30;
+                let currentConsumableSlots = 30;
+                let currentMaterialSlots = 30;
+
+                if (typeof user.inventorySlots === 'number') {
+                    // Old format: number of slots for equipment
+                    currentEquipmentSlots = Math.max(30, user.inventorySlots);
+                } else if (typeof user.inventorySlots === 'object' && user.inventorySlots !== null) {
+                    // New format, but might be partially initialized or have values less than 30
+                    currentEquipmentSlots = Math.max(30, user.inventorySlots.equipment || 0);
+                    currentConsumableSlots = Math.max(30, user.inventorySlots.consumable || 0);
+                    currentMaterialSlots = Math.max(30, user.inventorySlots.material || 0);
+                }
+
+                // Apply updates if any slot count is less than 30 or if it was in the old number format
+                if (typeof user.inventorySlots === 'number' || 
+                    user.inventorySlots.equipment < 30 || 
+                    user.inventorySlots.consumable < 30 || 
+                    user.inventorySlots.material < 30) {
+
+                    user.inventorySlots = {
+                        equipment: currentEquipmentSlots,
+                        consumable: currentConsumableSlots,
+                        material: currentMaterialSlots,
+                    };
+                    inventorySlotsUpdated = true;
+                }
+                
+                if (inventorySlotsUpdated) {
+                    user.inventorySlotsMigrated = true;
+                }
+            }
+
             // Re-establish connection if user is valid but not in volatile memory (e.g., after server restart)
             if (!volatileState.userConnections[userId]) {
                 console.log(`[Auth] Re-establishing connection for user: ${user.nickname} (${userId})`);
@@ -482,7 +518,7 @@ const startServer = async () => {
             }
             // --- End Migration Logic ---
 
-            if (userBeforeUpdate !== JSON.stringify(updatedUser) || statsMigrated) {
+            if (userBeforeUpdate !== JSON.stringify(updatedUser) || statsMigrated || inventorySlotsUpdated) {
                 await db.updateUser(updatedUser);
             }
             

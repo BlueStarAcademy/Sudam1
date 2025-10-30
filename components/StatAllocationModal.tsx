@@ -13,16 +13,21 @@ interface StatAllocationModalProps {
 }
 
 const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, onClose, onAction, isTopmost }) => {
-    const [tempPoints, setTempPoints] = useState<Record<CoreStat, number>>(
-        currentUser.spentStatPoints || {
-            [CoreStat.Concentration]: 0,
-            [CoreStat.ThinkingSpeed]: 0,
-            [CoreStat.Judgment]: 0,
-            [CoreStat.Calculation]: 0,
-            [CoreStat.CombatPower]: 0,
-            [CoreStat.Stability]: 0,
+    const [isEditing, setIsEditing] = useState(!currentUser.spentStatPoints || Object.keys(currentUser.spentStatPoints).length === 0);
+    const [tempPoints, setTempPoints] = useState<Record<CoreStat, number>>(() => {
+        if (currentUser.spentStatPoints && Object.keys(currentUser.spentStatPoints).length > 0) {
+            return currentUser.spentStatPoints;
+        } else {
+            return {
+                [CoreStat.Concentration]: 0,
+                [CoreStat.ThinkingSpeed]: 0,
+                [CoreStat.Judgment]: 0,
+                [CoreStat.Calculation]: 0,
+                [CoreStat.CombatPower]: 0,
+                [CoreStat.Stability]: 0,
+            };
         }
-    );
+    });
 
     const resetCost = 1000;
     const maxDailyResets = 2;
@@ -31,7 +36,7 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
     const statResetCountToday = currentUser.statResetCountToday || 0;
 
     const canReset = useMemo(() => {
-        if (currentUser.diamonds < resetCost) return false;
+        if (currentUser.gold < resetCost) return false;
         if (lastResetDate === currentDay && statResetCountToday >= maxDailyResets) return false;
         return true;
     }, [currentUser.diamonds, lastResetDate, statResetCountToday, currentDay]);
@@ -44,7 +49,10 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
         return Object.values(tempPoints).reduce((sum, points) => sum + points, 0);
     }, [tempPoints]);
 
-    const availablePoints = totalBonusPoints - spentPoints;
+    const availablePoints = useMemo(() => {
+        if (!isEditing) return 0; // No available points if not in editing mode
+        return totalBonusPoints - spentPoints;
+    }, [isEditing, totalBonusPoints, spentPoints]);
 
     const handlePointChange = (stat: CoreStat, value: string) => {
         const newValue = Number(value) || 0;
@@ -62,15 +70,28 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
 
     const handleReset = () => {
         if (!canReset) {
-            alert("능력치 초기화 조건을 충족하지 못했습니다. 다이아가 부족하거나 일일 초기화 횟수를 초과했습니다.");
+            alert("능력치 초기화 조건을 충족하지 못했습니다. 골드가 부족하거나 일일 초기화 횟수를 초과했습니다.");
             return;
         }
-        if (window.confirm(`다이아 ${resetCost}개를 사용하여 모든 보너스 포인트를 초기화하시겠습니까? (오늘 ${maxDailyResets - statResetCountToday}회 남음)`)) {
+        if (window.confirm(`골드 ${resetCost}개를 사용하여 모든 보너스 포인트를 초기화하시겠습니까? (오늘 ${maxDailyResets - statResetCountToday}회 남음)`)) {
             onAction({ type: 'RESET_STAT_POINTS' });
-            onClose();
+            setTempPoints({
+                [CoreStat.Concentration]: 0,
+                [CoreStat.ThinkingSpeed]: 0,
+                [CoreStat.Judgment]: 0,
+                [CoreStat.Calculation]: 0,
+                [CoreStat.CombatPower]: 0,
+                [CoreStat.Stability]: 0,
+            });
+            setIsEditing(true);
         }
     };
     
+    const hasChanges = useMemo(() => {
+        if (!currentUser.spentStatPoints) return spentPoints > 0; // If no points spent, any spent points means changes
+        return Object.values(CoreStat).some(stat => tempPoints[stat] !== currentUser.spentStatPoints![stat]);
+    }, [tempPoints, currentUser.spentStatPoints, spentPoints]);
+
     const handleConfirm = () => {
         onAction({ type: 'CONFIRM_STAT_ALLOCATION', payload: { newStatPoints: tempPoints } });
         onClose();
@@ -121,12 +142,14 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
                                             value={currentSpent}
                                             onChange={(e) => handlePointChange(stat, e.target.value)}
                                             className="w-full h-2 bg-gray-700 rounded-lg appearance-none cursor-pointer"
+                                            disabled={!isEditing}
                                         />
                                         <input
                                             type="number"
                                             value={currentSpent}
                                             onChange={(e) => handlePointChange(stat, e.target.value)}
                                             className="w-16 bg-gray-700 border border-gray-600 rounded-md p-1 text-center"
+                                            disabled={!isEditing}
                                         />
                                     </div>
                                     <p className="text-xs text-gray-400 mt-1">{CORE_STATS_DATA[stat].description}</p>
@@ -136,12 +159,12 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
                     </div>
                     <div className="flex justify-between mt-4 pt-4 border-t border-gray-700">
                         <div className="flex flex-col items-start">
-                            <Button onClick={handleReset} colorScheme="red" disabled={!canReset}>초기화 (💎{resetCost})</Button>
+                            <Button onClick={handleReset} colorScheme="red" disabled={!canReset}>초기화 (<img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4 inline-block" />{resetCost})</Button>
                             <p className="text-xs text-gray-400 mt-1">일일 변경제한: {maxDailyResets - statResetCountToday}/{maxDailyResets}</p>
                         </div>
                         <div className="flex gap-2">
                             <Button onClick={onClose} colorScheme="gray">취소</Button>
-                            <Button onClick={handleConfirm} colorScheme="green">분배</Button>
+                            <Button onClick={handleConfirm} colorScheme="green" disabled={!isEditing || !hasChanges}>분배</Button>
                         </div>
                     </div>
                 </div>

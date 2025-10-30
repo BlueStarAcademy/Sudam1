@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import DraggableWindow from './DraggableWindow.js';
 import EnhancementView from './blacksmith/EnhancementView.js';
 import CombinationView from './blacksmith/CombinationView.js';
@@ -6,22 +6,44 @@ import DisassemblyView from './blacksmith/DisassemblyView.js';
 import ConversionView from './blacksmith/ConversionView.js';
 import InventoryGrid from './blacksmith/InventoryGrid.js';
 import { useAppContext } from '../hooks/useAppContext.js';
+import { BLACKSMITH_MAX_LEVEL, BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL, BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES, BLACKSMITH_DISASSEMBLY_JACKPOT_RATES, BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP } from '../constants/rules.js';
 import { InventoryItem } from '../types.js';
+import type { ItemGrade } from '../types/enums.js';
 
 interface BlacksmithModalProps {
     onClose: () => void;
     isTopmost: boolean;
-    onStartEnhance: (item: InventoryItem) => void;
+    selectedItemForEnhancement: InventoryItem | null;
+    activeTab: 'enhance' | 'combine' | 'disassemble' | 'convert';
+    onSetActiveTab: (tab: 'enhance' | 'combine' | 'disassemble' | 'convert') => void;
 }
 
-const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, onStartEnhance }) => {
+const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, selectedItemForEnhancement, activeTab, onSetActiveTab }) => {
     const { currentUserWithStatus, handlers } = useAppContext();
-    const [activeTab, setActiveTab] = useState('enhance');
-    const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+    const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(selectedItemForEnhancement);
+
+    useEffect(() => {
+        if (selectedItemForEnhancement) {
+            setSelectedItem(selectedItemForEnhancement);
+            onSetActiveTab('enhance');
+        }
+    }, [selectedItemForEnhancement, onSetActiveTab]);
 
     if (!currentUserWithStatus) return null;
 
     const { blacksmithLevel, blacksmithXp, inventory, inventorySlots } = currentUserWithStatus;
+
+    const GRADE_NAMES_KO: Record<ItemGrade, string> = {
+        normal: '일반',
+        uncommon: '고급',
+        rare: '희귀',
+        epic: '에픽',
+        legendary: '전설',
+        mythic: '신화',
+    };
+
+    const currentLevelIndex = Math.max(0, (blacksmithLevel ?? 1) - 1);
+    const nextLevelIndex = Math.min(BLACKSMITH_MAX_LEVEL - 1, (blacksmithLevel ?? 1));
 
     const tabs = [
         { id: 'enhance', label: '장비 강화' },
@@ -32,7 +54,13 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, o
 
     const renderContent = () => {
         switch (activeTab) {
-            case 'enhance': return <EnhancementView selectedItem={selectedItem} onStartEnhance={onStartEnhance} />;
+            case 'enhance': return <EnhancementView 
+                selectedItem={selectedItem} 
+                currentUser={currentUserWithStatus} 
+                onAction={handlers.handleAction} 
+                enhancementOutcome={currentUserWithStatus.enhancementOutcome || null} 
+                onOutcomeConfirm={handlers.clearEnhancementOutcome} 
+            />;
             case 'combine': return <CombinationView onAction={handlers.handleAction} />;
             case 'disassemble': return <DisassemblyView onAction={handlers.handleAction} />;
             case 'convert': return <ConversionView onAction={handlers.handleAction} />;
@@ -49,14 +77,15 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, o
         return inventory;
     }, [inventory, activeTab]);
 
-    const inventorySlotsToDisplay = useMemo(() => {
+    const inventorySlotsToDisplay = (() => {
+        const slots = inventorySlots || {};
         if (activeTab === 'enhance' || activeTab === 'combine' || activeTab === 'disassemble') {
-            return inventorySlots.equipment;
+            return slots.equipment || 30;
         } else if (activeTab === 'convert') {
-            return inventorySlots.material;
+            return slots.material || 30;
         }
-        return 0; // Should not happen given the tabs
-    }, [activeTab, inventorySlots]);
+        return 30;
+    })();
 
     const bagHeaderText = useMemo(() => {
         if (activeTab === 'enhance' || activeTab === 'combine' || activeTab === 'disassemble') {
@@ -76,20 +105,33 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, o
                         <img src="/images/equipments/moru.png" alt="Blacksmith" className="w-full h-full object-cover" />
                     </div>
                     <div className="text-center">
-                        <h2 className="text-2xl font-bold">대장간 <span className="text-yellow-400">Lv.1</span></h2>
+                        <h2 className="text-2xl font-bold">대장간 <span className="text-yellow-400">Lv.{(blacksmithLevel ?? 1)}</span></h2>
                     </div>
                     <div className="w-full">
                         <div className="flex justify-between text-xs mb-1">
                             <span>경험치</span>
-                            <span>{blacksmithXp} / 1000</span>
+                            <span>{(blacksmithXp ?? 0)} / {BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)}</span>
                         </div>
                         <div className="w-full bg-black/50 rounded-full h-4 border-2 border-color">
-                            <div className="bg-yellow-500 h-full rounded-full" style={{ width: `${(blacksmithXp / 1000) * 100}%` }}></div>
+                            <div className="bg-yellow-500 h-full rounded-full" style={{ width: `${((blacksmithXp ?? 0) / BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)) * 100}%` }}></div>
                         </div>
                     </div>
                     <div className="w-full text-center">
                         <h3 className="font-bold mb-2">대장간 효과</h3>
-                        <p className="text-xs text-secondary">여기에 대장간 효과가 표시됩니다.</p>
+                        <div className="text-xs text-secondary space-y-1">
+                            <p>
+                                합성 가능 등급: {GRADE_NAMES_KO[BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL[currentLevelIndex]]}
+                                {blacksmithLevel < BLACKSMITH_MAX_LEVEL && ` → ${GRADE_NAMES_KO[BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL[nextLevelIndex]]}`}
+                            </p>
+                            <p>
+                                분해 대박 확률: {BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[currentLevelIndex]}%
+                                {blacksmithLevel < BLACKSMITH_MAX_LEVEL && ` → ${BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[nextLevelIndex]}%`}
+                            </p>
+                            <p>
+                                일반 합성 대성공 확률: {BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[currentLevelIndex]?.normal || 0}%
+                                {blacksmithLevel < BLACKSMITH_MAX_LEVEL && ` → ${BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[nextLevelIndex]?.normal || 0}%`}
+                            </p>
+                        </div>
                     </div>
                 </div>
 
@@ -99,7 +141,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, o
                         {tabs.map(tab => (
                             <button
                                 key={tab.id}
-                                onClick={() => setActiveTab(tab.id)}
+                                onClick={() => onSetActiveTab(tab.id as 'enhance' | 'combine' | 'disassemble' | 'convert')}
                                 className={`px-4 py-2 text-sm font-semibold ${
                                     activeTab === tab.id
                                         ? 'border-b-2 border-accent text-accent'
@@ -124,7 +166,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, o
                     </div>
                 </div>
             </div>
-        </DraggableWindow>
+         </DraggableWindow>
     );
 };
 

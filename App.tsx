@@ -12,7 +12,6 @@ import UserProfileModal from './components/UserProfileModal.js';
 import InfoModal from './components/InfoModal.js';
 import DisassemblyResultModal from './components/DisassemblyResultModal.js';
 import StatAllocationModal from './components/StatAllocationModal.js';
-import EnhancementModal from './components/EnhancementModal.js';
 import ItemDetailModal from './components/ItemDetailModal.js';
 import ProfileEditModal from './components/ProfileEditModal.js';
 import ItemObtainedModal from './components/ItemObtainedModal.js';
@@ -193,10 +192,15 @@ const AppContent: React.FC = () => {
                     {modals.pastRankingsInfo && <PastRankingsModal info={modals.pastRankingsInfo} onClose={handlers.closePastRankings} isTopmost={topmostModalId === 'pastRankings'} />}
                     {modals.moderatingUser && <AdminModerationModal user={modals.moderatingUser} currentUser={currentUserWithStatus} onClose={handlers.closeModerationModal} onAction={handlers.handleAction} isTopmost={topmostModalId === 'moderatingUser'} />}
                     {modals.viewingItem && <ItemDetailModal item={modals.viewingItem.item} isOwnedByCurrentUser={modals.viewingItem.isOwnedByCurrentUser} onClose={handlers.closeViewingItem} onStartEnhance={handlers.openEnhancementFromDetail} isTopmost={topmostModalId === 'viewingItem'} />}
-                    {modals.enhancingItem && <EnhancementModal item={modals.enhancingItem} currentUser={currentUserWithStatus} onClose={handlers.closeEnhancementModal} onAction={handlers.handleAction} enhancementOutcome={enhancementOutcome} onOutcomeConfirm={handlers.clearEnhancementOutcome} isTopmost={topmostModalId === 'enhancingItem'} />}
                     {activeNegotiation && <NegotiationModal negotiation={activeNegotiation} currentUser={currentUserWithStatus} onAction={handlers.handleAction} onlineUsers={onlineUsers} isTopmost={topmostModalId === 'negotiation'} />}
                     {modals.isMbtiInfoModalOpen && <MbtiInfoModal onClose={handlers.closeMbtiInfoModal} isTopmost={topmostModalId === 'mbtiInfo'} />}
-                    {modals.isBlacksmithModalOpen && <BlacksmithModal onClose={handlers.closeBlacksmithModal} isTopmost={topmostModalId === 'blacksmith'} onStartEnhance={handlers.openEnhancingItem} />}
+                    {modals.isBlacksmithModalOpen && <BlacksmithModal 
+                        onClose={handlers.closeBlacksmithModal} 
+                        isTopmost={topmostModalId === 'blacksmith'} 
+                        selectedItemForEnhancement={modals.blacksmithSelectedItemForEnhancement} 
+                        activeTab={modals.blacksmithActiveTab} 
+                        onSetActiveTab={handlers.setBlacksmithActiveTab} 
+                    />}
                 </>
             )}
         </div>

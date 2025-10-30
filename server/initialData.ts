@@ -80,7 +80,7 @@ export const createDefaultUser = (id: string, username: string, nickname: string
         baseStats: createDefaultBaseStats(),
         spentStatPoints: createDefaultSpentStatPoints(),
         inventory: createDefaultInventory(),
-        inventorySlots: 40,
+        inventorySlots: { equipment: 30, consumable: 30, material: 30 },
         equipment: {},
         actionPoints: { current: 30, max: 30 },
         lastActionPointUpdate: Date.now(),

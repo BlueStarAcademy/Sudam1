@@ -78,6 +78,15 @@ const DisassemblyPreviewPanel: React.FC<{
 
 const GRADES_FOR_SELECTION: ItemGrade[] = ['normal', 'uncommon', 'rare', 'epic', 'legendary'];
 
+const GRADE_NAMES_KO: Record<ItemGrade, string> = {
+    normal: '일반',
+    uncommon: '고급',
+    rare: '희귀',
+    epic: '에픽',
+    legendary: '전설',
+    mythic: '신화',
+};
+
 const AutoSelectModal: React.FC<{ onClose: () => void; onConfirm: (selectedGrades: ItemGrade[]) => void; }> = ({ onClose, onConfirm }) => {
     const [selectedGrades, setSelectedGrades] = useState<ItemGrade[]>([]);
 
@@ -106,7 +115,7 @@ const AutoSelectModal: React.FC<{ onClose: () => void; onConfirm: (selectedGrade
                                     onChange={() => handleToggleGrade(grade)}
                                     className="w-5 h-5 text-accent bg-secondary border-color rounded focus:ring-accent"
                                 />
-                                <span className={`font-semibold`}>{grade}</span>
+                                <span className={`font-semibold`}>{GRADE_NAMES_KO[grade]}</span>
                             </label>
                         );
                     })}

@@ -163,6 +163,8 @@ export const useApp = () => {
     const [isMbtiInfoModalOpen, setIsMbtiInfoModalOpen] = useState(false);
     const [isEquipmentEffectsModalOpen, setIsEquipmentEffectsModalOpen] = useState(false);
     const [isBlacksmithModalOpen, setIsBlacksmithModalOpen] = useState(false);
+    const [blacksmithSelectedItemForEnhancement, setBlacksmithSelectedItemForEnhancement] = useState<InventoryItem | null>(null);
+    const [blacksmithActiveTab, setBlacksmithActiveTab] = useState<'enhance' | 'combine' | 'disassemble' | 'convert'>('enhance');
 
     // --- Derived State ---
     const allUsers = useMemo(() => Object.values(usersMap), [usersMap]);
@@ -326,7 +328,7 @@ export const useApp = () => {
         } catch (err: any) {
             showError(err.message);
         }
-    }, [currentUser?.id, enhancingItem]);
+    }, [currentUser?.id]);
 
     const handleLogout = useCallback(() => {
         if (!currentUser) return;
@@ -356,10 +358,23 @@ export const useApp = () => {
                 if (isLoggingOut.current) return;
                 
                 const updateStateIfChanged = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newData: T) => {
-                    setter(currentData => stableStringify(currentData) !== stableStringify(newData) ? newData : currentData);
+                    setter(newData);
                 };
     
-                updateStateIfChanged<User | null>(setCurrentUser, data.users[currentUser.id] || null);
+                const updatedUser = (() => {
+                    const user = data.users[currentUser.id];
+                    if (user && typeof user.inventorySlots === 'string') {
+                        try {
+                            return { ...user, inventorySlots: JSON.parse(user.inventorySlots) };
+                        } catch (e) {
+                            console.error("Failed to parse inventorySlots string:", e);
+                            return user; // Return original user if parsing fails
+                        }
+                    }
+                    return user;
+                })();
+                setCurrentUser(updatedUser || null);
+
                 updateStateIfChanged(setUsersMap, data.users);
                 updateStateIfChanged(setLiveGames, data.liveGames);
                 updateStateIfChanged(setNegotiations, data.negotiations);
@@ -463,17 +478,6 @@ export const useApp = () => {
         }
     }, [enhancementResult]);
 
-    useEffect(() => {
-        if (enhancementOutcome) {
-            setEnhancingItem(prevItem => {
-                if (prevItem && prevItem.id === enhancementOutcome.itemAfter.id) {
-                    return enhancementOutcome.itemAfter;
-                }
-                return prevItem;
-            });
-        }
-    }, [enhancementOutcome]);
-
     const handleEnterWaitingRoom = (mode: GameMode) => {
         handleAction({ type: 'ENTER_WAITING_ROOM', payload: { mode } });
         window.location.hash = `#/waiting/${encodeURIComponent(mode)}`;
@@ -503,11 +507,15 @@ export const useApp = () => {
     }, []);
     
     const openEnhancingItem = useCallback((item: InventoryItem) => {
-        setEnhancingItem(item);
+        setBlacksmithSelectedItemForEnhancement(item);
+        setBlacksmithActiveTab('enhance');
+        setIsBlacksmithModalOpen(true);
     }, []);
 
     const openEnhancementFromDetail = useCallback((item: InventoryItem) => {
-        setEnhancingItem(item);
+        setBlacksmithSelectedItemForEnhancement(item);
+        setBlacksmithActiveTab('enhance');
+        setIsBlacksmithModalOpen(true);
     }, []);
 
     const openViewingItem = useCallback((item: InventoryItem, isOwnedByCurrentUser: boolean) => {
@@ -537,7 +545,6 @@ export const useApp = () => {
     }, [enhancementOutcome]);
     
     const closeEnhancementModal = useCallback(() => {
-        setEnhancingItem(null);
         setEnhancementOutcome(null);
     }, []);
 
@@ -580,12 +587,14 @@ export const useApp = () => {
         modals: {
             isSettingsModalOpen, isInventoryOpen, isMailboxOpen, isQuestsOpen, isShopOpen, lastUsedItemResult,
             disassemblyResult, craftResult, rewardSummary, viewingUser, isInfoModalOpen, isEncyclopediaOpen, isStatAllocationModalOpen, enhancementAnimationTarget,
-            pastRankingsInfo, enhancingItem, viewingItem, isProfileEditModalOpen, moderatingUser,
+            pastRankingsInfo, viewingItem, isProfileEditModalOpen, moderatingUser,
             isClaimAllSummaryOpen,
             claimAllSummary,
             isMbtiInfoModalOpen,
             isEquipmentEffectsModalOpen,
             isBlacksmithModalOpen,
+            blacksmithSelectedItemForEnhancement,
+            blacksmithActiveTab,
         },
         handlers: {
             handleAction,
@@ -622,7 +631,6 @@ export const useApp = () => {
             closeViewingItem: () => setViewingItem(null),
             openEnhancingItem,
             openEnhancementFromDetail,
-            closeEnhancementModal,
             clearEnhancementOutcome,
             clearEnhancementAnimation: () => setEnhancementAnimationTarget(null),
             openModerationModal,
@@ -632,7 +640,12 @@ export const useApp = () => {
             openEquipmentEffectsModal: () => setIsEquipmentEffectsModalOpen(true),
             closeEquipmentEffectsModal: () => setIsEquipmentEffectsModalOpen(false),
             openBlacksmithModal: () => setIsBlacksmithModalOpen(true),
-            closeBlacksmithModal: () => setIsBlacksmithModalOpen(false),
+            closeBlacksmithModal: () => {
+                setIsBlacksmithModalOpen(false);
+                setBlacksmithSelectedItemForEnhancement(null);
+                setBlacksmithActiveTab('enhance'); // Reset to default tab
+            },
+            setBlacksmithActiveTab,
         },
     };
 };

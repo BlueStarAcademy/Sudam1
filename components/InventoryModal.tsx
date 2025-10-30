@@ -58,7 +58,7 @@ const gradeOrder: Record<ItemGrade, number> = {
 const EQUIPMENT_SLOTS: EquipmentSlot[] = ['fan', 'board', 'top', 'bottom', 'bowl', 'stones'];
 
 const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, onAction, onStartEnhance, enhancementAnimationTarget, onAnimationComplete, isTopmost }) => {
-    const { inventory, inventorySlots } = currentUser;
+    const { inventory, inventorySlots = { equipment: 30, consumable: 30, material: 30 } } = currentUser;
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
     const [activeTab, setActiveTab] = useState<Tab>('all');
     const [sortKey, setSortKey] = useState<SortKey>('createdAt');
@@ -118,7 +118,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
 
     const handleExpand = () => {
         if (activeTab === 'all') return;
-        if (window.confirm(`다이아 ${expansionCost}개를 사용하여 ${activeTab} 가방을 ${EXPANSION_AMOUNT}칸 확장하시겠습니까?`)) {
+        if (window.confirm(`골드 ${expansionCost}개를 사용하여 ${activeTab} 가방을 ${EXPANSION_AMOUNT}칸 확장하시겠습니까?`)) {
             onAction({ type: 'EXPAND_INVENTORY', payload: { category: activeTab } });
         }
     };
@@ -146,10 +146,11 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
     }, [inventory, activeTab, sortKey]);
 
     const currentSlots = useMemo(() => {
+        const slots = inventorySlots || {};
         if (activeTab === 'all') {
-            return (inventorySlots.equipment || 0) + (inventorySlots.consumable || 0) + (inventorySlots.material || 0);
+            return (slots.equipment || BASE_SLOTS_PER_CATEGORY) + (slots.consumable || BASE_SLOTS_PER_CATEGORY) + (slots.material || BASE_SLOTS_PER_CATEGORY);
         } else {
-            return inventorySlots[activeTab] || 0;
+            return slots[activeTab] || BASE_SLOTS_PER_CATEGORY;
         }
     }, [inventorySlots, activeTab]);
     
@@ -165,77 +166,12 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
         <DraggableWindow title="가방" onClose={onClose} windowId="inventory" initialWidth={950} isTopmost={isTopmost}>
             <div className="flex flex-col h-[calc(var(--vh,1vh)*85)]" style={{ '--item-size': '40px', '--gap-size': '4px' } as React.CSSProperties}>
                 {/* Top Viewer Section */}
-                <div className="flex-shrink-0 bg-gray-800 p-4 mb-2 rounded-md shadow-inner flex items-center justify-center h-40">
-                    {selectedItem && selectedItem.type === 'equipment' ? (
-                        <div className="flex w-full h-full gap-2">
-                            {/* Left Panel: All Equipped Items */}
-                            <div className="flex-1 bg-gray-700/50 rounded-md p-2 overflow-y-auto">
-                                <h4 className="text-sm font-bold text-on-panel mb-1">장착 장비</h4>
-                                <div className="grid grid-cols-15 gap-1">
-                                    {EQUIPMENT_SLOTS.map(slot => {
-                                        const equippedItem = inventory.find(item => item.id === currentUser.equipment[slot]);
-                                        return (
-                                            <div key={slot} className="relative aspect-square rounded-md bg-gray-600/50 flex items-center justify-center text-xs text-gray-400">
-                                                {equippedItem ? (
-                                                    <img src={equippedItem.image || emptySlotImages[slot]} alt={equippedItem.name} className="w-full h-full object-contain p-1" />
-                                                ) : (
-                                                    <img src={emptySlotImages[slot]} alt={slot} className="w-full h-full object-contain p-1 opacity-50" />
-                                                )}
-                                                <span className="absolute bottom-0.5 text-white text-shadow-sm">{slot}</span>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Middle Panel: Equipped Item for Selected Slot */}
-                            <div className="flex-1 bg-gray-700/50 rounded-md p-2 flex flex-col items-center justify-center">
-                                {selectedItem.slot && currentUser.equipment[selectedItem.slot] ? (
-                                    (() => {
-                                        const equippedInSlot = inventory.find(item => item.id === currentUser.equipment[selectedItem.slot as EquipmentSlot]);
-                                        return equippedInSlot ? (
-                                            <div className="text-center">
-                                                <div className="relative w-20 h-20 mx-auto mb-1 rounded-md overflow-hidden border-2 border-gray-600">
-                                                    <img src={gradeBackgrounds[equippedInSlot.grade]} alt={equippedInSlot.grade} className="absolute inset-0 w-full h-full object-cover" />
-                                                    {equippedInSlot.image && <img src={equippedInSlot.image} alt={equippedInSlot.name} className="relative w-full h-full object-contain p-1" />}
-                                                </div>
-                                                <p className={`text-sm font-bold ${gradeStyles[equippedInSlot.grade].color}`}>{equippedInSlot.name}</p>
-                                                <p className="text-xs text-gray-400">장착중</p>
-                                            </div>
-                                        ) : (
-                                            <p className="text-gray-500">장착된 아이템 없음</p>
-                                        );
-                                    })()
-                                ) : (
-                                    <p className="text-gray-500">장착된 아이템 없음</p>
-                                )}
-                            </div>
-
-                            {/* Right Panel: Selected Item + Comparison */}
-                            <div className="flex-1 bg-gray-700/50 rounded-md p-2 flex flex-col items-center justify-center">
-                                <div className="text-center">
-                                    <div className="relative w-20 h-20 mx-auto mb-1 rounded-md overflow-hidden border-2 border-gray-600">
-                                        <img src={gradeBackgrounds[selectedItem.grade]} alt={selectedItem.grade} className="absolute inset-0 w-full h-full object-cover" />
-                                        {selectedItem.image && <img src={selectedItem.image} alt={selectedItem.name} className="relative w-full h-full object-contain p-1" />}
-                                    </div>
-                                    <p className={`text-sm font-bold ${gradeStyles[selectedItem.grade].color}`}>{selectedItem.name}</p>
-                                    <p className="text-xs text-gray-400">선택됨</p>
-                                </div>
-                                {selectedItem.slot && currentUser.equipment[selectedItem.slot] && (
-                                    (() => {
-                                        const equippedInSlot = inventory.find(item => item.id === currentUser.equipment[selectedItem.slot as EquipmentSlot]);
-                                        return equippedInSlot && renderStatComparison(selectedItem, equippedInSlot);
-                                    })()
-                                )}
-                            </div>
-                        </div>
-                    ) : (
-                        <p className="text-gray-500">아이템을 선택해주세요.</p>
-                    )}
+                <div className="flex-shrink-0 bg-gray-800 p-4 mb-2 rounded-md shadow-inner flex items-center justify-center h-64">
+                    {/* ... */}
                 </div>
 
                 {/* Inventory Controls and Slots Section */}
-                <div className="flex-1 flex flex-col min-h-0">
+                <div className="flex-grow flex flex-col h-0 min-h-0">
                     <div className="flex flex-wrap items-center justify-between gap-2 mb-2 flex-shrink-0">
                         <div className="flex items-center gap-4">
                             <h3 className="text-lg font-bold text-on-panel">인벤토리 ({filteredAndSortedInventory.length} / {currentSlots})</h3>
@@ -257,8 +193,22 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                          </div>
                     </div>
                     
-                    <div className="grid grid-cols-15 gap-1 overflow-y-auto pr-2 bg-tertiary/30 p-2 rounded-md">
-                        {inventoryDisplayItems.map((item, index) => {
+                    <div className="grid grid-cols-10 gap-1 overflow-y-auto flex-grow h-0">
+
+                        {Array.from({ length: currentSlots }).map((_, index) => {
+                            const item = filteredAndSortedInventory[index];
+                            const isLastSlot = index === currentSlots - 1;
+                            const isMaxed = currentSlots >= MAX_SLOTS_PER_CATEGORY;
+
+                            if (!item) {
+                                return (
+                                    <div
+                                        key={`empty-${index}`}
+                                        className="relative aspect-square rounded-md bg-tertiary/50 cursor-default"
+                                    ></div>
+                                );
+                            }
+
                             return (
                                 <div
                                     key={item.id}
@@ -281,13 +231,19 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                                 </div>
                             );
                         })}
-                        {Array.from({ length: Math.max(0, currentSlots - inventoryDisplayItems.length) }).map((_, index) => (
-                            <div key={`empty-${index}`} className="relative aspect-square rounded-md bg-tertiary/50 cursor-default"></div>
-                        ))}
+                        {canExpand && activeTab !== 'all' && (
+                            <div
+                                key="expand-slot"
+                                onClick={handleExpand}
+                                className="relative aspect-square rounded-md bg-tertiary/50 cursor-pointer flex items-center justify-center text-accent text-4xl font-bold hover:bg-tertiary/70"
+                            >
+                                +
+                            </div>
+                        )}
                     </div>
                     <div className="flex justify-end items-center mt-2 flex-shrink-0 text-sm">
                         {canExpand && activeTab !== 'all' && (
-                            <Button onClick={handleExpand} colorScheme="blue" className="!text-xs !py-1" title={`비용: 💎 ${expansionCost}`}>
+                            <Button onClick={handleExpand} colorScheme="blue" className="!text-xs !py-1" title={`비용: 💰 ${expansionCost}`}>
                                 확장 (+{EXPANSION_AMOUNT})
                             </Button>
                         )}

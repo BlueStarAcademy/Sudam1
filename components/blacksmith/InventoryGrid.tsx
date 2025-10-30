@@ -49,22 +49,24 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({ inventory, inventorySlots
     const inventoryDisplaySlots = Array.from({ length: inventorySlots }, (_, index) => inventory[index] || null);
 
     return (
-        <div className="grid grid-cols-8 gap-1 flex-grow overflow-y-auto pr-2 bg-tertiary/30 p-2 rounded-md">
+        <div className="grid grid-cols-10 gap-1 flex-grow overflow-y-auto pr-2 bg-tertiary/30 p-2 rounded-md max-h-[calc(var(--item-size)*3 + var(--gap-size)*3 + 4px)]">
             {inventoryDisplaySlots.map((item, index) => (
                 <div
-                    key={item?.id || `empty-${index}`}
+                    key={item ? item.id : `empty-${index}`}
                     onClick={() => item && onSelectItem(item)}
                     className={`relative aspect-square rounded-md transition-all duration-200 ${item ? 'hover:scale-105' : 'bg-tertiary/50'} cursor-pointer`}
                 >
-                    {item && (
+                    {item ? (
                         <>
                             <div className={`absolute inset-0 rounded-md border-2 ${selectedItemId === item.id ? 'border-accent ring-2 ring-accent' : 'border-black/20'}`} />
                             <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-sm" />
                             {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1" />}
+                            {renderStarDisplay(item.stars)}
                             {item.isEquipped && <div className="absolute top-0.5 right-0.5 text-xs font-bold text-white bg-blue-600/80 px-1 rounded-bl-md">E</div>}
                             {item.quantity && item.quantity > 1 && <span className="absolute bottom-0 right-0 text-xs font-bold text-white bg-black/60 px-1 rounded-tl-md">{item.quantity}</span>}
-                            {item.type === 'equipment' && renderStarDisplay(item.stars)}
                         </>
+                    ) : (
+                        <div className="bg-tertiary/50 w-full h-full rounded-md" />
                     )}
                 </div>
             ))}

@@ -233,7 +233,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
                         </button>
                     )}
                 </div>
-                <div className="p-3 md:p-6 flex-grow overflow-y-auto">
+                <div className="p-3 md:p-6 flex-grow">
                     {children}
                 </div>
                 <div className="flex-shrink-0 p-2 border-t border-color flex justify-end items-center bg-secondary rounded-b-xl">

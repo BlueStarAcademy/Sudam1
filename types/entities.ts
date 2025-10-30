@@ -286,6 +286,7 @@ export type User = {
   blacksmithLevel: number;
   blacksmithXp: number;
   cumulativeRankingScore?: Record<string, number>;
+  inventorySlotsMigrated?: boolean;
 };
 
 export type UserWithStatus = User & UserStatusInfo;
