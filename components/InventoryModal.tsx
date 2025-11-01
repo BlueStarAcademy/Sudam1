@@ -196,7 +196,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
     }, [selectedItem, getItemForSlot]);
 
     return (
-        <DraggableWindow title="가방" onClose={onClose} windowId="inventory" initialWidth={1200} isTopmost={isTopmost}>
+        <DraggableWindow title="가방" onClose={onClose} windowId="inventory" isTopmost={isTopmost}>
             <div className="flex flex-col h-full">
                 <div className="h-96 bg-gray-800 p-4 mb-2 rounded-md shadow-inner flex">
                     <div className="w-1/4 pr-4 border-r border-gray-700">
@@ -283,7 +283,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                         </div>
                     </div>
                     <div className="overflow-y-auto pr-2" style={{ height: '116px' }}>
-                        <div className="grid grid-cols-10 gap-2">
+                        <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
                         {filteredAndSortedInventory.map(item => (
                             <InventoryItemCard
                                 key={item.id}

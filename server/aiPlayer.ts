@@ -29,7 +29,7 @@ const baseAiUser: Omit<User, 'nickname'> = {
     baseStats: createDefaultBaseStats(),
     spentStatPoints: createDefaultSpentStatPoints(),
     inventory: aiInventory,
-    inventorySlots: 40,
+    inventorySlots: { equipment: 40, consumable: 40, material: 40 },
     equipment: aiEquipment,
     actionPoints: { current: 999, max: 999 },
     lastActionPointUpdate: Date.now(),

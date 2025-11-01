@@ -20,12 +20,15 @@ interface BlacksmithModalProps {
     selectedItemForEnhancement: InventoryItem | null;
     activeTab: 'enhance' | 'combine' | 'disassemble' | 'convert';
     onSetActiveTab: (tab: 'enhance' | 'combine' | 'disassemble' | 'convert') => void;
+    enhancementOutcome: any; // FIX: Use correct type EnhancementResult | null
 }
 
-const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, selectedItemForEnhancement, activeTab, onSetActiveTab }) => {
+const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, selectedItemForEnhancement, activeTab, onSetActiveTab, enhancementOutcome }) => {
     const { currentUserWithStatus, handlers, modals } = useAppContext();
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(selectedItemForEnhancement);
     const [combinationItems, setCombinationItems] = useState<(InventoryItem | null)[]>([null, null, null]);
+
+    if (!currentUserWithStatus) return null;
 
     useEffect(() => {
         if (selectedItemForEnhancement) {
@@ -64,8 +67,6 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
             setSelectedItem(item);
         }
     }, [activeTab, combinationItems]);
-
-    if (!currentUserWithStatus) return null;
 
     const { blacksmithLevel, blacksmithXp, inventory, inventorySlots } = currentUserWithStatus;
 
@@ -121,7 +122,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                 selectedItem={selectedItem} 
                 currentUser={currentUserWithStatus} 
                 onAction={handlers.handleAction} 
-                enhancementOutcome={currentUserWithStatus.enhancementOutcome || null} 
+                enhancementOutcome={enhancementOutcome} 
                 onOutcomeConfirm={handlers.clearEnhancementOutcome} 
             />;
             case 'combine': return <CombinationView 

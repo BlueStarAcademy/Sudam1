@@ -120,6 +120,8 @@ class AudioService {
 
     public timeoutFoul() { this.play('bip', 'notification', 0.8); }
     public enhancementSuccess() { this.play('success', 'notification', 0.7); }
+    public combinationGreatSuccess() { this.play('jackpot', 'notification', 0.7); }
+    public combinationSuccess() { this.play('success', 'notification', 0.7); }
     public stoneFallOff() { this.play('fall', 'stone', 0.5); }
     public claimReward() { this.play('reward', 'notification', 0.7); }
 }

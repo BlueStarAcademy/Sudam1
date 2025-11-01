@@ -150,6 +150,7 @@ export type ServerAction =
     | { type: 'SELL_ITEM', payload: { itemId: string } }
     | { type: 'ENHANCE_ITEM', payload: { itemId: string } }
     | { type: 'DISASSEMBLE_ITEM', payload: { itemIds: string[] } }
+    | { type: 'COMBINE_ITEMS', payload: { itemIds: string[], isRandom?: boolean } }
     | { type: 'CRAFT_MATERIAL', payload: { materialName: string, craftType: 'upgrade' | 'downgrade', quantity: number } }
     // Reward Actions
     | { type: 'CLAIM_MAIL_ATTACHMENTS', payload: { mailId: string } }
@@ -161,8 +162,7 @@ export type ServerAction =
     | { type: 'CLAIM_QUEST_REWARD', payload: { questId: string } }
     | { type: 'CLAIM_ACTIVITY_MILESTONE', payload: { milestoneIndex: number, questType: 'daily' | 'weekly' | 'monthly' } }
     // Shop
-    | { type: 'BUY_SHOP_ITEM', payload: { itemId: string } }
-    | { type: 'BUY_SHOP_ITEM_BULK', payload: { itemId: string, quantity: number } }
+    | { type: 'BUY_SHOP_ITEM', payload: { itemId: string, quantity: number } }
     | { type: 'BUY_MATERIAL_BOX', payload: { itemId: string, quantity: number } }
     | { type: 'PURCHASE_ACTION_POINTS', payload?: never }
     | { type: 'EXPAND_INVENTORY', payload: { category: InventoryItemType } }

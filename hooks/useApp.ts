@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 // FIX: The main types barrel file now exports settings types. Use it for consistency.
-import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings } from '../types.js';
+import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, CoreStat, SpecialStat, MythicStat } from '../types.js';
 import { audioService } from '../services/audioService.js';
 import { stableStringify, parseHash } from '../utils/appUtils.js';
 import { 
@@ -609,6 +609,77 @@ export const useApp = () => {
         }
     }, [currentUserWithStatus, handleAction]);
 
+    const {
+        mainOptionBonuses,
+        combatSubOptionBonuses,
+        specialStatBonuses,
+        aggregatedMythicStats,
+    } = useMemo(() => {
+        const initialBonuses = {
+            mainOptionBonuses: {} as Record<CoreStat, { value: number; isPercentage: boolean }>,
+            combatSubOptionBonuses: {} as Record<CoreStat, { value: number; isPercentage: boolean }>,
+            specialStatBonuses: {} as Record<SpecialStat, { flat: number; percent: number }>,
+            aggregatedMythicStats: {} as Record<MythicStat, { count: number, totalValue: number }>,
+        };
+
+        if (!currentUserWithStatus || !currentUserWithStatus.equipment || !currentUserWithStatus.inventory) {
+            return initialBonuses;
+        }
+
+        const equippedItems = currentUserWithStatus.inventory.filter(item =>
+            Object.values(currentUserWithStatus.equipment).includes(item.id)
+        );
+
+        const aggregated = equippedItems.reduce((acc, item) => {
+            if (!item.options) return acc;
+
+            // Main Option
+            if (item.options.main) {
+                const type = item.options.main.type as CoreStat;
+                if (!acc.mainOptionBonuses[type]) {
+                    acc.mainOptionBonuses[type] = { value: 0, isPercentage: item.options.main.isPercentage };
+                }
+                acc.mainOptionBonuses[type].value += item.options.main.value;
+            }
+
+            // Combat Sub Options
+            item.options.combatSubs.forEach(sub => {
+                const type = sub.type as CoreStat;
+                if (!acc.combatSubOptionBonuses[type]) {
+                    acc.combatSubOptionBonuses[type] = { value: 0, isPercentage: sub.isPercentage };
+                }
+                acc.combatSubOptionBonuses[type].value += sub.value;
+            });
+
+            // Special Sub Options
+            item.options.specialSubs.forEach(sub => {
+                const type = sub.type as SpecialStat;
+                if (!acc.specialStatBonuses[type]) {
+                    acc.specialStatBonuses[type] = { flat: 0, percent: 0 };
+                }
+                if (sub.isPercentage) {
+                    acc.specialStatBonuses[type].percent += sub.value;
+                } else {
+                    acc.specialStatBonuses[type].flat += sub.value;
+                }
+            });
+
+            // Mythic Sub Options
+            item.options.mythicSubs.forEach(sub => {
+                const type = sub.type as MythicStat; // Cast to MythicStat
+                if (!acc.aggregatedMythicStats[type]) {
+                    acc.aggregatedMythicStats[type] = { count: 0, totalValue: 0 };
+                }
+                acc.aggregatedMythicStats[type].count++;
+                acc.aggregatedMythicStats[type].totalValue += sub.value;
+            });
+
+            return acc;
+        }, initialBonuses);
+
+        return aggregated;
+    }, [currentUserWithStatus]);
+
     return {
         currentUser,
         setCurrentUserAndRoute,
@@ -642,6 +713,10 @@ export const useApp = () => {
         resetGraphicsToDefault,
         presets,
         setPresets,
+        mainOptionBonuses,
+        combatSubOptionBonuses,
+        specialStatBonuses,
+        aggregatedMythicStats,
         modals: {
             isSettingsModalOpen, isInventoryOpen, isMailboxOpen, isQuestsOpen, isShopOpen, lastUsedItemResult,
             disassemblyResult, craftResult, rewardSummary, viewingUser, isInfoModalOpen, isEncyclopediaOpen, isStatAllocationModalOpen, enhancementAnimationTarget,
@@ -656,6 +731,7 @@ export const useApp = () => {
             combinationResult,
             isBlacksmithHelpOpen,
             isEnhancementResultModalOpen,
+            enhancingItem,
         },
         handlers: {
             handleAction,
@@ -711,6 +787,7 @@ export const useApp = () => {
             openBlacksmithHelp: () => setIsBlacksmithHelpOpen(true),
             closeBlacksmithHelp: () => setIsBlacksmithHelpOpen(false),
             setBlacksmithActiveTab,
+            closeEnhancementModal,
         },
     };
 };

@@ -171,11 +171,12 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             return { clientResponse: { updatedUser: user } };
         }
         case 'EXPAND_INVENTORY': {
+            const { category } = payload;
             const EXPANSION_COST_DIAMONDS = 100;
             const EXPANSION_AMOUNT = 10;
             const MAX_INVENTORY_SIZE = 100;
             
-            if (user.inventorySlots >= MAX_INVENTORY_SIZE) {
+            if (user.inventorySlots[category] >= MAX_INVENTORY_SIZE) {
                 return { error: '가방을 더 이상 확장할 수 없습니다.' };
             }
 
@@ -186,7 +187,7 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 user.diamonds -= EXPANSION_COST_DIAMONDS;
             }
             
-            user.inventorySlots = Math.min(MAX_INVENTORY_SIZE, user.inventorySlots + EXPANSION_AMOUNT);
+            user.inventorySlots[category] = Math.min(MAX_INVENTORY_SIZE, user.inventorySlots[category] + EXPANSION_AMOUNT);
             
             await db.updateUser(user);
             return { clientResponse: { updatedUser: user } };

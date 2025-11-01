@@ -434,15 +434,12 @@ const processPlayerSummary = async (
 
     // Add dropped items to inventory
     if (rewards.items.length > 0) {
-        for (const item of rewards.items) {
-             const existingItem = updatedPlayer.inventory.find(i => i.name === item.name && i.type === 'material');
-             if (existingItem && existingItem.quantity) {
-                 existingItem.quantity += item.quantity || 1;
-             } else {
-                 if(updatedPlayer.inventory.length < updatedPlayer.inventorySlots) {
-                    updatedPlayer.inventory.push(item);
-                 }
-             }
+        const { success, finalItemsToAdd } = addItemsToInventory(updatedPlayer.inventory, updatedPlayer.inventorySlots, rewards.items);
+        if (success) {
+            updatedPlayer.inventory.push(...finalItemsToAdd);
+        } else {
+            console.error(`[Summary] Insufficient inventory space for user ${updatedPlayer.id}. Items not granted.`);
+            // Optionally, send items via mail here in the future
         }
     }
     

@@ -30,6 +30,8 @@ import BlacksmithModal from './components/BlacksmithModal.js';
 import BlacksmithHelpModal from './components/blacksmith/BlacksmithHelpModal.js';
 import CombinationResultModal from './components/blacksmith/CombinationResultModal.js';
 import EnhancementResultModal from './components/modals/EnhancementResultModal.js';
+import EnhancementModal from './components/EnhancementModal';
+import EquipmentEffectsModal from './components/EquipmentEffectsModal';
 
 function usePrevious<T>(value: T): T | undefined {
     const ref = useRef<T | undefined>(undefined);
@@ -55,6 +57,10 @@ const AppContent: React.FC = () => {
         onlineUsers,
         hasClaimableQuest,
         settings,
+        mainOptionBonuses,
+        combatSubOptionBonuses,
+        specialStatBonuses,
+        aggregatedMythicStats,
     } = useAppContext();
     
     const [isPreloading, setIsPreloading] = useState(true);
@@ -226,9 +232,14 @@ const AppContent: React.FC = () => {
                         selectedItemForEnhancement={modals.blacksmithSelectedItemForEnhancement} 
                         activeTab={modals.blacksmithActiveTab} 
                         onSetActiveTab={handlers.setBlacksmithActiveTab} 
+                        enhancementOutcome={enhancementOutcome} 
                     />}
                     {modals.combinationResult && <CombinationResultModal result={modals.combinationResult} onClose={handlers.closeCombinationResult} isTopmost={topmostModalId === 'combinationResult'} />}
-                    {modals.enhancementOutcome && <EnhancementResultModal result={modals.enhancementOutcome} onClose={handlers.clearEnhancementOutcome} isTopmost={topmostModalId === 'enhancementOutcome'} />}
+                    {modals.isBlacksmithHelpOpen && <BlacksmithHelpModal onClose={handlers.closeBlacksmithHelp} isTopmost={topmostModalId === 'blacksmithHelp'} currentUser={currentUserWithStatus} />}
+                    {modals.isEnhancementResultModalOpen && enhancementOutcome && <EnhancementResultModal result={enhancementOutcome} onClose={handlers.closeEnhancementModal} isTopmost={topmostModalId === 'enhancementResult'} />}
+                    {modals.isClaimAllSummaryOpen && modals.claimAllSummary && <ClaimAllSummaryModal summary={modals.claimAllSummary} onClose={handlers.closeClaimAllSummary} isTopmost={topmostModalId === 'claimAllSummary'} />}
+                    {modals.isMbtiInfoModalOpen && <MbtiInfoModal onClose={handlers.closeMbtiInfoModal} isTopmost={topmostModalId === 'mbtiInfo'} />}
+                    {modals.isEquipmentEffectsModalOpen && <EquipmentEffectsModal onClose={handlers.closeEquipmentEffectsModal} isTopmost={topmostModalId === 'equipmentEffects'} mainOptionBonuses={mainOptionBonuses} combatSubOptionBonuses={combatSubOptionBonuses} specialStatBonuses={specialStatBonuses} aggregatedMythicStats={aggregatedMythicStats} />}
                 </>
             )}
         </div>

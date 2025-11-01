@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { TournamentType } from '../../types';
+import { TournamentType, UserWithStatus } from '../../types';
 import { useAppContext } from '../../hooks/useAppContext';
 import { TournamentBracket } from '../TournamentBracket';
 import Button from '../Button';
@@ -10,9 +10,9 @@ interface TournamentArenaProps {
 }
 
 const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
-    const { currentUserWithStatus, handlers } = useAppContext();
+    const { currentUserWithStatus, handlers, allUsers } = useAppContext();
 
-    let stateKey: keyof UserWithStatus;
+    let stateKey: keyof Pick<UserWithStatus, 'lastNeighborhoodTournament' | 'lastNationalTournament' | 'lastWorldTournament'>;
     switch (type) {
         case 'neighborhood': stateKey = 'lastNeighborhoodTournament'; break;
         case 'national': stateKey = 'lastNationalTournament'; break;
@@ -22,7 +22,7 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
 
     const tournamentState = currentUserWithStatus?.[stateKey] as any;
 
-    if (!tournamentState) {
+    if (!tournamentState || !currentUserWithStatus) {
         return (
             <div className="p-4 text-center">
                 <p>토너먼트 정보를 불러오는 중입니다...</p>
@@ -41,7 +41,18 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
                 <div className="w-10"></div>
             </header>
             <main className="flex-1 flex flex-col items-center justify-center">
-                <TournamentBracket tournament={tournamentState} />
+                <TournamentBracket 
+                    tournament={tournamentState}
+                    currentUser={currentUserWithStatus}
+                    onBack={() => window.location.hash = '#/tournament'}
+                    allUsersForRanking={allUsers}
+                    onViewUser={handlers.openViewingUser}
+                    onAction={handlers.handleAction}
+                    onStartNextRound={() => handlers.handleAction({ type: 'START_TOURNAMENT_ROUND', payload: { type: type } })}
+                    onReset={() => handlers.handleAction({ type: 'CLEAR_TOURNAMENT_SESSION', payload: { type: type } })}
+                    onSkip={() => handlers.handleAction({ type: 'SKIP_TOURNAMENT_END', payload: { type: type } })}
+                    isMobile={false} // Placeholder, can be replaced with actual mobile detection
+                />
             </main>
         </div>
     );

@@ -75,6 +75,7 @@ interface CombinationResultModalProps {
         isGreatSuccess: boolean;
     };
     onClose: () => void;
+    isTopmost?: boolean;
 }
 
 const CombinationResultModal: React.FC<CombinationResultModalProps> = ({ result, onClose }) => {

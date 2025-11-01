@@ -7,6 +7,7 @@ import { BLACKSMITH_MAX_LEVEL, BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL, BLACKSMITH
 interface BlacksmithHelpModalProps {
     onClose: () => void;
     currentUser: UserWithStatus;
+    isTopmost?: boolean;
 }
 
 const GRADE_NAMES_KO: Record<ItemGrade, string> = {

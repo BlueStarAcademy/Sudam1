@@ -14,7 +14,7 @@ interface ShopModalProps {
     isTopmost?: boolean;
 }
 
-type ShopTab = 'equipment' | 'materials' | 'misc';
+type ShopTab = 'equipment' | 'materials' | 'misc' | 'consumables';
 
 interface PurchasableItem {
     itemId: string;

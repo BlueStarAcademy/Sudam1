@@ -229,19 +229,20 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
             {modal && (
                  <div className={`fixed inset-0 z-40 bg-black/50 ${!isTopmost ? 'backdrop-blur-sm' : ''}`} />
             )}
-            <div
-                ref={windowRef}
-                className={`fixed top-1/2 left-1/2 bg-primary rounded-xl shadow-2xl border border-color flex flex-col text-on-panel`}
-                style={{
-                    width: isMobile ? '90vw' : `${initialWidth}px`,
-                    transform: transformStyle,
-                    transformOrigin: 'center',
-                    boxShadow: isDragging ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-                    maxHeight: '90vh',
-                    zIndex: zIndex,
-                }}
-            >
-                {!isTopmost && (
+                            <div
+                                ref={windowRef}
+                                className={`fixed top-1/2 left-1/2 bg-primary rounded-xl shadow-2xl border border-color flex flex-col text-on-panel`}
+                                style={{
+                                    width: isMobile ? '90vw' : undefined,
+                                    // maxWidth: isMobile ? '90vw' : 'calc(100vw - 40px)', // Allows expansion up to 100vw - 40px
+                                    minWidth: isMobile ? '90vw' : `${initialWidth}px`,
+                                    transform: transformStyle,
+                                    transformOrigin: 'center',
+                                    boxShadow: isDragging ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                                    maxHeight: '90vh',
+                                    zIndex: zIndex,
+                                }}
+                            >                {!isTopmost && (
                     <div className="absolute inset-0 bg-black/30 z-20 rounded-xl cursor-not-allowed" />
                 )}
                 <div

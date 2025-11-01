@@ -61,7 +61,7 @@ export type Mail = {
 export type QuestReward = {
   gold?: number;
   diamonds?: number;
-  xp?: { type: 'strategy' | 'playful'; amount: number };
+  xp?: { type: 'strategy' | 'playful' | 'blacksmith'; amount: number };
   items?: (InventoryItem | { itemId: string; quantity: number })[];
   actionPoints?: number;
 };
@@ -287,6 +287,13 @@ export type User = {
   blacksmithXp: number;
   cumulativeRankingScore?: Record<string, number>;
   inventorySlotsMigrated?: boolean;
+};
+
+export type EnhancementResult = {
+  message: string;
+  success: boolean;
+  itemBefore: InventoryItem;
+  itemAfter: InventoryItem;
 };
 
 export type UserWithStatus = User & UserStatusInfo;

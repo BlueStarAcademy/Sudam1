@@ -112,6 +112,8 @@ export const createDefaultUser = (id: string, username: string, nickname: string
         isMbtiPublic: false,
         singlePlayerProgress: 0,
         bonusStatPoints: 0,
+        blacksmithLevel: 1,
+        blacksmithXp: 0,
     };
     
     const botCompetitors = createInitialBotCompetitors(user);

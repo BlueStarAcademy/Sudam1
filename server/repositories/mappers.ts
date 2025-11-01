@@ -103,6 +103,8 @@ export const rowToUser = (row: any): types.User | null => {
             singlePlayerProgress: row.singlePlayerProgress ?? 0,
             bonusStatPoints: row.bonusStatPoints ?? 0,
             singlePlayerMissions: safeParse(row.singlePlayerMissions, {}, row.id, 'singlePlayerMissions'),
+            blacksmithLevel: row.blacksmithLevel ?? 1,
+            blacksmithXp: row.blacksmithXp ?? 0,
         };
         return user;
     } catch (e) {

@@ -33,7 +33,7 @@ const getMaxStatValueForLeague = (league: LeagueTier): number => {
 };
 
 interface TournamentBracketProps {
-    tournamentState: TournamentState;
+    tournament: TournamentState;
     currentUser: UserWithStatus;
     onBack: () => void;
     allUsersForRanking: User[];
@@ -580,14 +580,14 @@ const TournamentRoundViewer: React.FC<{ rounds: Round[]; currentUser: UserWithSt
 };
 
 export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
-    const { tournamentState, currentUser, onBack, allUsersForRanking, onViewUser, onAction, onStartNextRound, onReset, onSkip, isMobile } = props;
+    const { tournament, currentUser, onBack, allUsersForRanking, onViewUser, onAction, onStartNextRound, onReset, onSkip, isMobile } = props;
     const [lastUserMatchSgfIndex, setLastUserMatchSgfIndex] = useState<number | null>(null);
     const [initialMatchPlayers, setInitialMatchPlayers] = useState<{ p1: PlayerForTournament | null, p2: PlayerForTournament | null }>({ p1: null, p2: null });
-    const prevStatusRef = useRef(tournamentState.status);
+    const prevStatusRef = useRef(tournament.status);
     
     const safeRounds = useMemo(() => 
-        Array.isArray(tournamentState.rounds) ? tournamentState.rounds : [], 
-        [tournamentState.rounds]
+        Array.isArray(tournament.rounds) ? tournament.rounds : [], 
+        [tournament.rounds]
     );
 
     useEffect(() => {
@@ -598,7 +598,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     }, [onAction]);
 
     useEffect(() => {
-        const status = tournamentState.status;
+        const status = tournament.status;
         const prevStatus = prevStatusRef.current;
     
         if ((status === 'round_complete' || status === 'eliminated' || status === 'complete') && prevStatus === 'round_in_progress') {
@@ -608,12 +608,12 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
             }
         } else if (status === 'bracket_ready') {
             setLastUserMatchSgfIndex(null);
-        } else if (status === 'round_in_progress' && tournamentState.timeElapsed === 1) {
-             const matchInfo = tournamentState.currentSimulatingMatch;
+        } else if (status === 'round_in_progress' && tournament.timeElapsed === 1) {
+             const matchInfo = tournament.currentSimulatingMatch;
             if (matchInfo) {
                 const match = safeRounds[matchInfo.roundIndex].matches[matchInfo.matchIndex];
-                const p1 = tournamentState.players.find(p => p.id === match.players[0]?.id) || null;
-                const p2 = tournamentState.players.find(p => p.id === match.players[1]?.id) || null;
+                const p1 = tournament.players.find(p => p.id === match.players[0]?.id) || null;
+                const p2 = tournament.players.find(p => p.id === match.players[1]?.id) || null;
                 setInitialMatchPlayers({
                     p1: p1 ? JSON.parse(JSON.stringify(p1)) : null,
                     p2: p2 ? JSON.parse(JSON.stringify(p2)) : null,
@@ -624,27 +624,27 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         }
     
         prevStatusRef.current = status;
-    }, [tournamentState, safeRounds]);
+    }, [tournament, safeRounds]);
     
     const handleBackClick = useCallback(() => {
-        if (tournamentState.status === 'round_in_progress') {
+        if (tournament.status === 'round_in_progress') {
             if (window.confirm('경기가 진행중입니다. 경기를 포기하시겠습니까? 남은 모든 경기는 패배 처리됩니다.')) {
-                onAction({ type: 'FORFEIT_TOURNAMENT', payload: { type: tournamentState.type } });
+                onAction({ type: 'FORFEIT_TOURNAMENT', payload: { type: tournament.type } });
             }
         } else {
             onBack();
         }
-    }, [onBack, onAction, tournamentState.status, tournamentState.type]);
+    }, [onBack, onAction, tournament.status, tournament.type]);
 
     const handleForfeitClick = useCallback(() => {
         if (window.confirm('토너먼트를 포기하고 나가시겠습니까? 오늘의 참가 기회는 사라집니다.')) {
-            onAction({ type: 'FORFEIT_TOURNAMENT', payload: { type: tournamentState.type } });
+            onAction({ type: 'FORFEIT_TOURNAMENT', payload: { type: tournament.type } });
         }
-    }, [onAction, tournamentState.type]);
+    }, [onAction, tournament.type]);
 
-    const isSimulating = tournamentState.status === 'round_in_progress';
-    const currentSimMatch = isSimulating && tournamentState.currentSimulatingMatch 
-        ? safeRounds[tournamentState.currentSimulatingMatch.roundIndex].matches[tournamentState.currentSimulatingMatch.matchIndex]
+    const isSimulating = tournament.status === 'round_in_progress';
+    const currentSimMatch = isSimulating && tournament.currentSimulatingMatch 
+        ? safeRounds[tournament.currentSimulatingMatch.roundIndex].matches[tournament.currentSimulatingMatch.matchIndex]
         : null;
         
     const lastFinishedUserMatch = useMemo(() => {
@@ -656,32 +656,32 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         : (lastFinishedUserMatch || safeRounds.flatMap(r => r.matches).find(m => m.isUserMatch) || safeRounds[0]?.matches[0]);
     
     const winner = useMemo(() => {
-        if (tournamentState.status !== 'complete') return null;
-        if (tournamentState.type === 'neighborhood') {
+        if (tournament.status !== 'complete') return null;
+        if (tournament.type === 'neighborhood') {
              const wins: Record<string, number> = {};
-            tournamentState.players.forEach(p => wins[p.id] = 0);
+            tournament.players.forEach(p => wins[p.id] = 0);
             safeRounds[0].matches.forEach(m => { if(m.winner) wins[m.winner.id]++; });
-            return [...tournamentState.players].sort((a,b) => wins[b.id] - wins[a.id])[0];
+            return [...tournament.players].sort((a,b) => wins[b.id] - wins[a.id])[0];
         } else {
             const finalMatch = safeRounds.find(r => r.name === '결승');
             return finalMatch?.matches[0]?.winner;
         }
-    }, [tournamentState.status, tournamentState.type, tournamentState.players, safeRounds]);
+    }, [tournament.status, tournament.type, tournament.players, safeRounds]);
     
     const myResultText = useMemo(() => {
-        if (tournamentState.status === 'complete' || tournamentState.status === 'eliminated') {
-            if (tournamentState.type === 'neighborhood') {
+        if (tournament.status === 'complete' || tournament.status === 'eliminated') {
+            if (tournament.type === 'neighborhood') {
                 const allMyMatches = safeRounds.flatMap(r => r.matches).filter(m => m.isUserMatch && m.isFinished);
                 const winsCount = allMyMatches.filter(m => m.winner?.id === currentUser.id).length;
                 const lossesCount = allMyMatches.length - winsCount;
 
                 const playerWins: Record<string, number> = {};
-                tournamentState.players.forEach(p => { playerWins[p.id] = 0; });
+                tournament.players.forEach(p => { playerWins[p.id] = 0; });
                 safeRounds[0].matches.forEach(m => {
                     if (m.winner) playerWins[m.winner.id] = (playerWins[m.winner.id] || 0) + 1;
                 });
 
-                const sortedPlayers = [...tournamentState.players].sort((a, b) => playerWins[b.id] - playerWins[a.id]);
+                const sortedPlayers = [...tournament.players].sort((a, b) => playerWins[b.id] - playerWins[a.id]);
                 let myRank = -1; let currentRankValue = 1;
                 for (let i = 0; i < sortedPlayers.length; i++) {
                     if (i > 0 && playerWins[sortedPlayers[i].id] < playerWins[sortedPlayers[i-1].id]) currentRankValue = i + 1;
@@ -712,11 +712,11 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
             return "토너먼트 탈락";
         }
 
-        if (tournamentState.status === 'round_complete' || tournamentState.status === 'bracket_ready') {
+        if (tournament.status === 'round_complete' || tournament.status === 'bracket_ready') {
             const lastFinishedUserMatch = [...safeRounds].reverse().flatMap(r => r.matches).find(m => m.isUserMatch && m.isFinished);
             if (lastFinishedUserMatch) {
                 const userWonLastMatch = lastFinishedUserMatch.winner?.id === currentUser.id;
-                if (tournamentState.type === 'neighborhood') {
+                if (tournament.type === 'neighborhood') {
                     const allMyMatches = safeRounds.flatMap(r => r.matches).filter(m => m.isUserMatch && m.isFinished);
                     const wins = allMyMatches.filter(m => m.winner?.id === currentUser.id).length;
                     const losses = allMyMatches.length - wins;
@@ -730,13 +730,13 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         
         const currentRound = safeRounds.find(r => r.matches.some(m => m.isUserMatch && !m.isFinished));
         return currentRound ? `${currentRound.name} 진행 중` : "대회 준비 중";
-    }, [currentUser.id, tournamentState, winner, safeRounds]);
+    }, [currentUser.id, tournament, winner, safeRounds]);
     
     const p1_from_match = matchForDisplay?.players[0] || null;
     const p2_from_match = matchForDisplay?.players[1] || null;
 
-    const p1 = p1_from_match ? tournamentState.players.find(p => p.id === p1_from_match.id) || p1_from_match : null;
-    const p2 = p2_from_match ? tournamentState.players.find(p => p.id === p2_from_match.id) || p2_from_match : null;
+    const p1 = p1_from_match ? tournament.players.find(p => p.id === p1_from_match.id) || p1_from_match : null;
+    const p2 = p2_from_match ? tournament.players.find(p => p.id === p2_from_match.id) || p2_from_match : null;
 
     const radarDatasets = useMemo(() => [
         { stats: p1?.stats || {}, color: '#60a5fa', fill: 'rgba(59, 130, 246, 0.4)' },
@@ -756,22 +756,22 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     }, [p1, p2]);
 
     const currentPhase = useMemo((): 'early' | 'mid' | 'end' | 'none' => {
-        if (tournamentState.status !== 'round_in_progress') return 'none';
-        const time = tournamentState.timeElapsed;
+        if (tournament.status !== 'round_in_progress') return 'none';
+        const time = tournament.timeElapsed;
         if (time <= 40) return 'early';
         if (time <= 100) return 'mid';
         if (time <= 140) return 'end';
         return 'none';
-    }, [tournamentState.timeElapsed, tournamentState.status]);
+    }, [tournament.timeElapsed, tournament.status]);
 
-    const p1Cumulative = tournamentState.currentMatchScores?.player1 || 0;
-    const p2Cumulative = tournamentState.currentMatchScores?.player2 || 0;
+    const p1Cumulative = tournament.currentMatchScores?.player1 || 0;
+    const p2Cumulative = tournament.currentMatchScores?.player2 || 0;
     const totalCumulative = p1Cumulative + p2Cumulative;
     const p1Percent = totalCumulative > 0 ? (p1Cumulative / totalCumulative) * 100 : 50;
     const p2Percent = totalCumulative > 0 ? (p2Cumulative / totalCumulative) * 100 : 50;
 
     const renderFooterButton = () => {
-        const { status } = tournamentState;
+        const { status } = tournament;
 
         if (status === 'round_in_progress') {
             return (
@@ -821,10 +821,10 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         <main className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
             <aside className="w-full lg:w-[35%] xl:w-[25%] flex-shrink-0 flex flex-col gap-2">
                 <div className="flex-1 bg-gray-800/50 rounded-lg p-2 min-h-0">
-                    {tournamentState.type === 'neighborhood' ? (
-                        <RoundRobinDisplay tournamentState={tournamentState} currentUser={currentUser} />
+                    {tournament.type === 'neighborhood' ? (
+                        <RoundRobinDisplay tournamentState={tournament} currentUser={currentUser} />
                     ) : (
-                        <TournamentRoundViewer rounds={safeRounds} currentUser={currentUser} tournamentType={tournamentState.type} />
+                        <TournamentRoundViewer rounds={safeRounds} currentUser={currentUser} tournamentType={tournament.type} />
                     )}
                 </div>
                 <div className="h-48 flex-shrink-0 bg-gray-800/50 rounded-lg p-3 text-center flex flex-col items-center justify-center">
@@ -854,7 +854,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                 <div className="flex-1 flex flex-col lg:flex-row gap-2 min-h-0">
                     <div className="w-full h-80 lg:h-full lg:w-2/5 bg-gray-800/50 rounded-lg p-2 flex items-center justify-center">
                         <SgfViewer 
-                            timeElapsed={isSimulating ? tournamentState.timeElapsed : 0} 
+                            timeElapsed={isSimulating ? tournament.timeElapsed : 0} 
                             fileIndex={isSimulating ? currentSimMatch?.sgfFileIndex : lastUserMatchSgfIndex}
                             showLastMoveOnly={!isSimulating}
                         />
@@ -863,10 +863,10 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                     <div className="w-full lg:w-3/5 flex-1 flex flex-col gap-2 min-h-0">
                         <section className="flex-shrink-0 bg-gray-800/50 rounded-lg p-3">
                             <ScoreGraph p1Percent={p1Percent} p2Percent={p2Percent} p1Nickname={p1?.nickname} p2Nickname={p2?.nickname}/>
-                            <div className="mt-2"><SimulationProgressBar timeElapsed={tournamentState.timeElapsed} totalDuration={140} /></div>
+                            <div className="mt-2"><SimulationProgressBar timeElapsed={tournament.timeElapsed} totalDuration={140} /></div>
                         </section>
                         <div className="h-64 lg:h-auto lg:flex-1 min-h-0 bg-gray-800/50 rounded-lg p-2 flex flex-col">
-                            <CommentaryPanel commentary={tournamentState.currentMatchCommentary} isSimulating={tournamentState.status === 'round_in_progress'} />
+                            <CommentaryPanel commentary={tournament.currentMatchCommentary} isSimulating={tournament.status === 'round_in_progress'} />
                         </div>
                     </div>
                 </div>
@@ -887,7 +887,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                 {renderFooterButton()}
             </div>
              <div className="text-right">
-                <FinalRewardPanel tournamentState={tournamentState} currentUser={currentUser} onAction={onAction} />
+                <FinalRewardPanel tournamentState={tournament} currentUser={currentUser} onAction={onAction} />
             </div>
         </footer>
     );
@@ -898,7 +898,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                 <button onClick={handleBackClick} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
                     <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
                 </button>
-                <h1 className="text-xl md:text-2xl font-bold">{tournamentState.title}</h1>
+                <h1 className="text-xl md:text-2xl font-bold">{tournament.title}</h1>
                 <div className="w-28" />
             </header>
 
