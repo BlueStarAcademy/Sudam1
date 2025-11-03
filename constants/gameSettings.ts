@@ -1,4 +1,4 @@
-import { GameMode, DiceGoVariant, GameSettings, Player, AlkkagiPlacementType, AlkkagiLayoutType } from '../types.js';
+import { GameMode, DiceGoVariant, GameSettings, Player, AlkkagiPlacementType, AlkkagiLayoutType, ItemGrade } from '../types.js';
 
 // --- Negotiation Settings ---
 export const BOARD_SIZES = [19, 13, 9];

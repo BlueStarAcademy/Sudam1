@@ -1,0 +1,187 @@
+import { randomUUID } from 'crypto';
+import { SpecialStat, MythicStat } from '../types.js';
+import { EQUIPMENT_POOL, MATERIAL_ITEMS, MAIN_STAT_DEFINITIONS, GRADE_SUB_OPTION_RULES, SUB_OPTION_POOLS, SPECIAL_STATS_DATA, MYTHIC_STATS_DATA, } from '../constants.js';
+const getRandomInt = (min, max) => {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+};
+const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+const generateItemOptions = (grade, slot) => {
+    const rules = GRADE_SUB_OPTION_RULES[grade];
+    const usedCombatSubTypes = new Set();
+    const usedSpecialSubTypes = new Set();
+    const slotDef = MAIN_STAT_DEFINITIONS[slot];
+    const gradeDef = slotDef.options[grade];
+    const mainStatType = pickRandom(gradeDef.stats);
+    const mainValue = gradeDef.value;
+    const mainIsPercentage = slotDef.isPercentage;
+    const main = {
+        type: mainStatType,
+        value: mainValue,
+        baseValue: mainValue,
+        isPercentage: mainIsPercentage,
+        display: `${mainStatType} +${mainValue}${mainIsPercentage ? '%' : ''}`
+    };
+    usedCombatSubTypes.add(mainStatType);
+    const combatSubs = [];
+    const combatTier = rules.combatTier;
+    const combatCountRule = rules.combatCount;
+    const numCombatSubs = Array.isArray(combatCountRule) ? getRandomInt(combatCountRule[0], combatCountRule[1]) : combatCountRule;
+    const combatPool = SUB_OPTION_POOLS[slot][combatTier].filter(opt => !usedCombatSubTypes.has(opt.type));
+    for (let i = 0; i < numCombatSubs; i++) {
+        if (combatPool.length === 0)
+            break;
+        const subDef = pickRandom(combatPool);
+        combatPool.splice(combatPool.indexOf(subDef), 1);
+        usedCombatSubTypes.add(subDef.type);
+        const value = getRandomInt(subDef.range[0], subDef.range[1]);
+        combatSubs.push({
+            type: subDef.type,
+            value,
+            isPercentage: subDef.isPercentage,
+            display: `${subDef.type} +${value}${subDef.isPercentage ? '%' : ''} [${subDef.range[0]}~${subDef.range[1]}]`,
+            range: subDef.range,
+            enhancements: 0,
+        });
+    }
+    const specialSubs = [];
+    const specialCountRule = rules.specialCount;
+    const numSpecialSubs = Array.isArray(specialCountRule) ? getRandomInt(specialCountRule[0], specialCountRule[1]) : specialCountRule;
+    const specialPool = Object.values(SpecialStat);
+    for (let i = 0; i < numSpecialSubs; i++) {
+        if (specialPool.length === 0)
+            break;
+        const subStatType = pickRandom(specialPool);
+        specialPool.splice(specialPool.indexOf(subStatType), 1);
+        usedSpecialSubTypes.add(subStatType);
+        const subDef = SPECIAL_STATS_DATA[subStatType];
+        const value = getRandomInt(subDef.range[0], subDef.range[1]);
+        specialSubs.push({
+            type: subStatType,
+            value,
+            isPercentage: subDef.isPercentage,
+            tier: combatTier,
+            display: `${subDef.name} +${value}${subDef.isPercentage ? '%' : ''} [${subDef.range[0]}~${subDef.range[1]}]`,
+            range: subDef.range,
+            enhancements: 0,
+        });
+    }
+    const mythicSubs = [];
+    if (grade === 'mythic') {
+        const mythicCountRule = rules.mythicCount;
+        const numMythicSubs = Array.isArray(mythicCountRule) ? getRandomInt(mythicCountRule[0], mythicCountRule[1]) : mythicCountRule;
+        const mythicPool = Object.values(MythicStat);
+        for (let i = 0; i < numMythicSubs; i++) {
+            if (mythicPool.length === 0)
+                break;
+            const subStatType = pickRandom(mythicPool);
+            mythicPool.splice(mythicPool.indexOf(subStatType), 1);
+            const subDef = MYTHIC_STATS_DATA[subStatType];
+            const value = subDef.value([10, 50]);
+            mythicSubs.push({
+                type: subStatType,
+                value: value,
+                isPercentage: false,
+                display: subDef.name,
+                enhancements: 0,
+            });
+        }
+    }
+    return { main, combatSubs, specialSubs, mythicSubs };
+};
+export const createItemFromTemplate = (template) => {
+    const options = generateItemOptions(template.grade, template.slot);
+    return {
+        id: `item-${randomUUID()}`,
+        name: template.name,
+        description: template.description || `상자에서 획득한 ${template.grade} 등급 아이템.`,
+        type: 'equipment',
+        slot: template.slot,
+        level: 1,
+        isEquipped: false,
+        createdAt: Date.now(),
+        image: template.image,
+        grade: template.grade,
+        stars: 0,
+        options: options,
+    };
+};
+function openBoxWithLootTable(lootTable) {
+    const totalWeight = lootTable.reduce((sum, item) => sum + item.weight, 0);
+    let random = Math.random() * totalWeight;
+    let selectedGrade = 'normal';
+    for (const item of lootTable) {
+        if (random < item.weight) {
+            selectedGrade = item.grade;
+            break;
+        }
+        random -= item.weight;
+    }
+    const itemsOfSelectedGrade = EQUIPMENT_POOL.filter(item => item.grade === selectedGrade);
+    const template = itemsOfSelectedGrade[Math.floor(Math.random() * itemsOfSelectedGrade.length)];
+    return createItemFromTemplate(template);
+}
+const EQUIPMENT_BOX_1_LOOT_TABLE = [{ grade: 'normal', weight: 70 }, { grade: 'uncommon', weight: 20 }, { grade: 'rare', weight: 10 }];
+const EQUIPMENT_BOX_2_LOOT_TABLE = [{ grade: 'normal', weight: 50 }, { grade: 'uncommon', weight: 25 }, { grade: 'rare', weight: 20 }, { grade: 'epic', weight: 5 }];
+const EQUIPMENT_BOX_3_LOOT_TABLE = [{ grade: 'uncommon', weight: 40 }, { grade: 'rare', weight: 30 }, { grade: 'epic', weight: 25 }, { grade: 'legendary', weight: 5 }];
+const EQUIPMENT_BOX_4_LOOT_TABLE = [{ grade: 'rare', weight: 50 }, { grade: 'epic', weight: 40 }, { grade: 'legendary', weight: 8 }, { grade: 'mythic', weight: 2 }];
+const EQUIPMENT_BOX_5_LOOT_TABLE = [{ grade: 'epic', weight: 75 }, { grade: 'legendary', weight: 20 }, { grade: 'mythic', weight: 5 }];
+const EQUIPMENT_BOX_6_LOOT_TABLE = [{ grade: 'legendary', weight: 90 }, { grade: 'mythic', weight: 10 }];
+export function openEquipmentBox1() { return openBoxWithLootTable(EQUIPMENT_BOX_1_LOOT_TABLE); }
+export function openEquipmentBox2() { return openBoxWithLootTable(EQUIPMENT_BOX_2_LOOT_TABLE); }
+export function openEquipmentBox3() { return openBoxWithLootTable(EQUIPMENT_BOX_3_LOOT_TABLE); }
+export function openEquipmentBox4() { return openBoxWithLootTable(EQUIPMENT_BOX_4_LOOT_TABLE); }
+export function openEquipmentBox5() { return openBoxWithLootTable(EQUIPMENT_BOX_5_LOOT_TABLE); }
+export function openEquipmentBox6() { return openBoxWithLootTable(EQUIPMENT_BOX_6_LOOT_TABLE); }
+const MATERIAL_BOX_1_PROBABILITY = { '하급 강화석': 0.8, '중급 강화석': 0.15, '상급 강화석': 0.05 };
+const MATERIAL_BOX_2_PROBABILITY = { '하급 강화석': 0.35, '중급 강화석': 0.55, '상급 강화석': 0.1 };
+const MATERIAL_BOX_3_PROBABILITY = { '하급 강화석': 0.1, '중급 강화석': 0.45, '상급 강화석': 0.45 };
+const MATERIAL_BOX_4_PROBABILITY = { '중급 강화석': 0.35, '상급 강화석': 0.45, '최상급 강화석': 0.2 };
+const MATERIAL_BOX_5_PROBABILITY = { '상급 강화석': 0.5, '최상급 강화석': 0.4, '신비의 강화석': 0.1 };
+const MATERIAL_BOX_6_PROBABILITY = { '상급 강화석': 0.25, '최상급 강화석': 0.25, '신비의 강화석': 0.5 };
+export function openMaterialBox(boxId, rolls) {
+    const probabilities = {
+        'material_box_1': MATERIAL_BOX_1_PROBABILITY,
+        'material_box_2': MATERIAL_BOX_2_PROBABILITY,
+        'material_box_3': MATERIAL_BOX_3_PROBABILITY,
+        'material_box_4': MATERIAL_BOX_4_PROBABILITY,
+        'material_box_5': MATERIAL_BOX_5_PROBABILITY,
+        'material_box_6': MATERIAL_BOX_6_PROBABILITY,
+    }[boxId];
+    const results = {};
+    for (let i = 0; i < rolls; i++) {
+        let rand = Math.random();
+        for (const [material, prob] of Object.entries(probabilities)) {
+            if (rand < prob) {
+                results[material] = (results[material] || 0) + 1;
+                break;
+            }
+            rand -= prob;
+        }
+    }
+    return Object.entries(results).map(([name, quantity]) => {
+        const template = MATERIAL_ITEMS[name];
+        return {
+            ...template,
+            id: `item-${randomUUID()}`,
+            createdAt: Date.now(),
+            quantity,
+            isEquipped: false,
+            level: 1,
+            stars: 0,
+        };
+    });
+}
+export const SHOP_ITEMS = {
+    'equipment_box_1': { type: 'equipment', name: '장비 상자 I', description: '일반~희귀 등급 장비 획득', cost: { gold: 500 }, onPurchase: openEquipmentBox1, image: '/images/Box/EquipmentBox1.png' },
+    'equipment_box_2': { type: 'equipment', name: '장비 상자 II', description: '일반~에픽 등급 장비 획득', cost: { gold: 1500 }, onPurchase: openEquipmentBox2, image: '/images/Box/EquipmentBox2.png' },
+    'equipment_box_3': { type: 'equipment', name: '장비 상자 III', description: '고급~전설 등급 장비 획득', cost: { gold: 5000 }, onPurchase: openEquipmentBox3, image: '/images/Box/EquipmentBox3.png' },
+    'equipment_box_4': { type: 'equipment', name: '장비 상자 IV', description: '희귀~신화 등급 장비 획득', cost: { gold: 10000 }, onPurchase: openEquipmentBox4, image: '/images/Box/EquipmentBox4.png' },
+    'equipment_box_5': { type: 'equipment', name: '장비 상자 V', description: '에픽~신화 등급 장비 획득', cost: { diamonds: 100 }, onPurchase: openEquipmentBox5, image: '/images/Box/EquipmentBox5.png' },
+    'equipment_box_6': { type: 'equipment', name: '장비 상자 VI', description: '전설~신화 등급 장비 획득', cost: { diamonds: 500 }, onPurchase: openEquipmentBox6, image: '/images/Box/EquipmentBox6.png' },
+    'material_box_1': { type: 'material', name: '재료 상자 I', description: '하급 ~ 상급 강화석 5개 획득', cost: { gold: 500 }, onPurchase: () => openMaterialBox('material_box_1', 5), image: '/images/Box/ResourceBox1.png', dailyLimit: 10 },
+    'material_box_2': { type: 'material', name: '재료 상자 II', description: '하급 ~ 상급 강화석 5개 획득', cost: { gold: 1000 }, onPurchase: () => openMaterialBox('material_box_2', 5), image: '/images/Box/ResourceBox2.png', dailyLimit: 10 },
+    'material_box_3': { type: 'material', name: '재료 상자 III', description: '하급 ~ 상급 강화석 5개 획득', cost: { gold: 2000 }, onPurchase: () => openMaterialBox('material_box_3', 5), image: '/images/Box/ResourceBox3.png', dailyLimit: 10 },
+    'material_box_4': { type: 'material', name: '재료 상자 IV', description: '중급 ~ 최상급 강화석 5개 획득', cost: { gold: 3500 }, onPurchase: () => openMaterialBox('material_box_4', 5), image: '/images/Box/ResourceBox4.png', dailyLimit: 10 },
+    'material_box_5': { type: 'material', name: '재료 상자 V', description: '상급 ~ 신비의 강화석 5개 획득', cost: { gold: 5000 }, onPurchase: () => openMaterialBox('material_box_5', 5), image: '/images/Box/ResourceBox5.png', dailyLimit: 10 },
+    'material_box_6': { type: 'material', name: '재료 상자 VI', description: '상급 ~ 신비의 강화석 5개 획득', cost: { diamonds: 100 }, onPurchase: () => openMaterialBox('material_box_6', 5), image: '/images/Box/ResourceBox6.png', dailyLimit: 10 },
+};

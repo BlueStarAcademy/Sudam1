@@ -158,7 +158,8 @@ export const regenerateActionPoints = async (user: User): Promise<User> => {
     }
 
     const elapsedMs = now - lastUpdate;
-    const pointsToAdd = Math.floor(elapsedMs / effects.actionPointRegenInterval);
+    const regenInterval = effects.actionPointRegenInterval > 0 ? effects.actionPointRegenInterval : ACTION_POINT_REGEN_INTERVAL_MS;
+    const pointsToAdd = Math.floor(elapsedMs / regenInterval);
 
     if (pointsToAdd > 0) {
         userModified = true;

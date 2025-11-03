@@ -42,7 +42,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                  itemsToCreate.push(...createdItems);
             }
         
-            const { success } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
+            const { success, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
             if (!success) return { error: '인벤토리 공간이 부족합니다.' };
         
             const reward: QuestReward = {
@@ -57,7 +57,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 user.actionPoints.current += reward.actionPoints;
             }
         
-            addItemsToInventory(user.inventory, user.inventorySlots, itemsToCreate);
+            user.inventory = finalItemsToAdd;
         
             mail.attachmentsClaimed = true;
             await db.updateUser(user);
@@ -92,7 +92,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 }
             }
 
-            const { success } = addItemsToInventory([...user.inventory], user.inventorySlots, allItemsToCreate);
+            const { success, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, allItemsToCreate);
             if (!success) {
                 return { error: '모든 아이템을 받기에 가방 공간이 부족합니다.' };
             }
@@ -100,7 +100,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             user.gold += totalGold;
             user.diamonds += totalDiamonds;
             user.actionPoints.current += totalActionPoints;
-            addItemsToInventory(user.inventory, user.inventorySlots, allItemsToCreate);
+            user.inventory = finalItemsToAdd; // <--- Update user.inventory here
 
             for (const mail of mailsToClaim) mail.attachmentsClaimed = true;
 
@@ -165,7 +165,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 itemsToCreate.push(...createdItems);
             }
 
-            const { success } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
+            const { success, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
             if (!success) {
                 return { error: '보상을 받기에 인벤토리 공간이 부족합니다.' };
             }
@@ -175,7 +175,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             if (reward.gold) user.gold += reward.gold;
             if (reward.diamonds) user.diamonds += reward.diamonds;
             if (reward.actionPoints) user.actionPoints.current += reward.actionPoints;
-            addItemsToInventory(user.inventory, user.inventorySlots, itemsToCreate);
+            user.inventory = finalItemsToAdd; // <--- Update user.inventory here
             
             if (activityPoints > 0 && user.quests[questType!]) {
                 user.quests[questType!]!.activityProgress += activityPoints;
@@ -221,13 +221,13 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                  itemsToCreate.push(...createdItems);
             }
 
-            const { success } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
+            const { success, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
             if (!success) return { error: '보상을 받기에 인벤토리 공간이 부족합니다.' };
             
             user.gold += reward.gold || 0;
             user.diamonds += reward.diamonds || 0;
             user.actionPoints.current += reward.actionPoints || 0;
-            addItemsToInventory(user.inventory, user.inventorySlots, itemsToCreate);
+            user.inventory = finalItemsToAdd; // <--- Update user.inventory here
             
             data.claimedMilestones[milestoneIndex] = true;
 
@@ -341,7 +341,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
 
             const itemsToCreate = itemReward.items ? createItemInstancesFromReward(itemReward.items as {itemId: string, quantity: number}[]) : [];
             
-            const { success } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
+            const { success, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
             if (!success) {
                 return { error: '보상을 받기에 가방 공간이 부족합니다. 가방을 비우고 다시 시도해주세요.' };
             }
@@ -352,7 +352,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             
             user.gold += itemReward.gold || 0;
             user.diamonds += itemReward.diamonds || 0;
-            addItemsToInventory(user.inventory, user.inventorySlots, itemsToCreate);
+            user.inventory = finalItemsToAdd; // <--- Update user.inventory here
             
             updateQuestProgress(user, 'tournament_complete');
 

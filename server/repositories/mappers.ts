@@ -57,7 +57,13 @@ export const rowToUser = (row: any): types.User | null => {
             playfulXp: row.playfulXp ?? 0,
             gold: row.gold ?? 0,
             diamonds: row.diamonds ?? 0,
-            inventorySlots: row.inventorySlots ?? 40,
+            inventorySlots: (() => {
+                const slots = safeParse(row.inventorySlots, { equipment: 30, consumable: 30, material: 30 }, row.id, 'inventorySlots');
+                if (typeof slots === 'number') {
+                    return { equipment: slots, consumable: 30, material: 30 };
+                }
+                return slots;
+            })(),
             chatBanUntil: row.chatBanUntil,
             connectionBanUntil: row.connectionBanUntil,
             lastActionPointUpdate: row.lastActionPointUpdate ?? 0,
@@ -66,6 +72,7 @@ export const rowToUser = (row: any): types.User | null => {
             avatarId: row.avatarId || 'profile_1',
             borderId: row.borderId || 'default',
             ownedBorders: safeParse(row.ownedBorders, ['default'], row.id, 'ownedBorders'),
+            equipmentPresets: safeParse(row.equipmentPresets, [], row.id, 'equipmentPresets'),
             tournamentScore: row.tournamentScore ?? 1200,
             league: row.league || types.LeagueTier.Sprout,
             mannerMasteryApplied: !!row.mannerMasteryApplied,

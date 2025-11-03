@@ -69,26 +69,38 @@ export const LEAGUE_WEEKLY_REWARDS: Record<LeagueTier, LeagueRewardTier[]> = {
     ],
 };
 
-export const RANKING_TIERS: { name: string; icon: string; color: string; threshold: (rank: number, total: number) => boolean; }[] = [
-    { name: '챌린저', icon: '/images/tire/tire9.png', color: 'text-cyan-400', threshold: (rank, total) => rank / total <= 0.001 },
-    { name: '마스터', icon: '/images/tire/tire8.png', color: 'text-purple-400', threshold: (rank, total) => rank / total <= 0.03 },
-    { name: '다이아', icon: '/images/tire/tire7.png', color: 'text-blue-400', threshold: (rank, total) => rank / total <= 0.05 },
-    { name: '플래티넘', icon: '/images/tire/tire6.png', color: 'text-teal-400', threshold: (rank, total) => rank / total <= 0.10 },
-    { name: '골드', icon: '/images/tire/tire5.png', color: 'text-yellow-400', threshold: (rank, total) => rank / total <= 0.25 },
-    { name: '실버', icon: '/images/tire/tire4.png', color: 'text-gray-300', threshold: (rank, total) => rank / total <= 0.40 },
-    { name: '브론즈', icon: '/images/tire/tire3.png', color: 'text-orange-400', threshold: (rank, total) => rank / total <= 0.60 },
-    { name: '루키', icon: '/images/tire/tire2.png', color: 'text-green-400', threshold: (rank, total) => rank / total <= 0.80 },
-    { name: '새싹', icon: '/images/tire/tire1.png', color: 'text-green-200', threshold: () => true },
+export const RANKING_TIERS: { name: string; icon: string; color: string; threshold: (score: number, rank: number, totalGames: number) => boolean; }[] = [
+    { name: '챌린저', icon: '/images/tire/tire9.png', color: 'text-cyan-400', threshold: (score, rank, totalGames) => score >= 3500 && rank <= 100 },
+    { name: '마스터', icon: '/images/tire/tire8.png', color: 'text-purple-400', threshold: (score, rank, totalGames) => score >= 3000 },
+    { name: '다이아', icon: '/images/tire/tire7.png', color: 'text-blue-400', threshold: (score, rank, totalGames) => score >= 2400 },
+    { name: '플래티넘', icon: '/images/tire/tire6.png', color: 'text-teal-400', threshold: (score, rank, totalGames) => score >= 2000 },
+    { name: '골드', icon: '/images/tire/tire5.png', color: 'text-yellow-400', threshold: (score, rank, totalGames) => score >= 1700 },
+    { name: '실버', icon: '/images/tire/tire4.png', color: 'text-gray-300', threshold: (score, rank, totalGames) => score >= 1500 },
+    { name: '브론즈', icon: '/images/tire/tire3.png', color: 'text-orange-400', threshold: (score, rank, totalGames) => score >= 1400 },
+    { name: '루키', icon: '/images/tire/tire2.png', color: 'text-green-400', threshold: (score, rank, totalGames) => score >= 1300 },
+    { name: '새싹', icon: '/images/tire/tire1.png', color: 'text-green-200', threshold: (score, rank, totalGames) => score < 1300 || totalGames < 50 },
 ];
 
 export const SEASONAL_TIER_REWARDS: Record<string, QuestReward> = {
-    '새싹': { diamonds: 100, items: [{ itemId: '장비 상자 I', quantity: 1 }, { itemId: '재료 상자 I', quantity: 1 }, { itemId: '골드 꾸러미1', quantity: 1 }] },
-    '루키': { diamonds: 150, items: [{ itemId: '장비 상자 I', quantity: 1 }, { itemId: '재료 상자 II', quantity: 1 }, { itemId: '골드 꾸러미2', quantity: 1 }] },
-    '브론즈': { diamonds: 200, items: [{ itemId: '장비 상자 II', quantity: 1 }, { itemId: '재료 상자 II', quantity: 1 }, { itemId: '골드 꾸러미2', quantity: 1 }] },
-    '실버': { diamonds: 350, items: [{ itemId: '장비 상자 II', quantity: 1 }, { itemId: '재료 상자 III', quantity: 1 }, { itemId: '골드 꾸러미3', quantity: 1 }] },
-    '골드': { diamonds: 500, items: [{ itemId: '장비 상자 III', quantity: 1 }, { itemId: '재료 상자 III', quantity: 1 }, { itemId: '골드 꾸러미3', quantity: 1 }] },
-    '플래티넘': { diamonds: 750, items: [{ itemId: '장비 상자 III', quantity: 1 }, { itemId: '재료 상자 IV', quantity: 1 }, { itemId: '골드 꾸러미4', quantity: 1 }] },
-    '다이아': { diamonds: 1000, items: [{ itemId: '장비 상자 IV', quantity: 1 }, { itemId: '재료 상자 IV', quantity: 1 }, { itemId: '골드 꾸러미4', quantity: 1 }] },
-    '마스터': { diamonds: 1500, items: [{ itemId: '장비 상자 IV', quantity: 1 }, { itemId: '재료 상자 IV', quantity: 1 }, { itemId: '골드 꾸러미4', quantity: 1 }] },
-    '챌린저': { diamonds: 2000, items: [{ itemId: '장비 상자 V', quantity: 1 }, { itemId: '재료 상자 V', quantity: 1 }, { itemId: '골드 꾸러미4', quantity: 1 }] },
+    '새싹': { diamonds: 75, items: [{ itemId: '장비 상자 I', quantity: 1 }, { itemId: '재료 상자 I', quantity: 1 }, { itemId: '골드 꾸러미1', quantity: 1 }] },
+    '루키': { diamonds: 100, items: [{ itemId: '장비 상자 I', quantity: 1 }, { itemId: '재료 상자 II', quantity: 1 }, { itemId: '골드 꾸러미2', quantity: 1 }] },
+    '브론즈': { diamonds: 125, items: [{ itemId: '장비 상자 II', quantity: 1 }, { itemId: '재료 상자 II', quantity: 1 }, { itemId: '골드 꾸러미2', quantity: 1 }] },
+    '실버': { diamonds: 150, items: [{ itemId: '장비 상자 II', quantity: 1 }, { itemId: '재료 상자 III', quantity: 1 }, { itemId: '골드 꾸러미3', quantity: 1 }] },
+    '골드': { diamonds: 200, items: [{ itemId: '장비 상자 III', quantity: 1 }, { itemId: '재료 상자 III', quantity: 1 }, { itemId: '골드 꾸러미3', quantity: 1 }] },
+    '플래티넘': { diamonds: 250, items: [{ itemId: '장비 상자 IV', quantity: 1 }, { itemId: '재료 상자 IV', quantity: 1 }, { itemId: '골드 꾸러미4', quantity: 1 }] },
+    '다이아': { diamonds: 300, items: [{ itemId: '장비 상자 V', quantity: 1 }, { itemId: '재료 상자 V', quantity: 1 }, { itemId: '골드 꾸러미4', quantity: 1 }] },
+    '마스터': { diamonds: 400, items: [{ itemId: '장비 상자 V', quantity: 1 }, { itemId: '재료 상자 VI', quantity: 1 }, { itemId: '골드 꾸러미4', quantity: 1 }] },
+    '챌린저': { diamonds: 500, items: [{ itemId: '장비 상자 VI', quantity: 1 }, { itemId: '재료 상자 VI', quantity: 1 }, { itemId: '골드 꾸러미4', quantity: 1 }] },
+};
+
+export const SEASONAL_TIER_BORDERS: Record<string, string> = {
+    '새싹': 'border_sprout_season_N', // Assuming N is the season number
+    '루키': 'border_rookie_season_N',
+    '브론즈': 'border_bronze_season_N',
+    '실버': 'border_silver_season_N',
+    '골드': 'border_gold_season_N',
+    '플래티넘': 'border_platinum_season_N',
+    '다이아': 'border_diamond_season_N',
+    '마스터': 'border_master_season_N',
+    '챌린저': 'border_challenger_season_N',
 };

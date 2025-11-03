@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { InventoryItem, ItemGrade, ItemOption } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';

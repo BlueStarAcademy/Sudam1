@@ -145,11 +145,11 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
         }
         case 'SET_USER_STATUS': {
             const { status } = payload as { status: UserStatus };
-            if (status !== 'waiting' && status !== 'resting') {
+            if (status !== UserStatus.Waiting && status !== 'resting') {
                 return { error: 'Invalid status for waiting room.' };
             }
             const currentUserStatus = volatileState.userStatuses[user.id];
-            if (currentUserStatus && (currentUserStatus.status === 'waiting' || currentUserStatus.status === 'resting')) {
+            if (currentUserStatus && (currentUserStatus.status === UserStatus.Waiting || currentUserStatus.status === 'resting')) {
                 currentUserStatus.status = status;
             } else {
                 return { error: 'Cannot change status while in-game or negotiating.' };
@@ -158,14 +158,13 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
         }
         case 'ENTER_WAITING_ROOM': {
             const { mode } = payload;
-            volatileState.userStatuses[user.id] = { status: 'waiting', mode };
+            volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode };
             return {};
         }
         case 'LEAVE_WAITING_ROOM': {
             const userStatus = volatileState.userStatuses[user.id];
-            if (userStatus && (userStatus.status === 'waiting' || userStatus.status === 'resting')) {
-                userStatus.status = 'online';
-                delete userStatus.mode;
+            if (userStatus && (userStatus.status === UserStatus.Waiting || userStatus.status === UserStatus.Resting)) {
+                userStatus.status = UserStatus.Online;
             }
             return {};
         }
@@ -188,7 +187,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             if (!game) return { error: 'Game not found.' };
 
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id] = { status: 'waiting', mode: game.mode };
+                volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
             }
 
             const ongoingRematchNegotiation = Object.values(volatileState.negotiations).find(
@@ -202,7 +201,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                 
                 const otherPlayerStatus = volatileState.userStatuses[otherPlayerId];
                 if (otherPlayerStatus?.status === 'negotiating') {
-                    otherPlayerStatus.status = 'in-game';
+                    otherPlayerStatus.status = UserStatus.InGame;
                     otherPlayerStatus.gameId = gameId;
                 }
 
@@ -221,7 +220,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             if (!game) return { error: 'Game not found.' };
 
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id] = { status: 'waiting', mode: game.mode };
+                volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
             }
             
             // If the user leaves before the game is officially over (e.g. resigns), end the game.
@@ -235,13 +234,13 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             const { gameId } = payload;
             const game = await db.getLiveGame(gameId);
             if (!game) return { error: 'Game not found.' };
-            volatileState.userStatuses[user.id] = { status: 'spectating', spectatingGameId: gameId, mode: game.mode };
+            volatileState.userStatuses[user.id] = { status: UserStatus.Spectating, spectatingGameId: gameId, mode: game.mode };
             return {};
         }
         case 'LEAVE_SPECTATING': {
             const userStatus = volatileState.userStatuses[user.id];
-            if (userStatus && userStatus.status === 'spectating') {
-                userStatus.status = 'online'; 
+            if (userStatus && userStatus.status === UserStatus.Spectating) {
+                userStatus.status = UserStatus.Online; 
                 delete userStatus.spectatingGameId;
                 delete userStatus.gameId; 
             }

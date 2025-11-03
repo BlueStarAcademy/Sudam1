@@ -114,6 +114,13 @@ export const createDefaultUser = (id: string, username: string, nickname: string
         bonusStatPoints: 0,
         blacksmithLevel: 1,
         blacksmithXp: 0,
+        equipmentPresets: [
+            { name: '프리셋 1', equipment: {} },
+            { name: '프리셋 2', equipment: {} },
+            { name: '프리셋 3', equipment: {} },
+            { name: '프리셋 4', equipment: {} },
+            { name: '프리셋 5', equipment: {} },
+        ],
     };
     
     const botCompetitors = createInitialBotCompetitors(user);

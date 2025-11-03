@@ -182,7 +182,7 @@ const AppContent: React.FC = () => {
                 <div className="relative h-full w-full flex flex-col items-center justify-center p-4 sm:p-8 bg-tertiary bg-[url('/images/bg/loginbg.png')] bg-cover bg-center">
                     <div className="absolute inset-0 bg-black/60"></div>
                     <header className="relative text-center z-10 pt-8 md:pt-16 mb-8">
-                        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-widest uppercase title-glow" style={{ fontFamily: 'serif' }}>
+                        <h1 className="text-4xl sm:text-5xl md:text-6xl font-black text-white tracking-widest uppercase title-glow-secondary" style={{ fontFamily: 'serif' }}>
                             SUDAM
                         </h1>
                         <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white tracking-wider mt-2 title-glow-secondary" style={{ fontFamily: 'serif' }}>

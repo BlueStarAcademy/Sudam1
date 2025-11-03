@@ -33,6 +33,26 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
     const prevRankRef = useRef<number | null>(null);
     const [timeLeft, setTimeLeft] = useState('');
 
+    const [currentKstDayStart, setCurrentKstDayStart] = useState(() => {
+        const KST_OFFSET = 9 * 60 * 60 * 1000;
+        const now = Date.now();
+        const kstNow = new Date(now + KST_OFFSET);
+        return new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate()).getTime();
+    });
+
+    useEffect(() => {
+        const KST_OFFSET = 9 * 60 * 60 * 1000;
+        const timer = setInterval(() => {
+            const now = Date.now();
+            const kstNow = new Date(now + KST_OFFSET);
+            const newKstDayStart = new Date(kstNow.getFullYear(), kstNow.getMonth(), kstNow.getDate()).getTime();
+            if (newKstDayStart !== currentKstDayStart) {
+                setCurrentKstDayStart(newKstDayStart);
+            }
+        }, 1000 * 60); // Check every minute
+        return () => clearInterval(timer);
+    }, [currentKstDayStart]);
+
     useEffect(() => {
         const calculateTimeLeft = () => {
             const now = new Date();
@@ -58,29 +78,24 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
             return [];
         }
     
-        const MIN_DAILY_SCORE_GAIN = 6;  // 1(동네) + 2(전국) + 3(세계)
-        const MAX_DAILY_SCORE_GAIN = 136; // 32(동네) + 46(전국) + 58(세계)
         const KST_OFFSET = 9 * 60 * 60 * 1000;
     
-        const lastUpdateTs = currentUserWithStatus.lastWeeklyCompetitorsUpdate || Date.now();
+        const lastUpdateTs = currentUserWithStatus.lastWeeklyCompetitorsUpdate || currentKstDayStart; // Use currentKstDayStart as fallback
         
-        const startDate = new Date(lastUpdateTs);
-        startDate.setHours(0, 0, 0, 0); // Use local timezone start of day for calculation
-        
-        const nowDate = new Date();
-        nowDate.setHours(0, 0, 0, 0); // Use local timezone start of today
-    
-        const diffTime = Math.max(0, nowDate.getTime() - startDate.getTime());
+        const startOfWeek = new Date(lastUpdateTs + KST_OFFSET);
+        startOfWeek.setHours(0, 0, 0, 0);
+
+        const diffTime = Math.max(0, currentKstDayStart - startOfWeek.getTime()); // Use currentKstDayStart here
         const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-        return (currentUserWithStatus.weeklyCompetitors).map(competitor => {
+        let competitors = (currentUserWithStatus.weeklyCompetitors).map(competitor => {
             if (competitor.id.startsWith('bot-')) {
                 let totalGain = 0;
                 for (let i = 1; i <= daysPassed; i++) {
-                    const seedStr = `${competitor.id}-${new Date(startDate.getTime() + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}`;
+                    const seedStr = `${competitor.id}-${new Date(startOfWeek.getTime() + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}`;
                     const seed = stringToSeed(seedStr);
                     const randomVal = seededRandom(seed);
-                    const dailyGain = MIN_DAILY_SCORE_GAIN + Math.floor(randomVal * (MAX_DAILY_SCORE_GAIN - MIN_DAILY_SCORE_GAIN + 1));
+                    const dailyGain = Math.floor(randomVal * 26); // 0-25 random score gain
                     totalGain += dailyGain;
                 }
                 const liveScore = competitor.initialScore + totalGain;
@@ -92,8 +107,66 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
                 const scoreChange = liveScore - competitor.initialScore;
                 return { ...competitor, liveScore, scoreChange };
             }
-        }).sort((a, b) => b.liveScore - a.liveScore);
-    }, [currentUserWithStatus?.weeklyCompetitors, currentUserWithStatus?.lastWeeklyCompetitorsUpdate, allUsers]);
+        });
+
+        // Add bots if less than 16 competitors
+        const NUM_COMPETITORS = 16;
+        if (competitors.length < NUM_COMPETITORS) {
+            const botsToAdd = NUM_COMPETITORS - competitors.length;
+            for (let i = 0; i < botsToAdd; i++) {
+                const botId = `bot-${currentKstDayStart}-${i}`; // Use currentKstDayStart for bot ID to make it stable for the day
+                const botSeed = stringToSeed(botId);
+                const randomInitialScore = 1000 + Math.floor(seededRandom(botSeed) * 500); // Random initial score for bots
+                const randomAvatar = AVATAR_POOL[Math.floor(seededRandom(botSeed + 1) * AVATAR_POOL.length)];
+                const randomBorder = BORDER_POOL[Math.floor(seededRandom(botSeed + 2) * BORDER_POOL.length)];
+
+                let totalGain = 0;
+                for (let j = 1; j <= daysPassed; j++) {
+                    const seedStr = `${botId}-${new Date(startOfWeek.getTime() + j * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}`;
+                    const seed = stringToSeed(seedStr);
+                    const randomVal = seededRandom(seed);
+                    const dailyGain = Math.floor(randomVal * 26); // 0-25 random score gain
+                    totalGain += dailyGain;
+                }
+                const liveScore = randomInitialScore + totalGain;
+                const scoreChange = liveScore - randomInitialScore;
+
+                // Static list of possible bot nicknames
+                const botNicknames = [
+                    "바둑사랑꾼", "묘수장인", "신의한수", "돌가루", "흑백의춤",
+                    "고수킬러", "초읽기", "천재기사", "바둑왕", "행마의달인",
+                    "돌의속삭임", "궁극의수", "침착맨", "승률100%", "패왕", "기성", "조훈현", "이창호", "알파고"
+                ];
+
+                let assignedNickname = `Bot ${i + 1}`;
+                // Assign a nickname that hasn't been taken by other bots generated in this session
+                const usedBotNicknames = competitors.filter(c => c.id.startsWith('bot-')).map(c => c.nickname);
+                const availableNicknames = botNicknames.filter(name => !usedBotNicknames.includes(name));
+                
+                if (availableNicknames.length > 0) {
+                    // Use a seeded random to pick a nickname from the available ones
+                    const nicknameSeed = stringToSeed(botId + 'nickname');
+                    assignedNickname = availableNicknames[Math.floor(seededRandom(nicknameSeed) * availableNicknames.length)];
+                } else if (botNicknames.length > 0) {
+                    // If all static nicknames are used, cycle through them or append a number
+                    assignedNickname = `${botNicknames[i % botNicknames.length]} ${Math.floor(Math.random() * 100)}`;
+                }
+
+                competitors.push({
+                    id: botId,
+                    nickname: assignedNickname,
+                    avatarId: randomAvatar.id,
+                    borderId: randomBorder.id,
+                    initialScore: randomInitialScore,
+                    liveScore: liveScore,
+                    scoreChange: scoreChange,
+                    league: currentUserWithStatus.league, // Bots should be in the current user's league
+                });
+            }
+        }
+
+        return competitors.sort((a, b) => b.liveScore - a.liveScore);
+    }, [currentUserWithStatus?.weeklyCompetitors, currentUserWithStatus?.lastWeeklyCompetitorsUpdate, allUsers, currentKstDayStart]);
 
 
     useEffect(() => {
@@ -313,13 +386,11 @@ const TournamentCard: React.FC<{
             className="group bg-gray-800 rounded-lg p-3 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full"
             onClick={action}
         >
-            <div className="w-full aspect-video bg-gray-700 rounded-md flex items-center justify-center text-gray-500 overflow-hidden relative">
+            <h2 className="text-lg font-bold mb-2">{definition.name}</h2>
+            <div className="w-full aspect-video bg-gray-700 rounded-md flex items-center justify-center text-gray-500 overflow-hidden relative flex-grow">
                 <img src={definition.image} alt={definition.name} className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity duration-300 p-2">
-                    <h2 className="text-lg font-bold">{definition.name}</h2>
-                    <span className="font-bold text-sm mt-2 text-yellow-300">{buttonText} &rarr;</span>
-                </div>
             </div>
+            <span className="font-bold text-sm mt-2 text-yellow-300">{buttonText} &rarr;</span>
         </div>
     );
 };
@@ -413,7 +484,7 @@ const TournamentLobby: React.FC = () => {
                         <div className="flex-1 min-w-0">
                             <WeeklyCompetitorsPanel setHasRankChanged={setHasRankChanged}/>
                         </div>
-                        <div className="w-auto flex-shrink-0">
+                        <div className="w-24 flex-shrink-0">
                             <QuickAccessSidebar fillHeight={true} />
                         </div>
                     </div>

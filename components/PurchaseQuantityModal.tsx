@@ -2,7 +2,8 @@
 import React, { useState, useMemo } from 'react';
 import DraggableWindow from './DraggableWindow';
 import Button from './Button';
-import { UserWithStatus } from '../types';
+import { UserWithStatus, InventoryItemType } from '../types'; // Import InventoryItemType
+import { BASE_SLOTS_PER_CATEGORY, EXPANSION_AMOUNT } from '../constants/items'; // Assuming these are defined here or similar
 
 interface PurchaseQuantityModalProps {
     item: {
@@ -10,6 +11,7 @@ interface PurchaseQuantityModalProps {
         name: string;
         price: { gold?: number; diamonds?: number };
         limit?: number;
+        type: InventoryItemType; // Add this line
     };
     currentUser: UserWithStatus;
     onClose: () => void;
@@ -26,7 +28,17 @@ const PurchaseQuantityModal: React.FC<PurchaseQuantityModalProps> = ({ item, cur
     const maxQuantity = useMemo(() => {
         const currency = isGold ? currentUser.gold : currentUser.diamonds;
         const maxByCurrency = pricePerItem > 0 ? Math.floor(currency / pricePerItem) : Infinity;
-        return Math.min(item.limit || 100, maxByCurrency, 100); // Hard cap at 100 for sanity
+
+        let maxByInventory = Infinity;
+        if (item.type !== 'equipment') { // Equipment doesn't take up stackable inventory space in the same way
+            const currentItemCount = currentUser.inventory.filter(invItem => invItem.itemId === item.itemId).length;
+            const inventorySlots = currentUser.inventorySlots?.[item.type] || BASE_SLOTS_PER_CATEGORY;
+            const availableSlots = inventorySlots - currentItemCount;
+            maxByInventory = availableSlots > 0 ? availableSlots : 0;
+        }
+        
+        // Combine all limits: item.limit, currency, inventory space, and a hard cap
+        return Math.max(1, Math.min(item.limit || Infinity, maxByCurrency, maxByInventory, 999)); // Hard cap at 999 for sanity
     }, [item, currentUser, isGold, pricePerItem]);
 
     const handleConfirm = () => {
@@ -51,6 +63,7 @@ const PurchaseQuantityModal: React.FC<PurchaseQuantityModalProps> = ({ item, cur
                             className="w-24 text-center text-2xl font-bold bg-tertiary rounded-md p-2"
                         />
                         <Button onClick={() => setQuantity(q => Math.min(maxQuantity, q + 1))} disabled={quantity >= maxQuantity}>+</Button>
+                        <Button onClick={() => setQuantity(maxQuantity)} disabled={maxQuantity <= 0} colorScheme="blue" className="!py-2 !px-3">Max</Button>
                     </div>
                     <input 
                         type="range"

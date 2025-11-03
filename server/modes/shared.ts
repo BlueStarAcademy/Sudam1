@@ -1,5 +1,5 @@
 import * as summaryService from '../summaryService.js';
-import { LiveGameSession, RPSChoice, GameStatus, HandleActionResult, VolatileState, ServerAction, User, Player, ChatMessage } from '../../types.js';
+import { LiveGameSession, RPSChoice, GameStatus, HandleActionResult, VolatileState, ServerAction, User, Player, ChatMessage, UserStatus } from '../../types.js';
 import * as db from '../db.js';
 import { randomUUID } from 'crypto';
 import { ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_SIMULTANEOUS_PLACEMENT_TIME_LIMIT, CURLING_TURN_TIME_LIMIT, PLAYFUL_MODE_FOUL_LIMIT, SPECIAL_GAME_MODES } from '../../constants.js';
@@ -273,7 +273,7 @@ export const handleSharedAction = async (volatileState: VolatileState, game: Liv
 
             if (payload?.andLeave) {
                 if (volatileState.userStatuses[user.id]) {
-                    volatileState.userStatuses[user.id] = { status: 'waiting', mode: game.mode };
+                    volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
                 }
             }
             return {};

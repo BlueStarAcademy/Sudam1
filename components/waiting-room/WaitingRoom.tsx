@@ -14,6 +14,7 @@ import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, aiUserId } from '../../constant
 import QuickAccessSidebar from '../QuickAccessSidebar.js';
 import Button from '../Button.js';
 
+
 interface WaitingRoomComponentProps {
     mode: GameMode;
 }
@@ -242,11 +243,12 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
                    <div className="flex-shrink-0">
                       <AiChallengePanel mode={mode} />
                   </div>
+
                   <div className="flex-1 flex flex-col gap-4 min-h-0">
                       <div className="flex-1 min-h-0">
                           <GameList games={ongoingGames} onAction={handlers.handleAction} currentUser={currentUserWithStatus} />
                       </div>
-                      <div className="h-80 flex-shrink-0 flex flex-col bg-panel border border-color rounded-lg shadow-lg">
+                      <div className="flex-1 flex flex-col bg-panel border border-color rounded-lg shadow-lg">
                           <ChatWindow messages={chatMessages} mode={'global'} onAction={handlers.handleAction} locationPrefix={locationPrefix} onViewUser={handlers.openViewingUser} />
                       </div>
                   </div>

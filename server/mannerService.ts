@@ -2,6 +2,7 @@
 
 import { User } from '../types.js';
 import * as types from '../types.js';
+import * as db from '../db.ts';
 import { ACTION_POINT_REGEN_INTERVAL_MS } from '../constants.js';
 import { regenerateActionPoints, getMannerEffects as getMannerEffectsFromService } from './effectService.js';
 import { createDefaultSpentStatPoints } from './initialData.js';
@@ -103,4 +104,25 @@ export const applyMannerRankChange = async (user: types.User, oldMannerScore: nu
         }
         user.spentStatPoints = spentStats;
     }
+};
+
+export const handleMannerAction = async (volatileState: types.VolatileState, action: types.ServerAction & { userId: string }, user: types.User): Promise<types.HandleActionResult> => {
+    const { payload } = action;
+    const { type: mannerType } = payload as { type: 'manner' | 'unmannerly' }; // Assuming payload has a 'type' field
+
+    const oldMannerScore = user.mannerScore ?? 200;
+    let scoreChange = 0;
+
+    if (mannerType === 'manner') {
+        scoreChange = 5; // Example: Increase by 5 for mannerly action
+    } else if (mannerType === 'unmannerly') {
+        scoreChange = -10; // Example: Decrease by 10 for unmannerly action
+    }
+
+    user.mannerScore = Math.max(0, (user.mannerScore ?? 200) + scoreChange); // Ensure score doesn't go below 0
+
+    await applyMannerRankChange(user, oldMannerScore);
+    await db.updateUser(user);
+
+    return { clientResponse: { updatedUser: user } };
 };

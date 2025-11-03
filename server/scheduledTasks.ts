@@ -2,7 +2,7 @@
 
 import * as db from './db.js';
 import * as types from '../types.js';
-import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants.js';
+import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, SEASONAL_TIER_BORDERS } from '../constants.js';
 import { randomUUID } from 'crypto';
 import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST } from '../utils/timeUtils.js';
 
@@ -40,8 +40,10 @@ const processRewardsForSeason = async (season: SeasonInfo) => {
             let currentTierName = '새싹'; // Default
 
             if (userRankInfo) { // User was eligible and ranked
+                const userScore = userRankInfo.user.stats![mode].rankingScore || 0;
+                const userTotalGames = (userRankInfo.user.stats![mode].wins || 0) + (userRankInfo.user.stats![mode].losses || 0);
                 for (const tier of RANKING_TIERS) {
-                    if (tier.threshold(userRankInfo.rank, totalEligiblePlayers)) {
+                    if (tier.threshold(userScore, userRankInfo.rank, userTotalGames)) {
                         currentTierName = tier.name;
                         break;
                     }
@@ -66,24 +68,25 @@ const processRewardsForSeason = async (season: SeasonInfo) => {
             user.previousSeasonTier = bestTierInfo.tierName;
 
             // 1. Grant border reward
-            const borderForTier = BORDER_POOL.find(b => b.unlockTier === bestTierInfo.tierName);
-            if (borderForTier) {
+            const seasonalBorderId = SEASONAL_TIER_BORDERS[bestTierInfo.tierName];
+            if (seasonalBorderId) {
                 if (!user.ownedBorders) user.ownedBorders = ['default', 'simple_black']; // Ensure array exists
-                if (!user.ownedBorders.includes(borderForTier.id)) {
-                    user.ownedBorders.push(borderForTier.id);
+                if (!user.ownedBorders.includes(seasonalBorderId)) {
+                    user.ownedBorders.push(seasonalBorderId);
                 }
-                user.borderId = borderForTier.id; // Also equip it for the new season
+                user.borderId = seasonalBorderId; // Equip the seasonal border
             }
             
             // 2. Grant mail reward
             const reward = rewards[bestTierInfo.tierName];
             if (reward) {
-                const mailMessage = `${season.name} 최고 티어는 "${bestTierInfo.tierName}" 티어입니다.(${bestTierInfo.mode} 경기장)\n프로필의 테두리 아이템을 한 시즌동안 사용하실 수 있습니다.\n티어 보상 상품을 수령하세요.`;
+                const mailTitle = `${season.name} 최고 티어는 "${bestTierInfo.tierName}" 티어입니다.`;
+                const mailMessage = `프로필의 테두리 아이템을 한 시즌동안 사용하실 수 있습니다.\n티어 보상 상품을 수령하세요.`;
                 
                 const mail: types.Mail = {
                     id: `mail-season-${randomUUID()}`,
                     from: 'System',
-                    title: `${season.name} 시즌 보상`,
+                    title: mailTitle,
                     message: mailMessage,
                     attachments: reward,
                     receivedAt: now,
@@ -166,6 +169,17 @@ export async function processWeeklyLeagueUpdates(user: types.User): Promise<type
     }
     
     const allUsers = await db.getAllUsers();
+
+    // Reset tournament scores for all users at the start of a new week
+    /*
+    for (const u of allUsers) {
+        if (u.tournamentScore !== 0) {
+            u.tournamentScore = 0;
+            await db.updateUser(u);
+        }
+    }
+    */
+
     const competitorMap = new Map(allUsers.map(u => [u.id, u]));
 
     const finalRankings = user.weeklyCompetitors.map(c => {
@@ -289,7 +303,7 @@ export async function updateWeeklyCompetitorsIfNeeded(user: types.User, allUsers
         avatarId: u.avatarId,
         borderId: u.borderId,
         league: u.league,
-        initialScore: u.tournamentScore
+        initialScore: 0 // All scores reset to 0 at the start of the week
     }));
     
     const updatedUser = JSON.parse(JSON.stringify(user));

@@ -1,7 +1,7 @@
 import {
     User, LiveGameSession, Negotiation, KomiBid,
     AdminLog, Announcement, OverrideAnnouncement, InventoryItem,
-    QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus
+    QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus, EquipmentPreset
 } from './entities.js';
 import { GameMode, RPSChoice, Point, Player, UserStatus, TournamentType, InventoryItemType } from './enums.js';
 
@@ -68,6 +68,7 @@ export type ServerAction =
     // Social
     | { type: 'SEND_CHAT_MESSAGE', payload: { channel: string; text?: string; emoji?: string, location?: string } }
     | { type: 'SET_USER_STATUS', payload: { status: any } }
+    | { type: 'UPDATE_REJECTION_SETTINGS', payload: { rejectedGameModes: GameMode[] } }
     | { type: 'ENTER_WAITING_ROOM', payload: { mode: GameMode } }
     | { type: 'LEAVE_WAITING_ROOM', payload?: never }
     | { type: 'LEAVE_GAME_ROOM', payload: { gameId: string } }
@@ -143,6 +144,8 @@ export type ServerAction =
     | { type: 'CONFIRM_STAT_ALLOCATION', payload: { newStatPoints: any } }
     | { type: 'RESET_SINGLE_STAT', payload: { mode: GameMode } }
     | { type: 'RESET_STATS_CATEGORY', payload: { category: 'strategic' | 'playful' } }
+    | { type: 'APPLY_PRESET', payload: { presetName: string } }
+    | { type: 'SAVE_PRESET', payload: { preset: EquipmentPreset, index: number } }
     // Inventory & Item Actions
     | { type: 'USE_ITEM', payload: { itemId: string } }
     | { type: 'USE_ALL_ITEMS_OF_TYPE', payload: { itemName: string } }

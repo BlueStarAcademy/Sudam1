@@ -13,6 +13,7 @@ import TierInfoModal from './TierInfoModal.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, aiUserId } from './../constants.js';
 import QuickAccessSidebar from './QuickAccessSidebar.js';
 import Button from './Button.js';
+import GameApplicationModal from './GameApplicationModal.js';
 
 interface WaitingRoomComponentProps {
     mode: GameMode;
@@ -46,7 +47,7 @@ const AiChallengePanel: React.FC<{ mode: GameMode }> = ({ mode }) => {
                     <p className="text-sm text-tertiary">{botName}와(과) 즉시 대국을 시작합니다.</p>
                  </div>
             </div>
-            <Button onClick={() => handlers.handleAction({ type: 'CHALLENGE_USER', payload: { opponentId: aiUserId, mode } })} colorScheme="purple">설정 및 시작</Button>
+            <Button onClick={() => setIsGameApplicationModalOpen(true)} colorScheme="purple">설정 및 시작</Button>
         </div>
     );
 };
@@ -116,6 +117,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [isTierInfoModalOpen, setIsTierInfoModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isGameApplicationModalOpen, setIsGameApplicationModalOpen] = useState(false);
   const desktopContainerRef = useRef<HTMLDivElement>(null);
 
   const chatMessages = waitingRoomChats['global'] || [];
@@ -219,7 +221,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
                     </span>
                 </button>
             </div>
-            <div className={`fixed top-0 right-0 h-full w-[280px] bg-primary shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col`}>
+            <div className={`fixed top-0 right-0 h-full w-[320px] bg-primary shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col`}>
                 <button onClick={() => setIsMobileSidebarOpen(false)} className="self-end text-2xl p-2 text-tertiary hover:text-primary">×</button>
                 <div className="flex-shrink-0 p-2 border-b border-color">
                     <QuickAccessSidebar mobile={true} />
@@ -267,6 +269,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
           </div>
         )}
       </div>
+      {isGameApplicationModalOpen && <GameApplicationModal onClose={() => setIsGameApplicationModalOpen(false)} />}
       {isTierInfoModalOpen && <TierInfoModal onClose={() => setIsTierInfoModalOpen(false)} />}
       {isHelpModalOpen && <HelpModal mode={mode} onClose={() => setIsHelpModalOpen(false)} />}
     </div>

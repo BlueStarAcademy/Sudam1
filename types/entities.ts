@@ -5,6 +5,11 @@ import { UserStatusInfo, ChatMessage } from './api.js';
 // --- Item & Equipment ---
 export type Equipment = Partial<Record<EquipmentSlot, string>>;
 
+export type EquipmentPreset = {
+  name: string;
+  equipment: Equipment;
+};
+
 export type ItemOption = {
   type: ItemOptionType;
   value: number;
@@ -237,6 +242,7 @@ export type User = {
   inventory: InventoryItem[];
   inventorySlots: { equipment: number; consumable: number; material: number; };
   equipment: Equipment;
+  equipmentPresets?: EquipmentPreset[];
   actionPoints: { current: number; max: number };
   lastActionPointUpdate: number;
   actionPointPurchasesToday?: number;
@@ -276,6 +282,7 @@ export type User = {
   lastLeagueUpdate?: number;
   monthlyGoldBuffExpiresAt?: number | null;
   mbti?: string | null;
+  rejectedGameModes?: GameMode[];
   isMbtiPublic?: boolean;
   statResetCountToday?: number;
   lastStatResetDate?: string;

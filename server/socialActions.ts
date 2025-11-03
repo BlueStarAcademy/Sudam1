@@ -52,7 +52,7 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
             
             const userStatus = volatileState.userStatuses[user.id];
             const activeGameId = userStatus?.gameId;
-            if (userStatus?.status === 'in-game' && activeGameId) {
+            if (userStatus?.status === types.UserStatus.InGame && activeGameId) {
                 const game = await db.getLiveGame(activeGameId);
                 if (game && game.gameStatus !== 'ended' && game.gameStatus !== 'no_contest') {
                     if (!game.disconnectionState) {
@@ -146,11 +146,11 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
         }
         case 'SET_USER_STATUS': {
             const { status } = payload as { status: types.UserStatus };
-            if (status !== 'waiting' && status !== 'resting') {
+            if (status !== types.UserStatus.Waiting && status !== types.UserStatus.Resting) {
                 return { error: 'Invalid status for waiting room.' };
             }
             const currentUserStatus = volatileState.userStatuses[user.id];
-            if (currentUserStatus && (currentUserStatus.status === 'waiting' || currentUserStatus.status === 'resting')) {
+            if (currentUserStatus && (currentUserStatus.status === types.UserStatus.Waiting || currentUserStatus.status === types.UserStatus.Resting)) {
                 currentUserStatus.status = status;
             } else {
                 return { error: 'Cannot change status while in-game or negotiating.' };
@@ -159,13 +159,13 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
         }
         case 'ENTER_WAITING_ROOM': {
             const { mode } = payload;
-            volatileState.userStatuses[user.id] = { status: 'waiting', mode };
+            volatileState.userStatuses[user.id] = { status: types.UserStatus.Waiting, mode };
             return {};
         }
         case 'LEAVE_WAITING_ROOM': {
             const userStatus = volatileState.userStatuses[user.id];
-            if (userStatus && (userStatus.status === 'waiting' || userStatus.status === 'resting')) {
-                userStatus.status = 'online';
+            if (userStatus && (userStatus.status === types.UserStatus.Waiting || userStatus.status === types.UserStatus.Resting)) {
+                userStatus.status = types.UserStatus.Online;
                 delete userStatus.mode;
             }
             return {};
@@ -189,7 +189,7 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
             if (!game) return { error: 'Game not found.' };
 
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id] = { status: 'waiting', mode: game.mode };
+                volatileState.userStatuses[user.id] = { status: types.UserStatus.Waiting, mode: game.mode };
             }
 
             const ongoingRematchNegotiation = Object.values(volatileState.negotiations).find(
@@ -202,8 +202,8 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
                     : ongoingRematchNegotiation.challenger.id;
                 
                 const otherPlayerStatus = volatileState.userStatuses[otherPlayerId];
-                if (otherPlayerStatus?.status === 'negotiating') {
-                    otherPlayerStatus.status = 'in-game';
+                if (otherPlayerStatus?.status === types.UserStatus.Negotiating) {
+                    otherPlayerStatus.status = types.UserStatus.InGame;
                     otherPlayerStatus.gameId = gameId;
                 }
 
@@ -222,7 +222,7 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
             if (!game) return { error: 'Game not found.' };
 
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id] = { status: 'waiting', mode: game.mode };
+                volatileState.userStatuses[user.id] = { status: types.UserStatus.Waiting, mode: game.mode };
             }
             
             // If the user leaves before the game is officially over (e.g. resigns), end the game.
@@ -236,13 +236,13 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
             const { gameId } = payload;
             const game = await db.getLiveGame(gameId);
             if (!game) return { error: 'Game not found.' };
-            volatileState.userStatuses[user.id] = { status: 'spectating', spectatingGameId: gameId, mode: game.mode };
+            volatileState.userStatuses[user.id] = { status: types.UserStatus.Spectating, spectatingGameId: gameId, mode: game.mode };
             return {};
         }
         case 'LEAVE_SPECTATING': {
             const userStatus = volatileState.userStatuses[user.id];
-            if (userStatus && userStatus.status === 'spectating') {
-                userStatus.status = 'online'; 
+            if (userStatus && userStatus.status === types.UserStatus.Spectating) {
+                userStatus.status = types.UserStatus.Online; 
                 delete userStatus.spectatingGameId;
                 delete userStatus.gameId; 
             }

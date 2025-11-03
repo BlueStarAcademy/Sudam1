@@ -1,10 +1,11 @@
 import * as db from '../db.js';
 // FIX: Import the full namespace to access enums like CoreStat.
 import * as types from '../../types.js';
-import { AVATAR_POOL, BORDER_POOL } from '../../constants.js';
+import { AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES } from '../../constants.js';
 import { containsProfanity } from '../../profanity.js';
+import { UserStatus } from '../../types/enums.js';
 
-type HandleActionResult = { 
+type HandleActionResult = {
     clientResponse?: any;
     error?: string;
 };
@@ -39,12 +40,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             if (user.diamonds < cost && !user.isAdmin) return { error: '다이아가 부족합니다.' };
             if (newNickname.trim().length < 2 || newNickname.trim().length > 12) return { error: '닉네임은 2-12자여야 합니다.' };
             if (containsProfanity(newNickname)) return { error: "닉네임에 부적절한 단어가 포함되어 있습니다." };
-            
+
             const allUsers = await db.getAllUsers();
             if (allUsers.some(u => u.nickname.toLowerCase() === newNickname.toLowerCase())) {
                 return { error: '이미 사용 중인 닉네임입니다.' };
             }
-            
+
             if (!user.isAdmin) {
                 user.diamonds -= cost;
             }
@@ -65,7 +66,7 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
         case 'RESET_STAT_POINTS': {
             const cost = 500;
             if (user.diamonds < cost && !user.isAdmin) return { error: `다이아가 부족합니다. (필요: ${cost})` };
-            
+
             if (!user.isAdmin) {
                 user.diamonds -= cost;
             }
@@ -77,11 +78,11 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
         }
         case 'CONFIRM_STAT_ALLOCATION': {
             const { newStatPoints } = payload as { newStatPoints: Record<types.CoreStat, number> };
-            
+
             const levelPoints = (user.strategyLevel - 1) * 2 + (user.playfulLevel - 1) * 2;
             const masteryBonus = user.mannerMasteryApplied ? 20 : 0;
             const totalAvailablePoints = levelPoints + masteryBonus;
-            
+
             const totalSpent = Object.values(newStatPoints).reduce((sum, points) => sum + points, 0);
 
             if (totalSpent > totalAvailablePoints) {
@@ -89,6 +90,63 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             }
 
             user.spentStatPoints = newStatPoints;
+            await db.updateUser(user);
+            return {};
+        }
+        case 'UPDATE_REJECTION_SETTINGS': {
+            const { rejectedGameModes } = payload as { rejectedGameModes: types.GameMode[] };
+            user.rejectedGameModes = rejectedGameModes;
+
+            const allStrategicGameModes = SPECIAL_GAME_MODES.map(m => m.mode);
+            const allRejected = allStrategicGameModes.every(mode => rejectedGameModes.includes(mode));
+
+            if (allRejected) {
+                if (volatileState.userStatuses[user.id]) {
+                    volatileState.userStatuses[user.id].status = UserStatus.Resting;
+                }
+            } else if (volatileState.userStatuses[user.id]?.status === UserStatus.Resting) {
+                if (volatileState.userStatuses[user.id]) {
+                    volatileState.userStatuses[user.id].status = UserStatus.Waiting;
+                }
+            }
+            await db.updateUser(user);
+            return {};
+        }
+        case 'SAVE_PRESET': {
+            const { preset, index } = payload as { preset: types.EquipmentPreset, index: number };
+            if (!user.equipmentPresets) {
+                user.equipmentPresets = [];
+            }
+            user.equipmentPresets[index] = preset;
+            await db.updateUser(user);
+            return {};
+        }
+        case 'APPLY_PRESET': {
+            const { presetName } = payload as { presetName: string };
+            const presetToApply = user.equipmentPresets?.find(p => p.name === presetName);
+
+            if (!presetToApply) {
+                return { error: '프리셋을 찾을 수 없습니다.' };
+            }
+
+            user.equipment = presetToApply.equipment;
+
+            // Unequip items that are no longer in the preset
+            user.inventory.forEach(item => {
+                if (item.type === 'equipment' && item.isEquipped && !Object.values(user.equipment).includes(item.id)) {
+                    item.isEquipped = false;
+                }
+            });
+
+            // Equip items that are in the preset but not currently equipped
+            for (const slot in user.equipment) {
+                const itemId = user.equipment[slot as types.EquipmentSlot];
+                const itemInInventory = user.inventory.find(item => item.id === itemId);
+                if (itemInInventory && !itemInInventory.isEquipped) {
+                    itemInInventory.isEquipped = true;
+                }
+            }
+
             await db.updateUser(user);
             return {};
         }

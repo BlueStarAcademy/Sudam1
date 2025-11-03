@@ -76,6 +76,12 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                     return { error: 'Invalid tournament type.' };
             }
 
+            const activeTournament = volatileState.activeTournaments?.[user.id];
+
+            if (activeTournament && activeTournament.type === type) {
+                return { clientResponse: { redirectToTournament: type } };
+            }
+
             const existingState = (user as any)[stateKey] as TournamentState | null;
 
             if (existingState) {
@@ -88,12 +94,12 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 }
                 (user as any)[stateKey] = existingState; // Re-assign to mark for update
                 await db.updateUser(user);
-                return {};
+                return { clientResponse: { redirectToTournament: type } };
             }
 
-            if ((user as any)[playedDateKey] && isSameDayKST((user as any)[playedDateKey], now) && !user.isAdmin) {
-                return { error: '이미 오늘 참가한 토너먼트입니다.' };
-            }
+            // if ((user as any)[playedDateKey] && isSameDayKST((user as any)[playedDateKey], now) && !user.isAdmin) {
+            //     return { error: '이미 오늘 참가한 토너먼트입니다.' };
+            // }
             
             const allUsers = await db.getAllUsers();
             const myLeague = user.league;
@@ -143,10 +149,8 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             (user as any)[stateKey] = newState;
             (user as any)[playedDateKey] = now;
             
-            updateQuestProgress(user, 'tournament_participate');
-
             await db.updateUser(user);
-            return {};
+            return { clientResponse: { redirectToTournament: type } };
         }
 
         case 'START_TOURNAMENT_ROUND': {
@@ -174,9 +178,7 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             
             // Update volatile state as well for immediate consistency
             if (!volatileState.activeTournaments) volatileState.activeTournaments = {};
-            volatileState.activeTournaments[user.id] = tournamentState;
-
-            return {};
+            return { clientResponse: { redirectToTournament: type } };
         }
 
         case 'SKIP_TOURNAMENT_END': {

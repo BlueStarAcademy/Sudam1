@@ -70,23 +70,34 @@ const migrations: { [version: number]: string } = {
         ALTER TABLE live_games ADD COLUMN whitePatternStones TEXT;
         ALTER TABLE live_games ADD COLUMN singlePlayerPlacementRefreshesUsed INTEGER;
     `,
+    31: 'ALTER TABLE users ADD COLUMN blacksmithLevel INTEGER;',
+    32: 'ALTER TABLE users ADD COLUMN blacksmithXp INTEGER;',
+    33: 'ALTER TABLE users ADD COLUMN monthlyGoldBuffExpiresAt INTEGER;',
+    34: 'ALTER TABLE users ADD COLUMN inventorySlotsMigrated BOOLEAN;',
 };
 
 export const initializeAndGetDb = async (): Promise<Database> => {
-    if (dbInstance) return dbInstance;
+    console.log('[DB] initializeAndGetDb: Start');
+    if (dbInstance) {
+        console.log('[DB] initializeAndGetDb: Returning existing instance');
+        return dbInstance;
+    }
 
+    console.log('[DB] initializeAndGetDb: Opening database...');
     const db = await open({
         filename: DB_FILE_PATH,
         driver: sqlite3.Database
     });
+    console.log('[DB] initializeAndGetDb: Database opened.');
 
+    console.log('[DB] initializeAndGetDb: Executing CREATE TABLE statements...');
      await db.exec(`
-        CREATE TABLE IF NOT EXISTS kv (
+        CREATE TABLE IF NOT EXISTS kv ( 
             key TEXT PRIMARY KEY,
             value TEXT
         );
 
-        CREATE TABLE IF NOT EXISTS users (
+        CREATE TABLE IF NOT EXISTS users ( 
             id TEXT PRIMARY KEY,
             username TEXT UNIQUE,
             nickname TEXT UNIQUE,
@@ -99,16 +110,62 @@ export const initializeAndGetDb = async (): Promise<Database> => {
             diamonds INTEGER,
             inventory TEXT,
             equipment TEXT,
-            stats TEXT
+            stats TEXT,
+            inventorySlots TEXT,
+            actionPoints TEXT,
+            lastActionPointUpdate INTEGER,
+            mannerScore INTEGER,
+            mail TEXT,
+            quests TEXT,
+            chatBanUntil INTEGER,
+            connectionBanUntil INTEGER,
+            avatarId TEXT,
+            borderId TEXT,
+            previousSeasonTier TEXT,
+            seasonHistory TEXT,
+            baseStats TEXT,
+            spentStatPoints TEXT,
+            actionPointPurchasesToday INTEGER,
+            lastActionPointPurchaseDate INTEGER,
+            dailyShopPurchases TEXT,
+            tournamentScore INTEGER,
+            league TEXT,
+            mannerMasteryApplied BOOLEAN,
+            pendingPenaltyNotification TEXT,
+            lastNeighborhoodPlayedDate INTEGER,
+            dailyNeighborhoodWins INTEGER,
+            neighborhoodRewardClaimed BOOLEAN,
+            lastNeighborhoodTournament TEXT,
+            lastNationalPlayedDate INTEGER,
+            dailyNationalWins INTEGER,
+            nationalRewardClaimed BOOLEAN,
+            lastNationalTournament TEXT,
+            lastWorldPlayedDate INTEGER,
+            dailyWorldWins INTEGER,
+            worldRewardClaimed BOOLEAN,
+            lastWorldTournament TEXT,
+            weeklyCompetitors TEXT,
+            lastWeeklyCompetitorsUpdate INTEGER,
+            lastLeagueUpdate INTEGER,
+            ownedBorders TEXT,
+            equipmentPresets TEXT,
+            mbti TEXT,
+            isMbtiPublic BOOLEAN,
+            monthlyGoldBuffExpiresAt INTEGER,
+            singlePlayerProgress INTEGER,
+            bonusStatPoints INTEGER,
+            inventorySlotsMigrated BOOLEAN,
+            blacksmithLevel INTEGER,
+            blacksmithXp INTEGER
         );
 
-        CREATE TABLE IF NOT EXISTS user_credentials (
+        CREATE TABLE IF NOT EXISTS user_credentials ( 
             username TEXT PRIMARY KEY,
             passwordHash TEXT,
             userId TEXT
         );
 
-        CREATE TABLE IF NOT EXISTS live_games (
+        CREATE TABLE IF NOT EXISTS live_games ( 
             id TEXT PRIMARY KEY,
             mode TEXT,
             description TEXT,
@@ -255,15 +312,75 @@ export const initializeAndGetDb = async (): Promise<Database> => {
             pendingSystemMessages TEXT
         );
     `);
+    console.log('[DB] initializeAndGetDb: CREATE TABLE statements executed.');
 
-    // --- Manual verification for critical columns that may have failed in previous buggy migrations ---
+    console.log('[DB] initializeAndGetDb: Starting MIGRATION LOGIC...');
+    await db.exec(`
+        CREATE TABLE IF NOT EXISTS schema_version ( 
+            version INTEGER
+        );
+    `);
+    console.log('[DB] initializeAndGetDb: schema_version table created/ensured.');
+
+    const versionRow = await db.get('SELECT version FROM schema_version');
+    console.log(`[DB] initializeAndGetDb: Fetched schema version: ${versionRow?.version}`);
+    let version = versionRow ? versionRow.version : 0;
+    if (!versionRow) {
+        console.log('[DB] initializeAndGetDb: No schema version found, inserting version 1.');
+        await db.run('INSERT INTO schema_version (version) VALUES (1)');
+        version = 1;
+    }
+    
+    for (let v = version + 1; v <= Math.max(...Object.keys(migrations).map(Number)); v++) {
+        if (migrations[v]) {
+            console.log(`[DB] Running migration version ${v}...`);
+            const statements = migrations[v].split(';').filter(s => s.trim());
+            for (const statement of statements) {
+                try {
+                    console.log(`[DB] Migration ${v}: Executing statement: ${statement}`);
+                    await db.exec(statement);
+                } catch (e: any) {
+                    if (e.message.includes('duplicate column name')) {
+                        console.warn(`[DB] Column in migration ${v} already exists, skipping.`);
+                    }
+                    else {
+                        console.error(`[DB] Migration ${v} failed:`, e);
+                        throw e;
+                    }
+                }
+            }
+            console.log(`[DB] Migration ${v}: Updating schema version to ${v}`);
+            await db.run('UPDATE schema_version SET version = ?', v);
+            console.log(`[DB] Migration ${v} complete.`);
+        }
+    }
+    console.log('[DB] initializeAndGetDb: MIGRATION LOGIC finished.');
+
+    console.log('[DB] initializeAndGetDb: Starting Manual verification...');
     try {
+        console.log('[DB] Manual verification: Verifying users table columns...');
         const usersColumns = await db.all("PRAGMA table_info(users)");
         if (!usersColumns.some(col => col.name === 'connectionBanUntil')) {
             console.log('[DB] Verification: connectionBanUntil column is missing. Adding it now.');
             await db.exec('ALTER TABLE users ADD COLUMN connectionBanUntil INTEGER;');
         }
 
+        if (!usersColumns.some(col => col.name === 'blacksmithLevel')) {
+            console.log('[DB] Verification: blacksmithLevel column is missing. Adding it now.');
+            await db.exec('ALTER TABLE users ADD COLUMN blacksmithLevel INTEGER;');
+        }
+
+        if (!usersColumns.some(col => col.name === 'blacksmithXp')) {
+            console.log('[DB] Verification: blacksmithXp column is missing. Adding it now.');
+            await db.exec('ALTER TABLE users ADD COLUMN blacksmithXp INTEGER;');
+        }
+
+        if (!usersColumns.some(col => col.name === 'inventorySlotsMigrated')) {
+            console.log('[DB] Verification: inventorySlotsMigrated column is missing. Adding it now.');
+            await db.exec('ALTER TABLE users ADD COLUMN inventorySlotsMigrated BOOLEAN;');
+        }
+
+        console.log('[DB] Manual verification: Verifying live_games table columns...');
         const liveGamesColumns = await db.all("PRAGMA table_info(live_games)");
         const liveGamesColumnNames = liveGamesColumns.map(c => c.name);
         const criticalLiveGameColumns = [
@@ -279,53 +396,18 @@ export const initializeAndGetDb = async (): Promise<Database> => {
                 await db.exec(`ALTER TABLE live_games ADD COLUMN ${col} TEXT;`);
             }
         }
+        console.log('[DB] Manual verification: Finished.');
 
     } catch (e: any) {
         if (!e.message.includes('no such table')) {
             console.error('[DB] Error during manual column verification:', e);
         }
     }
-
-
-    // --- MIGRATION LOGIC ---
-    await db.exec(`
-        CREATE TABLE IF NOT EXISTS schema_version (
-            version INTEGER
-        );
-    `);
-
-    const versionRow = await db.get('SELECT version FROM schema_version');
-    let version = versionRow ? versionRow.version : 0;
-    if (!versionRow) {
-        await db.run('INSERT INTO schema_version (version) VALUES (1)');
-        version = 1;
-    }
-    
-    for (let v = version + 1; v <= Math.max(...Object.keys(migrations).map(Number)); v++) {
-        if (migrations[v]) {
-            console.log(`[DB] Running migration version ${v}...`);
-            const statements = migrations[v].split(';').filter(s => s.trim());
-            for (const statement of statements) {
-                try {
-                    await db.exec(statement);
-                } catch (e: any) {
-                    if (e.message.includes('duplicate column name')) {
-                        console.warn(`[DB] Column in migration ${v} already exists, skipping.`);
-                    } else {
-                        console.error(`[DB] Migration ${v} failed:`, e);
-                        throw e;
-                    }
-                }
-            }
-            await db.run('UPDATE schema_version SET version = ?', v);
-            console.log(`[DB] Migration ${v} complete.`);
-        }
-    }
-
+    console.log('[DB] initializeAndGetDb: Setting dbInstance...');
     dbInstance = db;
+    console.log('[DB] initializeAndGetDb: Finished.');
     return dbInstance;
 };
-
 export const getDb = async (): Promise<Database> => {
     return dbInstance ?? initializeAndGetDb();
 };

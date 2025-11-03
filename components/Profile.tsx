@@ -182,10 +182,10 @@ const formatMythicStat = (stat: MythicStat, data: { count: number, totalValue: n
     }
 };
 
-const getTier = (rank: number, totalPlayers: number) => {
-    if (totalPlayers === 0) return RANKING_TIERS[RANKING_TIERS.length - 1];
+const getTier = (score: number, rank: number, totalGames: number) => {
+    if (totalGames === 0) return RANKING_TIERS[RANKING_TIERS.length - 1];
     for (const tier of RANKING_TIERS) {
-        if (tier.threshold(rank, totalPlayers)) {
+        if (tier.threshold(score, rank, totalGames)) {
             return tier;
         }
     }
@@ -346,8 +346,11 @@ const Profile: React.FC<ProfileProps> = () => {
         const myStrategicRank = strategicScores.findIndex(u => u.id === currentUserWithStatus.id) + 1;
         const myPlayfulRank = playfulScores.findIndex(u => u.id === currentUserWithStatus.id) + 1;
 
-        const strategicTier = getTier(myStrategicRank, strategicScores.length);
-        const playfulTier = getTier(myPlayfulRank, playfulScores.length);
+        const myStrategicScore = strategicScores.find(u => u.id === currentUserWithStatus.id)?.score || 0;
+        const myPlayfulScore = playfulScores.find(u => u.id === currentUserWithStatus.id)?.score || 0;
+
+        const strategicTier = getTier(myStrategicScore, myStrategicRank, strategicScores.length);
+        const playfulTier = getTier(myPlayfulScore, myPlayfulRank, playfulScores.length);
 
         return { strategicTier, playfulTier };
     }, [currentUserWithStatus, allUsers]);
@@ -591,7 +594,7 @@ const Profile: React.FC<ProfileProps> = () => {
                                         onChange={handlePresetChange}
                                         className="bg-secondary border border-color text-xs rounded-md p-1 focus:ring-accent focus:border-accent w-full"
                                     >
-                                        {presets.map((preset, index) => (
+                                        {presets && presets.map((preset, index) => (
                                             <option key={index} value={index}>{preset.name}</option>
                                         ))}
                                     </select>
@@ -654,7 +657,7 @@ const Profile: React.FC<ProfileProps> = () => {
                                         onChange={handlePresetChange}
                                         className="bg-secondary border border-color text-xs rounded-md p-1 focus:ring-accent focus:border-accent w-full"
                                     >
-                                        {presets.map((preset, index) => (
+                                        {presets && presets.map((preset, index) => (
                                             <option key={index} value={index}>{preset.name}</option>
                                         ))}
                                     </select>

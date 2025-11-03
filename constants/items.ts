@@ -198,6 +198,22 @@ export const ENHANCEMENT_COSTS: Record<ItemGrade, { amount: number; name: string
     ],
 };
 
+export const ENHANCEMENT_GOLD_COSTS_BASE: Record<ItemGrade, number> = {
+    normal: 100,
+    uncommon: 200,
+    rare: 300,
+    epic: 500,
+    legendary: 1000,
+    mythic: 2000,
+};
+
+export const calculateEnhancementGoldCost = (grade: ItemGrade, currentStars: number): number => {
+    const baseCost = ENHANCEMENT_GOLD_COSTS_BASE[grade];
+    // Cost increases by 1.5x for each star level
+    return Math.round(baseCost * (1.5 ** currentStars));
+};
+
+
 export const ITEM_SELL_PRICES: Record<ItemGrade, number> = {
     normal: 50,
     uncommon: 100,
@@ -214,6 +230,13 @@ export const MATERIAL_SELL_PRICES: Record<string, number> = {
     '최상급 강화석': 100,
     '신비의 강화석': 200,
 };
+
+export const BASE_SLOTS_PER_CATEGORY = 30;
+export const EXPANSION_AMOUNT = 10;
+
+export const MAX_EQUIPMENT_SLOTS = 100;
+export const MAX_CONSUMABLE_SLOTS = 50;
+export const MAX_MATERIAL_SLOTS = 50;
 
 // Core Stat Info
 export const CORE_STATS_DATA: Record<CoreStat, { name: string; description: string }> = {

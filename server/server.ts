@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
+import process from 'process';
 import { handleAction, resetAndGenerateQuests, updateQuestProgress } from './gameActions.js';
 import { regenerateActionPoints } from './effectService.js';
 import { updateGameStates } from './gameModes.js';
@@ -8,10 +9,9 @@ import * as db from './db.js';
 import { analyzeGame } from './kataGoService.js';
 // FIX: Import missing types from the centralized types file.
 import * as types from '../types.js';
-import { LiveGameSession, User, UserCredentials, AppState, VolatileState } from '../types.js';
 import { processGameSummary, endGame } from './summaryService.js';
 // FIX: Correctly import from the placeholder module.
-import { aiUserId, getAiUser } from './aiPlayer.js';
+import * as aiPlayer from './aiPlayer.js';
 import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded } from './scheduledTasks.js';
 import * as tournamentService from './tournamentService.js';
 import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS } from '../constants.js';
@@ -78,19 +78,23 @@ const startServer = async () => {
     }
 
     const app = express();
-    const port = 4000;
+    console.log(`[Server] process.env.PORT: ${process.env.PORT}`);
+    const port = process.env.PORT || 4000;
+    console.log(`[Server] Using port: ${port}`);
 
     app.use(cors());
     app.use(express.json({ limit: '10mb' }) as any);
 
     // In-memory state for things that don't need to be persisted or are frequently changing.
-    const volatileState: VolatileState = {
+    const volatileState: types.VolatileState = {
         userConnections: {},
         userStatuses: {},
         negotiations: {},
         waitingRoomChats: { global: [] },
         gameChats: {},
         userLastChatMessage: {},
+        userConsecutiveChatMessages: {},
+        activeTournaments: {},
         activeTournamentViewers: new Set(),
     };
 
@@ -98,6 +102,10 @@ const startServer = async () => {
     const LOBBY_TIMEOUT_MS = 90 * 1000;
     const GAME_DISCONNECT_TIMEOUT_MS = 90 * 1000;
     const DISCONNECT_TIMER_S = 90;
+
+    app.listen(port, () => {
+        console.log(`Server listening on port ${port}`);
+    });
 
     // --- Main Game Loop ---
     setInterval(async () => {
@@ -111,29 +119,13 @@ const startServer = async () => {
                 let updatedUser = await regenerateActionPoints(user);
                 updatedUser = processSinglePlayerMissions(updatedUser);
 
-                // Ensure all users have base stats set to 100. This is a one-time migration for existing users.
-                const defaultBaseStats = createDefaultBaseStats();
-                let statsNeedUpdate = false;
-                if (!updatedUser.baseStats || 
-                    Object.keys(updatedUser.baseStats).length !== Object.keys(defaultBaseStats).length ||
-                    Object.values(types.CoreStat).some(stat => updatedUser.baseStats![stat] !== 100)
-                ) {
-                    statsNeedUpdate = true;
-                }
-        
-                if (statsNeedUpdate) {
-                    // If regenerateActionPoints didn't make a copy, we need to make one before mutating.
-                    if (updatedUser === user) {
-                        updatedUser = JSON.parse(JSON.stringify(user));
-                    }
-                    updatedUser.baseStats = defaultBaseStats;
-                }
+
                 
                 // --- Tournament Simulation Logic ---
                 let userModifiedByTournament = false;
                 const tournamentTypes: types.TournamentType[] = ['neighborhood', 'national', 'world'];
                 for (const type of tournamentTypes) {
-                    const key = `last${type.charAt(0).toUpperCase() + type.slice(1)}Tournament` as keyof User;
+                    const key = `last${type.charAt(0).toUpperCase() + type.slice(1)}Tournament` as keyof types.User;
                     const tournamentState = (updatedUser as any)[key] as types.TournamentState | null;
                     if (tournamentState && tournamentState.status === 'round_in_progress') {
                         tournamentService.advanceSimulation(tournamentState, updatedUser);
@@ -190,15 +182,10 @@ const startServer = async () => {
                                 await db.saveGame(activeGame);
                             }
                         }
-                    } else if (userStatus?.status === 'waiting') {
+                    } else if (userStatus?.status === types.UserStatus.Waiting) {
                         // User was in waiting room, just remove connection, keep status for potential reconnect.
                         // This allows them to refresh without being kicked out of the user list.
                         delete volatileState.userConnections[userId];
-                    }
-                    else {
-                        // User was not in a game (e.g., lobby), so we can safely remove their status too.
-                        delete volatileState.userConnections[userId];
-                        delete volatileState.userStatuses[userId];
                     }
                 }
             }
@@ -217,7 +204,7 @@ const startServer = async () => {
                             otherNeg => otherNeg.id !== negId && otherNeg.challenger.id === challengerId
                         );
                         if (!hasOtherNegotiations) {
-                             volatileState.userStatuses[challengerId].status = 'waiting';
+                             volatileState.userStatuses[challengerId].status = types.UserStatus.Waiting;
                         }
                     }
 
@@ -244,7 +231,7 @@ const startServer = async () => {
                 
                 const isSpectatorPresent = Object.keys(volatileState.userStatuses).some(spectatorId => {
                     return onlineUserIds.includes(spectatorId) &&
-                           volatileState.userStatuses[spectatorId].status === 'spectating' &&
+                           volatileState.userStatuses[spectatorId].status === types.UserStatus.Spectating &&
                            volatileState.userStatuses[spectatorId].spectatingGameId === game.id;
                 });
 
@@ -334,7 +321,7 @@ const startServer = async () => {
             await db.createUserCredentials(username, password, newUser.id);
     
             volatileState.userConnections[newUser.id] = Date.now();
-            volatileState.userStatuses[newUser.id] = { status: 'online' };
+            volatileState.userStatuses[newUser.id] = { status: types.UserStatus.Online };
     
             res.status(201).json({ user: newUser });
         } catch (e: any) {
@@ -344,22 +331,54 @@ const startServer = async () => {
     });
 
     app.post('/api/auth/login', async (req, res) => {
+        console.log('[/api/auth/login] Received request');
         try {
             const { username, password } = req.body;
+            console.log('[/api/auth/login] Attempting to get user credentials for:', username);
             let credentials = await db.getUserCredentials(username);
-
-            if (!credentials) {
+            if (credentials) {
+                console.log('[/api/auth/login] Credentials found for username:', username);
+            } else {
+                console.log('[/api/auth/login] No credentials found for username. Attempting to get user by nickname:', username);
                 const userByNickname = await db.getUserByNickname(username);
                 if (userByNickname) {
+                    console.log('[/api/auth/login] User found by nickname. Getting credentials by userId:', userByNickname.id);
                     credentials = await db.getUserCredentialsByUserId(userByNickname.id);
+                    if (credentials) {
+                        console.log('[/api/auth/login] Credentials found by userId for nickname:', username);
+                    } else {
+                        console.log('[/api/auth/login] No credentials found by userId for nickname:', username);
+                    }
+                } else {
+                    console.log('[/api/auth/login] No user found by nickname:', username);
                 }
             }
 
             if (!credentials || credentials.passwordHash !== password) {
+                console.log('[/api/auth/login] Authentication failed for username:', username);
                 return res.status(401).json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
             }
+            console.log('[/api/auth/login] Authentication successful for username:', username, '. Getting user details.');
             let user = await db.getUser(credentials.userId);
+            if (user) {
+                console.log('[/api/auth/login] User details retrieved for userId:', credentials.userId);
+            } else {
+                console.log('[/api/auth/login] User not found for userId:', credentials.userId);
+                return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+            }
             if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+
+            const defaultBaseStats = createDefaultBaseStats();
+            if (!user.baseStats) {
+                user.baseStats = defaultBaseStats;
+                await db.updateUser(user);
+            } else if (
+                !user.baseStats ||
+                Object.keys(user.baseStats).length !== Object.keys(defaultBaseStats).length ||
+                                !Object.values(types.CoreStat).every(stat => (user!.baseStats as Record<types.CoreStat, number>)[stat] === 100)) {
+                user.baseStats = defaultBaseStats;
+                await db.updateUser(user);
+            }
             
             const userBeforeUpdate = JSON.stringify(user);
 
@@ -405,7 +424,21 @@ const startServer = async () => {
                 }
             }
 
-            if (userBeforeUpdate !== JSON.stringify(updatedUser) || statsMigrated || itemsUnequipped) {
+            // --- Equipment Presets Migration Logic ---
+            let presetsMigrated = false;
+            if (!updatedUser.equipmentPresets || updatedUser.equipmentPresets.length === 0) { // Check for empty array too
+                updatedUser.equipmentPresets = [
+                    { name: '프리셋 1', equipment: updatedUser.equipment || {} }, // Initialize with current equipment
+                    { name: '프리셋 2', equipment: {} },
+                    { name: '프리셋 3', equipment: {} },
+                    { name: '프리셋 4', equipment: {} },
+                    { name: '프리셋 5', equipment: {} },
+                ];
+                presetsMigrated = true;
+            }
+            // --- End Equipment Presets Migration Logic ---
+
+            if (userBeforeUpdate !== JSON.stringify(updatedUser) || statsMigrated || itemsUnequipped || presetsMigrated) {
                 await db.updateUser(updatedUser);
                 user = updatedUser;
             }
@@ -413,7 +446,6 @@ const startServer = async () => {
             if (volatileState.userConnections[user.id]) {
                 console.log(`[Auth] Concurrent login for ${user.nickname}. Terminating old session and establishing new one.`);
             }
-            volatileState.userConnections[user.id] = Date.now();
             
             const allActiveGames = await db.getAllActiveGames();
             const activeGame = allActiveGames.find(g => 
@@ -429,9 +461,9 @@ const startServer = async () => {
                     }
                     await db.saveGame(activeGame);
                 }
-                volatileState.userStatuses[user!.id] = { status: 'in-game', mode: activeGame.mode, gameId: activeGame.id };
+                volatileState.userStatuses[user!.id] = { status: types.UserStatus.InGame, mode: activeGame.mode, gameId: activeGame.id };
             } else {
-                volatileState.userStatuses[user!.id] = { status: 'online' };
+                volatileState.userStatuses[user!.id] = { status: types.UserStatus.Online };
             }
             
             res.status(200).json({ user });
@@ -443,22 +475,31 @@ const startServer = async () => {
     });
 
     app.post('/api/state', async (req, res) => {
+        console.log('[/api/state] Received request');
         try {
             const { userId } = req.body;
+            console.log(`[API/State] Received request for userId: ${userId}`);
 
             if (!userId) {
+                console.log('[API/State] No userId provided, returning 401.');
                 return res.status(401).json({ message: '인증 정보가 없습니다.' });
             }
 
+            console.log('[/api/state] Getting user from DB');
             let user = await db.getUser(userId);
+            console.log('[/api/state] User retrieved from DB');
             if (!user) {
+                console.log(`[API/State] User ${userId} not found, cleaning up connection and returning 401.`);
                 delete volatileState.userConnections[userId]; // Clean up just in case
                 return res.status(401).json({ message: '세션이 만료되었습니다. 다시 로그인해주세요.' });
             }
+            console.log(`[API/State] User ${user.nickname} found.`);
 
+            console.log('[/api/state] Starting migration logic');
             // --- Inventory Slots Migration Logic ---
             let inventorySlotsUpdated = false;
             if (!user.inventorySlotsMigrated) {
+                console.log(`[API/State] User ${user.nickname}: Running inventory slots migration.`);
                 let currentEquipmentSlots = 30;
                 let currentConsumableSlots = 30;
                 let currentMaterialSlots = 30;
@@ -474,10 +515,11 @@ const startServer = async () => {
                 }
 
                 // Apply updates if any slot count is less than 30 or if it was in the old number format
-                if (typeof user.inventorySlots === 'number' || 
-                    user.inventorySlots.equipment < 30 || 
-                    user.inventorySlots.consumable < 30 || 
-                    user.inventorySlots.material < 30) {
+                if (typeof user.inventorySlots === 'number' ||
+                    (typeof user.inventorySlots === 'object' && user.inventorySlots !== null &&
+                        (user.inventorySlots.equipment < 30 ||
+                        user.inventorySlots.consumable < 30 ||
+                        user.inventorySlots.material < 30))) {
 
                     user.inventorySlots = {
                         equipment: currentEquipmentSlots,
@@ -491,15 +533,16 @@ const startServer = async () => {
                     user.inventorySlotsMigrated = true;
                 }
             }
+            console.log('[/api/state] Finished migration logic');
 
             // Re-establish connection if user is valid but not in volatile memory (e.g., after server restart)
             if (!volatileState.userConnections[userId]) {
-                console.log(`[Auth] Re-establishing connection for user: ${user.nickname} (${userId})`);
+                console.log(`[API/State] User ${user.nickname}: Re-establishing connection.`);
                 volatileState.userConnections[userId] = Date.now();
                 // If user status is not present (e.g., server restart), set to online.
                 // If it IS present (e.g., they just refreshed), do NOT change it, preserving their 'waiting' status.
                 if (!volatileState.userStatuses[userId]) {
-                    volatileState.userStatuses[userId] = { status: 'online' };
+                    volatileState.userStatuses[userId] = { status: types.UserStatus.Online };
                 }
             }
 
@@ -507,6 +550,7 @@ const startServer = async () => {
             
             const userBeforeUpdate = JSON.stringify(user);
             const allUsersForCompetitors = await db.getAllUsers();
+            console.log(`[API/State] User ${user.nickname}: Processing quests, league updates, AP regen, and weekly competitors.`);
             let updatedUser = await resetAndGenerateQuests(user);
             updatedUser = await processWeeklyLeagueUpdates(updatedUser);
             updatedUser = await regenerateActionPoints(updatedUser);
@@ -524,18 +568,42 @@ const startServer = async () => {
                     statsMigrated = true;
                 }
             }
+            console.log(`[API/State] User ${user.nickname}: Stats migration complete (migrated: ${statsMigrated}).`);
             // --- End Migration Logic ---
 
-            if (userBeforeUpdate !== JSON.stringify(updatedUser) || statsMigrated || inventorySlotsUpdated) {
+            // --- Equipment Presets Migration Logic ---
+            let presetsMigrated = false;
+            if (!updatedUser.equipmentPresets || updatedUser.equipmentPresets.length === 0) { // Check for empty array too
+                updatedUser.equipmentPresets = [
+                    { name: '프리셋 1', equipment: updatedUser.equipment || {} }, // Initialize with current equipment
+                    { name: '프리셋 2', equipment: {} },
+                    { name: '프리셋 3', equipment: {} },
+                    { name: '프리셋 4', equipment: {} },
+                    { name: '프리셋 5', equipment: {} },
+                ];
+                presetsMigrated = true;
+            }
+            // --- End Equipment Presets Migration Logic ---
+
+            if (userBeforeUpdate !== JSON.stringify(updatedUser) || statsMigrated || inventorySlotsUpdated || presetsMigrated) {
+                console.log(`[API/State] User ${user.nickname}: Updating user in DB.`);
                 await db.updateUser(updatedUser);
             }
             
+            console.log('[/api/state] Getting all DB data');
+            console.log(`[API/State] User ${user.nickname}: Getting all DB data.`);
             const dbState = await db.getAllData();
+            console.log('[/api/state] All DB data retrieved');
     
             // Add ended games that users are still in to the liveGames object
+            console.log(`[API/State] User ${user.nickname}: Processing ended games.`);
             for (const status of Object.values(volatileState.userStatuses)) {
-                // FIX: Cast status to any to access properties that may not exist on all UserStatusInfo types.
-                const gameId = (status as any).gameId || (status as any).spectatingGameId;
+                let gameId: string | undefined;
+                if ('gameId' in status && status.gameId) {
+                    gameId = status.gameId;
+                } else if ('spectatingGameId' in status && status.spectatingGameId) {
+                    gameId = status.spectatingGameId;
+                }
                 if (gameId && !dbState.liveGames[gameId]) {
                     const endedGame = await db.getLiveGame(gameId);
                     if (endedGame) {
@@ -549,7 +617,8 @@ const startServer = async () => {
             }
 
             // Combine persisted state with in-memory volatile state
-            const fullState: Omit<AppState, 'userCredentials'> = {
+            console.log(`[API/State] User ${user.nickname}: Combining states and sending response.`);
+            const fullState: Omit<types.AppState, 'userCredentials'> = {
                 ...dbState,
                 userConnections: volatileState.userConnections,
                 userStatuses: volatileState.userStatuses,
@@ -601,13 +670,15 @@ const startServer = async () => {
                     currentMaterialSlots = Math.max(30, user.inventorySlots.material || 0);
                 }
 
-                user.inventorySlots = {
-                    equipment: currentEquipmentSlots,
-                    consumable: currentConsumableSlots,
-                    material: currentMaterialSlots,
-                };
-                user.inventorySlotsMigrated = true;
-                await db.updateUser(user);
+                if (typeof user.inventorySlots === 'number' || (typeof user.inventorySlots === 'object' && user.inventorySlots !== null && (user.inventorySlots.equipment < 30 || user.inventorySlots.consumable < 30 || user.inventorySlots.material < 30))) {
+                    user.inventorySlots = {
+                        equipment: currentEquipmentSlots,
+                        consumable: currentConsumableSlots,
+                        material: currentMaterialSlots,
+                    };
+                    user.inventorySlotsMigrated = true;
+                    await db.updateUser(user);
+                }
             }
             // --- End Migration Logic ---
 
@@ -615,7 +686,7 @@ const startServer = async () => {
             if (!volatileState.userConnections[userId]) {
                 console.log(`[Auth] Re-establishing connection on action for user: ${user.nickname} (${userId})`);
                 volatileState.userConnections[userId] = Date.now();
-                volatileState.userStatuses[userId] = { status: 'online' };
+                volatileState.userStatuses[userId] = { status: types.UserStatus.Online };
             }
             
             volatileState.userConnections[userId] = Date.now();
@@ -633,9 +704,7 @@ const startServer = async () => {
         }
     });
 
-    app.listen(port, () => {
-        console.log(`Server listening on port ${port}`);
-    });
+
 };
 
 startServer();

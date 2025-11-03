@@ -5,9 +5,10 @@ import CombinationView from './blacksmith/CombinationView.js';
 import DisassemblyView from './blacksmith/DisassemblyView.js';
 import ConversionView from './blacksmith/ConversionView.js';
 import InventoryGrid from './blacksmith/InventoryGrid.js';
+import DisassemblyResultModal from './DisassemblyResultModal.js'; // New import
 import { useAppContext } from '../hooks/useAppContext.js';
 import { BLACKSMITH_MAX_LEVEL, BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL, BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES, BLACKSMITH_DISASSEMBLY_JACKPOT_RATES, BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP } from '../constants/rules.js';
-import { InventoryItem } from '../types.js';
+import { InventoryItem, EnhancementResult } from '../types.js';
 import type { ItemGrade } from '../types/enums.js';
 
 import BlacksmithHelpModal from './blacksmith/BlacksmithHelpModal.js';
@@ -20,13 +21,14 @@ interface BlacksmithModalProps {
     selectedItemForEnhancement: InventoryItem | null;
     activeTab: 'enhance' | 'combine' | 'disassemble' | 'convert';
     onSetActiveTab: (tab: 'enhance' | 'combine' | 'disassemble' | 'convert') => void;
-    enhancementOutcome: any; // FIX: Use correct type EnhancementResult | null
+    enhancementOutcome: EnhancementResult | null;
 }
 
 const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, selectedItemForEnhancement, activeTab, onSetActiveTab, enhancementOutcome }) => {
     const { currentUserWithStatus, handlers, modals } = useAppContext();
     const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(selectedItemForEnhancement);
     const [combinationItems, setCombinationItems] = useState<(InventoryItem | null)[]>([null, null, null]);
+    const [selectedForDisassembly, setSelectedForDisassembly] = useState<Set<string>>(new Set()); // New state
 
     if (!currentUserWithStatus) return null;
 
@@ -67,6 +69,18 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
             setSelectedItem(item);
         }
     }, [activeTab, combinationItems]);
+
+    const handleToggleDisassemblySelection = useCallback((itemId: string) => {
+        setSelectedForDisassembly(prev => {
+            const newSet = new Set(prev);
+            if (newSet.has(itemId)) {
+                newSet.delete(itemId);
+            } else {
+                newSet.add(itemId);
+            }
+            return newSet;
+        });
+    }, []);
 
     const { blacksmithLevel, blacksmithXp, inventory, inventorySlots } = currentUserWithStatus;
 
@@ -135,7 +149,13 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                 onAction={handlers.handleAction} 
                 currentUser={currentUserWithStatus}
             />;
-            case 'disassemble': return <DisassemblyView onAction={handlers.handleAction} />;
+            case 'disassemble': return (
+                <DisassemblyView
+                    onAction={handlers.handleAction}
+                    selectedForDisassembly={selectedForDisassembly}
+                    onToggleDisassemblySelection={handleToggleDisassemblySelection}
+                />
+            );
             case 'convert': return <ConversionView onAction={handlers.handleAction} />;
             default: return null;
         }
@@ -177,17 +197,15 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                 isTopmost={isTopmost && !modals.isBlacksmithHelpOpen}
                 initialWidth={950} 
                 windowId="blacksmith"
-                headerContent={
-                    <button onClick={handlers.openBlacksmithHelp} className="text-lg font-bold text-yellow-400 hover:text-yellow-300">
-                        ?
-                    </button>
-                }
             >
                 <div className="flex h-[700px]">
                     {/* Left Panel */}
                     <div className="w-1/3 bg-tertiary/30 p-4 flex flex-col items-center gap-4">
-                        <div className="w-full aspect-w-3 aspect-h-2 prism-border rounded-lg overflow-hidden">
+                        <div className="w-full aspect-w-3 aspect-h-2 prism-border rounded-lg overflow-hidden relative">
                             <img src="/images/equipments/moru.png" alt="Blacksmith" className="w-full h-full object-cover" />
+                            <button onClick={handlers.openBlacksmithHelp} className="absolute top-2 right-2 text-lg font-bold text-yellow-400 hover:text-yellow-300 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center">
+                                ?
+                            </button>
                         </div>
                         <div className="text-center">
                             <h2 className="text-2xl font-bold">대장간 <span className="text-yellow-400">Lv.{(blacksmithLevel ?? 1)}</span></h2>
@@ -285,12 +303,20 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                     onSelectItem={handleSelectItem} 
                                     selectedItemId={selectedItem?.id || null} 
                                     disabledItemIds={disabledItemIds}
+                                    selectedItemIdsForDisassembly={activeTab === 'disassemble' ? selectedForDisassembly : undefined}
+                                    onToggleDisassemblySelection={activeTab === 'disassemble' ? handleToggleDisassemblySelection : undefined}
                                 />
                             </div>
                         </div>
                     </div>
                 </div>
             </DraggableWindow>
+
+            <DisassemblyResultModal
+                isOpen={!!modals.disassemblyResult}
+                onClose={handlers.closeDisassemblyResult}
+                result={modals.disassemblyResult}
+            />
         </>
     );
 };

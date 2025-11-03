@@ -21,7 +21,7 @@ interface PurchasableItem {
     name: string;
     price: { gold?: number; diamonds?: number };
     limit?: number;
-    type: 'equipment' | 'material';
+    type: InventoryItemType;
 }
 
 const isSameDayKST = (ts1: number, ts2: number): boolean => {
@@ -73,7 +73,7 @@ const ActionPointCard: React.FC<{ currentUser: UserWithStatus, onBuy: () => void
 };
 
 const ShopItemCard: React.FC<{ 
-    item: { itemId: string, name: string, description: string, price: { gold?: number, diamonds?: number }, image: string, dailyLimit?: number, weeklyLimit?: number, type: 'equipment' | 'material' },
+    item: { itemId: string, name: string, description: string, price: { gold?: number, diamonds?: number }, image: string, dailyLimit?: number, weeklyLimit?: number, type: InventoryItemType },
     onBuy: (item: PurchasableItem) => void; 
     currentUser: UserWithStatus 
 }> = ({ item, onBuy, currentUser }) => {

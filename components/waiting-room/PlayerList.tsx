@@ -1,8 +1,9 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { UserWithStatus, ServerAction, UserStatus, GameMode, Negotiation } from '../../types.js';
 import Avatar from '../Avatar.js';
 import { AVATAR_POOL, BORDER_POOL } from '../../constants.js';
 import Button from '../Button.js';
+import GameRejectionSettingsModal from '../GameRejectionSettingsModal.tsx';
 
 const statusDisplay: Record<UserStatus, { text: string; color: string; }> = {
   'online': { text: '온라인', color: 'text-green-500' },
@@ -23,6 +24,9 @@ interface PlayerListProps {
 }
 
 const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, mode, negotiations, onViewUser }) => {
+    const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
+    const [challengeTargetUser, setChallengeTargetUser] = useState<UserWithStatus | null>(null);
+    const [isRejectionSettingsModalOpen, setIsRejectionSettingsModalOpen] = useState(false);
     const me = users.find(user => user.id === currentUser.id);
     const otherUsers = users.filter(user => user.id !== currentUser.id).sort((a,b) => a.nickname.localeCompare(b.nickname));
 
@@ -116,7 +120,16 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
 
     return (
         <div className="p-3 flex flex-col min-h-0 text-on-panel">
-             <h2 className="text-xl font-semibold mb-2 border-b border-color pb-2 flex-shrink-0">유저 목록</h2>
+             <h2 className="text-xl font-semibold mb-2 border-b border-color pb-2 flex-shrink-0 flex justify-between items-center">
+                <span>유저 목록</span>
+                <Button 
+                    onClick={() => setIsRejectionSettingsModalOpen(true)}
+                    colorScheme="gray"
+                    className="!text-xs !py-1 !px-2"
+                >
+                    대국 신청 거부
+                </Button>
+            </h2>
             {me && (
               <div className="flex-shrink-0 mb-2">
                   {renderUserItem(me, true)}
@@ -127,6 +140,18 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
                     <p className="text-center text-tertiary pt-8">다른 플레이어가 없습니다.</p>
                 )}
             </ul>
+            {isChallengeModalOpen && challengeTargetUser && (
+                <ChallengeApplicationModal
+                    opponentUser={challengeTargetUser}
+                    onClose={() => setIsChallengeModalOpen(false)}
+                    onAction={onAction}
+                />
+            )}
+            {isRejectionSettingsModalOpen && (
+                <GameRejectionSettingsModal
+                    onClose={() => setIsRejectionSettingsModalOpen(false)}
+                />
+            )}
         </div>
     );
 };

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, LiveGameSession, Player, GameMode, Point, BoardState, SinglePlayerStageInfo, SinglePlayerMissionState } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, LiveGameSession, Player, GameMode, Point, BoardState, SinglePlayerStageInfo, SinglePlayerMissionState, UserStatus } from '../../types.js';
 import { SINGLE_PLAYER_STAGES, KATAGO_LEVEL_TO_MAX_VISITS, SINGLE_PLAYER_MISSIONS } from '../../constants/singlePlayerConstants.js';
 import { getAiUser } from '../aiPlayer.js';
 
@@ -133,7 +133,7 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             await db.saveGame(game);
             await db.updateUser(user);
 
-            volatileState.userStatuses[user.id] = { status: 'in-game', mode: game.mode, gameId: game.id };
+            volatileState.userStatuses[user.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id };
 
             return {};
         }

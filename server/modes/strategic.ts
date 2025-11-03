@@ -10,6 +10,7 @@ import { initializeCapture, updateCaptureState, handleCaptureAction } from './ca
 import { initializeHidden, updateHiddenState, handleHiddenAction } from './hidden.js';
 import { initializeMissile, updateMissileState, handleMissileAction } from './missile.js';
 import { transitionToPlaying } from './shared.js';
+import { UserStatus } from '../../types.js';
 
 
 export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.Negotiation, now: number) => {
@@ -452,7 +453,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             await summaryService.processGameSummary(game);
 
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id] = { status: 'waiting', mode: game.mode };
+                volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
             }
 
             return {};

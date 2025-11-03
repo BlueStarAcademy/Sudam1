@@ -27,21 +27,35 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
     const [activeTab, setActiveTab] = useState<'strategic' | 'playful' | 'championship'>('strategic');
 
     const rankings = useMemo(() => {
-        const mode = activeTab === 'strategic' ? 'standard' : 'playful'; // Assuming 'standard' for strategic and 'playful' for playful
-        return allUsers
-            .filter(user => user)
-            .map(user => ({ user, value: user.cumulativeRankingScore?.[mode] || 0 }))
-            .sort((a, b) => b.value - a.value)
-                            .slice(0, 100);    }, [allUsers, activeTab]);
+        if (activeTab === 'championship') {
+            return allUsers
+                .filter(user => user && typeof user.tournamentScore === 'number')
+                .map(user => ({ user, value: user.tournamentScore }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 100);
+        } else {
+            const mode = activeTab === 'strategic' ? 'standard' : 'playful'; // Assuming 'standard' for strategic and 'playful' for playful
+            return allUsers
+                .filter(user => user)
+                .map(user => ({ user, value: user.cumulativeRankingScore?.[mode] || 0 }))
+                .sort((a, b) => b.value - a.value)
+                .slice(0, 100);
+        }
+    }, [allUsers, activeTab]);
 
     const currentUserRanking = useMemo(() => {
         if (!currentUserWithStatus) return null;
-        const mode = activeTab === 'strategic' ? 'standard' : 'playful';
+        let value;
+        if (activeTab === 'championship') {
+            value = currentUserWithStatus.tournamentScore;
+        } else {
+            const mode = activeTab === 'strategic' ? 'standard' : 'playful';
+            value = currentUserWithStatus.cumulativeRankingScore?.[mode] || 0;
+        }
         const rank = rankings.findIndex(r => r.user && r.user.id === currentUserWithStatus.id);
         if (rank !== -1) {
             return { ...rankings[rank], rank: rank + 1 };
         }
-        const value = currentUserWithStatus.cumulativeRankingScore?.[mode] || 0;
         return { user: currentUserWithStatus, value, rank: 'N/A' };
     }, [rankings, currentUserWithStatus, activeTab]);
 
@@ -69,25 +83,18 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
                 </button>
             </div>
             <div className="flex-grow overflow-y-auto pr-1 text-xs flex flex-col gap-1 min-h-0 h-48">
-                {activeTab !== 'championship' ? (
-                    <>
-                        {currentUserRanking && (
-                            <div className="sticky top-0 bg-panel z-10">
-                                <RankingRow user={currentUserRanking.user} rank={currentUserRanking.rank as number} value={currentUserRanking.value} isCurrentUser={true} />
-                            </div>
-                        )}
-                        <div className="flex flex-col gap-1">
-                            {rankings.filter(r => r && r.user).map((r, i) => (
-                                <RankingRow key={r.user.id} user={r.user} rank={i + 1} value={r.value} isCurrentUser={false} />
-                            ))}
+                <>
+                    {currentUserRanking && (
+                        <div className="sticky top-0 bg-panel z-10">
+                            <RankingRow user={currentUserRanking.user} rank={currentUserRanking.rank as number} value={currentUserRanking.value} isCurrentUser={true} />
                         </div>
-                    </>
-                ) : (
-                    <div className="space-y-1">
-                        <p>챔피언십 랭킹 내용...</p>
-                        {/* TODO: Implement actual championship ranking display */}
+                    )}
+                    <div className="flex flex-col gap-1">
+                        {rankings.filter(r => r && r.user).map((r, i) => (
+                            <RankingRow key={r.user.id} user={r.user} rank={i + 1} value={r.value} isCurrentUser={false} />
+                        ))}
                     </div>
-                )}
+                </>
             </div>
         </div>
     );

@@ -20,8 +20,14 @@ import {
     BLACKSMITH_COMBINATION_XP_GAIN,
     BLACKSMITH_MAX_LEVEL,
     BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP,
-    BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL
+    BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL,
+    calculateEnhancementGoldCost
 } from '../../constants.js';
+import {
+    BLACKSMITH_ENHANCEMENT_XP_GAIN,
+    BLACKSMITH_DISASSEMBLY_XP_GAIN,
+    BLACKSMITH_DISASSEMBLY_JACKPOT_RATES,
+} from '../../constants/rules.js';
 import * as effectService from '../effectService.js';
 import { SHOP_ITEMS } from '../shop.js';
 import { updateQuestProgress } from '../questService.js';
@@ -449,10 +455,16 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             const costs = ENHANCEMENT_COSTS[item.grade]?.[item.stars];
             if (!costs) return { error: '강화 정보를 찾을 수 없습니다.' };
 
+            const goldCost = calculateEnhancementGoldCost(item.grade, item.stars);
+            if (user.gold < goldCost) {
+                return { error: `골드가 부족합니다. (필요: ${goldCost}, 현재: ${user.gold})` };
+            }
+
             if (!removeUserItems(user, costs)) {
                 return { error: '재료가 부족합니다.' };
             }
             
+            user.gold -= goldCost; // Deduct gold
             updateQuestProgress(user, 'enhancement_attempt');
 
             const baseSuccessRate = ENHANCEMENT_SUCCESS_RATES[item.stars];
@@ -530,7 +542,7 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             }
 
             // Add blacksmith XP
-            const xpGainRange = BLACKSMITH_COMBINATION_XP_GAIN[item.grade];
+            const xpGainRange = BLACKSMITH_ENHANCEMENT_XP_GAIN[item.grade];
             if (xpGainRange) {
                 const xpGained = getRandomInt(xpGainRange[0], xpGainRange[1]);
                 user.blacksmithXp = (user.blacksmithXp || 0) + xpGained;
@@ -562,27 +574,40 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             const gainedMaterials: Record<string, number> = {};
             const itemsToRemove: string[] = [];
+            let totalXpGained = 0;
 
             for (const itemId of itemIds) {
                 const item = user.inventory.find((i: InventoryItem) => i.id === itemId);
-                if (item && item.type === 'equipment' && !item.isEquipped) {
-                    const enhancementIndex = Math.min(item.stars, 9);
-                    const costsForNextLevel = ENHANCEMENT_COSTS[item.grade]?.[enhancementIndex];
-                    if (costsForNextLevel) {
-                        for (const cost of costsForNextLevel) {
-                            const yieldAmount = Math.floor(cost.amount * 0.25);
-                            if (yieldAmount > 0) {
-                                gainedMaterials[cost.name] = (gainedMaterials[cost.name] || 0) + yieldAmount;
-                            }
+                if (!item) continue; // Item not found, skip
+
+                if (item.type !== 'equipment') return { error: '장비 아이템만 분해할 수 있습니다.' };
+                if (item.isEquipped) return { error: '장착 중인 아이템은 분해할 수 없습니다.' };
+
+                // Calculate materials from next enhancement level costs (30%)
+                const nextStars = item.stars + 1;
+                const costsForNextLevel = ENHANCEMENT_COSTS[item.grade]?.[item.stars]; // Costs for current stars to reach next
+                
+                if (costsForNextLevel) {
+                    for (const cost of costsForNextLevel) {
+                        const yieldAmount = Math.floor(cost.amount * 0.30); // 30% return
+                        if (yieldAmount > 0) {
+                            gainedMaterials[cost.name] = (gainedMaterials[cost.name] || 0) + yieldAmount;
                         }
                     }
-                    itemsToRemove.push(itemId);
                 }
+
+                // Add blacksmith XP for disassembly
+                const xpGainRange = BLACKSMITH_DISASSEMBLY_XP_GAIN[item.grade];
+                if (xpGainRange) {
+                    totalXpGained += getRandomInt(xpGainRange[0], xpGainRange[1]);
+                }
+
+                itemsToRemove.push(itemId);
             }
 
             if (itemsToRemove.length === 0) return { error: '분해할 수 있는 아이템이 없습니다.' };
 
-            const isJackpot = Math.random() < 0.30;
+            const isJackpot = Math.random() * 100 < (BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[user.blacksmithLevel - 1] ?? 0);
             if (isJackpot) {
                 for (const key in gainedMaterials) {
                     gainedMaterials[key] *= 2;
@@ -590,7 +615,7 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             }
             
             const itemsToAdd: InventoryItem[] = Object.entries(gainedMaterials).map(([name, quantity]) => ({
-                ...MATERIAL_ITEMS[name], id: '', quantity, createdAt: 0, isEquipped: false, level: 1, stars: 0
+                ...MATERIAL_ITEMS[name], id: `item-${randomUUID()}`, quantity, createdAt: Date.now(), isEquipped: false, level: 1, stars: 0
             }));
             
             user.inventory = user.inventory.filter(item => !itemsToRemove.includes(item.id));
@@ -599,9 +624,24 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             user.inventory.push(...finalItemsToAdd);
 
+            // Update blacksmith XP
+            user.blacksmithXp = (user.blacksmithXp || 0) + totalXpGained;
+            while (user.blacksmithLevel < BLACKSMITH_MAX_LEVEL && user.blacksmithXp >= BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(user.blacksmithLevel)) {
+                user.blacksmithXp -= BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(user.blacksmithLevel);
+                user.blacksmithLevel++;
+            }
+
             await db.updateUser(user);
 
-            return { clientResponse: { disassemblyResult: { gained: Object.entries(gainedMaterials).map(([name, amount]) => ({ name, amount })), jackpot: isJackpot } } };
+            return { 
+                clientResponse: { 
+                    updatedUser: user,
+                    disassemblyResult: { 
+                        gained: Object.entries(gainedMaterials).map(([name, amount]) => ({ name, amount })), 
+                        jackpot: isJackpot 
+                    }
+                }
+            };
         }
         case 'CRAFT_MATERIAL': {
             const { materialName, craftType, quantity } = payload as { materialName: string, craftType: 'upgrade' | 'downgrade', quantity: number };

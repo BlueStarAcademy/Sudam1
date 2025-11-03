@@ -44,9 +44,11 @@ interface InventoryGridProps {
     onSelectItem: (item: InventoryItem) => void;
     selectedItemId: string | null;
     disabledItemIds?: string[];
+    selectedItemIdsForDisassembly?: Set<string>; // New prop for disassembly selection
+    onToggleDisassemblySelection?: (itemId: string) => void; // New prop for toggling disassembly selection
 }
 
-const InventoryGrid: React.FC<InventoryGridProps> = ({ inventory, inventorySlots, onSelectItem, selectedItemId, disabledItemIds = [] }) => {
+const InventoryGrid: React.FC<InventoryGridProps> = ({ inventory, inventorySlots, onSelectItem, selectedItemId, disabledItemIds = [], selectedItemIdsForDisassembly, onToggleDisassemblySelection }) => {
     const inventoryDisplaySlots = Array.from({ length: inventorySlots }, (_, index) => inventory[index] || null);
 
     return (
@@ -56,17 +58,29 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({ inventory, inventorySlots
                 return (
                     <div
                         key={item ? item.id : `empty-${index}`}
-                        onClick={() => item && !isDisabled && onSelectItem(item)}
+                        onClick={() => {
+                            if (!item || isDisabled) return;
+                            if (selectedItemIdsForDisassembly && onToggleDisassemblySelection) {
+                                onToggleDisassemblySelection(item.id);
+                            } else {
+                                onSelectItem(item);
+                            }
+                        }}
                         className={`relative aspect-square rounded-md transition-all duration-200 ${item ? 'hover:scale-105' : 'bg-tertiary/50'} ${isDisabled ? 'filter grayscale opacity-50 pointer-events-none' : 'cursor-pointer'}`}
                     >
                         {item ? (
                             <>
-                                <div className={`absolute inset-0 rounded-md border-2 ${selectedItemId === item.id ? 'border-accent ring-2 ring-accent' : 'border-black/20'}`} />
+                                <div className={`absolute inset-0 rounded-md border-2 ${selectedItemId === item.id ? 'border-accent ring-2 ring-accent' : 'border-black/20'} ${selectedItemIdsForDisassembly?.has(item.id) ? 'bg-gray-700/70' : ''}`} />
                                 <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-sm" />
                                 {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1" />}
                                 {renderStarDisplay(item.stars)}
                                 {item.isEquipped && <div className="absolute top-0.5 right-0.5 text-xs font-bold text-white bg-blue-600/80 px-1 rounded-bl-md">E</div>}
                                 {item.quantity && item.quantity > 1 && <span className="absolute bottom-0 right-0 text-xs font-bold text-white bg-black/60 px-1 rounded-tl-md">{item.quantity}</span>}
+                                {selectedItemIdsForDisassembly?.has(item.id) && (
+                                    <div className="absolute inset-0 flex items-center justify-center bg-gray-800/70 rounded-md">
+                                        <svg className="w-8 h-8 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
+                                    </div>
+                                )}
                             </>
                         ) : (
                             <div className="bg-tertiary/50 w-full h-full rounded-md" />

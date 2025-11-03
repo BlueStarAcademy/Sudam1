@@ -131,11 +131,12 @@ const AutoSelectModal: React.FC<{ onClose: () => void; onConfirm: (selectedGrade
 
 interface DisassemblyViewProps {
     onAction: (action: ServerAction) => Promise<void>;
+    selectedForDisassembly: Set<string>;
+    onToggleDisassemblySelection: (itemId: string) => void;
 }
 
-const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction }) => {
+const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction, selectedForDisassembly = new Set(), onToggleDisassemblySelection }) => { // Added default value
     const { currentUserWithStatus } = useAppContext();
-    const [selectedForDisassembly, setSelectedForDisassembly] = useState<Set<string>>(new Set());
     const [isAutoSelectOpen, setIsAutoSelectOpen] = useState(false);
 
     if (!currentUserWithStatus) return null;
@@ -158,7 +159,8 @@ const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction }) => {
 
         if (window.confirm(`${selectedForDisassembly.size}개의 아이템을 분해하시겠습니까?`)) {
             onAction({ type: 'DISASSEMBLE_ITEM', payload: { itemIds: Array.from(selectedForDisassembly) } });
-            setSelectedForDisassembly(new Set());
+            // No need to clear selectedForDisassembly here, as it's managed by BlacksmithModal
+            // and will be cleared when the action is processed and state updates.
         }
     };
 
@@ -169,11 +171,7 @@ const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction }) => {
             grades.includes(item.grade)
         ).map(item => item.id);
 
-        setSelectedForDisassembly(prev => {
-            const newSet = new Set(prev);
-            itemsToSelect.forEach(id => newSet.add(id));
-            return newSet;
-        });
+        itemsToSelect.forEach(id => onToggleDisassemblySelection(id)); // Use the prop function
 
         setIsAutoSelectOpen(false);
     };

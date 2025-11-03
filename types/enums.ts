@@ -111,7 +111,14 @@ export type GameStatus =
   | 'disconnected';
 
 
-export type UserStatus = 'online' | 'waiting' | 'resting' | 'negotiating' | 'in-game' | 'spectating';
+export enum UserStatus {
+  Online = 'online',
+  Waiting = 'waiting',
+  Resting = 'resting',
+  Negotiating = 'negotiating',
+  InGame = 'in-game',
+  Spectating = 'spectating',
+}
 
 export type WinReason = 'resign' | 'timeout' | 'disconnect' | 'score' | 'capture_limit' | 'omok_win' | 'thief_captured' | 'police_win' | 'alkkagi_win' | 'curling_win' | 'total_score' | 'dice_win' | 'foul_limit';
 export type RPSChoice = 'rock' | 'paper' | 'scissors';

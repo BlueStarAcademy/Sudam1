@@ -50,12 +50,17 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
                     return { error: '상대방이 오프라인 상태입니다.' };
                 }
                 
-                const canIChallenge = myStatus?.status === 'waiting';
+                const canIChallenge = myStatus?.status === UserStatus.Waiting;
                 if (!canIChallenge) return { error: '대국 신청은 대기실에서만 가능합니다.' };
                 
-                const canOpponentBeChallenged = opponentStatus?.status === 'waiting' || opponentStatus?.status === 'online';
+                const canOpponentBeChallenged = opponentStatus?.status === UserStatus.Waiting || opponentStatus?.status === UserStatus.Online;
                 if (!canOpponentBeChallenged) {
                     return { error: '상대방이 대국을 신청받을 수 있는 상태가 아닙니다.' };
+                }
+
+                // Check if opponent has rejected this game mode
+                if (opponent.rejectedGameModes && opponent.rejectedGameModes.includes(mode)) {
+                    return { error: `상대방이 ${mode} 게임 신청을 거부했습니다.` };
                 }
 
                 // FIX: Only block if the opponent is in a *pending* negotiation (one they have to respond to).
@@ -90,7 +95,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             };
         
             volatileState.negotiations[negotiationId] = newNegotiation;
-            volatileState.userStatuses[user.id].status = 'negotiating';
+            volatileState.userStatuses[user.id].status = UserStatus.Negotiating;
             return {};
         }
         case 'SEND_CHALLENGE': {
@@ -114,7 +119,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
 
             if (isOpponentAlreadyInNegotiation) {
                 delete volatileState.negotiations[negotiationId];
-                volatileState.userStatuses[user.id].status = 'waiting';
+                volatileState.userStatuses[user.id].status = UserStatus.Waiting;
                 return { error: '상대방이 다른 대국 신청을 먼저 받았습니다. 잠시 후 다시 시도해주세요.' };
             }
 
@@ -138,7 +143,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             negotiation.deadline = now + 60000;
 
             if (negotiation.turnCount >= 10) {
-                volatileState.userStatuses[negotiation.challenger.id].status = 'waiting';
+                volatileState.userStatuses[negotiation.challenger.id].status = UserStatus.Waiting;
                 delete volatileState.negotiations[negotiationId];
                 return { error: 'Negotiation failed after too many turns.' };
             }
@@ -157,7 +162,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
 
             const cost = getActionPointCost(negotiation.mode);
             if ((challenger.actionPoints.current < cost && !challenger.isAdmin) || (opponent.actionPoints.current < cost && !opponent.isAdmin)) {
-                volatileState.userStatuses[challenger.id].status = 'waiting';
+                volatileState.userStatuses[challenger.id].status = UserStatus.Waiting;
                 delete volatileState.negotiations[negotiationId];
                 return { error: 'One of the players does not have enough action points.' };
             }
@@ -178,8 +183,8 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             const game = await initializeGame(negotiation);
             await db.saveGame(game);
             
-            volatileState.userStatuses[game.player1.id] = { status: 'in-game', mode: game.mode, gameId: game.id };
-            volatileState.userStatuses[game.player2.id] = { status: 'in-game', mode: game.mode, gameId: game.id };
+            volatileState.userStatuses[game.player1.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id };
+            volatileState.userStatuses[game.player2.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id };
             
             if (negotiation.rematchOfGameId) {
                 const originalGame = await db.getLiveGame(negotiation.rematchOfGameId);
@@ -193,8 +198,8 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             Object.values(volatileState.negotiations).forEach(negToCancel => {
                 if (negToCancel.id !== negotiationId && (playerIdsInGame.has(negToCancel.challenger.id) || playerIdsInGame.has(negToCancel.opponent.id))) {
                     const challengerId = negToCancel.challenger.id;
-                    if (volatileState.userStatuses[challengerId]?.status === 'negotiating') {
-                        volatileState.userStatuses[challengerId].status = 'waiting';
+                    if (volatileState.userStatuses[challengerId]?.status === UserStatus.Negotiating) {
+                        volatileState.userStatuses[challengerId].status = UserStatus.Waiting;
                     }
                     delete volatileState.negotiations[negToCancel.id];
                 }
@@ -222,14 +227,14 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
                 [challenger.id, opponent.id].forEach(id => {
                     const status = volatileState.userStatuses[id];
                     if (status) {
-                        status.status = 'in-game';
+                        status.status = UserStatus.InGame;
                         status.gameId = rematchOfGameId;
                     }
                 });
             } else {
                 const challengerStatus = volatileState.userStatuses[challenger.id];
-                if (challengerStatus?.status === 'negotiating') {
-                    challengerStatus.status = 'waiting';
+                if (challengerStatus?.status === UserStatus.Negotiating) {
+                    challengerStatus.status = UserStatus.Waiting;
                     challengerStatus.mode = mode;
                     challengerStatus.gameId = undefined;
                 }
@@ -261,7 +266,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             const game = await initializeGame(negotiation);
             await db.saveGame(game);
             
-            volatileState.userStatuses[game.player1.id] = { status: 'in-game', mode: game.mode, gameId: game.id };
+            volatileState.userStatuses[game.player2.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id };
             
             const draftNegId = Object.keys(volatileState.negotiations).find(id => {
                 const neg = volatileState.negotiations[id];
@@ -306,11 +311,11 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             volatileState.negotiations[negotiationId] = newNegotiation;
         
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id].status = 'negotiating';
+                volatileState.userStatuses[user.id].status = UserStatus.Negotiating;
                 volatileState.userStatuses[user.id].gameId = originalGameId;
             }
             if (volatileState.userStatuses[opponent.id]) {
-                volatileState.userStatuses[opponent.id].status = 'negotiating';
+                volatileState.userStatuses[opponent.id].status = UserStatus.Negotiating;
                 volatileState.userStatuses[opponent.id].gameId = originalGameId;
             }
         

@@ -51,7 +51,7 @@ const CraftingDetailModal: React.FC<{
     };
 
     return (
-        <div className="absolute inset-0 bg-black/80 z-20 flex items-center justify-center" onClick={onClose}>
+        <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center" onClick={onClose}>
             <div className="bg-panel rounded-lg shadow-xl p-6 w-full max-w-md border border-color text-on-panel" onClick={e => e.stopPropagation()}>
                 <h2 className="text-xl font-bold text-center mb-4">{isUpgrade ? '재료 합성' : '재료 분해'}</h2>
 
@@ -115,12 +115,75 @@ const ConversionView: React.FC<ConversionViewProps> = ({ onAction }) => {
 
     const { inventory } = currentUserWithStatus;
 
+    const materialCategories = useMemo(() => {
+        const categories: Record<string, InventoryItem[]> = {};
+        inventory
+            .filter(item => item.type === 'material')
+            .forEach(item => {
+                if (!categories[item.name]) {
+                    categories[item.name] = [];
+                }
+                categories[item.name].push(item);
+            });
+        return categories;
+    }, [inventory]);
+
+    const materialTiers = ['하급 강화석', '중급 강화석', '상급 강화석', '최상급 강화석', '신비의 강화석'];
+
     return (
-        <div className="h-full">
+        <div className="h-full flex flex-col">
             {craftingDetails && (
                 <CraftingDetailModal details={craftingDetails} inventory={inventory} onClose={() => setCraftingDetails(null)} onAction={onAction} />
             )}
-            <p>재료 변환 기능이 여기에 표시됩니다.</p>
+
+            <div className="flex-grow p-4 overflow-y-auto">
+                <h3 className="text-xl font-bold text-on-panel mb-4">강화석 변환</h3>
+                <p className="text-sm text-tertiary mb-4">보유한 강화석을 상위 등급으로 합성하거나 하위 등급으로 분해할 수 있습니다.</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {materialTiers.map((materialName, index) => {
+                        const materialExists = materialCategories[materialName] && materialCategories[materialName].length > 0;
+                        const quantity = materialCategories[materialName]
+                            ? materialCategories[materialName].reduce((sum, item) => sum + (item.quantity || 0), 0)
+                            : 0;
+                        const canUpgrade = index < materialTiers.length - 1;
+                        const canDowngrade = index > 0;
+                        const materialData = MATERIAL_ITEMS[materialName];
+
+                        return (
+                            <div key={materialName} className="bg-panel-secondary rounded-lg p-4 flex items-center space-x-4">
+                                <img src={materialData.image} alt={materialName} className="w-16 h-16 flex-shrink-0" />
+                                <div className="flex-grow">
+                                    <h4 className="font-bold text-secondary text-lg">{materialName}</h4>
+                                    <p className="text-sm text-tertiary">보유: {quantity.toLocaleString()}개</p>
+                                </div>
+                                <div className="flex flex-col space-y-2">
+                                    {canUpgrade && (
+                                        <Button
+                                            onClick={() => setCraftingDetails({ materialName, craftType: 'upgrade' })}
+                                            colorScheme="blue"
+                                            className="!text-xs !py-1 w-20"
+                                            disabled={!materialExists || quantity < 10} // Assuming 10 required for upgrade
+                                        >
+                                            합성
+                                        </Button>
+                                    )}
+                                    {canDowngrade && (
+                                        <Button
+                                            onClick={() => setCraftingDetails({ materialName, craftType: 'downgrade' })}
+                                            colorScheme="purple"
+                                            className="!text-xs !py-1 w-20"
+                                            disabled={!materialExists || quantity < 1} // Assuming 1 required for downgrade
+                                        >
+                                            분해
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                        );
+                    })}
+                </div>
+            </div>
         </div>
     );
 };

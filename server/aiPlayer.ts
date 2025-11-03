@@ -26,6 +26,8 @@ const baseAiUser: Omit<User, 'nickname'> = {
     strategyXp: 0,
     playfulLevel: 50,
     playfulXp: 0,
+    blacksmithLevel: 1,
+    blacksmithXp: 0,
     baseStats: createDefaultBaseStats(),
     spentStatPoints: createDefaultSpentStatPoints(),
     inventory: aiInventory,

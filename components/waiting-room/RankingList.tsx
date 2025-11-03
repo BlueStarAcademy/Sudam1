@@ -13,10 +13,9 @@ interface RankingListProps {
     onShowPastRankings: (info: { user: UserWithStatus; mode: GameMode }) => void;
 }
 
-const getTier = (rank: number, totalPlayers: number) => {
-    if (totalPlayers === 0) return RANKING_TIERS[RANKING_TIERS.length - 1];
+const getTier = (score: number, rank: number, totalGames: number) => {
     for (const tier of RANKING_TIERS) {
-        if (tier.threshold(rank, totalPlayers)) {
+        if (tier.threshold(score, rank, totalGames)) {
             return tier;
         }
     }
@@ -71,8 +70,11 @@ const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser
             return sproutTier;
         }
 
-        return getTier(rankAmongEligible, totalEligiblePlayers);
-    }, [mode, eligibleRankedUsers, totalEligiblePlayers, sproutTier]);
+        const score = stats.rankingScore || 1200;
+        const totalGames = stats.wins + stats.losses;
+
+        return getTier(score, rankAmongEligible, totalGames);
+    }, [mode, eligibleRankedUsers, sproutTier]);
 
 
     const renderRankItem = useCallback((user: User, rank: number, isMyRankDisplay: boolean) => {

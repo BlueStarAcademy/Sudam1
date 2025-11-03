@@ -51,7 +51,7 @@ export const resetAndGenerateQuests = async (user: User): Promise<User> => {
     }
 
     // Daily Quests
-    if (isDifferentDayKST(user.quests.daily?.lastReset, now)) {
+    if (isDifferentDayKST(updatedUser.quests.daily?.lastReset, now)) {
         updatedUser.quests.daily = {
             quests: [],
             activityProgress: 0,
@@ -68,7 +68,7 @@ export const resetAndGenerateQuests = async (user: User): Promise<User> => {
     }
 
     // Weekly Quests
-    if (isDifferentWeekKST(user.quests.weekly?.lastReset, now)) {
+    if (isDifferentWeekKST(updatedUser.quests.weekly?.lastReset, now)) {
         updatedUser.quests.weekly = {
             quests: [],
             activityProgress: 0,
@@ -83,7 +83,7 @@ export const resetAndGenerateQuests = async (user: User): Promise<User> => {
     }
     
     // Monthly Quests
-    if (isDifferentMonthKST(user.quests.monthly?.lastReset, now)) {
+    if (isDifferentMonthKST(updatedUser.quests.monthly?.lastReset, now)) {
         updatedUser.quests.monthly = {
             quests: [],
             activityProgress: 0,
@@ -185,8 +185,9 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     if (type.startsWith('BUY_') || type === 'PURCHASE_ACTION_POINTS' || type === 'EXPAND_INVENTORY') return handleShopAction(volatileState, action, user);
     if (type.startsWith('TOURNAMENT') || type.startsWith('START_TOURNAMENT') || type.startsWith('SKIP_TOURNAMENT') || type.startsWith('FORFEIT_TOURNAMENT') || type.startsWith('SAVE_TOURNAMENT') || type.startsWith('CLEAR_TOURNAMENT')) return handleTournamentAction(volatileState, action, user);
     if (['TOGGLE_EQUIP_ITEM', 'SELL_ITEM', 'ENHANCE_ITEM', 'DISASSEMBLE_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'CRAFT_MATERIAL', 'COMBINE_ITEMS'].includes(type)) return handleInventoryAction(volatileState, action, user);
-    if (['UPDATE_AVATAR', 'UPDATE_BORDER', 'CHANGE_NICKNAME', 'RESET_STAT_POINTS', 'CONFIRM_STAT_ALLOCATION', 'UPDATE_MBTI'].includes(type)) return handleUserAction(volatileState, action, user);
+    if (['UPDATE_AVATAR', 'UPDATE_BORDER', 'CHANGE_NICKNAME', 'RESET_STAT_POINTS', 'CONFIRM_STAT_ALLOCATION', 'UPDATE_MBTI', 'SAVE_PRESET', 'APPLY_PRESET', 'UPDATE_REJECTION_SETTINGS'].includes(type)) return handleUserAction(volatileState, action, user);
     if (type.includes('SINGLE_PLAYER')) return handleSinglePlayerAction(volatileState, action, user);
+    if (type === 'MANNER_ACTION') return mannerService.handleMannerAction(volatileState, action, user);
     
     // Social actions can be game-related (chat in game) or not (logout)
     const socialResult = await handleSocialAction(volatileState, action, user);

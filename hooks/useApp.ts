@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 // FIX: The main types barrel file now exports settings types. Use it for consistency.
-import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, CoreStat, SpecialStat, MythicStat } from '../types.js';
+import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset } from '../types.js';
 import { audioService } from '../services/audioService.js';
 import { stableStringify, parseHash } from '../utils/appUtils.js';
 import { 
@@ -28,15 +28,7 @@ export const useApp = () => {
     const [error, setError] = useState<string | null>(null);
     const isLoggingOut = useRef(false);
 
-    const [presets, setPresets] = useState<Array<{name: string, equipment: Partial<Record<import('../types.js').EquipmentSlot, string>>}>>(() => {
-        try {
-            const stored = localStorage.getItem('presets');
-            if (stored) {
-                return JSON.parse(stored);
-            }
-        } catch (e) { console.error('Failed to parse presets from localStorage', e); }
-        return Array(5).fill(null).map((_, i) => ({ name: `프리셋 ${i + 1}`, equipment: {} }));
-    });
+
     
     // --- App Settings State ---
     const [settings, setSettings] = useState<AppSettings>(() => {
@@ -145,11 +137,7 @@ export const useApp = () => {
 
     }, [settings]);
 
-    useEffect(() => {
-        try {
-            localStorage.setItem('presets', JSON.stringify(presets));
-        } catch (e) { console.error('Failed to save presets to localStorage', e); }
-    }, [presets]);
+
 
     useEffect(() => {
         document.documentElement.setAttribute('data-theme', settings.graphics.theme);
@@ -304,6 +292,14 @@ export const useApp = () => {
                 
                 return { ...prevUser, inventory: newInventory, equipment: newEquipment };
             });
+        } else if (action.type === 'SAVE_PRESET') {
+            setCurrentUser(prevUser => {
+                if (!prevUser) return null;
+                const { preset, index } = action.payload;
+                const newPresets = [...prevUser.equipmentPresets];
+                newPresets[index] = preset;
+                return { ...prevUser, equipmentPresets: newPresets };
+            });
         }
 
         try {
@@ -357,6 +353,9 @@ export const useApp = () => {
                     }
                 }
                 if (result.enhancementAnimationTarget) setEnhancementAnimationTarget(result.enhancementAnimationTarget);
+                if (result.redirectToTournament) {
+                    window.location.hash = `#/tournament/${result.redirectToTournament}`;
+                }
             }
         } catch (err: any) {
             showError(err.message);
@@ -390,37 +389,22 @@ export const useApp = () => {
                 const data: AppState = await response.json();
                 if (isLoggingOut.current) return;
                 
-                const updateStateIfChanged = <T,>(setter: React.Dispatch<React.SetStateAction<T>>, newData: T) => {
-                    setter(newData);
-                };
-    
-                const updatedUser = (() => {
-                    const user = data.users[currentUser.id];
-                    if (user && typeof user.inventorySlots === 'string') {
-                        try {
-                            return { ...user, inventorySlots: JSON.parse(user.inventorySlots) };
-                        } catch (e) {
-                            console.error("Failed to parse inventorySlots string:", e);
-                            return user; // Return original user if parsing fails
-                        }
-                    }
-                    return user;
-                })();
+                const updatedUser = data.users[currentUser.id];
                 setCurrentUser(updatedUser || null);
 
-                updateStateIfChanged(setUsersMap, data.users);
-                updateStateIfChanged(setLiveGames, data.liveGames);
-                updateStateIfChanged(setNegotiations, data.negotiations);
-                updateStateIfChanged(setWaitingRoomChats, data.waitingRoomChats);
-                updateStateIfChanged(setGameChats, data.gameChats);
-                updateStateIfChanged(setAdminLogs, data.adminLogs);
-                updateStateIfChanged(setGameModeAvailability, data.gameModeAvailability);
-                updateStateIfChanged(setAnnouncements, data.announcements);
-                updateStateIfChanged(setGlobalOverrideAnnouncement, data.globalOverrideAnnouncement);
-                updateStateIfChanged(setAnnouncementInterval, data.announcementInterval);
+                setUsersMap(data.users);
+                setLiveGames(data.liveGames);
+                setNegotiations(data.negotiations);
+                setWaitingRoomChats(data.waitingRoomChats);
+                setGameChats(data.gameChats);
+                setAdminLogs(data.adminLogs);
+                setGameModeAvailability(data.gameModeAvailability);
+                setAnnouncements(data.announcements);
+                setGlobalOverrideAnnouncement(data.globalOverrideAnnouncement);
+                setAnnouncementInterval(data.announcementInterval);
     
                 const onlineStatuses = Object.entries(data.userStatuses).map(([id, statusInfo]) => ({ ...data.users[id], ...statusInfo }));
-                updateStateIfChanged(setOnlineUsers, onlineStatuses as UserWithStatus[]);
+                setOnlineUsers(onlineStatuses as UserWithStatus[]);
             } catch (err) { console.error("Polling error:", err); }
         };
     
@@ -581,33 +565,16 @@ export const useApp = () => {
         setEnhancementOutcome(null);
     }, []);
 
-    const closeClaimAllSummary = useCallback(() => {
+        const closeClaimAllSummary = useCallback(() => {
         setIsClaimAllSummaryOpen(false);
         setClaimAllSummary(null);
     }, []);
 
-    const applyPreset = useCallback((preset: { equipment: Partial<Record<import('../types.js').EquipmentSlot, string>> }) => {
-        if (!preset || !currentUserWithStatus) return;
-    
-        const currentEquipment = currentUserWithStatus.equipment;
-        const presetEquipment = preset.equipment;
-    
-        const allSlots = new Set([...Object.keys(currentEquipment), ...Object.keys(presetEquipment)]) as Set<import('../types.js').EquipmentSlot>;
-    
-        for (const slot of allSlots) {
-            const currentItemId = currentEquipment[slot];
-            const presetItemId = presetEquipment[slot];
-    
-            if (currentItemId !== presetItemId) {
-                if (presetItemId) {
-                    handleAction({ type: 'TOGGLE_EQUIP_ITEM', payload: { itemId: presetItemId } });
-                }
-                else if (currentItemId) {
-                    handleAction({ type: 'TOGGLE_EQUIP_ITEM', payload: { itemId: currentItemId } });
-                }
-            }
-        }
-    }, [currentUserWithStatus, handleAction]);
+    const applyPreset = useCallback((preset: EquipmentPreset) => {
+        handleAction({ type: 'APPLY_PRESET', payload: { presetName: preset.name } });
+    }, [handleAction]);
+
+    const presets = useMemo(() => currentUser?.equipmentPresets || [], [currentUser]);
 
     const {
         mainOptionBonuses,
@@ -682,6 +649,7 @@ export const useApp = () => {
 
     return {
         currentUser,
+        presets,
         setCurrentUserAndRoute,
         currentUserWithStatus,
         currentRoute,
@@ -711,8 +679,6 @@ export const useApp = () => {
         updatePanelColor,
         updateTextColor,
         resetGraphicsToDefault,
-        presets,
-        setPresets,
         mainOptionBonuses,
         combatSubOptionBonuses,
         specialStatBonuses,
@@ -737,6 +703,7 @@ export const useApp = () => {
             handleAction,
             handleLogout,
             handleEnterWaitingRoom,
+            applyPreset,
             openSettingsModal: () => setIsSettingsModalOpen(true),
             closeSettingsModal: () => setIsSettingsModalOpen(false),
             openInventory: () => setIsInventoryOpen(true),
@@ -751,7 +718,6 @@ export const useApp = () => {
             closeDisassemblyResult: () => setDisassemblyResult(null),
             closeCraftResult: () => setCraftResult(null),
             closeCombinationResult: () => setCombinationResult(null),
-            applyPreset,
             closeRewardSummary: () => setRewardSummary(null),
             closeClaimAllSummary,
             openViewingUser: handleViewUser,

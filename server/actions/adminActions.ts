@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, AdminLog, Announcement, OverrideAnnouncement, GameMode, LiveGameSession, UserStatusInfo, InventoryItem, InventoryItemType } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, AdminLog, Announcement, OverrideAnnouncement, GameMode, LiveGameSession, UserStatusInfo, InventoryItem, InventoryItemType, UserStatus } from '../../types.js';
 import * as types from '../../types.js';
 import { defaultStats, createDefaultBaseStats, createDefaultSpentStatPoints, createDefaultInventory, createDefaultQuests, createDefaultUser } from '../initialData.js';
 import * as summaryService from '../summaryService.js';
@@ -270,16 +270,14 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
 
             game.gameStatus = 'no_contest';
             game.winReason = 'disconnect';
-            await summaryService.processGameSummary(game);
-            
-             if (volatileState.userStatuses[game.player1.id]) {
-                volatileState.userStatuses[game.player1.id].status = 'waiting';
+            if (volatileState.userStatuses[game.player1.id]) {
+                volatileState.userStatuses[game.player1.id].status = UserStatus.Waiting;
                 volatileState.userStatuses[game.player1.id].mode = game.mode;
-             }
-             if (volatileState.userStatuses[game.player2.id]) {
-                volatileState.userStatuses[game.player2.id].status = 'waiting';
+            }
+            if (volatileState.userStatuses[game.player2.id]) {
+                volatileState.userStatuses[game.player2.id].status = UserStatus.Waiting;
                 volatileState.userStatuses[game.player2.id].mode = game.mode;
-             }
+            }
 
             await createAdminLog(user, 'force_delete_game', game.player1, backupData);
             return {};
@@ -299,11 +297,11 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
 
             // Clean up statuses for both players
             if (volatileState.userStatuses[game.player1.id]) {
-                volatileState.userStatuses[game.player1.id].status = 'waiting';
+                volatileState.userStatuses[game.player1.id].status = UserStatus.Waiting;
                 volatileState.userStatuses[game.player1.id].mode = game.mode;
             }
             if (volatileState.userStatuses[game.player2.id]) {
-                volatileState.userStatuses[game.player2.id].status = 'waiting';
+                volatileState.userStatuses[game.player2.id].status = UserStatus.Waiting;
                 volatileState.userStatuses[game.player2.id].mode = game.mode;
             }
             
