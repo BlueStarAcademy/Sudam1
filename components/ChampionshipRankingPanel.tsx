@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext.js';
 import { LeagueTier, User } from '../types.js';
-import { LEAGUE_DATA, RANKING_TIERS, AVATAR_POOL, BORDER_POOL } from '../constants.js';
+import { LEAGUE_DATA, RANKING_TIERS, AVATAR_POOL, BORDER_POOL } from '../constants';
 import Avatar from './Avatar.js';
 import LeagueTierInfoModal from './LeagueTierInfoModal.js';
 

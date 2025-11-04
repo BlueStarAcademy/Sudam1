@@ -1,7 +1,7 @@
 import React from 'react';
 import { UserWithStatus, GameMode } from '../../types.js';
 import DraggableWindow from '../DraggableWindow.js';
-import { RANKING_TIERS } from '../../constants.js';
+import { RANKING_TIERS } from '../../constants';
 
 interface PastRankingsModalProps {
     info: { user: UserWithStatus; mode: GameMode; };

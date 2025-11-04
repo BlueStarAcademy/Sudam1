@@ -62,7 +62,7 @@ const GameList: React.FC<GameListProps> = ({ games, onAction, currentUser }) => 
     };
 
     return (
-      <div className="bg-panel border border-color text-on-panel rounded-lg shadow-lg p-4 flex flex-col min-h-0">
+      <div className="bg-panel border border-color text-on-panel rounded-lg shadow-lg p-4 flex flex-col min-h-0 h-full">
         <div className="flex justify-between items-center mb-3 border-b border-color pb-2 flex-shrink-0">
             <h2 className="text-xl font-semibold">진행중인 대국</h2>
             <div className="flex items-center gap-2">
@@ -85,7 +85,7 @@ const GameList: React.FC<GameListProps> = ({ games, onAction, currentUser }) => 
                 </button>
             </div>
         </div>
-        <ul className="space-y-3 overflow-y-auto pr-2 max-h-[calc(var(--vh,1vh)*25)] min-h-[96px]">
+        <ul className="space-y-3 overflow-y-auto pr-2 flex-grow">
           {games.length > 0 ? games.map((game, index) => {
             if (!game || !game.player1 || !game.player2) {
               return null;

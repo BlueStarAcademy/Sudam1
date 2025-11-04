@@ -7,7 +7,7 @@ export default defineConfig({
   server: {
     host: true, // This ensures Vite listens on all network interfaces
     proxy: {
-      '/api': 'http://localhost:4000',
+      '/api': 'http://localhost:4001',
     },
     watch: {
       ignored: ['**/vite.config.ts'],

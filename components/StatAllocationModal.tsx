@@ -3,7 +3,7 @@ import { UserWithStatus, CoreStat, ServerAction } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import RadarChart from './RadarChart.js';
-import { CORE_STATS_DATA } from '../constants.js';
+import { CORE_STATS_DATA } from '../constants';
 
 interface StatAllocationModalProps {
     currentUser: UserWithStatus;

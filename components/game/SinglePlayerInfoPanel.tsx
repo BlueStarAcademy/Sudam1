@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { LiveGameSession, GameMode } from '../../types.js';
-import { DEFAULT_KOMI } from '../../constants.js';
+import { DEFAULT_KOMI } from '../../constants';
 
 const goProverbs = [
     { term: "부득탐승(不得貪勝)", meaning: "너무 이기려고 탐하지 말라." },

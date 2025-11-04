@@ -38,7 +38,7 @@ export type InventoryItem = {
   level: number;
   isEquipped: boolean;
   createdAt: number;
-  image: string | null;
+  image: string;
   grade: ItemGrade;
   stars: number;
   options?: ItemOptions;

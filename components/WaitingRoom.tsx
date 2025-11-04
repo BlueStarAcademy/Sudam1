@@ -10,7 +10,7 @@ import RankingList from './waiting-room/RankingList.js';
 import GameList from './waiting-room/GameList.js';
 import ChatWindow from './waiting-room/ChatWindow.js';
 import TierInfoModal from './TierInfoModal.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, aiUserId } from './../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, aiUserId } from './../constants';
 import QuickAccessSidebar from './QuickAccessSidebar.js';
 import Button from './Button.js';
 import GameApplicationModal from './GameApplicationModal.js';

@@ -1,7 +1,7 @@
 import React from 'react';
 import DraggableWindow from '../DraggableWindow.js';
 import { InventoryItem } from '../../types.js';
-import { gradeBackgrounds, gradeStyles } from '../../constants/items.js';
+import { gradeBackgrounds, gradeStyles } from '../../constants/items';
 
 interface EnhancementResultModalProps {
     result: {

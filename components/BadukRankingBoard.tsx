@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../hooks/useAppContext.js';
 import { User } from '../types.js';
 import Avatar from './Avatar.js';
-import { AVATAR_POOL, BORDER_POOL } from '../constants.js';
+import { AVATAR_POOL, BORDER_POOL } from '../constants';
 
 interface BadukRankingBoardProps {
     isTopmost?: boolean;

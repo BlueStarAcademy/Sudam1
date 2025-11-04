@@ -1,6 +1,6 @@
 import * as db from '../db.js';
 import { LeagueTier, CoreStat } from '../../types.js';
-import { TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL } from '../../constants.js';
+import { TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL } from '../../constants';
 import * as tournamentService from '../tournamentService.js';
 import { calculateTotalStats } from '../statService.js';
 import { handleRewardAction } from './rewardActions.js';

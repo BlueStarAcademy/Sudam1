@@ -55,6 +55,7 @@ export const getAllUsers = async (): Promise<User[]> => {
     const userRepository = await import('./repositories/userRepository.ts');
     return userRepository.getAllUsers(await getDb());
 };
+export const getUser = async (id: string): Promise<User | null> => {
     const userRepository = await import('./repositories/userRepository.ts');
     return userRepository.getUser(await getDb(), id);
 };
@@ -86,6 +87,7 @@ export const getUserCredentials = async (username: string): Promise<UserCredenti
     const credentialsRepository = await import('./repositories/credentialsRepository.ts');
     return credentialsRepository.getUserCredentials(await getDb(), username);
 };
+export const getUserCredentialsByUserId = async (userId: string): Promise<UserCredentials | null> => {
     const credentialsRepository = await import('./repositories/credentialsRepository.ts');
     return credentialsRepository.getUserCredentialsByUserId(await getDb(), userId);
 };

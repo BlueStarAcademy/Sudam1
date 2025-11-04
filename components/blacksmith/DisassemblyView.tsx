@@ -3,7 +3,7 @@ import { UserWithStatus, InventoryItem, ServerAction, ItemGrade } from '../../ty
 import { useAppContext } from '../../hooks/useAppContext.js';
 import Button from '../Button.js';
 import DraggableWindow from '../DraggableWindow.js';
-import { ENHANCEMENT_COSTS, MATERIAL_ITEMS, ITEM_SELL_PRICES } from '../../constants.js';
+import { ENHANCEMENT_COSTS, MATERIAL_ITEMS, ITEM_SELL_PRICES } from '../../constants';
 
 const calculateSellPrice = (item: InventoryItem): number => {
     if (item.type === 'equipment') {

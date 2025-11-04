@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
 import { UserWithStatus, ServerAction, UserStatus, GameMode, Negotiation } from '../../types.js';
 import Avatar from '../Avatar.js';
-import { AVATAR_POOL, BORDER_POOL } from '../../constants.js';
+import { AVATAR_POOL, BORDER_POOL } from '../../constants';
 import Button from '../Button.js';
+import ChallengeSelectionModal from '../ChallengeSelectionModal';
 import GameRejectionSettingsModal from '../GameRejectionSettingsModal.tsx';
 
 const statusDisplay: Record<UserStatus, { text: string; color: string; }> = {
@@ -18,13 +19,14 @@ interface PlayerListProps {
     users: UserWithStatus[];
     onAction: (a: ServerAction) => void;
     currentUser: UserWithStatus;
-    mode: GameMode;
+    mode: GameMode | 'strategic' | 'playful';
     negotiations: Negotiation[];
     onViewUser: (userId: string) => void;
+    lobbyType: 'strategic' | 'playful';
 }
 
-const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, mode, negotiations, onViewUser }) => {
-    const [isChallengeModalOpen, setIsChallengeModalOpen] = useState(false);
+const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, mode, negotiations, onViewUser, lobbyType }) => {
+    const [isChallengeSelectionModalOpen, setIsChallengeSelectionModalOpen] = useState(false);
     const [challengeTargetUser, setChallengeTargetUser] = useState<UserWithStatus | null>(null);
     const [isRejectionSettingsModalOpen, setIsRejectionSettingsModalOpen] = useState(false);
     const me = users.find(user => user.id === currentUser.id);
@@ -105,7 +107,10 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
                             </Button>
                         ) : (
                             <Button
-                                onClick={() => onAction({ type: 'CHALLENGE_USER', payload: { opponentId: user.id, mode } })}
+                                onClick={() => {
+                                    setChallengeTargetUser(user);
+                                    setIsChallengeSelectionModalOpen(true);
+                                }}
                                 disabled={!isChallengeable}
                                 className="!text-xs !py-1 !px-2"
                             >
@@ -122,14 +127,13 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
         <div className="p-3 flex flex-col min-h-0 text-on-panel">
              <h2 className="text-xl font-semibold mb-2 border-b border-color pb-2 flex-shrink-0 flex justify-between items-center">
                 <span>유저 목록</span>
-                <Button 
-                    onClick={() => setIsRejectionSettingsModalOpen(true)}
-                    colorScheme="gray"
-                    className="!text-xs !py-1 !px-2"
-                >
-                    대국 신청 거부
-                </Button>
-            </h2>
+                                <Button
+                                    onClick={() => setIsRejectionSettingsModalOpen(true)}
+                                    colorScheme="none"
+                                    className="!text-xs !py-1 !px-2 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-bold rounded-lg shadow-lg transition-all duration-200"
+                                >
+                                    대국 신청 거부
+                                </Button>            </h2>
             {me && (
               <div className="flex-shrink-0 mb-2">
                   {renderUserItem(me, true)}
@@ -140,16 +144,20 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
                     <p className="text-center text-tertiary pt-8">다른 플레이어가 없습니다.</p>
                 )}
             </ul>
-            {isChallengeModalOpen && challengeTargetUser && (
-                <ChallengeApplicationModal
-                    opponentUser={challengeTargetUser}
-                    onClose={() => setIsChallengeModalOpen(false)}
-                    onAction={onAction}
-                />
-            )}
             {isRejectionSettingsModalOpen && (
                 <GameRejectionSettingsModal
                     onClose={() => setIsRejectionSettingsModalOpen(false)}
+                />
+            )}
+            {isChallengeSelectionModalOpen && challengeTargetUser && (
+                <ChallengeSelectionModal
+                    opponent={challengeTargetUser}
+                    onClose={() => setIsChallengeSelectionModalOpen(false)}
+                    onChallenge={(gameMode) => {
+                        onAction({ type: 'CHALLENGE_USER', payload: { opponentId: challengeTargetUser.id, mode: gameMode } });
+                        setIsChallengeSelectionModalOpen(false);
+                    }}
+                    lobbyType={lobbyType}
                 />
             )}
         </div>

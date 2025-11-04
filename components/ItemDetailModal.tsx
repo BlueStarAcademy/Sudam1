@@ -4,7 +4,7 @@ import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 
 import { useAppContext } from '../hooks/useAppContext.js';
-import { GRADE_LEVEL_REQUIREMENTS } from '../constants.js';
+import { GRADE_LEVEL_REQUIREMENTS } from '../constants';
 
 interface ItemDetailModalProps {
     item: InventoryItem;

@@ -1,6 +1,6 @@
 import { AppState, User, UserCredentials, QuestLog, DailyQuestData, InventoryItem, CoreStat, GameMode, LeagueTier, WeeklyCompetitor, WeeklyQuestData, MonthlyQuestData } from '../types.js';
 import { randomUUID } from 'crypto';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, BOT_NAMES, AVATAR_POOL } from '../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, BOT_NAMES, AVATAR_POOL } from '../constants';
 
 export const createDefaultBaseStats = (): Record<CoreStat, number> => ({
     [CoreStat.Concentration]: 100,

@@ -1,4 +1,4 @@
-import { GameMode } from '../types.ts';
+import { GameMode } from '../types';
 
 export const SPECIAL_GAME_MODES = [
   { mode: GameMode.Standard, name: "정통 바둑", description: "일반적인 정통 바둑입니다.", available: true, image: "/images/simbols/simbol1.png" },

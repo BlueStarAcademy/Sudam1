@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { UserWithStatus, EquipmentSlot, InventoryItem, ItemGrade, GameMode } from '../types.js';
 import Avatar from './Avatar.js';
 import DraggableWindow from './DraggableWindow.js';
-import { AVATAR_POOL, BORDER_POOL, emptySlotImages, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, LEAGUE_DATA } from '../constants.js';
+import { AVATAR_POOL, BORDER_POOL, emptySlotImages, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, LEAGUE_DATA } from '../constants';
 import { getMannerScore, getMannerRank, getMannerStyle } from '../services/manner.js';
 import MbtiInfoModal from './MbtiInfoModal.js';
 

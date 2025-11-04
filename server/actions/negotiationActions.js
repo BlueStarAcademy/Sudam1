@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
 import { UserStatus } from '../../types.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, STRATEGIC_ACTION_POINT_COST, PLAYFUL_ACTION_POINT_COST, DEFAULT_GAME_SETTINGS } from '../../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, STRATEGIC_ACTION_POINT_COST, PLAYFUL_ACTION_POINT_COST, DEFAULT_GAME_SETTINGS } from '../../constants';
 import { initializeGame } from '../gameModes.js';
 import { aiUserId, getAiUser } from '../aiPlayer.js';
 const getActionPointCost = (mode) => {

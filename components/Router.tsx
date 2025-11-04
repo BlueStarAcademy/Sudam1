@@ -2,7 +2,7 @@
 import React from 'react';
 import { useAppContext } from '../hooks/useAppContext.js';
 
-// Import all view components
+import { GameMode } from '../types.js';
 import Login from './Login.js';
 import Register from './Register.js';
 import Profile from './Profile.js';
@@ -39,7 +39,7 @@ const Router: React.FC = () => {
             return <Lobby lobbyType={lobbyType} />;
         case 'waiting':
             if (currentRoute.params.mode) {
-                return <WaitingRoom mode={currentRoute.params.mode} />;
+                return <WaitingRoom mode={currentRoute.params.mode as GameMode | 'strategic' | 'playful'} />;
             }
             // Fallback if mode is missing
             window.location.hash = '#/profile';

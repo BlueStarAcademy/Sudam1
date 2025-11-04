@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { BoardState, Point, Player, GameStatus, Move, AnalysisResult, LiveGameSession, User, AnimationData, GameMode, RecommendedMove, ServerAction } from '../types.js';
 import { WHITE_BASE_STONE_IMG, BLACK_BASE_STONE_IMG, WHITE_HIDDEN_STONE_IMG, BLACK_HIDDEN_STONE_IMG } from '../assets.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants';
 
 const AnimatedBonusText: React.FC<{
     animation: Extract<AnimationData, { type: 'bonus_text' }>;

@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import DraggableWindow from './DraggableWindow.js';
-import { MBTI_QUESTIONS } from '../constants/mbtiQuestions.js';
+import { MBTI_QUESTIONS } from '../constants/mbtiQuestions';
 import { useAppContext } from '../hooks/useAppContext.js';
 
 interface MbtiInfoModalProps {

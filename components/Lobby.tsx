@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { GameMode } from '../types.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants';
 import Button from './Button.js';
 import { useAppContext } from '../hooks/useAppContext.js';
 

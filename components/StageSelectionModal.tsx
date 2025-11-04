@@ -3,8 +3,8 @@ import React, { useMemo } from 'react';
 import { UserWithStatus, ServerAction, SinglePlayerLevel } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
-import { SINGLE_PLAYER_STAGES } from '../constants/singlePlayerConstants.js';
-import { CONSUMABLE_ITEMS } from '../constants.js';
+import { SINGLE_PLAYER_STAGES } from '../constants/singlePlayerConstants';
+import { CONSUMABLE_ITEMS } from '../constants';
 
 interface StageSelectionModalProps {
     currentUser: UserWithStatus;

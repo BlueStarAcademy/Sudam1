@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { ServerAction, AdminProps, GameMode, Announcement, OverrideAnnouncement } from '../../types.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants';
 import Button from '../Button.js';
 
 // FIX: The component uses various props which were not defined in the interface.

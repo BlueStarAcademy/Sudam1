@@ -1,7 +1,7 @@
 
 
 import { User, CoreStat, SpecialStat, MythicStat, ItemOptionType, InventoryItem } from '../types.js';
-import { ACTION_POINT_REGEN_INTERVAL_MS } from '../constants.js';
+import { ACTION_POINT_REGEN_INTERVAL_MS } from '../constants';
 
 export interface MannerEffects {
     maxActionPoints: number;

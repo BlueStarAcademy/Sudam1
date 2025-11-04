@@ -3,7 +3,7 @@ import { LiveGameSession, User, Player, KomiBid, ServerAction, Point } from '../
 import Button from './Button.js';
 import DraggableWindow from './DraggableWindow.js';
 import { WHITE_BASE_STONE_IMG, BLACK_BASE_STONE_IMG } from '../assets.js';
-import { DEFAULT_KOMI } from '../constants.js';
+import { DEFAULT_KOMI } from '../constants';
 
 interface KomiBiddingPanelProps {
     session: LiveGameSession;

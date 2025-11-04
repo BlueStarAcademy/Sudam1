@@ -30,8 +30,13 @@ const PurchaseQuantityModal: React.FC<PurchaseQuantityModalProps> = ({ item, cur
         const maxByCurrency = pricePerItem > 0 ? Math.floor(currency / pricePerItem) : Infinity;
 
         let maxByInventory = Infinity;
-        if (item.type !== 'equipment') { // Equipment doesn't take up stackable inventory space in the same way
-            const currentItemCount = currentUser.inventory.filter(invItem => invItem.itemId === item.itemId).length;
+        if (item.type === 'equipment') {
+            const equipmentCount = currentUser.inventory.filter(invItem => invItem.type === 'equipment').length;
+            const inventorySlots = currentUser.inventorySlots?.equipment || (BASE_SLOTS_PER_CATEGORY + (currentUser.inventoryExpansions?.equipment || 0) * EXPANSION_AMOUNT);
+            const availableSlots = inventorySlots - equipmentCount;
+            maxByInventory = availableSlots > 0 ? availableSlots : 0;
+        } else { // For stackable items
+            const currentItemCount = currentUser.inventory.filter(invItem => invItem.id === item.itemId).length;
             const inventorySlots = currentUser.inventorySlots?.[item.type] || BASE_SLOTS_PER_CATEGORY;
             const availableSlots = inventorySlots - currentItemCount;
             maxByInventory = availableSlots > 0 ? availableSlots : 0;

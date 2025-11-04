@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { InventoryItem, ServerAction } from '../../types.js';
 import { useAppContext } from '../../hooks/useAppContext.js';
 import Button from '../Button.js';
-import { MATERIAL_ITEMS } from '../../constants.js';
+import { MATERIAL_ITEMS } from '../../constants';
 
 const CraftingDetailModal: React.FC<{
     details: { materialName: string, craftType: 'upgrade' | 'downgrade' };
@@ -152,7 +152,7 @@ const ConversionView: React.FC<ConversionViewProps> = ({ onAction }) => {
 
                         return (
                             <div key={materialName} className="bg-panel-secondary rounded-lg p-4 flex items-center space-x-4">
-                                <img src={materialData.image} alt={materialName} className="w-16 h-16 flex-shrink-0" />
+                                <img src={materialData.image as string | undefined} alt={materialName} className="w-16 h-16 flex-shrink-0" />
                                 <div className="flex-grow">
                                     <h4 className="font-bold text-secondary text-lg">{materialName}</h4>
                                     <p className="text-sm text-tertiary">보유: {quantity.toLocaleString()}개</p>

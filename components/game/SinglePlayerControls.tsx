@@ -1,7 +1,7 @@
 import React from 'react';
 import { GameProps, Player } from '../../types.js';
 import Button from '../Button.js';
-import { SINGLE_PLAYER_STAGES } from '../../constants.js';
+import { SINGLE_PLAYER_STAGES } from '../../constants';
 
 interface SinglePlayerControlsProps extends Pick<GameProps, 'session' | 'onAction' | 'currentUser'> {}
 

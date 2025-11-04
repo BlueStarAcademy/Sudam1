@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { GameMode, LiveGameSession, ServerAction, GameProps, Player, User, Point, GameStatus, AppSettings } from '../../types.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants';
 import Button from '../Button.js';
 import Dice from '../Dice.js';
 import { audioService } from '../../services/audioService.js';

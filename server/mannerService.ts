@@ -2,8 +2,8 @@
 
 import { User } from '../types.js';
 import * as types from '../types.js';
-import * as db from '../db.ts';
-import { ACTION_POINT_REGEN_INTERVAL_MS } from '../constants.js';
+import * as db from './db.js';
+import { ACTION_POINT_REGEN_INTERVAL_MS } from '../constants';
 import { regenerateActionPoints, getMannerEffects as getMannerEffectsFromService } from './effectService.js';
 import { createDefaultSpentStatPoints } from './initialData.js';
 

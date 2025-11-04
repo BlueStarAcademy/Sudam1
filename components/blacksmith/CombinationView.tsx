@@ -2,7 +2,7 @@
 import React, { useState, useMemo } from 'react';
 import { InventoryItem, ServerAction, ItemGrade, EquipmentSlot, UserWithStatus } from '../../types.js';
 import Button from '../Button.js';
-import { BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES } from '../../constants/rules.js';
+import { BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES } from '../../constants/rules';
 
 const gradeStyles: Record<ItemGrade, { name: string; color: string; background: string; }> = {
     normal: { name: '일반', color: 'text-gray-300', background: '/images/equipments/normalbgi.png' },

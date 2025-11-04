@@ -2,7 +2,7 @@
 import React, { forwardRef, useImperativeHandle, useState, useEffect, useRef, useMemo, ReactNode, useCallback } from 'react';
 import { AlkkagiStone, GameStatus, Player, Point, LiveGameSession, UserWithStatus, GameProps } from '../../types.js';
 import CurlingBoard, { CurlingBoardHandle } from '../CurlingBoard.js';
-import { CURLING_TURN_TIME_LIMIT } from '../../constants.js';
+import { CURLING_TURN_TIME_LIMIT } from '../../constants';
 import { audioService } from '../../services/audioService.js';
 
 interface CurlingArenaProps extends GameProps {}

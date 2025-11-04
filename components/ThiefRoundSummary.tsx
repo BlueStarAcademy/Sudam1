@@ -3,7 +3,7 @@ import { LiveGameSession, ServerAction, User, ThiefRoundSummary as ThiefRoundSum
 import Avatar from './Avatar.js';
 import Button from './Button.js';
 import DraggableWindow from './DraggableWindow.js';
-import { AVATAR_POOL, BORDER_POOL } from '../constants.js';
+import { AVATAR_POOL, BORDER_POOL } from '../constants';
 
 interface ThiefRoundSummaryProps {
     session: LiveGameSession;

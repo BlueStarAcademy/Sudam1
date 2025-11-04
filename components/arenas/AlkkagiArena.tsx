@@ -2,7 +2,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import { AlkkagiStone, GameProps, Player, Point, GameStatus } from '../../types.js';
 import AlkkagiBoard, { AlkkagiBoardHandle } from '../AlkkagiBoard.js';
-import { ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_TURN_TIME_LIMIT } from '../../constants.js';
+import { ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_TURN_TIME_LIMIT } from '../../constants';
 import { audioService } from '../../services/audioService.js';
 
 interface AlkkagiArenaProps extends GameProps {}

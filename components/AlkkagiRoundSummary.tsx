@@ -3,7 +3,7 @@ import { LiveGameSession, ServerAction, User, Player, AlkkagiStone, AvatarInfo, 
 import Avatar from './Avatar.js';
 import Button from './Button.js';
 import DraggableWindow from './DraggableWindow.js';
-import { AVATAR_POOL, BORDER_POOL } from '../constants.js';
+import { AVATAR_POOL, BORDER_POOL } from '../constants';
 
 interface AlkkagiRoundSummaryProps {
     session: LiveGameSession;

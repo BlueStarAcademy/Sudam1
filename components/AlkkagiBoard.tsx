@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useImperativeHandle, forwardRef, useRef, ReactNode, useMemo, useCallback } from 'react';
 import { AlkkagiStone, GameSettings, GameStatus, Player, Point, AlkkagiLayoutType, LiveGameSession, UserWithStatus } from '../types.js';
-import { BATTLE_PLACEMENT_ZONES } from '../constants.js';
+import { BATTLE_PLACEMENT_ZONES } from '../constants';
 
 export interface AlkkagiBoardHandle {
     updateLocalStones: (newStones: AlkkagiStone[]) => void;

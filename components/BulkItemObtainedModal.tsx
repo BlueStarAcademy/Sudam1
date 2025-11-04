@@ -3,7 +3,7 @@ import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import { InventoryItem, ItemGrade } from '../types.js';
 import { audioService } from '../services/audioService.js';
-import { GRADE_LEVEL_REQUIREMENTS } from '../constants.js';
+import { GRADE_LEVEL_REQUIREMENTS } from '../constants';
 
 interface BulkItemObtainedModalProps {
     items: InventoryItem[];

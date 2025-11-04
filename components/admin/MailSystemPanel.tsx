@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { ServerAction, AdminProps, InventoryItem, InventoryItemType, User } from '../../types/index.js';
 import DraggableWindow from '../DraggableWindow.js';
 import Button from '../Button.js';
-import { EQUIPMENT_POOL, CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../../constants.js';
+import { EQUIPMENT_POOL, CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../../constants';
 
 interface ItemSelectionModalProps {
     onAddItem: (item: { name: string; quantity: number, type: InventoryItemType }) => void;

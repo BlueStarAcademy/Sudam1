@@ -1,16 +1,17 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import { User, UserWithStatus, GameMode } from '../../types.js';
 import Avatar from '../Avatar.js';
-import { RANKING_TIERS, AVATAR_POOL, BORDER_POOL } from '../../constants.js';
+import { RANKING_TIERS, AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants';
 import { useAppContext } from '../../hooks/useAppContext.js';
 import Button from '../Button.js';
 
 interface RankingListProps {
     currentUser: UserWithStatus;
-    mode: GameMode;
+    mode: GameMode | 'strategic' | 'playful';
     onViewUser: (userId: string) => void;
     onShowTierInfo: () => void;
-    onShowPastRankings: (info: { user: UserWithStatus; mode: GameMode }) => void;
+    onShowPastRankings: (info: { user: UserWithStatus; mode: GameMode | 'strategic' | 'playful' }) => void;
+    lobbyType: 'strategic' | 'playful';
 }
 
 const getTier = (score: number, rank: number, totalGames: number) => {
@@ -35,54 +36,84 @@ const getCurrentSeasonName = () => {
 };
 
 
-const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser, onShowTierInfo, onShowPastRankings }) => {
+const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser, onShowTierInfo, onShowPastRankings, lobbyType }) => {
     const { allUsers } = useAppContext();
 
     const allRankedUsers = useMemo(() => {
+        const gameModes = lobbyType === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
         return [...allUsers]
-            .filter(u => u.stats?.[mode])
-            .sort((a, b) => (b.stats![mode].rankingScore || 0) - (a.stats![mode].rankingScore || 0));
-    }, [allUsers, mode]);
+            .map(u => {
+                let totalScore = 0;
+                let gameCount = 0;
+                for (const game of gameModes) {
+                    const gameStats = u.stats?.[game.mode];
+                    if (gameStats) {
+                        totalScore += gameStats.rankingScore || 0;
+                        gameCount++;
+                    }
+                }
+                const avgScore = gameCount > 0 ? totalScore / gameCount : 0;
+                return { ...u, avgScore };
+            })
+            .filter(u => u.avgScore > 0)
+            .sort((a, b) => b.avgScore - a.avgScore);
+    }, [allUsers, lobbyType]);
 
     const eligibleRankedUsers = useMemo(() => {
+        const gameModes = lobbyType === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
         return allRankedUsers.filter(u => {
-            const stats = u.stats?.[mode];
-            return stats && (stats.wins + stats.losses) >= 20;
+            let totalGames = 0;
+            for (const game of gameModes) {
+                const gameStats = u.stats?.[game.mode];
+                if (gameStats) {
+                    totalGames += (gameStats.wins || 0) + (gameStats.losses || 0);
+                }
+            }
+            return totalGames >= 20;
         });
-    }, [allRankedUsers, mode]);
+    }, [allRankedUsers, lobbyType]);
     
     const totalEligiblePlayers = eligibleRankedUsers.length;
     const sproutTier = RANKING_TIERS[RANKING_TIERS.length - 1];
 
     const myRankIndex = allRankedUsers.findIndex(u => u.id === currentUser.id);
-    const myRankData = myRankIndex !== -1 ? { user: allRankedUsers[myRankIndex], rank: myRankIndex + 1 } : null;
+    const myRankData = myRankIndex !== -1 ? { user: allRankedUsers[myRankIndex], rank: myRankIndex + 1, score: allRankedUsers[myRankIndex].avgScore } : null;
 
     const topUsers = allRankedUsers.slice(0, 100);
 
-    const getTierForUser = useCallback((user: User) => {
-        const stats = user.stats?.[mode];
-        if (!stats || (stats.wins + stats.losses) < 20) {
-            return sproutTier;
-        }
-        
+    const getTierForUser = useCallback((user: User & { avgScore: number }) => {
         const rankAmongEligible = eligibleRankedUsers.findIndex(u => u.id === user.id) + 1;
         if (rankAmongEligible === 0) { // Should not happen if they are eligible, but as a fallback
             return sproutTier;
         }
 
-        const score = stats.rankingScore || 1200;
-        const totalGames = stats.wins + stats.losses;
+        const gameModes = lobbyType === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
+        let totalGames = 0;
+        for (const game of gameModes) {
+            const gameStats = user.stats?.[game.mode];
+            if (gameStats) {
+                totalGames += (gameStats.wins || 0) + (gameStats.losses || 0);
+            }
+        }
 
-        return getTier(score, rankAmongEligible, totalGames);
-    }, [mode, eligibleRankedUsers, sproutTier]);
+        return getTier(user.avgScore, rankAmongEligible, totalGames);
+    }, [lobbyType, eligibleRankedUsers, sproutTier]);
 
 
-    const renderRankItem = useCallback((user: User, rank: number, isMyRankDisplay: boolean) => {
-        const stats = user.stats?.[mode];
-        if (!stats) return null;
-        
-        const winRate = (stats.wins + stats.losses) > 0 ? Math.round((stats.wins / (stats.wins + stats.losses)) * 100) : 0;
-        const score = stats.rankingScore || 1200;
+    const renderRankItem = useCallback((user: User & { avgScore: number }, rank: number, isMyRankDisplay: boolean) => {
+        const gameModes = lobbyType === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
+        let wins = 0;
+        let losses = 0;
+        for (const game of gameModes) {
+            const gameStats = user.stats?.[game.mode];
+            if (gameStats) {
+                wins += gameStats.wins || 0;
+                losses += gameStats.losses || 0;
+            }
+        }
+
+        const winRate = (wins + losses) > 0 ? Math.round((wins / (wins + losses)) * 100) : 0;
+        const score = user.avgScore;
         const tier = getTierForUser(user);
         
         const isCurrentUserInList = !isMyRankDisplay && user.id === currentUser.id;
@@ -108,15 +139,15 @@ const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser
                 <Avatar userId={user.id} userName={user.nickname} size={32} avatarUrl={avatarUrl} borderUrl={borderUrl} />
                 <div className="flex-grow overflow-hidden">
                     <p className="font-semibold text-sm truncate">{user.nickname}</p>
-                    <p className="text-xs text-highlight font-mono">{score}점</p>
+                    <p className="text-xs text-highlight font-mono">{Math.round(score)}점</p>
                 </div>
                 <div className="text-right text-[10px] lg:text-xs flex-shrink-0 w-20 text-tertiary">
-                    <p>{stats.wins}승 {stats.losses}패</p>
+                    <p>{wins}승 {losses}패</p>
                     <p className="font-semibold">{winRate}%</p>
                 </div>
             </li>
         );
-    }, [mode, currentUser.id, getTierForUser, onViewUser]);
+    }, [lobbyType, currentUser.id, getTierForUser, onViewUser]);
 
     return (
         <div className="p-4 flex flex-col text-on-panel">
@@ -125,15 +156,15 @@ const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser
                 <div className="flex items-center gap-2">
                     <Button 
                         onClick={() => onShowPastRankings({ user: currentUser, mode })}
-                        className="!text-xs !py-1"
-                        colorScheme='gray'
+                        colorScheme="none"
+                        className="!text-xs !py-1 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-bold rounded-lg shadow-lg transition-all duration-200"
                     >
                         지난 랭킹
                     </Button>
                     <Button 
                         onClick={onShowTierInfo}
-                        className="!text-xs !py-1"
-                        colorScheme='gray'
+                        colorScheme="none"
+                        className="!text-xs !py-1 bg-gradient-to-r from-purple-600 to-blue-500 hover:from-purple-700 hover:to-blue-600 text-white font-bold rounded-lg shadow-lg transition-all duration-200"
                     >
                         티어 안내
                     </Button>

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { UserWithStatus, TournamentState, PlayerForTournament, ServerAction, User, CoreStat, Match, Round, CommentaryLine, TournamentType, LeagueTier } from '../types.js';
 import Button from './Button.js';
-import { TOURNAMENT_DEFINITIONS, BASE_TOURNAMENT_REWARDS, CONSUMABLE_ITEMS, AVATAR_POOL, BORDER_POOL, CORE_STATS_DATA } from '../constants.js';
+import { TOURNAMENT_DEFINITIONS, BASE_TOURNAMENT_REWARDS, CONSUMABLE_ITEMS, AVATAR_POOL, BORDER_POOL, CORE_STATS_DATA } from '../constants';
 import Avatar from './Avatar.js';
 import RadarChart from './RadarChart.js';
 import SgfViewer from './SgfViewer.js';

@@ -1,9 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { UserWithStatus, ServerAction } from '../types.js';
+import { UserWithStatus, ServerAction, InventoryItemType } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
-import { ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT } from '../constants.js';
+import { ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT } from '../constants';
 import { isDifferentWeekKST } from '../utils/timeUtils.js';
 import PurchaseQuantityModal from './PurchaseQuantityModal.js';
 

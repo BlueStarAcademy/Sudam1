@@ -7,7 +7,7 @@ import { type ServerAction, type User, type VolatileState, InventoryItem } from 
 import * as shop from '../shop.js';
 import { SHOP_ITEMS } from '../shop.js';
 import { isSameDayKST, isDifferentWeekKST } from '../../utils/timeUtils.js';
-import { CONSUMABLE_ITEMS, MATERIAL_ITEMS, ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT, SHOP_BORDER_ITEMS } from '../../constants.js';
+import { CONSUMABLE_ITEMS, MATERIAL_ITEMS, ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT, SHOP_BORDER_ITEMS } from '../../constants';
 import { addItemsToInventory } from '../../utils/inventoryUtils.js';
 
 type HandleActionResult = { 
@@ -107,7 +107,7 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 allObtainedItems.push(...itemsFromBox);
             }
             
-            const { success } = addItemsToInventory([...user.inventory], user.inventorySlots, allObtainedItems);
+            const { success, finalItemsToAdd } = addItemsToInventory(user.inventory, user.inventorySlots, allObtainedItems);
             if (!success) {
                 return { error: '모든 아이템을 받기에 가방 공간이 부족합니다.' };
             }
@@ -125,7 +125,7 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 user.diamonds -= totalCost.diamonds;
             }
             
-            addItemsToInventory(user.inventory, user.inventorySlots, allObtainedItems);
+            user.inventory.push(...finalItemsToAdd);
             
             if (!user.isAdmin) {
                 if (resetPurchaseRecord || !user.dailyShopPurchases[itemId]) {

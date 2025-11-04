@@ -4,7 +4,7 @@ import Avatar from './Avatar.js';
 import { audioService } from '../services/audioService.js';
 import Button from './Button.js';
 import DraggableWindow from './DraggableWindow.js';
-import { PLAYFUL_GAME_MODES, AVATAR_POOL, BORDER_POOL, CONSUMABLE_ITEMS } from '../constants.js';
+import { PLAYFUL_GAME_MODES, AVATAR_POOL, BORDER_POOL, CONSUMABLE_ITEMS } from '../constants';
 import { getMannerRank as getMannerRankShared } from '../services/manner.js';
 
 interface GameSummaryModalProps {

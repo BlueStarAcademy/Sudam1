@@ -21,6 +21,8 @@ export enum GameMode {
   Curling = "바둑 컬링",
 }
 
+
+
 export enum LeagueTier {
     Sprout = '새싹',
     Rookie = '루키',

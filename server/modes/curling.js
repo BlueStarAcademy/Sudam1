@@ -1,7 +1,7 @@
 import * as types from '../../types.js';
 import { handleSharedAction, updateSharedGameState, handleTimeoutFoul } from './shared.js';
 import { aiUserId } from '../aiPlayer.js';
-import { CURLING_TURN_TIME_LIMIT } from '../../constants.js';
+import { CURLING_TURN_TIME_LIMIT } from '../../constants';
 import { endGame } from '../summaryService.js';
 import * as effectService from '../effectService.js';
 // --- Simulation & Scoring Logic ---
