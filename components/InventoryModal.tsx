@@ -1,0 +1,755 @@
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
+import { UserWithStatus, InventoryItem, ServerAction, InventoryItemType, ItemGrade, ItemOption, CoreStat, SpecialStat, MythicStat, EquipmentSlot, ItemOptionType } from '../types.js';
+import DraggableWindow from './DraggableWindow.js';
+import Button from './Button.js';
+import { emptySlotImages, GRADE_LEVEL_REQUIREMENTS, ITEM_SELL_PRICES, MATERIAL_SELL_PRICES, gradeBackgrounds, gradeStyles, BASE_SLOTS_PER_CATEGORY, EXPANSION_AMOUNT, MAX_EQUIPMENT_SLOTS, MAX_CONSUMABLE_SLOTS, MAX_MATERIAL_SLOTS, ENHANCEMENT_COSTS } from '../constants/items.js';
+
+import { calculateUserEffects } from '../services/effectService.js';
+import { useAppContext } from '../hooks/useAppContext.js';
+import PurchaseQuantityModal from './PurchaseQuantityModal.js';
+
+interface InventoryModalProps {
+    currentUser: UserWithStatus;
+    onClose: () => void;
+    onAction: (action: ServerAction) => void;
+    onStartEnhance: (item: InventoryItem) => void;
+    enhancementAnimationTarget: { itemId: string; stars: number } | null;
+    onAnimationComplete: () => void;
+    isTopmost?: boolean;
+}
+
+type Tab = 'all' | 'equipment' | 'consumable' | 'material';
+type SortKey = 'createdAt' | 'type' | 'grade';
+
+
+
+const calculateExpansionCost = (currentCategorySlots: number): number => {
+    const expansionsMade = Math.max(0, (currentCategorySlots - BASE_SLOTS_PER_CATEGORY) / EXPANSION_AMOUNT);
+    return 100 + (expansionsMade * 20);
+};
+
+const gradeOrder: Record<ItemGrade, number> = {
+    normal: 0,
+    uncommon: 1,
+    rare: 2,
+    epic: 3,
+    legendary: 4,
+    mythic: 5,
+};
+
+const getStarDisplayInfo = (stars: number) => {
+    if (stars >= 10) {
+        return { text: `(★${stars})`, colorClass: "prism-text-effect" };
+    } else if (stars >= 7) {
+        return { text: `(★${stars})`, colorClass: "text-purple-400" };
+    } else if (stars >= 4) {
+        return { text: `(★${stars})`, colorClass: "text-amber-400" };
+    } else if (stars >= 1) {
+        return { text: `(★${stars})`, colorClass: "text-white" };
+    }
+    return { text: "", colorClass: "text-white" };
+};
+
+const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem; }> = ({ slot, item }) => {
+    const renderStarDisplay = (stars: number) => {
+        if (stars === 0) return null;
+
+        let starImage = '';
+        let numberColor = '';
+
+        if (stars >= 10) {
+            starImage = '/images/equipments/Star4.png';
+            numberColor = "prism-text-effect";
+        } else if (stars >= 7) {
+            starImage = '/images/equipments/Star3.png';
+            numberColor = "text-purple-400";
+        } else if (stars >= 4) {
+            starImage = '/images/equipments/Star2.png';
+            numberColor = "text-amber-400";
+        } else if (stars >= 1) {
+            starImage = '/images/equipments/Star1.png';
+            numberColor = "text-white";
+        }
+
+        return (
+            <div className="absolute top-0.5 right-0.5 flex items-center gap-0.5 bg-black/40 rounded-bl-md px-0.5 py-0.5 z-10" style={{ textShadow: '1px 1px 2px black' }}>
+                <img src={starImage} alt="star" className="w-2.5 h-2.5" />
+                <span className={`font-bold text-[10px] leading-none ${numberColor}`}>{stars}</span>
+            </div>
+        );
+    };
+
+    if (item) {
+        return (
+            <div
+                className={`relative w-full aspect-square rounded-lg border-2 border-color/50 bg-tertiary/50`}
+                title={item.name}
+            >
+                <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-md" />
+                {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1.5"/>}
+                {renderStarDisplay(item.stars)}
+            </div>
+        );
+    } else {
+         return (
+             <img src={emptySlotImages[slot]} alt={`${slot} empty slot`} className="w-full aspect-square rounded-lg bg-tertiary/50 border-2 border-color/50" />
+        );
+    }
+};
+
+const LocalItemDetailDisplay: React.FC<{
+    item: InventoryItem | null | undefined;
+    title: string;
+    comparisonItem?: InventoryItem | null;
+}> = ({ item, title, comparisonItem }) => {
+    if (!item) {
+        return <div className="h-full flex items-center justify-center text-tertiary text-sm">{title}</div>;
+    }
+
+    const styles = gradeStyles[item.grade];
+
+    const renderStarDisplay = (stars: number) => {
+        if (stars === 0) return null;
+
+        let starImage = '';
+        let numberColor = '';
+
+        if (stars >= 10) {
+            starImage = '/images/equipments/Star4.png';
+            numberColor = "prism-text-effect";
+        } else if (stars >= 7) {
+            starImage = '/images/equipments/Star3.png';
+            numberColor = "text-purple-400";
+        } else if (stars >= 4) {
+            starImage = '/images/equipments/Star2.png';
+            numberColor = "text-amber-400";
+        } else if (stars >= 1) {
+            starImage = '/images/equipments/Star1.png';
+            numberColor = "text-white";
+        }
+
+        return (
+            <div className="absolute top-0.5 right-0.5 flex items-center gap-0.5 bg-black/40 rounded-bl-md px-0.5 py-0.5 z-10" style={{ textShadow: '1px 1px 2px black' }}>
+                <img src={starImage} alt="star" className="w-2.5 h-2.5" />
+                <span className={`font-bold text-[10px] leading-none ${numberColor}`}>{stars}</span>
+            </div>
+        );
+    };
+
+    const requiredLevel = GRADE_LEVEL_REQUIREMENTS[item.grade];
+
+    const getAllOptions = (invItem: InventoryItem | null | undefined): ItemOption[] => {
+        if (!invItem || !invItem.options) return [];
+        return [
+            ...(invItem.options.main ? [invItem.options.main] : []),
+            ...(invItem.options.combatSubs || []),
+            ...(invItem.options.specialSubs || []),
+            ...(invItem.options.mythicSubs || []),
+        ].filter(Boolean) as ItemOption[];
+    };
+
+    const getOptionValue = (invItem: InventoryItem | null | undefined, optionType: ItemOptionType): number => {
+        if (!invItem || !invItem.options) return 0;
+        const allOptions = getAllOptions(invItem);
+        const foundOption = allOptions.find(opt => opt.type === optionType);
+        return foundOption ? foundOption.value : 0;
+    };
+
+    const currentItemOptions = getAllOptions(item);
+    const comparisonItemOptions = getAllOptions(comparisonItem);
+
+    const optionMap = new Map<ItemOptionType, { current?: ItemOption; comparison?: ItemOption }>();
+
+    currentItemOptions.forEach(opt => {
+        optionMap.set(opt.type, { current: opt });
+    });
+
+    comparisonItemOptions.forEach(opt => {
+        const existing = optionMap.get(opt.type);
+        if (existing) {
+            existing.comparison = opt;
+        } else {
+            optionMap.set(opt.type, { comparison: opt });
+        }
+    });
+
+    const sortedOptionTypes = Array.from(optionMap.keys()).sort();
+
+    return (
+        <div className="flex flex-col h-full text-xs">
+            {/* Top Section: Image (left), Name & Main Option (right) */}
+            <div className="flex items-start justify-between mb-2">
+                {/* Left: Image */}
+                <div className="relative w-20 h-20 rounded-lg flex-shrink-0">
+                    <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
+                    {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1"/>}
+                    {renderStarDisplay(item.stars)}
+                </div>
+                {/* Right: Name & Main Option */}
+                <div className="flex-grow text-right ml-2">
+                    <div className="flex items-baseline justify-end gap-0.5">
+                        <h3 className={`text-lg font-bold ${styles.color}`}>{item.name}</h3>
+                    </div>
+                    <p className="text-gray-400 text-xs">[{styles.name}]</p>
+                    <p className={`text-[10px] text-gray-500`}> (착용레벨: {requiredLevel})</p>
+                    {item.options?.main && ( // Only display main option if it exists
+                        <p className="font-semibold text-yellow-300 text-xs flex justify-between items-center">
+                            <span>
+                                {item.options.main.display}
+                                {item.options.main.range && ` [${item.options.main.range[0]}~${item.options.main.range[1]}]`}
+                            </span>
+                            {comparisonItem && item.options.main.type && (
+                                (() => {
+                                    const comparisonValue = getOptionValue(comparisonItem, item.options.main.type);
+                                    const difference = item.options.main.value - comparisonValue;
+                                    const differenceText = difference > 0 ? ` (+${difference})` : (difference < 0 ? ` (${difference})` : '');
+                                    const differenceColorClass = difference > 0 ? 'text-green-400' : (difference < 0 ? 'text-red-400' : '');
+                                    return difference !== 0 && <span className={`font-bold ${differenceColorClass} text-right`}>{differenceText}</span>;
+                                })()
+                            )}
+                        </p>
+                    )}
+                </div>
+            </div>
+
+            {/* Bottom Section: Sub Options */}
+            <div className="w-full text-xs text-left space-y-1 bg-gray-900/50 p-2 rounded-lg flex-grow overflow-y-auto">
+                {sortedOptionTypes.map(type => {
+                    const { current, comparison } = optionMap.get(type)!;
+
+                    // Skip main option as it's handled in the top section
+                    if (item.options?.main?.type === type) return null;
+
+                    if (current && comparison) {
+                        // Stat exists in both, show difference
+                        const difference = current.value - comparison.value;
+                        const differenceText = difference > 0 ? ` (+${difference})` : (difference < 0 ? ` (${difference})` : '');
+                        const differenceColorClass = difference > 0 ? 'text-green-400' : (difference < 0 ? 'text-red-400' : '');
+                        let colorClass = 'text-blue-300'; // Default for combat subs
+                        if (current.type in SpecialStat) colorClass = 'text-green-300';
+                        if (current.type in MythicStat) colorClass = 'text-red-400';
+
+                        return (
+                            <p key={type} className={`${colorClass} flex justify-between items-center`}>
+                                <span>
+                                    {current.display}
+                                </span>
+                                {difference !== 0 && (
+                                    <span className={`font-bold ${differenceColorClass} text-right`}>{differenceText}</span>
+                                )}
+                            </p>
+                        );
+                    } else if (current && !comparison) {
+                        // Stat is new
+                        let colorClass = 'text-green-400';
+                        if (current.type in SpecialStat) colorClass = 'text-green-300';
+                        if (current.type in MythicStat) colorClass = 'text-red-400';
+                        return (
+                            <p key={type} className={`${colorClass} flex justify-between items-center`}>
+                                <span>
+                                    {current.display}
+                                </span> <span className="font-bold text-right">(New)</span>
+                            </p>
+                        );
+                    } else if (!current && comparison) {
+                        // Stat is removed
+                        let colorClass = 'text-red-400';
+                        if (comparison.type in SpecialStat) colorClass = 'text-green-300';
+                        if (comparison.type in MythicStat) colorClass = 'text-red-400';
+                        return (
+                            <p key={type} className={`${colorClass} line-through flex justify-between items-center`}>
+                                <span>{comparison.display}</span>
+                            </p>
+                        );
+                    }
+                    return null;
+                })}
+            </div>
+        </div>
+    );
+};
+
+const EQUIPMENT_SLOTS: EquipmentSlot[] = ['fan', 'board', 'top', 'bottom', 'bowl', 'stones'];
+
+const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, onAction, onStartEnhance, enhancementAnimationTarget, onAnimationComplete, isTopmost }) => {
+    const { presets, setPresets, handlers } = useAppContext();
+
+    const { inventorySlots = { equipment: 30, consumable: 10, material: 10 } } = currentUser;
+    const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+    const [activeTab, setActiveTab] = useState<Tab>('all');
+    const [sortKey, setSortKey] = useState<SortKey>('createdAt');
+    const [selectedPreset, setSelectedPreset] = useState(0);
+    const [isRenameModalOpen, setIsRenameModalOpen] = useState(false);
+    const [newPresetName, setNewPresetName] = useState('');
+    const [showUseQuantityModal, setShowUseQuantityModal] = useState(false);
+    const [itemToUseBulk, setItemToUseBulk] = useState<InventoryItem | null>(null);
+    const [quantityToUse, setQuantityToUse] = useState(1);
+
+    const handlePresetChange = (presetIndex: number) => {
+        setSelectedPreset(presetIndex);
+        const preset = presets[presetIndex];
+        if (preset) {
+            handlers.applyPreset(preset);
+        }
+    };
+
+    const selectedItem = useMemo(() => {
+        if (!selectedItemId) return null;
+        return currentUser.inventory.find(item => item.id === selectedItemId) || null;
+    }, [selectedItemId, currentUser.inventory]);
+
+    const expansionCost = useMemo(() => {
+        if (activeTab === 'all') return 0;
+        return calculateExpansionCost(inventorySlots[activeTab]);
+    }, [activeTab, inventorySlots]);
+
+    const { coreStatBonuses } = useMemo(() => calculateUserEffects(currentUser), [currentUser]);
+
+    const enhancementMaterialDetails = useMemo(() => {
+        if (!selectedItem || selectedItem.type !== 'material') return [];
+        const groupedDetails: Record<ItemGrade, number[]> = {};
+
+        for (const grade in ENHANCEMENT_COSTS) {
+            const costsForGrade = ENHANCEMENT_COSTS[grade as ItemGrade];
+            costsForGrade.forEach((costArray, starIndex) => {
+                costArray.forEach(cost => {
+                    if (cost.name === selectedItem.name) {
+                        if (!groupedDetails[grade as ItemGrade]) {
+                            groupedDetails[grade as ItemGrade] = [];
+                        }
+                        groupedDetails[grade as ItemGrade].push(starIndex + 1);
+                    }
+                });
+            });
+        }
+
+        const details: string[] = [];
+        for (const grade in groupedDetails) {
+            const starLevels = groupedDetails[grade as ItemGrade].sort((a, b) => a - b);
+            if (starLevels.length > 0) {
+                details.push(`${gradeStyles[grade as ItemGrade].name} 등급 장비 강화: +${starLevels.join('강/+')}강`);
+            }
+        }
+        return details;
+    }, [selectedItem]);
+
+    const handleExpand = () => {
+        if (activeTab === 'all') return;
+        if (window.confirm(`다이아 ${expansionCost}개를 사용하여 ${activeTab} 가방을 ${EXPANSION_AMOUNT}칸 확장하시겠습니까?`)) {
+            onAction({ type: 'EXPAND_INVENTORY', payload: { category: activeTab } });
+        }
+    };
+
+    const handleOpenRenameModal = () => {
+        setNewPresetName(presets[selectedPreset].name);
+        setIsRenameModalOpen(true);
+    };
+
+    const handleSavePreset = () => {
+        const updatedPreset = {
+            ...presets[selectedPreset],
+            name: newPresetName,
+            equipment: currentUser.equipment,
+        };
+        handlers.handleAction({ type: 'SAVE_PRESET', payload: { preset: updatedPreset, index: selectedPreset } });
+        setIsRenameModalOpen(false);
+        alert('프리셋이 저장되었습니다.');
+    };
+
+    const handleEquipToggle = (itemId: string) => {
+        const item = currentUser.inventory.find(i => i.id === itemId);
+        if (!item) return;
+
+        if (!item.isEquipped) {
+            const requiredLevel = GRADE_LEVEL_REQUIREMENTS[item.grade];
+            const userLevelSum = currentUser.strategyLevel + currentUser.playfulLevel;
+            if (userLevelSum < requiredLevel) {
+                alert(`착용 레벨 합이 부족합니다. (필요: ${requiredLevel}, 현재: ${userLevelSum})`);
+                return;
+            }
+        }
+
+        onAction({ type: 'TOGGLE_EQUIP_ITEM', payload: { itemId } });
+    };
+
+    const filteredAndSortedInventory = useMemo(() => {
+        let items = [...currentUser.inventory];
+        if (activeTab !== 'all') {
+            items = items.filter((item: InventoryItem) => item.type === activeTab);
+        }
+        // Log for debugging: Check if materials are present and filtered correctly
+        if (activeTab === 'material') {
+            console.log('Filtered materials:', items);
+        }
+        items.sort((a, b) => {
+            if (sortKey === 'createdAt') return b.createdAt - a.createdAt;
+            if (sortKey === 'grade') {
+                const gradeA = gradeOrder[a.grade];
+                const gradeB = gradeOrder[b.grade];
+                if (gradeA !== gradeB) return gradeB - gradeA;
+                return b.stars - a.stars;
+            }
+            if (sortKey === 'type') {
+                const typeOrder: Record<InventoryItemType, number> = { equipment: 1, consumable: 2, material: 3 };
+                return typeOrder[a.type] - typeOrder[b.type];
+            }
+            return 0;
+        });
+        return items;
+    }, [currentUser.inventory, activeTab, sortKey]);
+
+    const currentSlots = useMemo(() => {
+        const slots = inventorySlots || {};
+        if (activeTab === 'all') {
+            return (slots.equipment || BASE_SLOTS_PER_CATEGORY) + (slots.consumable || BASE_SLOTS_PER_CATEGORY) + (slots.material || BASE_SLOTS_PER_CATEGORY);
+        } else {
+            return slots[activeTab] || BASE_SLOTS_PER_CATEGORY;
+        }
+    }, [inventorySlots, activeTab]);
+    
+    const maxSlotsForCurrentTab = useMemo(() => {
+        let maxSlots = MAX_EQUIPMENT_SLOTS;
+        if (activeTab === 'consumable') maxSlots = MAX_CONSUMABLE_SLOTS;
+        else if (activeTab === 'material') maxSlots = MAX_MATERIAL_SLOTS;
+        return maxSlots;
+    }, [activeTab]);
+
+    const canExpand = useMemo(() => {
+        if (activeTab === 'all') return false;
+        return inventorySlots[activeTab] < maxSlotsForCurrentTab;
+    }, [activeTab, inventorySlots, maxSlotsForCurrentTab]);
+
+    const isItemInAnyPreset = useCallback((itemId: string) => {
+        return presets.some(preset => Object.values(preset.equipment).includes(itemId));
+    }, [presets]);
+
+    const getItemForSlot = useCallback((slot: EquipmentSlot) => {
+        const itemId = currentUser.equipment[slot];
+        if (!itemId) return undefined;
+        return currentUser.inventory.find(item => item.id === itemId);
+    }, [currentUser.equipment, currentUser.inventory]);
+
+    const correspondingEquippedItem = useMemo(() => {
+        if (!selectedItem || !selectedItem.slot) return null;
+        return getItemForSlot(selectedItem.slot);
+    }, [selectedItem, getItemForSlot]);
+
+    const canEquip = useMemo(() => {
+        if (!selectedItem || selectedItem.type !== 'equipment') return false;
+        const requiredLevel = GRADE_LEVEL_REQUIREMENTS[selectedItem.grade];
+        const userLevelSum = currentUser.strategyLevel + currentUser.playfulLevel;
+        return userLevelSum >= requiredLevel;
+    }, [selectedItem, currentUser.strategyLevel, currentUser.playfulLevel]);
+
+    return (
+        <DraggableWindow title="가방" onClose={onClose} windowId="inventory" isTopmost={isTopmost}>
+            <div className="flex flex-col h-full w-full max-w-[900px]">
+                {/* Top section: Equipped items (left) and Selected item details (right) */}
+                <div className="h-96 bg-gray-800 p-4 mb-2 rounded-md shadow-inner flex">
+                    {/* Left panel: Equipped items */}
+                    <div className="w-1/3 pr-4 border-r border-gray-700">
+                        <h3 className="text-lg font-bold text-on-panel mb-2">장착 장비</h3>
+                        <div className="grid grid-cols-3 gap-2">
+                            {EQUIPMENT_SLOTS.map(slot => (
+                                <div key={slot} className="w-full">
+                                    <EquipmentSlotDisplay slot={slot} item={getItemForSlot(slot)} />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="mt-4">
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2">
+                                {Object.values(CoreStat).map(stat => {
+                                    const baseValue = (currentUser.baseStats[stat] || 0) + (currentUser.spentStatPoints?.[stat] || 0);
+                                    const bonus = Math.floor(baseValue * (coreStatBonuses[stat].percent / 100)) + coreStatBonuses[stat].flat;
+                                    const finalValue = baseValue + bonus;
+                                    return (
+                                        <div key={stat} className="bg-tertiary/40 p-1 rounded-md flex items-center justify-between text-xs">
+                                            <span className="font-semibold text-secondary whitespace-nowrap">{stat}</span>
+                                            <span className="font-mono font-bold whitespace-nowrap" title={`기본: ${baseValue}, 장비: ${bonus}`}>
+                                                {finalValue}
+                                                {bonus > 0 && <span className="text-green-400 text-xs ml-0.5">(+{bonus})</span>}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <select
+                                    value={selectedPreset}
+                                    onChange={e => handlePresetChange(Number(e.target.value))}
+                                    className="bg-secondary border border-color text-xs rounded-md p-1 focus:ring-accent focus:border-accent flex-grow"
+                                >
+                                    {presets.map((preset, index) => (
+                                        <option key={index} value={index}>{preset.name}</option>
+                                    ))}
+                                </select>
+                                <Button onClick={handleOpenRenameModal} colorScheme="blue" className="!text-xs !py-1">
+                                    저장
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Conditional middle and right panels */}
+                    {selectedItem && selectedItem.type === 'equipment' ? (
+                        <>
+                            {/* Middle panel: Currently equipped item for comparison */}
+                            <div className="flex flex-col w-1/3 h-full bg-panel-secondary rounded-lg p-3 relative overflow-hidden ml-4 border-r border-gray-700">
+                                <h3 className="text-lg font-bold text-on-panel mb-2">현재 장착 장비</h3>
+                                {correspondingEquippedItem ? (
+                                    <LocalItemDetailDisplay item={correspondingEquippedItem} title="장착된 장비 없음" comparisonItem={selectedItem} />
+                                ) : (
+                                    <div className="h-full flex items-center justify-center text-tertiary text-sm">장착된 장비 없음</div>
+                                )}
+                            </div>
+
+                            {/* Right panel: Selected equipment item */}
+                            <div className="flex flex-col w-1/3 h-full bg-panel-secondary rounded-lg p-3 relative overflow-hidden ml-4">
+                                <h3 className="text-lg font-bold text-on-panel mb-2">선택 장비</h3>
+                                <LocalItemDetailDisplay item={selectedItem} title="선택된 아이템 없음" comparisonItem={correspondingEquippedItem} />
+                                <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2 px-4">
+                                    {selectedItem.id === correspondingEquippedItem?.id ? (
+                                        <Button
+                                            onClick={() => handleEquipToggle(selectedItem.id)}
+                                            colorScheme="red"
+                                            className="w-full !text-xs !py-1"
+                                        >
+                                            해제
+                                        </Button>
+                                    ) : (
+                                        <Button
+                                            onClick={() => handleEquipToggle(selectedItem.id)}
+                                            colorScheme="green"
+                                            className="w-full !text-xs !py-1"
+                                            disabled={!canEquip}
+                                        >
+                                            장착
+                                        </Button>
+                                    )}
+                                    <Button
+                                        onClick={() => onStartEnhance(selectedItem)}
+                                        disabled={selectedItem.stars >= 10}
+                                        colorScheme="yellow"
+                                        className="w-full !text-xs !py-1"
+                                    >
+                                        {selectedItem.stars >= 10 ? '최대 강화' : '강화'}
+                                    </Button>
+                                    <Button onClick={() => onAction({ type: 'SELL_ITEM', payload: { itemId: selectedItem.id, quantity: 1 } })} colorScheme="red" className="w-full !text-xs !py-1">
+                                        판매
+                                    </Button>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        /* Single right panel for non-equipment items or no selection */
+                        <div className="flex flex-col w-2/3 h-full bg-panel-secondary rounded-lg p-3 relative overflow-hidden ml-4">
+                            {selectedItem ? (
+                                (selectedItem.type === 'consumable' || selectedItem.type === 'material') ? (
+                                    <>
+                                        <h3 className="text-lg font-bold text-on-panel mb-2">
+                                            선택 {selectedItem.type === 'consumable' ? '소모품' : '재료'}
+                                        </h3>
+                                        <div className="flex flex-col h-full text-xs">
+                                            <div className="flex items-start justify-between mb-2">
+                                                <div className="relative w-20 h-20 rounded-lg flex-shrink-0">
+                                                    <img src={gradeBackgrounds[selectedItem.grade]} alt={selectedItem.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
+                                                    {selectedItem.image && <img src={selectedItem.image} alt={selectedItem.name} className="relative w-full h-full object-contain p-1"/>}
+                                                </div>
+                                                <div className="flex-grow text-right ml-2">
+                                                    <h3 className={`text-lg font-bold ${gradeStyles[selectedItem.grade].color}`}>{selectedItem.name}</h3>
+                                                    <p className="text-gray-400 text-xs">[{gradeStyles[selectedItem.grade].name}]</p>
+                                                    <p className="text-gray-300 text-xs mt-1">{selectedItem.description}</p>
+                                                    <p className="text-gray-300 text-xs mt-1">보유 수량: {selectedItem.quantity}</p>
+                                                </div>
+                                            </div>
+                                                                                    {selectedItem.type === 'material' && (
+                                                                                        <div className="mt-2 p-2 bg-gray-800/50 rounded-lg flex-grow" style={{ maxHeight: '4em' }}> {/* Adjusted for 2 lines of text */}
+                                                                                            <p className="font-semibold text-secondary mb-1">강화 필요 정보:</p>
+                                                                                            {enhancementMaterialDetails.length > 0 ? (
+                                                                                                enhancementMaterialDetails.slice(0, 2).map((detail, index) => ( // Limit to 2 lines
+                                                                                                    <p key={index} className="text-gray-300 text-xs">
+                                                                                                        {detail}
+                                                                                                    </p>
+                                                                                                ))
+                                                                                            ) : (
+                                                                                                <p className="text-gray-300 text-xs">이 재료는 현재 어떤 장비 강화에도 사용되지 않습니다.</p>
+                                                                                            )}
+                                                                                            {enhancementMaterialDetails.length > 2 && (
+                                                                                                <p className="text-gray-400 text-xs mt-1">...</p> // Indicate more details
+                                                                                            )}
+                                                                                        </div>
+                                                                                    )}                                        </div>
+                                        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2 px-4">
+                                            {selectedItem.type === 'consumable' && (
+                                                <>
+                                                    <Button onClick={() => onAction({ type: 'USE_ITEM', payload: { itemId: selectedItem.id, quantity: 1 } })} colorScheme="blue" className="w-full !text-xs !py-1">
+                                                        사용
+                                                    </Button>
+                                                    {selectedItem.quantity && selectedItem.quantity > 1 && (
+                                                        <Button
+                                                            onClick={() => { setItemToUseBulk(selectedItem); setShowUseQuantityModal(true); }}
+                                                            colorScheme="purple"
+                                                            className="w-full !text-xs !py-1"
+                                                        >
+                                                            일괄 사용
+                                                        </Button>
+                                                    )}
+                                                </>
+                                            )}
+                                            <Button onClick={() => onAction({ type: 'SELL_ITEM', payload: { itemId: selectedItem.id, quantity: 1 } })} colorScheme="red" className="w-full !text-xs !py-1">
+                                                판매
+                                            </Button>
+                                        </div>
+                                    </>
+                                ) : ( // Should not happen with current item types
+                                    <div className="h-full flex items-center justify-center text-tertiary text-sm">선택된 아이템 없음</div>
+                                )
+                            ) : (
+                                <div className="h-full flex items-center justify-center text-tertiary text-sm">아이템을 선택해주세요</div>
+                            )}
+                        </div>
+                    )}
+                </div>
+
+                {/* Bottom section: Inventory grid */}
+                <div className="flex-grow flex-shrink-0 bg-gray-900 p-4 rounded-b-md overflow-y-auto">
+                    <div className="flex-shrink-0 p-2 bg-gray-900/50 rounded-md mb-2">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2">
+                                <Button onClick={() => setActiveTab('all')} colorScheme={activeTab === 'all' ? 'blue' : 'gray'} className="!text-xs !py-1 !px-2">전체</Button>
+                                <Button onClick={() => setActiveTab('equipment')} colorScheme={activeTab === 'equipment' ? 'blue' : 'gray'} className="!text-xs !py-1 !px-2">장비</Button>
+                                <Button onClick={() => setActiveTab('consumable')} colorScheme={activeTab === 'consumable' ? 'blue' : 'gray'} className="!text-xs !py-1 !px-2">소모품</Button>
+                                <Button onClick={() => setActiveTab('material')} colorScheme={activeTab === 'material' ? 'blue' : 'gray'} className="!text-xs !py-1 !px-2">재료</Button>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <span className="text-sm">정렬:</span>
+                                <select onChange={(e) => setSortKey(e.target.value as SortKey)} value={sortKey} className="bg-gray-700 text-white text-sm rounded-md p-1">
+                                    <option value="createdAt">최신순</option>
+                                    <option value="grade">등급순</option>
+                                    <option value="type">종류순</option>
+                                </select>
+                                <div className="text-sm text-gray-400">
+                                    {`${filteredAndSortedInventory.length} / ${currentSlots}`}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="overflow-y-auto pr-2" style={{ height: '116px' }}>
+                        <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
+                        {Array.from({ length: currentSlots }).map((_, index) => {
+                            const item = filteredAndSortedInventory[index];
+                            if (item) {
+                                return (
+                                    <InventoryItemCard
+                                        key={item.id}
+                                        item={item}
+                                        onClick={() => setSelectedItemId(item.id)}
+                                        isSelected={selectedItemId === item.id}
+                                        isEquipped={item.isEquipped || false}
+                                        enhancementStars={enhancementAnimationTarget?.itemId === item.id ? enhancementAnimationTarget.stars : undefined}
+                                        isPresetEquipped={isItemInAnyPreset(item.id)}
+                                    />
+                                );
+                            } else {
+                                return (
+                                    <div key={`empty-${index}`} className="w-full aspect-square rounded-lg bg-gray-800/50 border-2 border-gray-700/50" />
+                                );
+                            }
+                        })}
+                        {canExpand && (
+                            <button
+                                key="expand-slot"
+                                onClick={handleExpand}
+                                className="w-full aspect-square rounded-lg bg-gray-800/50 border-2 border-gray-700/50 flex items-center justify-center text-gray-400 text-4xl hover:bg-gray-700/50 hover:border-accent transition-all duration-200"
+                                title={`가방 확장 (${expansionCost} 다이아)`}
+                            >
+                                +
+                            </button>
+                        )}
+                    </div>
+                    </div>
+
+                </div>
+            </div>
+
+            {/* Modals */}
+            {showUseQuantityModal && itemToUseBulk && (
+                <PurchaseQuantityModal
+                    isOpen={showUseQuantityModal}
+                    onClose={() => setShowUseQuantityModal(false)}
+                    onConfirm={(quantity) => {
+                        onAction({ type: 'USE_ITEM', payload: { itemId: itemToUseBulk.id, quantity } });
+                        setShowUseQuantityModal(false);
+                        setItemToUseBulk(null);
+                        setQuantityToUse(1);
+                    }}
+                    maxQuantity={itemToUseBulk.quantity || 1}
+                    itemName={itemToUseBulk.name}
+                    initialQuantity={1}
+                />
+            )}
+
+            {isRenameModalOpen && (
+                <DraggableWindow title="프리셋 이름 변경" onClose={() => setIsRenameModalOpen(false)} windowId="renamePreset" isTopmost={true}>
+                    <div className="p-4 flex flex-col items-center">
+                        <p className="mb-4 text-on-panel">새로운 프리셋 이름을 입력하세요:</p>
+                        <input
+                            type="text"
+                            value={newPresetName}
+                            onChange={(e) => setNewPresetName(e.target.value)}
+                            className="bg-secondary border border-color text-on-panel text-sm rounded-md p-2 mb-4 w-full max-w-xs"
+                            maxLength={20}
+                        />
+                        <div className="flex gap-2">
+                            <Button onClick={handleSavePreset} colorScheme="blue">
+                                저장
+                            </Button>
+                            <Button onClick={() => setIsRenameModalOpen(false)} colorScheme="gray">
+                                취소
+                            </Button>
+                        </div>
+                    </div>
+                </DraggableWindow>
+            )}
+        </DraggableWindow>
+    );
+};
+
+const InventoryItemCard: React.FC<{
+    item: InventoryItem;
+    onClick: () => void;
+    isSelected: boolean;
+    isEquipped: boolean;
+    enhancementStars: number | undefined;
+    isPresetEquipped?: boolean;
+}> = ({ item, onClick, isSelected, isEquipped, enhancementStars, isPresetEquipped }) => {
+    const starInfo = getStarDisplayInfo(enhancementStars || item.stars || 0);
+
+    return (
+        <div
+            onClick={onClick}
+            className={`relative w-full aspect-square rounded-lg cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent'} hover:ring-2 hover:ring-accent/70`}
+            title={item.name}
+        >
+            <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-md" />
+            {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1.5" />}
+            {isEquipped && (
+                <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-green-500 text-white text-xs flex items-center justify-center rounded-full border-2 border-gray-800">
+                    E
+                </div>
+            )}
+            {!isEquipped && isPresetEquipped && (
+                <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-blue-500 text-white text-xs flex items-center justify-center rounded-full border-2 border-gray-800">
+                    P
+                </div>
+            )}
+            <div className="absolute bottom-0 left-0 right-0 text-center text-xs font-bold text-white bg-black/50 py-0.5">
+                <span className={starInfo.colorClass}>{starInfo.text}</span>
+            </div>
+        </div>
+    );
+};
+
+
+
+export default InventoryModal;
