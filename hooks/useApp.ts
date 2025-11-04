@@ -181,6 +181,7 @@ export const useApp = () => {
 
     // --- Derived State ---
     const allUsers = useMemo(() => {
+        if (!usersMap || typeof usersMap !== 'object') return [];
         return Object.values(usersMap);
     }, [usersMap]);
 
@@ -202,10 +203,20 @@ export const useApp = () => {
 
     const activeNegotiation = useMemo(() => {
         if (!currentUserWithStatus) return null;
-        return Object.values(negotiations).find(neg => 
-            (neg.challenger.id === currentUserWithStatus.id && (neg.status === 'pending' || neg.status === 'draft')) ||
-            (neg.opponent.id === currentUserWithStatus.id && neg.status === 'pending')
-        ) || null;
+        if (!negotiations || typeof negotiations !== 'object' || Array.isArray(negotiations)) {
+            return null;
+        }
+        try {
+            const negotiationsArray = Object.values(negotiations);
+            return negotiationsArray.find(neg => 
+                neg && neg.challenger && neg.opponent &&
+                ((neg.challenger.id === currentUserWithStatus.id && (neg.status === 'pending' || neg.status === 'draft')) ||
+                (neg.opponent.id === currentUserWithStatus.id && neg.status === 'pending'))
+            ) || null;
+        } catch (error) {
+            console.error('[activeNegotiation] Error:', error);
+            return null;
+        }
     }, [currentUserWithStatus, negotiations]);
 
     const unreadMailCount = useMemo(() => currentUser?.mail.filter(m => !m.isRead).length || 0, [currentUser?.mail]);
@@ -375,50 +386,141 @@ export const useApp = () => {
 
 
     useEffect(() => {
-        if (!currentUser) return;
+        if (!currentUser) {
+            // Clean up if user logs out
+            setUsersMap({});
+            setOnlineUsers([]);
+            setLiveGames({});
+            setNegotiations({});
+            return;
+        }
 
-        const ws = new WebSocket(`ws://${window.location.hostname}:4001`);
+        let ws: WebSocket | null = null;
+        let reconnectTimeout: NodeJS.Timeout | null = null;
+        let isIntentionalClose = false;
+        let shouldReconnect = true;
 
-        ws.onopen = () => {
-            console.log('[WebSocket] Connected');
+        const connectWebSocket = () => {
+            if (!shouldReconnect || !currentUser) return;
+            
+            try {
+                // Close existing connection if any
+                if (ws && ws.readyState !== WebSocket.CLOSED) {
+                    ws.close();
+                }
+                
+                ws = new WebSocket(`ws://${window.location.hostname}:4000`);
+
+                ws.onopen = () => {
+                    console.log('[WebSocket] Connected');
+                    isIntentionalClose = false;
+                };
+
+                ws.onmessage = (event) => {
+                    try {
+                        const message = JSON.parse(event.data);
+
+                        switch (message.type) {
+                            case 'INITIAL_STATE':
+                                console.log('INITIAL_STATE payload:', message.payload);
+                                const { users, onlineUsers, liveGames, negotiations, waitingRoomChats, gameChats, adminLogs, announcements, globalOverrideAnnouncement, gameModeAvailability, announcementInterval } = message.payload;
+                                console.log('[WebSocket] Received users:', users ? Object.keys(users).length : 0, 'users');
+                                if (users && typeof users === 'object' && !Array.isArray(users)) {
+                                    setUsersMap(users);
+                                    console.log('[WebSocket] usersMap updated with', Object.keys(users).length, 'users');
+                                } else {
+                                    console.warn('[WebSocket] Invalid users data:', users);
+                                    setUsersMap({});
+                                }
+                                setOnlineUsers(onlineUsers || []);
+                                setLiveGames(liveGames || {});
+                                setNegotiations(negotiations || {});
+                                setWaitingRoomChats(waitingRoomChats || {});
+                                setGameChats(gameChats || {});
+                                setAdminLogs(adminLogs || []);
+                                setAnnouncements(announcements || []);
+                                setGlobalOverrideAnnouncement(globalOverrideAnnouncement || null);
+                                setGameModeAvailability(gameModeAvailability || {});
+                                setAnnouncementInterval(announcementInterval || 3);
+                                break;
+                            case 'USER_STATUS_UPDATE':
+                                setUsersMap(currentUsersMap => {
+                                    // message.payload는 모든 온라인 유저의 상태 정보를 포함합니다
+                                    // usersMap에 있는 유저를 찾고, 없으면 allUsers에서 찾아서 추가
+                                    const updatedUsersMap = { ...currentUsersMap };
+                                    const onlineStatuses = Object.entries(message.payload).map(([id, statusInfo]: [string, any]) => {
+                                        let user = currentUsersMap[id];
+                                        // usersMap에 없으면 allUsers에서 찾기
+                                        if (!user) {
+                                            const allUsersArray = Object.values(currentUsersMap);
+                                            user = allUsersArray.find(u => u?.id === id);
+                                            // allUsers에서도 찾지 못했으면 undefined 반환 (나중에 INITIAL_STATE에서 받을 것)
+                                            if (!user) {
+                                                console.warn(`[WebSocket] User ${id} not found in usersMap or allUsers`);
+                                                return undefined;
+                                            }
+                                            // usersMap에 추가
+                                            updatedUsersMap[id] = user;
+                                        }
+                                        // statusInfo와 user를 병합하여 UserWithStatus 생성
+                                        return { ...user, ...statusInfo };
+                                    }).filter(Boolean) as UserWithStatus[];
+                                    // 온라인 유저 목록을 즉시 업데이트
+                                    setOnlineUsers(onlineStatuses);
+                                    return updatedUsersMap;
+                                });
+                                break;
+                        }
+                    } catch (error) {
+                        console.error('[WebSocket] Error parsing message:', error);
+                    }
+                };
+
+                ws.onerror = (error) => {
+                    console.error('[WebSocket] Error:', error);
+                };
+
+                ws.onclose = (event) => {
+                    console.log('[WebSocket] Disconnected', event.code, event.reason);
+                    if (!isIntentionalClose && shouldReconnect && currentUser) {
+                        // Reconnect after 3 seconds if not intentional close
+                        reconnectTimeout = setTimeout(() => {
+                            if (shouldReconnect && currentUser) {
+                                console.log('[WebSocket] Attempting to reconnect...');
+                                connectWebSocket();
+                            }
+                        }, 3000);
+                    }
+                };
+            } catch (error) {
+                console.error('[WebSocket] Failed to create connection:', error);
+                if (shouldReconnect && currentUser) {
+                    reconnectTimeout = setTimeout(() => {
+                        if (shouldReconnect && currentUser) {
+                            connectWebSocket();
+                        }
+                    }, 3000);
+                }
+            }
         };
 
-        ws.onmessage = (event) => {
-            const message = JSON.parse(event.data);
-
-            switch (message.type) {
-                case 'INITIAL_STATE':
-                    console.log('INITIAL_STATE payload:', message.payload);
-                    const { users, onlineUsers, liveGames, negotiations, waitingRoomChats, gameChats, adminLogs, announcements, globalOverrideAnnouncement, gameModeAvailability, announcementInterval } = message.payload;
-                    setUsersMap(users);
-                    setOnlineUsers(onlineUsers);
-                    setLiveGames(liveGames);
-                    setNegotiations(negotiations);
-                    setWaitingRoomChats(waitingRoomChats);
-                    setGameChats(gameChats);
-                    setAdminLogs(adminLogs);
-                    setAnnouncements(announcements);
-                    setGlobalOverrideAnnouncement(globalOverrideAnnouncement);
-                    setGameModeAvailability(gameModeAvailability);
-                    setAnnouncementInterval(announcementInterval);
-                    break;
-                case 'USER_STATUS_UPDATE':
-                    const onlineStatuses = Object.entries(message.payload).map(([id, statusInfo]) => {
-                        const user = usersMap[id];
-                        if (!user) return undefined;
-                        return { ...user, ...statusInfo };
-                    }).filter(Boolean) as UserWithStatus[];
-                    setOnlineUsers(onlineStatuses);
-                    break;
-        };
-
-        ws.onclose = () => {
-            console.log('[WebSocket] Disconnected');
-        };
+        connectWebSocket();
 
         return () => {
-            ws.close();
-    }, [currentUser, setUsersMap, setOnlineUsers, setLiveGames, setNegotiations, setWaitingRoomChats, setGameChats, setAdminLogs, setAnnouncements, setGlobalOverrideAnnouncement, setGameModeAvailability, setAnnouncementInterval, usersMap]);;
+            shouldReconnect = false;
+            isIntentionalClose = true;
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+            if (ws) {
+                if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+                    ws.close();
+                }
+                ws = null;
+            }
+        };
+    }, [currentUser?.id]); // Only depend on currentUser.id to avoid unnecessary reconnections
 
     // --- Navigation Logic ---
     const initialRedirectHandled = useRef(false);
@@ -527,6 +629,8 @@ export const useApp = () => {
 
     const setCurrentUserAndRoute = useCallback((user: User) => {
         setCurrentUser(user);
+        // usersMap에 현재 유저 추가 (실시간 업데이트를 위해)
+        setUsersMap(prev => ({ ...prev, [user.id]: user }));
         window.location.hash = '#/profile';
     }, []);
     
@@ -601,7 +705,7 @@ export const useApp = () => {
         }
 
         const equippedItems = currentUserWithStatus.inventory.filter(item =>
-            Object.values(currentUserWithStatus.equipment).includes(item.id)
+            currentUserWithStatus.equipment && Object.values(currentUserWithStatus.equipment).includes(item.id)
         );
 
         const aggregated = equippedItems.reduce((acc, item) => {

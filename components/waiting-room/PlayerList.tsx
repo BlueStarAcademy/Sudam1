@@ -147,14 +147,15 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
             {isRejectionSettingsModalOpen && (
                 <GameRejectionSettingsModal
                     onClose={() => setIsRejectionSettingsModalOpen(false)}
+                    lobbyType={lobbyType}
                 />
             )}
             {isChallengeSelectionModalOpen && challengeTargetUser && (
                 <ChallengeSelectionModal
                     opponent={challengeTargetUser}
                     onClose={() => setIsChallengeSelectionModalOpen(false)}
-                    onChallenge={(gameMode) => {
-                        onAction({ type: 'CHALLENGE_USER', payload: { opponentId: challengeTargetUser.id, mode: gameMode } });
+                    onChallenge={(gameMode, settings) => {
+                        onAction({ type: 'CHALLENGE_USER', payload: { opponentId: challengeTargetUser.id, mode: gameMode, settings } });
                         setIsChallengeSelectionModalOpen(false);
                     }}
                     lobbyType={lobbyType}

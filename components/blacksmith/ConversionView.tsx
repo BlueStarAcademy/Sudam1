@@ -151,33 +151,35 @@ const ConversionView: React.FC<ConversionViewProps> = ({ onAction }) => {
                         const materialData = MATERIAL_ITEMS[materialName];
 
                         return (
-                            <div key={materialName} className="bg-panel-secondary rounded-lg p-4 flex items-center space-x-4">
-                                <img src={materialData.image as string | undefined} alt={materialName} className="w-16 h-16 flex-shrink-0" />
-                                <div className="flex-grow">
-                                    <h4 className="font-bold text-secondary text-lg">{materialName}</h4>
-                                    <p className="text-sm text-tertiary">보유: {quantity.toLocaleString()}개</p>
+                            <div key={materialName} className="bg-panel-secondary rounded-lg p-4 flex items-start space-x-4">
+                                <div className="flex flex-col items-center flex-shrink-0">
+                                    <img src={materialData.image as string | undefined} alt={materialName} className="w-16 h-16 mb-2" />
+                                    <h4 className="font-bold text-secondary text-sm text-center leading-tight mb-1 w-full">{materialName}</h4>
+                                    <p className="text-xs text-tertiary text-center w-full">보유: {quantity.toLocaleString()}개</p>
                                 </div>
-                                <div className="flex flex-col space-y-2">
-                                    {canUpgrade && (
-                                        <Button
-                                            onClick={() => setCraftingDetails({ materialName, craftType: 'upgrade' })}
-                                            colorScheme="blue"
-                                            className="!text-xs !py-1 w-20"
-                                            disabled={!materialExists || quantity < 10} // Assuming 10 required for upgrade
-                                        >
-                                            합성
-                                        </Button>
-                                    )}
-                                    {canDowngrade && (
-                                        <Button
-                                            onClick={() => setCraftingDetails({ materialName, craftType: 'downgrade' })}
-                                            colorScheme="purple"
-                                            className="!text-xs !py-1 w-20"
-                                            disabled={!materialExists || quantity < 1} // Assuming 1 required for downgrade
-                                        >
-                                            분해
-                                        </Button>
-                                    )}
+                                <div className="flex-grow flex flex-col justify-center">
+                                    <div className="flex flex-col space-y-2">
+                                        {canUpgrade && (
+                                            <Button
+                                                onClick={() => setCraftingDetails({ materialName, craftType: 'upgrade' })}
+                                                colorScheme="blue"
+                                                className="!text-xs !py-1 w-full"
+                                                disabled={!materialExists || quantity < 10} // Assuming 10 required for upgrade
+                                            >
+                                                합성
+                                            </Button>
+                                        )}
+                                        {canDowngrade && (
+                                            <Button
+                                                onClick={() => setCraftingDetails({ materialName, craftType: 'downgrade' })}
+                                                colorScheme="purple"
+                                                className="!text-xs !py-1 w-full"
+                                                disabled={!materialExists || quantity < 1} // Assuming 1 required for downgrade
+                                            >
+                                                분해
+                                            </Button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         );

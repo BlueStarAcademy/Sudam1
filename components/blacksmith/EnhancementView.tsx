@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserWithStatus, InventoryItem, ServerAction, ItemGrade, ItemOption } from '../../types.js';
 import Button from '../Button.js';
-import { ENHANCEMENT_SUCCESS_RATES, ENHANCEMENT_COSTS, MATERIAL_ITEMS, ENHANCEMENT_FAIL_BONUS_RATES, GRADE_LEVEL_REQUIREMENTS } from '../../constants';
+import { ENHANCEMENT_SUCCESS_RATES, ENHANCEMENT_COSTS, MATERIAL_ITEMS, ENHANCEMENT_FAIL_BONUS_RATES, GRADE_LEVEL_REQUIREMENTS, calculateEnhancementGoldCost } from '../../constants';
 import { useAppContext } from '../../hooks/useAppContext.js';
 
 const gradeStyles: Record<ItemGrade, { name: string; color: string; background: string; }> = {
@@ -203,12 +203,23 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
         return counts;
     }, [currentUser]);
 
+    const goldCost = useMemo(() => {
+        if (!selectedItem) return 0;
+        return calculateEnhancementGoldCost(selectedItem.grade, selectedItem.stars);
+    }, [selectedItem]);
+
+    const hasEnoughGold = useMemo(() => {
+        if (!currentUser) return false;
+        return currentUser.gold >= goldCost;
+    }, [currentUser, goldCost]);
+
     const canEnhance = useMemo(() => {
         if (!selectedItem) return false;
         if (!costs) return false;
         if (levelRequirement > 0 && !meetsLevelRequirement) return false;
+        if (!hasEnoughGold) return false;
         return costs.every(cost => userMaterials[cost.name] >= cost.amount);
-    }, [costs, userMaterials, levelRequirement, meetsLevelRequirement, selectedItem]);
+    }, [costs, userMaterials, levelRequirement, meetsLevelRequirement, selectedItem, hasEnoughGold]);
 
     const { mainOptionPreview, subOptionPreview } = useMemo(() => {
         if (!selectedItem) {
@@ -255,9 +266,10 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
         if (selectedItem.stars >= 10) return '최대 강화';
         if (levelRequirement > 0 && !meetsLevelRequirement) return `레벨 부족 (합 ${levelRequirement} 필요)`;
         if (!costs) return '강화 정보 없음';
+        if (!hasEnoughGold) return `골드 부족 (필요: ${goldCost.toLocaleString()})`;
         if (!canEnhance) return '재료 부족';
         return `강화하기 (+${selectedItem.stars + 1})`;
-    }, [isEnhancing, selectedItem, levelRequirement, meetsLevelRequirement, costs, canEnhance]);
+    }, [isEnhancing, selectedItem, levelRequirement, meetsLevelRequirement, costs, canEnhance, hasEnoughGold, goldCost]);
 
     useEffect(() => {
         setIsEnhancing(false);
@@ -315,6 +327,16 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
                     <div className="bg-gray-900/50 p-3 rounded-lg">
                         <h4 className="font-semibold text-center mb-2">필요 재료</h4>
                         <div className="space-y-1 text-sm">
+                            {/* 골드 비용 표시 */}
+                            <div className="flex justify-between items-center">
+                                <span className="flex items-center gap-2">
+                                    <span className="text-yellow-400 text-lg">💰</span>
+                                    골드
+                                </span>
+                                <span className={`font-mono ${hasEnoughGold ? 'text-green-400' : 'text-red-400'}`}>
+                                    {(currentUser?.gold || 0).toLocaleString()} / {goldCost.toLocaleString()}
+                                </span>
+                            </div>
                             {costs?.map(cost => {
                                 const userHas = userMaterials[cost.name] || 0;
                                 const hasEnough = userHas >= cost.amount;

@@ -169,6 +169,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             const userStatus = volatileState.userStatuses[user.id];
             if (userStatus && (userStatus.status === UserStatus.Waiting || userStatus.status === UserStatus.Resting)) {
                 userStatus.status = UserStatus.Online;
+                delete userStatus.mode; // 대기실 모드 정보 제거
             }
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             return {};

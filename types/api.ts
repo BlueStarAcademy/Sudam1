@@ -1,7 +1,7 @@
 import {
     User, LiveGameSession, Negotiation, KomiBid,
     AdminLog, Announcement, OverrideAnnouncement, InventoryItem,
-    QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus, EquipmentPreset
+    QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus, EquipmentPreset, GameSettings
 } from './entities.js';
 import { GameMode, RPSChoice, Point, Player, UserStatus, TournamentType, InventoryItemType } from './enums.js';
 
@@ -76,7 +76,7 @@ export type ServerAction =
     // FIX: The payload for LEAVE_SPECTATING is made optional to accommodate different call signatures in the codebase.
     | { type: 'LEAVE_SPECTATING', payload?: { gameId?: string } }
     // Negotiation
-    | { type: 'CHALLENGE_USER', payload: { opponentId: string; mode: GameMode } }
+    | { type: 'CHALLENGE_USER', payload: { opponentId: string; mode: GameMode; settings?: GameSettings } }
     | { type: 'SEND_CHALLENGE', payload: { negotiationId: string; settings: any } }
     | { type: 'UPDATE_NEGOTIATION', payload: { negotiationId: string; settings: any } }
     | { type: 'ACCEPT_NEGOTIATION', payload: { negotiationId: string; settings: any } }

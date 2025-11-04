@@ -325,8 +325,32 @@ const startServer = async () => {
 
     app.post('/api/auth/login', async (req, res) => {
         console.log('[/api/auth/login] Received request');
+        let responseSent = false;
+        const sendResponse = (status: number, data: any) => {
+            if (!responseSent) {
+                try {
+                    responseSent = true;
+                    res.status(status).json(data);
+                } catch (err) {
+                    console.error('[/api/auth/login] Failed to send response:', err);
+                    if (!res.headersSent) {
+                        try {
+                            res.status(status).end(JSON.stringify(data));
+                        } catch (e2) {
+                            console.error('[/api/auth/login] Failed to send fallback response:', e2);
+                        }
+                    }
+                }
+            }
+        };
+        
         try {
             const { username, password } = req.body;
+            if (!username || !password) {
+                sendResponse(400, { message: '아이디와 비밀번호를 모두 입력해주세요.' });
+                return;
+            }
+            
             console.log('[/api/auth/login] Attempting to get user credentials for:', username);
             let credentials = await db.getUserCredentials(username);
             if (credentials) {
@@ -349,28 +373,32 @@ const startServer = async () => {
 
             if (!credentials || credentials.passwordHash !== password) {
                 console.log('[/api/auth/login] Authentication failed for username:', username);
-                return res.status(401).json({ message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
+                sendResponse(401, { message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
+                return;
             }
             console.log('[/api/auth/login] Authentication successful for username:', username, '. Getting user details.');
             let user = await db.getUser(credentials.userId);
-            if (user) {
-                console.log('[/api/auth/login] User details retrieved for userId:', credentials.userId);
-            } else {
+            if (!user) {
                 console.log('[/api/auth/login] User not found for userId:', credentials.userId);
-                return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+                sendResponse(404, { message: '사용자를 찾을 수 없습니다.' });
+                return;
             }
-            if (!user) return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+            console.log('[/api/auth/login] User details retrieved for userId:', credentials.userId);
 
             const defaultBaseStats = createDefaultBaseStats();
             if (!user.baseStats) {
                 user.baseStats = defaultBaseStats;
                 await db.updateUser(user);
-            } else if (
-                !user.baseStats ||
-                Object.keys(user.baseStats).length !== Object.keys(defaultBaseStats).length ||
-                                !Object.values(types.CoreStat).every(stat => (user!.baseStats as Record<types.CoreStat, number>)[stat] === 100)) {
-                user.baseStats = defaultBaseStats;
-                await db.updateUser(user);
+            } else {
+                // Check if baseStats needs to be reset
+                const coreStats = Object.values(types.CoreStat || {});
+                if (coreStats.length > 0 && (
+                    Object.keys(user.baseStats).length !== Object.keys(defaultBaseStats).length ||
+                    !coreStats.every(stat => (user.baseStats as Record<types.CoreStat, number>)[stat] === 100)
+                )) {
+                    user.baseStats = defaultBaseStats;
+                    await db.updateUser(user);
+                }
             }
             
             const userBeforeUpdate = JSON.stringify(user);
@@ -459,11 +487,14 @@ const startServer = async () => {
                 volatileState.userStatuses[user!.id] = { status: types.UserStatus.Online };
             }
             
-            res.status(200).json({ user });
+            sendResponse(200, { user });
         } catch (e: any) {
-            console.error('Login error:', e);
-            console.error(e); // Added for debugging
-            res.status(500).json({ message: '서버 로그인 처리 중 오류가 발생했습니다.' });
+            console.error('[/api/auth/login] Login error:', e);
+            console.error('[/api/auth/login] Error stack:', e?.stack);
+            console.error('[/api/auth/login] Error message:', e?.message);
+            if (!responseSent) {
+                sendResponse(500, { message: '서버 로그인 처리 중 오류가 발생했습니다.', error: process.env.NODE_ENV === 'development' ? e?.message : undefined });
+            }
         }
     });
 

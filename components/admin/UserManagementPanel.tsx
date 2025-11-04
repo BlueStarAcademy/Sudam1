@@ -5,6 +5,7 @@ import { User, ServerAction, AdminProps, LiveGameSession, GameMode, Quest, Daily
 import DraggableWindow from '../DraggableWindow.js';
 import Button from '../Button.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants';
+import { useAppContext } from '../../hooks/useAppContext.js';
 
 interface UserManagementModalProps {
     user: User;
@@ -233,6 +234,7 @@ interface UserManagementPanelProps {
 }
 
 const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ allUsers, onAction, onBack, currentUser }) => {
+    const { handlers } = useAppContext();
     const [searchQuery, setSearchQuery] = useState('');
     const [managingUser, setManagingUser] = useState<User | null>(null);
     const [username, setUsername] = useState('');
@@ -281,11 +283,18 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ allUsers, onA
                             <tbody>
                                 {filteredUsers.map(user => (
                                     <tr key={user.id} className="bg-primary border-b border-color hover:bg-secondary/50">
-                                        <th scope="row" className="px-6 py-4 font-medium text-primary whitespace-nowrap"> {user.nickname} {user.isAdmin && <span className="text-xs text-purple-400 ml-2">[관리자]</span>} </th>
+                                        <th 
+                                            scope="row" 
+                                            className="px-6 py-4 font-medium text-primary whitespace-nowrap cursor-pointer hover:text-accent"
+                                            onClick={() => handlers.openViewingUser(user.id)}
+                                            title={`${user.nickname} 프로필 보기`}
+                                        > 
+                                            {user.nickname} {user.isAdmin && <span className="text-xs text-purple-400 ml-2">[관리자]</span>} 
+                                        </th>
                                         <td className="px-6 py-4">{user.username}</td>
                                         <td className="px-6 py-4">S.{user.strategyLevel} / P.{user.playfulLevel}</td>
                                         <td className="px-6 py-4">
-                                            <button onClick={() => setManagingUser(user)} className="font-medium text-blue-500 hover:underline">관리</button>
+                                            <button onClick={(e) => { e.stopPropagation(); setManagingUser(user); }} className="font-medium text-blue-500 hover:underline">관리</button>
                                         </td>
                                     </tr>
                                 ))}

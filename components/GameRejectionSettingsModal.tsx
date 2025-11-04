@@ -1,23 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { GameMode } from '../types';
 import { useAppContext } from '../hooks/useAppContext';
 import Button from './Button';
-
-const gameOptions = [
-    { mode: GameMode.Omok, name: '오목' },
-    { mode: GameMode.Dice, name: '주사위 바둑' },
-    { mode: GameMode.Ttamok, name: '따목' },
-    { mode: GameMode.Thief, name: '도둑잡기' },
-    { mode: GameMode.Alkkagi, name: '알까기' },
-    { mode: GameMode.Curling, name: '컬링' },
-    { mode: GameMode.Standard, name: '일반 바둑' },
-];
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants';
 
 interface GameRejectionSettingsModalProps {
   onClose: () => void;
+  lobbyType?: 'strategic' | 'playful';
 }
 
-const GameRejectionSettingsModal: React.FC<GameRejectionSettingsModalProps> = ({ onClose }) => {
+const GameRejectionSettingsModal: React.FC<GameRejectionSettingsModalProps> = ({ onClose, lobbyType }) => {
   const { currentUserWithStatus, handlers } = useAppContext();
   const [rejectedGameModes, setRejectedGameModes] = useState<GameMode[]>([]);
 
@@ -26,6 +18,29 @@ const GameRejectionSettingsModal: React.FC<GameRejectionSettingsModalProps> = ({
       setRejectedGameModes(currentUserWithStatus.rejectedGameModes);
     }
   }, [currentUserWithStatus]);
+
+  // lobbyType에 따라 표시할 게임 모드 필터링
+  const gameOptions = useMemo(() => {
+    if (lobbyType === 'strategic') {
+      // 전략바둑 게임만 표시
+      return SPECIAL_GAME_MODES.map(mode => ({
+        mode: mode.mode,
+        name: mode.name
+      }));
+    } else if (lobbyType === 'playful') {
+      // 놀이바둑 게임만 표시
+      return PLAYFUL_GAME_MODES.map(mode => ({
+        mode: mode.mode,
+        name: mode.name
+      }));
+    } else {
+      // lobbyType이 없으면 모든 게임 모드 표시 (하위 호환성)
+      return [
+        ...SPECIAL_GAME_MODES.map(mode => ({ mode: mode.mode, name: mode.name })),
+        ...PLAYFUL_GAME_MODES.map(mode => ({ mode: mode.mode, name: mode.name }))
+      ];
+    }
+  }, [lobbyType]);
 
   const handleToggleGameMode = (mode: GameMode) => {
     setRejectedGameModes(prev =>
@@ -49,17 +64,21 @@ const GameRejectionSettingsModal: React.FC<GameRejectionSettingsModalProps> = ({
         <h2 className="text-xl font-bold mb-4 text-white">대국 거부 설정</h2>
         <p className="text-gray-300 mb-4">선택한 게임 모드의 대국 신청을 자동으로 거부합니다.</p>
         <div className="flex flex-col gap-2 mb-6">
-          {gameOptions.map((option, index) => (
-            <label key={index} className="flex items-center text-white cursor-pointer">
-              <input
-                type="checkbox"
-                checked={rejectedGameModes.includes(option.mode)}
-                onChange={() => handleToggleGameMode(option.mode)}
-                className="form-checkbox h-5 w-5 text-accent rounded"
-              />
-              <span className="ml-2">{option.name}</span>
-            </label>
-          ))}
+          {gameOptions.length > 0 ? (
+            gameOptions.map((option, index) => (
+              <label key={`${option.mode}-${index}`} className="flex items-center text-white cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={rejectedGameModes.includes(option.mode)}
+                  onChange={() => handleToggleGameMode(option.mode)}
+                  className="form-checkbox h-5 w-5 text-accent rounded"
+                />
+                <span className="ml-2">{option.name}</span>
+              </label>
+            ))
+          ) : (
+            <p className="text-gray-400 text-sm">표시할 게임 모드가 없습니다.</p>
+          )}
         </div>
         <div className="flex justify-end gap-3">
           <Button onClick={onClose} colorScheme="gray">취소</Button>

@@ -4,6 +4,7 @@ import { type ServerAction, type User, type VolatileState, Negotiation, GameMode
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, STRATEGIC_ACTION_POINT_COST, PLAYFUL_ACTION_POINT_COST, DEFAULT_GAME_SETTINGS } from '../../constants';
 import { initializeGame } from '../gameModes.js';
 import { aiUserId, getAiUser } from '../aiPlayer.js';
+import { broadcast } from '../socket.js';
 
 type HandleActionResult = { 
     clientResponse?: any;
@@ -26,7 +27,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
 
     switch (type) {
         case 'CHALLENGE_USER': {
-            const { opponentId, mode } = payload;
+            const { opponentId, mode, settings } = payload;
             const opponent = opponentId === aiUserId ? getAiUser(mode) : await db.getUser(opponentId);
         
             if (!opponent) return { error: 'Opponent not found.' };
@@ -43,15 +44,27 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             
             // For real players, perform status checks
             if (opponentId !== aiUserId) {
-                const myStatus = volatileState.userStatuses[user.id];
+                let myStatus = volatileState.userStatuses[user.id];
                 const opponentStatus = volatileState.userStatuses[opponent.id];
 
                 if (!opponentStatus) {
                     return { error: '상대방이 오프라인 상태입니다.' };
                 }
                 
-                const canIChallenge = myStatus?.status === UserStatus.Waiting;
-                if (!canIChallenge) return { error: '대국 신청은 대기실에서만 가능합니다.' };
+                // myStatus가 없거나 waiting/resting이 아니면 대기 상태로 설정
+                // (대기실에 입장했지만 상태가 아직 업데이트되지 않은 경우)
+                if (!myStatus || (myStatus.status !== UserStatus.Waiting && myStatus.status !== 'resting')) {
+                    // 대기 상태로 설정 (mode는 선택한 게임 모드로 설정)
+                    volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode };
+                    myStatus = volatileState.userStatuses[user.id];
+                    broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
+                }
+                
+                // 'waiting' 또는 'resting' 상태에서 대국 신청 가능
+                const canIChallenge = myStatus.status === UserStatus.Waiting || myStatus.status === 'resting';
+                if (!canIChallenge) {
+                    return { error: '대국 신청은 대기실에서만 가능합니다.' };
+                }
                 
                 const canOpponentBeChallenged = opponentStatus?.status === UserStatus.Waiting || opponentStatus?.status === UserStatus.Online;
                 if (!canOpponentBeChallenged) {
@@ -87,7 +100,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
                 challenger: user,
                 opponent: opponent,
                 mode: mode,
-                settings: { ...DEFAULT_GAME_SETTINGS },
+                settings: settings ? { ...DEFAULT_GAME_SETTINGS, ...settings } : { ...DEFAULT_GAME_SETTINGS },
                 proposerId: user.id,
                 status: 'draft',
                 turnCount: 0,

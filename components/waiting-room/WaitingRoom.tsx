@@ -124,6 +124,20 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   const chatMessages = waitingRoomChats['global'] || [];
   const prevChatLength = usePrevious(chatMessages.length);
 
+  // 대기실 입장 시 자동으로 ENTER_WAITING_ROOM 액션 전송
+  useEffect(() => {
+    if (currentUserWithStatus && mode) {
+      // 현재 유저가 이미 대기실에 있는지 확인
+      const isAlreadyInWaitingRoom = currentUserWithStatus.status === 'waiting' || currentUserWithStatus.status === 'resting';
+      const modeMatches = currentUserWithStatus.mode === mode;
+      
+      // 대기 상태가 아니거나 모드가 일치하지 않으면 대기실 입장
+      if (!isAlreadyInWaitingRoom || !modeMatches) {
+        handlers.handleAction({ type: 'ENTER_WAITING_ROOM', payload: { mode } });
+      }
+    }
+  }, [mode, currentUserWithStatus?.id, currentUserWithStatus?.status, currentUserWithStatus?.mode, handlers]);
+
   useEffect(() => {
     if (!isMobileSidebarOpen && prevChatLength !== undefined && chatMessages.length > prevChatLength) {
         setHasNewMessage(true);
@@ -149,20 +163,39 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
         const isStrategicLobby = mode === 'strategic';
         const isPlayfulLobby = mode === 'playful';
 
+        // 전략/놀이바둑 대기실의 경우: status가 'waiting'이거나 'resting'인 모든 유저 포함
+        // 단일 게임 모드 대기실의 경우: mode가 정확히 일치하는 유저만 포함
         const all = onlineUsers.filter(u => {
-            if (isStrategicLobby) {
-                return SPECIAL_GAME_MODES.some(m => m.mode === u.mode);
+            if (isStrategicLobby || isPlayfulLobby) {
+                // 전략/놀이바둑 대기실: waiting 또는 resting 상태인 모든 유저 포함
+                return u.status === 'waiting' || u.status === 'resting';
             }
-            if (isPlayfulLobby) {
-                return PLAYFUL_GAME_MODES.some(m => m.mode === u.mode);
-            }
+            // 단일 게임 모드 대기실: mode가 정확히 일치하는 유저만 포함
             return u.mode === mode;
         });
+        
+        // 현재 유저가 목록에 없으면 추가 (대기실에 입장했지만 아직 상태가 업데이트되지 않은 경우)
         const me = all.find(u => u.id === currentUserWithStatus.id);
-        return me ? [me, ...all.filter(u => u.id !== currentUserWithStatus.id)] : all;
-  }, [onlineUsers, mode, currentUserWithStatus.id]);
+        if (!me) {
+            // 현재 유저를 대기실 상태로 추가
+            // 전략/놀이바둑 대기실의 경우 mode는 strategic/playful로 설정
+            // 단일 게임 모드 대기실의 경우 mode를 그대로 사용
+            const currentUserInRoom: UserWithStatus = {
+                ...currentUserWithStatus,
+                status: 'waiting' as const,
+                mode: (isStrategicLobby || isPlayfulLobby) ? (mode as 'strategic' | 'playful') : (mode as GameMode)
+            };
+            return [currentUserInRoom, ...all];
+        }
+        
+        return [me, ...all.filter(u => u.id !== currentUserWithStatus.id)];
+  }, [onlineUsers, mode, currentUserWithStatus]);
 
-  const isStrategic = useMemo(() => SPECIAL_GAME_MODES.some(m => m.mode === mode), [mode]);
+  const isStrategic = useMemo(() => {
+    if (mode === 'strategic') return true;
+    if (mode === 'playful') return false;
+    return SPECIAL_GAME_MODES.some(m => m.mode === mode);
+  }, [mode]);
   const lobbyType = isStrategic ? '전략' : '놀이';
   const locationPrefix = `[${lobbyType}:${mode}]`;
     

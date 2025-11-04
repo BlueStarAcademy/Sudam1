@@ -8,12 +8,22 @@ interface BadukRankingBoardProps {
     isTopmost?: boolean;
 }
 
-const RankingRow = ({ user, rank, value, isCurrentUser }: { user: User, rank: number, value: number, isCurrentUser: boolean }) => {
+const RankingRow = ({ user, rank, value, isCurrentUser, onViewUser }: { user: User, rank: number, value: number, isCurrentUser: boolean, onViewUser?: (userId: string) => void }) => {
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === user.avatarId)?.url, [user.avatarId]);
     const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === user.borderId)?.url, [user.borderId]);
 
+    const handleClick = () => {
+        if (!isCurrentUser && onViewUser) {
+            onViewUser(user.id);
+        }
+    };
+
     return (
-        <div className={`flex items-center p-1 rounded-md ${isCurrentUser ? 'bg-blue-500/30' : ''}`}>
+        <div 
+            className={`flex items-center p-1 rounded-md ${isCurrentUser ? 'bg-blue-500/30' : onViewUser ? 'cursor-pointer hover:bg-secondary/50' : ''}`}
+            onClick={handleClick}
+            title={!isCurrentUser && onViewUser ? `${user.nickname} 프로필 보기` : ''}
+        >
             <span className="w-8 text-center font-bold">{rank}</span>
             <Avatar userId={user.id} userName={user.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={24} />
             <span className="flex-1 truncate font-semibold ml-2">{user.nickname}</span>
@@ -23,23 +33,32 @@ const RankingRow = ({ user, rank, value, isCurrentUser }: { user: User, rank: nu
 };
 
 const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
-    const { allUsers, currentUserWithStatus } = useAppContext();
+    const { allUsers, currentUserWithStatus, handlers } = useAppContext();
     const [activeTab, setActiveTab] = useState<'strategic' | 'playful' | 'championship'>('strategic');
 
     const rankings = useMemo(() => {
+        if (!allUsers || allUsers.length === 0) {
+            console.log('[BadukRankingBoard] No users available');
+            return [];
+        }
+        
         if (activeTab === 'championship') {
-            return allUsers
-                .filter(user => user && typeof user.tournamentScore === 'number')
-                .map(user => ({ user, value: user.tournamentScore }))
+            const result = allUsers
+                .filter(user => user && user.id && typeof user.tournamentScore === 'number')
+                .map(user => ({ user, value: user.tournamentScore || 0 }))
                 .sort((a, b) => b.value - a.value)
                 .slice(0, 100);
+            console.log('[BadukRankingBoard] Championship rankings:', result.length, 'users');
+            return result;
         } else {
-            const mode = activeTab === 'strategic' ? 'standard' : 'playful'; // Assuming 'standard' for strategic and 'playful' for playful
-            return allUsers
-                .filter(user => user)
+            const mode = activeTab === 'strategic' ? 'standard' : 'playful';
+            const result = allUsers
+                .filter(user => user && user.id)
                 .map(user => ({ user, value: user.cumulativeRankingScore?.[mode] || 0 }))
                 .sort((a, b) => b.value - a.value)
                 .slice(0, 100);
+            console.log('[BadukRankingBoard]', mode, 'rankings:', result.length, 'users');
+            return result;
         }
     }, [allUsers, activeTab]);
 
@@ -83,18 +102,24 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
                 </button>
             </div>
             <div className="flex-grow overflow-y-auto pr-1 text-xs flex flex-col gap-1 min-h-0 h-48">
-                <>
-                    {currentUserRanking && (
-                        <div className="sticky top-0 bg-panel z-10">
-                            <RankingRow user={currentUserRanking.user} rank={currentUserRanking.rank as number} value={currentUserRanking.value} isCurrentUser={true} />
-                        </div>
-                    )}
-                    <div className="flex flex-col gap-1">
-                        {rankings.filter(r => r && r.user).map((r, i) => (
-                            <RankingRow key={r.user.id} user={r.user} rank={i + 1} value={r.value} isCurrentUser={false} />
-                        ))}
+                {rankings.length === 0 ? (
+                    <div className="flex items-center justify-center h-full text-gray-400 text-xs">
+                        {allUsers.length === 0 ? '데이터 로딩 중...' : '랭킹 데이터가 없습니다.'}
                     </div>
-                </>
+                ) : (
+                    <>
+                        {currentUserRanking && (
+                            <div className="sticky top-0 bg-panel z-10">
+                                <RankingRow user={currentUserRanking.user} rank={currentUserRanking.rank as number} value={currentUserRanking.value} isCurrentUser={true} />
+                            </div>
+                        )}
+                        <div className="flex flex-col gap-1">
+                            {rankings.filter(r => r && r.user && r.user.id).map((r, i) => (
+                                <RankingRow key={r.user.id} user={r.user} rank={i + 1} value={r.value} isCurrentUser={false} onViewUser={handlers.openViewingUser} />
+                            ))}
+                        </div>
+                    </>
+                )}
             </div>
         </div>
     );
