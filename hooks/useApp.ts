@@ -180,7 +180,9 @@ export const useApp = () => {
     }, []);
 
     // --- Derived State ---
-    const allUsers = useMemo(() => Object.values(usersMap), [usersMap]);
+    const allUsers = useMemo(() => {
+        return Object.values(usersMap);
+    }, [usersMap]);
 
     const currentUserWithStatus: UserWithStatus | null = useMemo(() => {
         if (!currentUser) return null;
@@ -200,10 +202,10 @@ export const useApp = () => {
 
     const activeNegotiation = useMemo(() => {
         if (!currentUserWithStatus) return null;
-        return Object.values(negotiations).find(neg => (
-            (neg.challenger.id === currentUserWithStatus.id) ||
+        return Object.values(negotiations).find(neg => 
+            (neg.challenger.id === currentUserWithStatus.id && (neg.status === 'pending' || neg.status === 'draft')) ||
             (neg.opponent.id === currentUserWithStatus.id && neg.status === 'pending')
-        )) || null;
+        ) || null;
     }, [currentUserWithStatus, negotiations]);
 
     const unreadMailCount = useMemo(() => currentUser?.mail.filter(m => !m.isRead).length || 0, [currentUser?.mail]);
@@ -370,48 +372,53 @@ export const useApp = () => {
         window.location.hash = '';
     }, [currentUser, handleAction]);
     
-    // --- State Polling ---
-    useEffect(() => {
-        if (!currentUser?.id) return;
-        const poll = async () => {
-            if (isLoggingOut.current) return;
-            try {
-                const response = await fetch('/api/state', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userId: currentUser.id }),
-                });
-                if (isLoggingOut.current) return;
-                if (!response.ok) {
-                    if (response.status === 401) { setCurrentUser(null); window.location.hash = ''; }
-                    throw new Error('Failed to fetch state');
-                }
-                const data: AppState = await response.json();
-                if (isLoggingOut.current) return;
-                
-                const updatedUser = data.users[currentUser.id];
-                setCurrentUser(updatedUser || null);
 
-                setUsersMap(data.users);
-                setLiveGames(data.liveGames);
-                setNegotiations(data.negotiations);
-                setWaitingRoomChats(data.waitingRoomChats);
-                setGameChats(data.gameChats);
-                setAdminLogs(data.adminLogs);
-                setGameModeAvailability(data.gameModeAvailability);
-                setAnnouncements(data.announcements);
-                setGlobalOverrideAnnouncement(data.globalOverrideAnnouncement);
-                setAnnouncementInterval(data.announcementInterval);
-    
-                const onlineStatuses = Object.entries(data.userStatuses).map(([id, statusInfo]) => ({ ...data.users[id], ...statusInfo }));
-                setOnlineUsers(onlineStatuses as UserWithStatus[]);
-            } catch (err) { console.error("Polling error:", err); }
+
+    useEffect(() => {
+        if (!currentUser) return;
+
+        const ws = new WebSocket(`ws://${window.location.hostname}:4001`);
+
+        ws.onopen = () => {
+            console.log('[WebSocket] Connected');
         };
-    
-        poll();
-        const interval = setInterval(poll, 5000);
-        return () => clearInterval(interval);
-    }, [currentUser?.id]);
+
+        ws.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+
+            switch (message.type) {
+                case 'INITIAL_STATE':
+                    console.log('INITIAL_STATE payload:', message.payload);
+                    const { users, onlineUsers, liveGames, negotiations, waitingRoomChats, gameChats, adminLogs, announcements, globalOverrideAnnouncement, gameModeAvailability, announcementInterval } = message.payload;
+                    setUsersMap(users);
+                    setOnlineUsers(onlineUsers);
+                    setLiveGames(liveGames);
+                    setNegotiations(negotiations);
+                    setWaitingRoomChats(waitingRoomChats);
+                    setGameChats(gameChats);
+                    setAdminLogs(adminLogs);
+                    setAnnouncements(announcements);
+                    setGlobalOverrideAnnouncement(globalOverrideAnnouncement);
+                    setGameModeAvailability(gameModeAvailability);
+                    setAnnouncementInterval(announcementInterval);
+                    break;
+                case 'USER_STATUS_UPDATE':
+                    const onlineStatuses = Object.entries(message.payload).map(([id, statusInfo]) => {
+                        const user = usersMap[id];
+                        if (!user) return undefined;
+                        return { ...user, ...statusInfo };
+                    }).filter(Boolean) as UserWithStatus[];
+                    setOnlineUsers(onlineStatuses);
+                    break;
+        };
+
+        ws.onclose = () => {
+            console.log('[WebSocket] Disconnected');
+        };
+
+        return () => {
+            ws.close();
+    }, [currentUser, setUsersMap, setOnlineUsers, setLiveGames, setNegotiations, setWaitingRoomChats, setGameChats, setAdminLogs, setAnnouncements, setGlobalOverrideAnnouncement, setGameModeAvailability, setAnnouncementInterval, usersMap]);;
 
     // --- Navigation Logic ---
     const initialRedirectHandled = useRef(false);
@@ -574,7 +581,7 @@ export const useApp = () => {
         handleAction({ type: 'APPLY_PRESET', payload: { presetName: preset.name } });
     }, [handleAction]);
 
-    const presets = useMemo(() => currentUser?.equipmentPresets || [], [currentUser]);
+    const presets = useMemo(() => currentUser?.equipmentPresets || [], [currentUser?.equipmentPresets]);
 
     const {
         mainOptionBonuses,
@@ -730,7 +737,7 @@ export const useApp = () => {
             closeStatAllocationModal: () => setIsStatAllocationModalOpen(false),
             openProfileEditModal: () => setIsProfileEditModalOpen(true),
             closeProfileEditModal: () => setIsProfileEditModalOpen(false),
-            openPastRankings: (info: { user: UserWithStatus; mode: GameMode; }) => setPastRankingsInfo(info),
+            openPastRankings: (info: { user: UserWithStatus; mode: GameMode | 'strategic' | 'playful'; }) => setPastRankingsInfo(info),
             closePastRankings: () => setPastRankingsInfo(null),
             openViewingItem,
             closeViewingItem: () => setViewingItem(null),

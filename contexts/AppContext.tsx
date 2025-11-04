@@ -1,5 +1,5 @@
 import React, { createContext, ReactNode } from 'react';
-import { useApp } from '../hooks/useApp.js';
+import { useApp } from '../hooks/useApp';
 
 // Infer the type of the context from the hook's return value
 type AppContextType = ReturnType<typeof useApp>;

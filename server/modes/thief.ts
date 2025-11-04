@@ -2,7 +2,7 @@ import * as types from '../../types.js';
 import * as db from '../db.js';
 import { getGoLogic, processMove } from '../goLogic.js';
 import { handleSharedAction, updateSharedGameState } from './shared.js';
-import { DICE_GO_MAIN_ROLL_TIME, DICE_GO_MAIN_PLACE_TIME } from '../../constants.js';
+import { DICE_GO_MAIN_ROLL_TIME, DICE_GO_MAIN_PLACE_TIME } from '../../constants';
 import { endGame } from '../summaryService.js';
 import { aiUserId } from '../aiPlayer.js';
 

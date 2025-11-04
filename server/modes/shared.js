@@ -2,7 +2,7 @@ import * as summaryService from '../summaryService.js';
 import { UserStatus } from '../../types.js';
 import * as db from '../db.js';
 import { randomUUID } from 'crypto';
-import { PLAYFUL_MODE_FOUL_LIMIT } from '../../constants.js';
+import { PLAYFUL_MODE_FOUL_LIMIT } from '../../constants';
 import { aiUserId } from '../aiPlayer.js';
 import { updateQuestProgress } from '../questService.js';
 import * as types from '../../types.js';

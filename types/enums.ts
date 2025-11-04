@@ -21,9 +21,7 @@ export enum GameMode {
   Curling = "바둑 컬링",
 }
 
-export const ServerAction = {
-  UpdateUserSettings: 'UPDATE_USER_SETTINGS',
-} as const;
+
 
 export enum LeagueTier {
     Sprout = '새싹',

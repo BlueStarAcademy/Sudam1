@@ -10,13 +10,13 @@ import RankingList from './RankingList.js';
 import GameList from './GameList.js';
 import ChatWindow from './ChatWindow.js';
 import TierInfoModal from '../TierInfoModal.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, aiUserId } from '../../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, aiUserId } from '../../constants';
 import QuickAccessSidebar from '../QuickAccessSidebar.js';
 import Button from '../Button.js';
 
 
 interface WaitingRoomComponentProps {
-    mode: GameMode;
+    mode: GameMode | 'strategic' | 'playful';
 }
 
 const PLAYFUL_AI_MODES: GameMode[] = [GameMode.Dice, GameMode.Omok, GameMode.Ttamok, GameMode.Thief, GameMode.Alkkagi, GameMode.Curling];
@@ -132,8 +132,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   
   const onBackToLobby = () => {
     handlers.handleAction({ type: 'LEAVE_WAITING_ROOM' });
-    const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === mode);
-    window.location.hash = `#/lobby/${isStrategic ? 'strategic' : 'playful'}`;
+    window.location.hash = '#/profile';
   }
 
   useEffect(() => {
@@ -147,25 +146,21 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   const ongoingGames = (Object.values(liveGames) as LiveGameSession[]).filter(g => g.mode === mode);
   
   const usersInThisRoom = useMemo(() => {
+        const isStrategicLobby = mode === 'strategic';
+        const isPlayfulLobby = mode === 'playful';
+
         const all = onlineUsers.filter(u => {
-            if (u.mode === mode) {
-                return true;
+            if (isStrategicLobby) {
+                return SPECIAL_GAME_MODES.some(m => m.mode === u.mode);
             }
-            if (!u.mode) {
-                const gameId = u.gameId || u.spectatingGameId;
-                if (gameId) {
-                    const game = liveGames[gameId];
-                    if (game && game.mode === mode) {
-                        return true;
-                    }
-                }
+            if (isPlayfulLobby) {
+                return PLAYFUL_GAME_MODES.some(m => m.mode === u.mode);
             }
-            
-            return false;
+            return u.mode === mode;
         });
         const me = all.find(u => u.id === currentUserWithStatus.id);
         return me ? [me, ...all.filter(u => u.id !== currentUserWithStatus.id)] : all;
-  }, [onlineUsers, mode, currentUserWithStatus.id, liveGames]);
+  }, [onlineUsers, mode, currentUserWithStatus.id]);
 
   const isStrategic = useMemo(() => SPECIAL_GAME_MODES.some(m => m.mode === mode), [mode]);
   const lobbyType = isStrategic ? '전략' : '놀이';
@@ -178,7 +173,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
           <Button onClick={onBackToLobby} colorScheme="gray"> &larr; 로비로</Button>
         </div>
         <div className='flex-1 text-center flex items-center justify-center'>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{mode} 대기실</h1>
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{mode === 'strategic' ? '전략바둑 대기실' : mode === 'playful' ? '놀이바둑 대기실' : `${mode} 대기실`}</h1>
           <button 
             onClick={() => setIsHelpModalOpen(true)}
             className="ml-3 w-8 h-8 flex items-center justify-center bg-secondary hover:bg-tertiary rounded-full text-primary font-bold text-xl flex-shrink-0 transition-transform hover:scale-110"
@@ -196,8 +191,8 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
         {isMobile ? (
           <>
             <div className="flex flex-col h-full gap-2">
-                <div className="flex-shrink-0"><AnnouncementBoard mode={mode} /></div>
-                <div className="flex-shrink-0"><AiChallengePanel mode={mode} /></div>
+                <div className="flex-shrink-0">{mode !== 'strategic' && mode !== 'playful' && <AnnouncementBoard mode={mode} />}</div>
+                <div className="flex-shrink-0">{mode !== 'strategic' && mode !== 'playful' && <AiChallengePanel mode={mode} />}</div>
                 <div className="flex-1 flex flex-row gap-2 items-stretch min-h-0">
                     <div className="flex-1 min-w-0">
                         <GameList games={ongoingGames} onAction={handlers.handleAction} currentUser={currentUserWithStatus} />
@@ -225,8 +220,8 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
                 <div className="flex-shrink-0 p-2 border-b border-color">
                     <QuickAccessSidebar mobile={true} />
                 </div>
-                                      <div className="flex-1 min-h-0"><PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} /></div>
-                <div className="flex-1 min-h-0 border-t border-color"><RankingList mode={mode} onShowTierInfo={() => setIsTierInfoModalOpen(true)} currentUser={currentUserWithStatus} onViewUser={handlers.openViewingUser} onShowPastRankings={handlers.openPastRankings} /></div>
+                                      <div className="flex-1 min-h-0"><PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={isStrategic ? 'strategic' : 'playful'} /></div>
+                <div className="flex-1 min-h-0 border-t border-color"><RankingList mode={mode} onShowTierInfo={() => setIsTierInfoModalOpen(true)} currentUser={currentUserWithStatus} onViewUser={handlers.openViewingUser} onShowPastRankings={(info) => handlers.openPastRankings(info)} lobbyType={isStrategic ? 'strategic' : 'playful'} /></div>
             </div>
             {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}
           </>
@@ -253,7 +248,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
               <div className="lg:col-span-2 flex flex-col gap-4">
                 <div className="flex-1 flex flex-row gap-4 items-stretch min-h-0">
                   <div className="flex-1 bg-panel border border-color rounded-lg shadow-lg min-w-0">
-                    <PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} />
+                    <PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={isStrategic ? 'strategic' : 'playful'} />
                   </div>
                   <div className="w-24 flex-shrink-0">
                     <QuickAccessSidebar />
@@ -261,14 +256,14 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
                 </div>
 
                 <div className="flex-1 bg-panel border border-color rounded-lg shadow-lg">
-                  <RankingList currentUser={currentUserWithStatus} mode={mode} onViewUser={handlers.openViewingUser} onShowTierInfo={() => setIsTierInfoModalOpen(true)} onShowPastRankings={handlers.openPastRankings} />
+                  <RankingList currentUser={currentUserWithStatus} mode={mode} onViewUser={handlers.openViewingUser} onShowTierInfo={() => setIsTierInfoModalOpen(true)} onShowPastRankings={handlers.openPastRankings} lobbyType={isStrategic ? 'strategic' : 'playful'} />
                 </div>
               </div>
           </div>
         )}
       </div>
       {isTierInfoModalOpen && <TierInfoModal onClose={() => setIsTierInfoModalOpen(false)} />}
-      {isHelpModalOpen && <HelpModal mode={mode} onClose={() => setIsHelpModalOpen(false)} />}
+      {isHelpModalOpen && <HelpModal mode={mode as GameMode} onClose={() => setIsHelpModalOpen(false)} />}
     </div>
   );
 };

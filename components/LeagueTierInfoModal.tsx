@@ -1,6 +1,6 @@
 import React from 'react';
 import DraggableWindow from './DraggableWindow.js';
-import { LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS } from '../constants.js';
+import { LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS } from '../constants';
 import { LeagueRewardTier } from '../types.js';
 
 interface LeagueTierInfoModalProps {

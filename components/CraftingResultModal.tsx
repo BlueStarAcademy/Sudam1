@@ -2,7 +2,7 @@
 import React from 'react';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
-import { MATERIAL_ITEMS } from '../constants.js';
+import { MATERIAL_ITEMS } from '../constants';
 
 interface CraftingResultModalProps {
     result: {

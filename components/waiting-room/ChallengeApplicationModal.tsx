@@ -2,9 +2,9 @@ import React, { useState, useMemo } from 'react';
 import DraggableWindow from '../DraggableWindow.js';
 import Button from '../Button.js';
 import { GameMode, ServerAction, UserWithStatus } from '../../types.js'; // Import UserWithStatus
-import { SPECIAL_GAME_MODES } from '../../constants.js';
+import { SPECIAL_GAME_MODES } from '../../constants';
 import Avatar from '../Avatar.js'; // Import Avatar
-import { AVATAR_POOL, BORDER_POOL } from '../../constants.js'; // Import AVATAR_POOL, BORDER_POOL
+import { AVATAR_POOL, BORDER_POOL } from '../../constants'; // Import AVATAR_POOL, BORDER_POOL
 
 interface ChallengeApplicationModalProps {
     opponentUser: UserWithStatus; // Changed from opponentId to opponentUser

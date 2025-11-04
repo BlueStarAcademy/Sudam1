@@ -4,7 +4,7 @@ import Avatar from './Avatar.js';
 import Button from './Button.js';
 import DraggableWindow from './DraggableWindow.js';
 import { WHITE_BASE_STONE_IMG, BLACK_BASE_STONE_IMG } from '../assets.js';
-import { AVATAR_POOL, BORDER_POOL } from '../constants.js';
+import { AVATAR_POOL, BORDER_POOL } from '../constants';
 
 interface BaseStartConfirmationModalProps {
     session: LiveGameSession;

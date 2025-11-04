@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { GameProps, Player, Point, GameStatus, Move, GameMode } from '../../types.js';
 import GoBoard from '../GoBoard.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants/gameModes.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants/gameModes';
 
 interface GoGameArenaProps extends GameProps {
     isMyTurn: boolean;

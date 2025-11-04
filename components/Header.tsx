@@ -4,7 +4,7 @@ import { UserWithStatus } from '../types.js';
 import Button from './Button.js';
 import Avatar from './Avatar.js';
 import { getMannerEffects } from '../services/effectService.js';
-import { AVATAR_POOL, BORDER_POOL } from '../constants.js';
+import { AVATAR_POOL, BORDER_POOL } from '../constants';
 import { useAppContext } from '../hooks/useAppContext.js';
 
 const ResourceDisplay: React.FC<{ icon: React.ReactNode; value: string; className?: string }> = ({ icon, value, className }) => (

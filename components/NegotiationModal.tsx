@@ -50,6 +50,11 @@ const CountdownDisplay: React.FC<{ deadline: number }> = ({ deadline }) => {
     return <span>({countdown}초)</span>;
 };
 
+
+
+
+
+
 const NegotiationModal: React.FC<NegotiationModalProps> = (props) => {
   const { negotiation, currentUser, onAction, onlineUsers, isTopmost } = props;
   const [settings, setSettings] = useState<GameSettings>(negotiation.settings);
@@ -76,6 +81,8 @@ const NegotiationModal: React.FC<NegotiationModalProps> = (props) => {
   const onDecline = useCallback(() => {
     onAction({ type: 'DECLINE_NEGOTIATION', payload: { negotiationId: negotiation.id } });
   }, [onAction, negotiation.id]);
+
+
 
   useEffect(() => {
     // This effect synchronizes the local `settings` state with the `negotiation` prop.

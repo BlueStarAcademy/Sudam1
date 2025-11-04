@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { LiveGameSession, User, Player, RPSChoice, GameMode, GameStatus, ServerAction } from '../types.js';
-import { DICE_GO_MAIN_ROLL_TIME } from '../constants.js';
+import { DICE_GO_MAIN_ROLL_TIME } from '../constants';
 import Button from './Button.js';
 import DraggableWindow from './DraggableWindow.js';
 

@@ -2,6 +2,8 @@ import express from 'express';
 import cors from 'cors';
 import { randomUUID } from 'crypto';
 import process from 'process';
+import http from 'http';
+import { createWebSocketServer } from './socket.js';
 import { handleAction, resetAndGenerateQuests, updateQuestProgress } from './gameActions.js';
 import { regenerateActionPoints } from './effectService.js';
 import { updateGameStates } from './gameModes.js';
@@ -14,11 +16,12 @@ import { processGameSummary, endGame } from './summaryService.js';
 import * as aiPlayer from './aiPlayer.js';
 import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded } from './scheduledTasks.js';
 import * as tournamentService from './tournamentService.js';
-import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS } from '../constants.js';
+import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS } from '../constants';
 import { calculateTotalStats } from './statService.js';
 import { isSameDayKST } from '../utils/timeUtils.js';
-import { createDefaultBaseStats, createDefaultUser } from './initialData.js';
+import { createDefaultBaseStats, createDefaultUser } from './initialData.ts';
 import { containsProfanity } from '../profanity.js';
+import { volatileState } from './state.js';
 
 const processSinglePlayerMissions = (user: types.User): types.User => {
     const now = Date.now();
@@ -79,31 +82,21 @@ const startServer = async () => {
 
     const app = express();
     console.log(`[Server] process.env.PORT: ${process.env.PORT}`);
-    const port = process.env.PORT || 4000;
+    const port = parseInt(process.env.PORT || '4000', 10);
     console.log(`[Server] Using port: ${port}`);
 
     app.use(cors());
     app.use(express.json({ limit: '10mb' }) as any);
-
-    // In-memory state for things that don't need to be persisted or are frequently changing.
-    const volatileState: types.VolatileState = {
-        userConnections: {},
-        userStatuses: {},
-        negotiations: {},
-        waitingRoomChats: { global: [] },
-        gameChats: {},
-        userLastChatMessage: {},
-        userConsecutiveChatMessages: {},
-        activeTournaments: {},
-        activeTournamentViewers: new Set(),
-    };
 
     // --- Constants ---
     const LOBBY_TIMEOUT_MS = 90 * 1000;
     const GAME_DISCONNECT_TIMEOUT_MS = 90 * 1000;
     const DISCONNECT_TIMER_S = 90;
 
-    app.listen(port, () => {
+    const server = http.createServer(app);
+    createWebSocketServer(server);
+
+    server.listen(port, '0.0.0.0', () => {
         console.log(`Server listening on port ${port}`);
     });
 

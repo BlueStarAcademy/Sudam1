@@ -147,10 +147,10 @@ export type ServerAction =
     | { type: 'APPLY_PRESET', payload: { presetName: string } }
     | { type: 'SAVE_PRESET', payload: { preset: EquipmentPreset, index: number } }
     // Inventory & Item Actions
-    | { type: 'USE_ITEM', payload: { itemId: string } }
+    | { type: 'USE_ITEM', payload: { itemId: string, quantity?: number } }
     | { type: 'USE_ALL_ITEMS_OF_TYPE', payload: { itemName: string } }
     | { type: 'TOGGLE_EQUIP_ITEM', payload: { itemId: string } }
-    | { type: 'SELL_ITEM', payload: { itemId: string } }
+    | { type: 'SELL_ITEM', payload: { itemId: string, quantity?: number } }
     | { type: 'ENHANCE_ITEM', payload: { itemId: string } }
     | { type: 'DISASSEMBLE_ITEM', payload: { itemIds: string[] } }
     | { type: 'COMBINE_ITEMS', payload: { itemIds: string[], isRandom?: boolean } }
@@ -204,6 +204,7 @@ export type ServerAction =
     | { type: 'SINGLE_PLAYER_REFRESH_PLACEMENT', payload: { gameId: string } }
     | { type: 'START_SINGLE_PLAYER_MISSION', payload: { missionId: string } }
     | { type: 'CLAIM_SINGLE_PLAYER_MISSION_REWARD', payload: { missionId: string } }
+    | { type: 'MANNER_ACTION', payload: { targetUserId: string, actionType: 'up' | 'down' } }
     ;
 
 export interface GameProps {

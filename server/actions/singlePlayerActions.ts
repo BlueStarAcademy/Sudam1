@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
 import { type ServerAction, type User, type VolatileState, LiveGameSession, Player, GameMode, Point, BoardState, SinglePlayerStageInfo, SinglePlayerMissionState, UserStatus } from '../../types.js';
-import { SINGLE_PLAYER_STAGES, KATAGO_LEVEL_TO_MAX_VISITS, SINGLE_PLAYER_MISSIONS } from '../../constants/singlePlayerConstants.js';
+import { SINGLE_PLAYER_STAGES, KATAGO_LEVEL_TO_MAX_VISITS, SINGLE_PLAYER_MISSIONS } from '../../constants/singlePlayerConstants';
 import { getAiUser } from '../aiPlayer.js';
 
 type HandleActionResult = { 

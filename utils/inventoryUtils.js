@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../constants.js';
+import { CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../constants';
 export const addItemsToInventory = (currentInventory, inventorySlots, itemsToAdd) => {
     const tempInventory = JSON.parse(JSON.stringify(currentInventory));
     const finalItemsToAdd = [];

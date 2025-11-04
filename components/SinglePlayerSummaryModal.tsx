@@ -2,7 +2,7 @@ import React from 'react';
 import { LiveGameSession, UserWithStatus, ServerAction, Player } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
-import { SINGLE_PLAYER_STAGES } from '../constants.js';
+import { SINGLE_PLAYER_STAGES } from '../constants';
 
 interface SinglePlayerSummaryModalProps {
     session: LiveGameSession;

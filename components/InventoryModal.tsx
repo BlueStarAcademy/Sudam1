@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { UserWithStatus, InventoryItem, ServerAction, InventoryItemType, ItemGrade, ItemOption, CoreStat, SpecialStat, MythicStat, EquipmentSlot, ItemOptionType } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
-import { emptySlotImages, GRADE_LEVEL_REQUIREMENTS, ITEM_SELL_PRICES, MATERIAL_SELL_PRICES, gradeBackgrounds, gradeStyles, BASE_SLOTS_PER_CATEGORY, EXPANSION_AMOUNT, MAX_EQUIPMENT_SLOTS, MAX_CONSUMABLE_SLOTS, MAX_MATERIAL_SLOTS, ENHANCEMENT_COSTS } from '../constants/items.js';
+import { emptySlotImages, GRADE_LEVEL_REQUIREMENTS, ITEM_SELL_PRICES, MATERIAL_SELL_PRICES, gradeBackgrounds, gradeStyles, BASE_SLOTS_PER_CATEGORY, EXPANSION_AMOUNT, MAX_EQUIPMENT_SLOTS, MAX_CONSUMABLE_SLOTS, MAX_MATERIAL_SLOTS, ENHANCEMENT_COSTS } from '../constants/items';
 
 import { calculateUserEffects } from '../services/effectService.js';
 import { useAppContext } from '../hooks/useAppContext.js';
@@ -272,7 +272,7 @@ const LocalItemDetailDisplay: React.FC<{
 const EQUIPMENT_SLOTS: EquipmentSlot[] = ['fan', 'board', 'top', 'bottom', 'bowl', 'stones'];
 
 const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, onAction, onStartEnhance, enhancementAnimationTarget, onAnimationComplete, isTopmost }) => {
-    const { presets, setPresets, handlers } = useAppContext();
+    const { presets, handlers } = useAppContext();
 
     const { inventorySlots = { equipment: 30, consumable: 10, material: 10 } } = currentUser;
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -283,7 +283,6 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
     const [newPresetName, setNewPresetName] = useState('');
     const [showUseQuantityModal, setShowUseQuantityModal] = useState(false);
     const [itemToUseBulk, setItemToUseBulk] = useState<InventoryItem | null>(null);
-    const [quantityToUse, setQuantityToUse] = useState(1);
 
     const handlePresetChange = (presetIndex: number) => {
         setSelectedPreset(presetIndex);
@@ -307,7 +306,14 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
 
     const enhancementMaterialDetails = useMemo(() => {
         if (!selectedItem || selectedItem.type !== 'material') return [];
-        const groupedDetails: Record<ItemGrade, number[]> = {};
+        const groupedDetails: Record<ItemGrade, number[]> = {
+            normal: [],
+            uncommon: [],
+            rare: [],
+            epic: [],
+            legendary: [],
+            mythic: [],
+        };
 
         for (const grade in ENHANCEMENT_COSTS) {
             const costsForGrade = ENHANCEMENT_COSTS[grade as ItemGrade];
@@ -351,7 +357,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
             name: newPresetName,
             equipment: currentUser.equipment,
         };
-        handlers.handleAction({ type: 'SAVE_PRESET', payload: { preset: updatedPreset, index: selectedPreset } });
+        onAction({ type: 'SAVE_PRESET', payload: { preset: updatedPreset, index: selectedPreset } });
         setIsRenameModalOpen(false);
         alert('프리셋이 저장되었습니다.');
     };
@@ -582,7 +588,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                                         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2 px-4">
                                             {selectedItem.type === 'consumable' && (
                                                 <>
-                                                    <Button onClick={() => onAction({ type: 'USE_ITEM', payload: { itemId: selectedItem.id, quantity: 1 } })} colorScheme="blue" className="w-full !text-xs !py-1">
+                                                    <Button onClick={() => onAction({ type: 'USE_ITEM', payload: { itemId: selectedItem.id } })} colorScheme="blue" className="w-full !text-xs !py-1">
                                                         사용
                                                     </Button>
                                                     {selectedItem.quantity && selectedItem.quantity > 1 && (
@@ -596,7 +602,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                                                     )}
                                                 </>
                                             )}
-                                            <Button onClick={() => onAction({ type: 'SELL_ITEM', payload: { itemId: selectedItem.id, quantity: 1 } })} colorScheme="red" className="w-full !text-xs !py-1">
+                                            <Button onClick={() => onAction({ type: 'SELL_ITEM', payload: { itemId: selectedItem.id } })} colorScheme="red" className="w-full !text-xs !py-1">
                                                 판매
                                             </Button>
                                         </div>
@@ -675,13 +681,11 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
             {/* Modals */}
             {showUseQuantityModal && itemToUseBulk && (
                 <PurchaseQuantityModal
-                    isOpen={showUseQuantityModal}
                     onClose={() => setShowUseQuantityModal(false)}
                     onConfirm={(quantity) => {
                         onAction({ type: 'USE_ITEM', payload: { itemId: itemToUseBulk.id, quantity } });
                         setShowUseQuantityModal(false);
                         setItemToUseBulk(null);
-                        setQuantityToUse(1);
                     }}
                     maxQuantity={itemToUseBulk.quantity || 1}
                     itemName={itemToUseBulk.name}

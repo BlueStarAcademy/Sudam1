@@ -1,6 +1,6 @@
 import * as db from '../db.js';
 import { updateQuestProgress } from '../questService.js';
-import { DAILY_MILESTONE_REWARDS, DAILY_MILESTONE_THRESHOLDS, WEEKLY_MILESTONE_REWARDS, WEEKLY_MILESTONE_THRESHOLDS, MONTHLY_MILESTONE_REWARDS, MONTHLY_MILESTONE_THRESHOLDS, BASE_TOURNAMENT_REWARDS, TOURNAMENT_SCORE_REWARDS } from '../../constants.js';
+import { DAILY_MILESTONE_REWARDS, DAILY_MILESTONE_THRESHOLDS, WEEKLY_MILESTONE_REWARDS, WEEKLY_MILESTONE_THRESHOLDS, MONTHLY_MILESTONE_REWARDS, MONTHLY_MILESTONE_THRESHOLDS, BASE_TOURNAMENT_REWARDS, TOURNAMENT_SCORE_REWARDS } from '../../constants';
 import { calculateRanks } from '../tournamentService.js';
 import { addItemsToInventory, createItemInstancesFromReward } from '../../utils/inventoryUtils.js';
 export const handleRewardAction = async (volatileState, action, user) => {

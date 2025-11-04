@@ -1,7 +1,7 @@
 import { TournamentState, PlayerForTournament, CoreStat, CommentaryLine, Match, User, Round, TournamentType } from '../types.js';
 import { calculateTotalStats } from './statService.js';
 import { randomUUID } from 'crypto';
-import { TOURNAMENT_DEFINITIONS } from '../constants.js';
+import { TOURNAMENT_DEFINITIONS } from '../constants';
 
 const EARLY_GAME_DURATION = 40;
 const MID_GAME_DURATION = 60;

@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import { InventoryItem, InventoryItemType } from '../types.js';
-import { CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../constants.js';
+import { CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../constants';
 
 export const addItemsToInventory = (currentInventory: InventoryItem[], inventorySlots: { equipment: number; consumable: number; material: number; }, itemsToAdd: InventoryItem[]): { success: boolean, finalItemsToAdd: InventoryItem[] } => {
     const tempInventory = JSON.parse(JSON.stringify(currentInventory));

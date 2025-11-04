@@ -1,0 +1,777 @@
+(;DT[2025-08-23]KM[6.5]PB[KataGo 18blocks]RE[백 불계승]DZ[KW]PW[KataGo 28blocks]SZ[19]CA[UTF-8]AP[Lizzie: 2.5.3]C[Engine Rules: 한국(일본)룰
+
+흑 사용시간: 163.218 초
+Total visits:  376739
+백 사용시간: 159.723 초
+Total visits:  255932
+Black Rules: 한국(일본)룰
+White Rules: 한국(일본)룰]LZOP[KataGo18blocks 52.3 3.9k -0.3 14.4
+move Q16 visits 3435 winrate 4768 prior 1673 scoreMean -0.29 pv Q16 Q4 D16 D4 R3 R4 Q3 P4 O3 R17 R16 Q17 P16 O18 info move Q4 visits 3435 winrate 4768 prior 1673 scoreMean -0.29 pv Q4 Q16 D4 D16 R17 R16 Q17 P16 O17 R3 R4 Q3 P4 O2 info move D16 visits 3435 winrate 4768 prior 1673 scoreMean -0.29 pv D16 D4 Q16 Q4 C3 C4 D3 E4 F3 C17 C16 D17 E16 F18 info move D4 visits 3435 winrate 4768 prior 1673 scoreMean -0.29 pv D4 D16 Q4 Q16 C17 C16 D17 E16 F17 C3 C4 D3 E4 F2 info move R16 visits 176 winrate 4715 prior 197 scoreMean -0.31 pv R16 D16 D3 Q4 C6 P17 Q15 M17 info move R4 visits 176 winrate 4715 prior 197 scoreMean -0.31 pv R4 D4 D17 Q16 C14 P3 Q5 M3 info move C16 visits 176 winrate 4715 prior 197 scoreMean -0.31 pv C16 Q16 Q3 D4 R6 E17 D15 H17 info move C4 visits 176 winrate 4715 prior 197 scoreMean -0.31 pv C4 Q4 Q17 D16 R14 E3 D5 H3 info move D3 visits 176 winrate 4715 prior 197 scoreMean -0.31 pv D3 D16 R16 Q4 O17 C5 E4 C8 info move Q3 visits 176 winrate 4715 prior 197 scoreMean -0.31 pv Q3 Q16 C16 D4 F17 R5 P4 R8];B[pd]C[백 승률: 53.0% 
+리드: 0.3  stdev: 13.5
+(KataGo28blocks / 1.4k visits)
+덤: 6.5]LZ[KataGo28blocks 47.0 1.4k 0.3 13.5
+move D4 visits 684 winrate 5302 prior 3697 scoreMean 0.32 pv D4 Q3 D16 O17 R5 P4 R14 C3 D3 C4 D5 B6 R16 R17 info move D16 visits 563 winrate 5287 prior 2604 scoreMean 0.29 pv D16 D4 Q4 C17 D17 C16 C14 C15 D15 B14 C3 D3 C4 C5 info move Q4 visits 563 winrate 5287 prior 2604 scoreMean 0.29 pv Q4 D4 D16 R3 R4 Q3 O3 P3 P4 O2 C3 C4 D3 E3 info move D17 visits 19 winrate 5130 prior 130 scoreMean 0.01 pv D17 D4 Q4 C15 E16 R3 Q3 info move R4 visits 19 winrate 5130 prior 130 scoreMean 0.01 pv R4 D4 D16 P3 Q5 C17 C16 info move C4 visits 22 winrate 5107 prior 101 scoreMean -0.07 pv C4 Q4 D17 E4 E3 info move D3 visits 22 winrate 5107 prior 101 scoreMean -0.07 pv D3 D16 R4 D5 C5 info move C16 visits 14 winrate 5059 prior 109 scoreMean -0.01 pv C16 D4 Q4 E17 D15 info move Q3 visits 14 winrate 5059 prior 109 scoreMean -0.01 pv Q3 D4 D16 R5 P4 info move C3 visits 14 winrate 5032 prior 71 scoreMean -0.16 pv C3 Q3 D17 C15 info move C17 visits 11 winrate 5024 prior 64 scoreMean -0.18 pv C17 Q3 D3 C5];W[dp]C[흑 승률: 47.8% (+0.1%)
+리드: -0.3 (+0.0) stdev: 14.4
+(KataGo18blocks / 3.5k visits)
+덤: 6.5]LZ[KataGo18blocks 52.2 3.5k -0.3 14.4
+move Q4 visits 1300 winrate 4777 prior 1472 scoreMean -0.28 pv Q4 D16 F3 R17 Q17 R16 Q15 S14 C6 F4 G4 F5 D3 C3 info move D16 visits 1300 winrate 4777 prior 1472 scoreMean -0.28 pv D16 Q4 C6 R17 R16 Q17 P16 O18 F3 D6 D7 E6 C4 C3 info move C3 visits 1576 winrate 4773 prior 2991 scoreMean -0.27 pv C3 D3 C4 D5 B6 D16 Q4 R17 R16 Q17 O17 O18 N18 P17 info move F3 visits 477 winrate 4761 prior 573 scoreMean -0.32 pv F3 Q4 D16 E3 F4 D6 K3 R17 R16 Q17 O17 P17 P16 O18 info move C6 visits 477 winrate 4761 prior 573 scoreMean -0.32 pv C6 D16 Q4 C5 D6 F4 C10 R17 Q17 R16 R14 R15 Q15 S14 info move R4 visits 35 winrate 4713 prior 249 scoreMean -0.28 pv R4 D16 C17 D17 C16 D15 B14 P3 C3 D3 info move D17 visits 35 winrate 4713 prior 249 scoreMean -0.28 pv D17 Q4 R3 R4 Q3 P4 O2 C15 C3 C4 info move P4 visits 21 winrate 4704 prior 167 scoreMean -0.32 pv P4 D16 R4 R17 Q17 R16 R14 S14 info move D15 visits 21 winrate 4704 prior 167 scoreMean -0.32 pv D15 Q4 D17 R17 R16 Q17 O17 O18 info move Q3 visits 21 winrate 4708 prior 196 scoreMean -0.30 pv Q3 D16 C3 D3 C4 D5 C6 R17 R16 Q17 P16 O17 info move C16 visits 21 winrate 4708 prior 196 scoreMean -0.30 pv C16 Q4 C3 C4 D3 E4 F3 R17 Q17 R16 Q15 R14];B[pp]C[백 승률: 52.8% (-0.2%)
+리드: 0.3 (-0.1) stdev: 13.3
+(KataGo28blocks / 1.3k visits)
+덤: 6.5
+Move time: 2.103 초]LZ[KataGo28blocks 47.2 1.3k 0.3 13.3
+move D16 visits 1261 winrate 5278 prior 8326 scoreMean 0.27 pv D16 F3 R17 Q17 R16 Q15 S14 C14 E3 F4 D6 F17 D14 D13 info move D17 visits 18 winrate 5144 prior 686 scoreMean 0.04 pv D17 C3 C4 D3 E4 F3 R17 R16 Q17 P16 info move C16 visits 7 winrate 5098 prior 292 scoreMean -0.02 pv C16 E17 R3 Q3 info move C17 visits 2 winrate 4934 prior 122 scoreMean -0.24 pv C17 C3 info move R3 visits 1 winrate 4870 prior 65 scoreMean 0.16 pv R3 info move R17 visits 1 winrate 4922 prior 61 scoreMean 0.28 pv R17 info move D15 visits 1 winrate 4859 prior 48 scoreMean -0.21 pv D15 info move E16 visits 1 winrate 4916 prior 47 scoreMean -0.15 pv E16];W[dd]C[흑 승률: 48.0% (+0.2%)
+리드: -0.3 (+0.0) stdev: 14.5
+(KataGo18blocks / 2.5k visits)
+덤: 6.5
+Move time: 2.057 초]LZ[KataGo18blocks 52.0 2.5k -0.3 14.5
+move F17 visits 1604 winrate 4798 prior 1258 scoreMean -0.27 pv F17 R3 Q3 R4 Q5 S6 C14 F16 G16 F15 D17 C17 E17 D14 info move F3 visits 1604 winrate 4798 prior 1258 scoreMean -0.27 pv F3 R17 Q17 R16 Q15 S14 C6 F4 G4 F5 D3 C3 E3 D6 info move C17 visits 878 winrate 4774 prior 2632 scoreMean -0.27 pv C17 D17 C16 D15 C14 R17 Q17 R16 Q15 S14 B13 J17 C6 M16 info move C3 visits 878 winrate 4774 prior 2632 scoreMean -0.27 pv C3 D3 C4 D5 C6 R3 Q3 R4 Q5 S6 B7 J3 C14 M4 info move C14 visits 41 winrate 4720 prior 316 scoreMean -0.38 pv C14 C15 D14 F16 D10 R3 Q3 R4 R6 R5 Q5 S6 info move C6 visits 41 winrate 4720 prior 316 scoreMean -0.38 pv C6 C5 D6 F4 D10 R17 Q17 R16 R14 R15 Q15 S14 info move O17 visits 2 winrate 4534 prior 58 scoreMean -0.39 pv O17 R3 info move O3 visits 2 winrate 4534 prior 58 scoreMean -0.39 pv O3 R17 info move R14 visits 1 winrate 4516 prior 54 scoreMean -0.30 pv R14 info move R6 visits 1 winrate 4516 prior 54 scoreMean -0.30 pv R6];B[fc]C[백 승률: 52.7% (-0.0%)
+리드: 0.3 (+0.0) stdev: 13.2
+(KataGo28blocks / 1.7k visits)
+덤: 6.5
+Move time: 2.053 초]LZ[KataGo28blocks 47.3 1.7k 0.3 13.2
+move R3 visits 1120 winrate 5274 prior 3964 scoreMean 0.27 pv R3 Q3 R4 Q5 S6 C6 E17 F16 D14 F3 D6 D7 E6 C4 info move R17 visits 229 winrate 5255 prior 1047 scoreMean 0.26 pv R17 Q17 R16 Q15 R15 Q13 R14 Q14 H17 R13 C17 C3 C4 D3 info move D14 visits 75 winrate 5221 prior 621 scoreMean 0.14 pv D14 C3 D3 C4 D5 B6 R17 Q17 R16 R14 R15 Q15 S14 R18 info move E17 visits 51 winrate 5219 prior 500 scoreMean 0.18 pv E17 F16 D14 C3 D3 C4 D5 B6 R3 Q3 R4 Q5 S6 info move O17 visits 39 winrate 5218 prior 556 scoreMean 0.19 pv O17 C14 F16 G16 F15 D17 C17 E17 C16 D13 J16 G15 F13 H17 info move O3 visits 30 winrate 5173 prior 653 scoreMean 0.15 pv O3 C6 E17 F16 D14 K16 R3 Q3 R4 info move R6 visits 27 winrate 5200 prior 351 scoreMean 0.17 pv R6 C14 D14 D13 E14 C16 C17 C15 D17 J17 info move R14 visits 25 winrate 5199 prior 338 scoreMean 0.17 pv R14 R15 Q14 O16 Q10 C14 F16 G16 F15 info move C14 visits 16 winrate 5198 prior 253 scoreMean 0.09 pv C14 C3 D3 C4 D5 B6 info move C13 visits 12 winrate 5194 prior 182 scoreMean 0.14 pv C13 C3 C4 D3 E4 F3 R17];W[qq]C[흑 승률: 48.2% (+0.2%)
+리드: -0.2 (+0.0) stdev: 14.3
+(KataGo18blocks / 2.8k visits)
+덤: 6.5
+Move time: 2.064 초]LZ[KataGo18blocks 51.8 2.8k -0.2 14.3
+move Q3 visits 2614 winrate 4820 prior 7328 scoreMean -0.24 pv Q3 R4 Q5 R5 R6 S6 C3 D3 C4 D5 B6 R17 Q17 R16 info move R4 visits 179 winrate 4731 prior 2068 scoreMean -0.31 pv R4 Q3 P4 O2 C14 D14 D13 E14 C16 C17 C15 D17 J17 H16 info move C3 visits 7 winrate 4601 prior 203 scoreMean -0.42 pv C3 D3 Q3 R4 info move C14 visits 2 winrate 4531 prior 97 scoreMean -0.48 pv C14 Q3 info move D3 visits 1 winrate 4472 prior 58 scoreMean -0.61 pv D3 info move C4 visits 1 winrate 4329 prior 23 scoreMean -0.73 pv C4];B[pq]C[백 승률: 52.8% (+0.1%)
+리드: 0.3 (-0.0) stdev: 13.1
+(KataGo28blocks / 2.3k visits)
+덤: 6.5
+Move time: 2.052 초]LZ[KataGo28blocks 47.2 2.3k 0.3 13.1
+move R4 visits 2291 winrate 5282 prior 9886 scoreMean 0.27 pv R4 Q5 S6 C6 E17 F16 D14 F3 D6 D7 E6 C4 C3 C5];W[qp]C[흑 승률: 48.3% (+0.1%)
+리드: -0.2 (+0.0) stdev: 14.3
+(KataGo18blocks / 4.8k visits)
+덤: 6.5
+Move time: 2.055 초]LZ[KataGo18blocks 51.7 4.8k -0.2 14.3
+move Q5 visits 4733 winrate 4826 prior 8966 scoreMean -0.24 pv Q5 S6 C14 E14 C12 H17 F3 H15 C6 D6 D7 E6 C4 C3 info move R6 visits 34 winrate 4629 prior 564 scoreMean -0.42 pv R6 S6 S7 R5 Q6 Q5 P5 P4 P2 O4 O5 info move R5 visits 12 winrate 4541 prior 325 scoreMean -0.50 pv R5 S5 S6 R6 Q5 S7 S4 T6 S3 O17 info move Q6 visits 1 winrate 4399 prior 22 scoreMean -0.53 pv Q6];B[po]C[백 승률: 53.2% (+0.3%)
+리드: 0.3 (+0.0) stdev: 13.0
+(KataGo28blocks / 3.8k visits)
+덤: 6.5
+Move time: 2.062 초]LZ[KataGo28blocks 46.9 3.8k 0.3 13.0
+move S6 visits 3316 winrate 5315 prior 6787 scoreMean 0.29 pv S6 C6 E17 F16 D14 F3 D6 D7 E6 C4 C3 C5 F4 K17 info move R5 visits 439 winrate 5258 prior 2660 scoreMean 0.27 pv R5 R6 S6 C6 E17 F16 D14 K16 C11 E12 D10 C3 C4 D3 info move R6 visits 11 winrate 4966 prior 430 scoreMean 0.09 pv R6 R5 S5 S4 S3 S6 T4 R7 F16 G16 F15 info move S7 visits 1 winrate 4803 prior 60 scoreMean -0.13 pv S7];W[rn]C[흑 승률: 48.2% (-0.1%)
+리드: -0.2 (+0.0) stdev: 14.2
+(KataGo18blocks / 5.0k visits)
+덤: 6.5
+Move time: 2.073 초]LZ[KataGo18blocks 51.8 5.0k -0.2 14.2
+move C14 visits 4616 winrate 4818 prior 5487 scoreMean -0.23 pv C14 F16 G16 F15 D17 C17 E17 D14 E16 D15 C18 B16 B17 C16 info move C6 visits 228 winrate 4715 prior 2381 scoreMean -0.37 pv C6 E17 F16 D14 K16 C11 E12 C13 F3 D6 info move F3 visits 101 winrate 4704 prior 1003 scoreMean -0.41 pv F3 E17 F16 D14 C6 D6 D7 E6 C4 C3 C5 F4 K16 R7 info move C3 visits 13 winrate 4650 prior 214 scoreMean -0.37 pv C3 D3 C4 D5 B6 L3 J3 L5 info move C17 visits 4 winrate 4658 prior 55 scoreMean -0.40 pv C17 D17 C16 D15 info move D14 visits 3 winrate 4508 prior 63 scoreMean -0.55 pv D14 E14 E13 info move R6 visits 3 winrate 4544 prior 62 scoreMean -0.56 pv R6 S7 C14 info move R2 visits 2 winrate 4668 prior 27 scoreMean -0.42 pv R2 S2 info move D13 visits 1 winrate 4501 prior 31 scoreMean -0.38 pv D13 info move O17 visits 1 winrate 4465 prior 31 scoreMean -0.27 pv O17];B[cf]C[백 승률: 54.2% (+1.0%)
+리드: 0.4 (+0.1) stdev: 13.2
+(KataGo28blocks / 1.6k visits)
+덤: 6.5
+Move time: 2.064 초]LZ[KataGo28blocks 45.8 1.6k 0.4 13.2
+move D14 visits 1477 winrate 5415 prior 7136 scoreMean 0.36 pv D14 D13 E14 C16 C17 C15 D17 H17 J16 J17 L16 K16 K15 K17 info move F16 visits 58 winrate 5296 prior 1281 scoreMean 0.28 pv F16 G16 F15 D17 C17 E17 C16 C11 J16 G15 D12 E16 E15 D15 info move E14 visits 13 winrate 5163 prior 670 scoreMean 0.09 pv E14 C12 H17 H16 J16 H15 info move F15 visits 8 winrate 5146 prior 422 scoreMean 0.14 pv F15 C6 F3 info move B15 visits 1 winrate 4933 prior 36 scoreMean 0.04 pv B15 info move B16 visits 1 winrate 4803 prior 35 scoreMean 0.06 pv B16 info move D18 visits 1 winrate 4719 prior 31 scoreMean -0.03 pv D18];W[df]C[흑 승률: 48.6% (+0.5%)
+리드: -0.2 (+0.1) stdev: 14.5
+(KataGo18blocks / 2.9k visits)
+덤: 6.5
+Move time: 2.08 초]LZ[KataGo18blocks 51.4 2.9k -0.2 14.5
+move D13 visits 2877 winrate 4864 prior 9216 scoreMean -0.18 pv D13 E14 C16 C17 C15 D17 J17 G16 F16 G17 G18 C13 C12 B13 info move R6 visits 12 winrate 4598 prior 368 scoreMean -0.47 pv R6 S7 D13 E14 C16 C17 C15 D17 J17 H16 info move C3 visits 1 winrate 4391 prior 66 scoreMean -0.52 pv C3 info move D15 visits 1 winrate 4432 prior 40 scoreMean -0.49 pv D15 info move C13 visits 1 winrate 4227 prior 48 scoreMean -0.63 pv C13 info move C17 visits 1 winrate 4020 prior 39 scoreMean -0.85 pv C17 info move D3 visits 1 winrate 4272 prior 31 scoreMean -0.78 pv D3];B[dg]C[백 승률: 54.1% (-0.1%)
+리드: 0.3 (-0.0) stdev: 13.2
+(KataGo28blocks / 2.5k visits)
+덤: 6.5
+Move time: 2.071 초]LZ[KataGo28blocks 45.9 2.5k 0.3 13.2
+move E14 visits 2534 winrate 5405 prior 9672 scoreMean 0.34 pv E14 C16 C17 C15 D17 H17 J16 J17 L16 K16 K15 K17 N15 E13 info move C15 visits 6 winrate 5215 prior 174 scoreMean 0.22 pv C15 E14 D15 B14 E13 D12 info move E15 visits 1 winrate 3990 prior 37 scoreMean -0.88 pv E15];W[ef]C[흑 승률: 48.9% (+0.3%)
+리드: -0.2 (+0.0) stdev: 14.6
+(KataGo18blocks / 5.0k visits)
+덤: 6.5
+Move time: 2.056 초]LZ[KataGo18blocks 51.1 5.0k -0.2 14.6
+move C16 visits 4942 winrate 4890 prior 8801 scoreMean -0.15 pv C16 C17 C15 D17 J17 L3 C12 H15 D3 C3 E3 C2 J3 L5 info move B15 visits 15 winrate 4513 prior 427 scoreMean -0.49 pv B15 C17 J17 C6 E13 F13 F14 info move R6 visits 13 winrate 4605 prior 311 scoreMean -0.43 pv R6 S7 C16 C17 C15 D17 J17 H16 H17 D11 info move C15 visits 3 winrate 4555 prior 123 scoreMean -0.43 pv C15 C16 J17 info move C3 visits 1 winrate 4312 prior 31 scoreMean -0.54 pv C3 info move D3 visits 1 winrate 4299 prior 29 scoreMean -0.67 pv D3 info move D15 visits 1 winrate 4296 prior 28 scoreMean -0.55 pv D15 info move C13 visits 1 winrate 4262 prior 24 scoreMean -0.65 pv C13 info move C17 visits 1 winrate 4379 prior 17 scoreMean -0.46 pv C17 info move C4 visits 1 winrate 4064 prior 19 scoreMean -0.87 pv C4 info move B16 visits 1 winrate 3910 prior 18 scoreMean -0.75 pv B16];B[cd]C[백 승률: 54.0% (-0.0%)
+리드: 0.3 (-0.0) stdev: 13.2
+(KataGo28blocks / 3.6k visits)
+덤: 6.5
+Move time: 2.088 초]LZ[KataGo28blocks 46.0 3.6k 0.3 13.2
+move C17 visits 3565 winrate 5403 prior 9769 scoreMean 0.34 pv C17 C15 D17 H17 J16 J17 L16 K16 K15 K17 N15 E13 G14 C6 info move C15 visits 3 winrate 5101 prior 66 scoreMean 0.06 pv C15 B15 D15 info move E13 visits 1 winrate 4588 prior 40 scoreMean -0.39 pv E13 info move D17 visits 1 winrate 4450 prior 38 scoreMean -0.48 pv D17];W[cc]C[흑 승률: 48.8% (-0.2%)
+리드: -0.2 (-0.0) stdev: 14.6
+(KataGo18blocks / 6.9k visits)
+덤: 6.5
+Move time: 2.075 초]LZ[KataGo18blocks 51.2 6.9k -0.2 14.6
+move C15 visits 6869 winrate 4875 prior 9850 scoreMean -0.17 pv C15 D18 D15 E16 E15 F16 G14 C6 H17 G16 J15 G17 R2 S2 info move B15 visits 3 winrate 4395 prior 77 scoreMean -0.51 pv B15 D18 J17 info move D15 visits 1 winrate 4078 prior 12 scoreMean -0.95 pv D15];B[ce]C[백 승률: 54.0% (-0.1%)
+리드: 0.3 (-0.0) stdev: 13.2
+(KataGo28blocks / 4.7k visits)
+덤: 6.5
+Move time: 2.084 초]LZ[KataGo28blocks 46.0 4.7k 0.3 13.2
+move D17 visits 4560 winrate 5396 prior 8270 scoreMean 0.33 pv D17 H17 J16 J17 L16 K16 K15 K17 N15 E13 G14 C6 R17 Q17 info move D18 visits 97 winrate 5262 prior 1295 scoreMean 0.27 pv D18 D15 E16 E15 F16 G14 F12 E12 F13 F11 H13 H14 F15 F14 info move F16 visits 9 winrate 5076 prior 290 scoreMean 0.10 pv F16 D15 E16 B17 D18 C18 info move E17 visits 2 winrate 4989 prior 80 scoreMean 0.08 pv E17 B17];W[dc]C[흑 승률: 48.7% (-0.0%)
+리드: -0.2 (+0.0) stdev: 14.7
+(KataGo18blocks / 7.6k visits)
+덤: 6.5
+Move time: 2.051 초]LZ[KataGo18blocks 51.3 7.6k -0.2 14.7
+move J17 visits 7361 winrate 4872 prior 7366 scoreMean -0.16 pv J17 L3 C12 H15 D3 C3 E3 C2 J3 L5 G3 C7 K16 R7 info move G16 visits 110 winrate 4702 prior 1181 scoreMean -0.29 pv G16 Q17 R17 P17 R16 K17 J16 N17 J17 K18 E18 info move H17 visits 86 winrate 4698 prior 832 scoreMean -0.31 pv H17 G14 C12 K17 J16 O17 K16 info move R6 visits 6 winrate 4575 prior 115 scoreMean -0.43 pv R6 S7 J17 H16 H17 D11 E11 B12 info move J16 visits 3 winrate 4462 prior 76 scoreMean -0.48 pv J16 G16 F16 info move H16 visits 3 winrate 4491 prior 51 scoreMean -0.46 pv H16 K17 G14 info move K16 visits 1 winrate 4366 prior 33 scoreMean -0.44 pv K16 info move K17 visits 1 winrate 4359 prior 29 scoreMean -0.51 pv K17 info move C12 visits 1 winrate 4444 prior 27 scoreMean -0.43 pv C12 info move F15 visits 1 winrate 4200 prior 25 scoreMean -0.56 pv F15];B[ic]C[백 승률: 54.6% (+0.6%)
+리드: 0.4 (+0.1) stdev: 12.5
+(KataGo28blocks / 3.0k visits)
+덤: 6.5
+Move time: 2.069 초]LZ[KataGo28blocks 45.4 3.0k 0.4 12.5
+move D11 visits 2841 winrate 5457 prior 6060 scoreMean 0.39 pv D11 E13 H16 D15 E15 E16 G15 B17 G18 E18 B18 B16 C18 E17 info move H16 visits 101 winrate 5262 prior 1780 scoreMean 0.24 pv H16 H17 F16 C11 G16 L16 R17 Q17 R16 R15 S15 info move H15 visits 19 winrate 5295 prior 332 scoreMean 0.22 pv H15 C12 K16 K17 L16 L17 M16 E18 info move F16 visits 12 winrate 5219 prior 309 scoreMean 0.29 pv F16 G16 D11 E13 G15 H16 F13 F12 E12 C12 C11 E16 D15 B11 info move Q17 visits 5 winrate 5188 prior 160 scoreMean 0.21 pv Q17 R17 P17 R16 M17 info move J16 visits 11 winrate 5342 prior 85 scoreMean 0.41 pv J16 K16 H17 H16 J15 H18 K17 G17 J18 info move C6 visits 6 winrate 5149 prior 167 scoreMean 0.14 pv C6 C12 H15 K16 info move M3 visits 2 winrate 5082 prior 92 scoreMean 0.14 pv M3 C12 info move R7 visits 2 winrate 5172 prior 65 scoreMean 0.25 pv R7 C12 info move L3 visits 2 winrate 5065 prior 84 scoreMean 0.10 pv L3 C12];W[di]C[흑 승률: 49.0% (+0.2%)
+리드: -0.1 (+0.0) stdev: 14.5
+(KataGo18blocks / 3.1k visits)
+덤: 6.5
+Move time: 2.069 초]LZ[KataGo18blocks 51.0 3.1k -0.1 14.5
+move E13 visits 2942 winrate 4896 prior 6172 scoreMean -0.14 pv E13 F16 G16 F13 F12 E12 D12 E11 C11 C10 B11 H16 F15 E16 info move D12 visits 109 winrate 4673 prior 1769 scoreMean -0.33 pv D12 C11 F12 H16 H17 F16 E11 D9 J16 F18 G17 info move C12 visits 21 winrate 4339 prior 1083 scoreMean -0.64 pv C12 E13 C11 D10 C9 L3 R2 S2 info move R6 visits 18 winrate 4550 prior 354 scoreMean -0.41 pv R6 S7 E13 H16 D15 E15 E16 G15 info move E11 visits 8 winrate 4547 prior 193 scoreMean -0.44 pv E11 B12 C13 E10 info move B12 visits 3 winrate 4342 prior 158 scoreMean -0.58 pv B12 E13 info move E12 visits 1 winrate 4181 prior 79 scoreMean -0.63 pv E12];B[eg]C[백 승률: 54.2% (-0.4%)
+리드: 0.4 (-0.0) stdev: 12.3
+(KataGo28blocks / 4.9k visits)
+덤: 6.5
+Move time: 2.082 초]LZ[KataGo28blocks 45.8 4.9k 0.4 12.3
+move H16 visits 4778 winrate 5418 prior 8739 scoreMean 0.37 pv H16 D15 E15 E16 G15 B17 G18 E18 B18 B16 C18 E17 C13 C12 info move F16 visits 99 winrate 5166 prior 1009 scoreMean 0.19 pv F16 G16 G15 H16 F13 F12 E12 C12 C11 E16 F15 D15 D12 C13 info move F13 visits 2 winrate 4998 prior 69 scoreMean 0.10 pv F13 F12 info move G16 visits 1 winrate 5071 prior 20 scoreMean 0.13 pv G16];W[hd]C[흑 승률: 48.0% (-1.0%)
+리드: -0.2 (-0.1) stdev: 14.4
+(KataGo18blocks / 5.3k visits)
+덤: 6.5
+Move time: 2.057 초]LZ[KataGo18blocks 52.0 5.3k -0.2 14.4
+move D15 visits 4774 winrate 4800 prior 5789 scoreMean -0.23 pv D15 E15 E16 G15 B17 G18 E18 B18 B16 O17 C6 O15 F3 F4 info move H17 visits 306 winrate 4690 prior 1979 scoreMean -0.34 pv H17 F16 C12 G16 E17 F13 F12 C11 F14 G13 G14 H14 D15 info move G15 visits 138 winrate 4577 prior 1266 scoreMean -0.44 pv G15 H17 D15 F16 E15 F18 C7 G3 G18 G17 H18 E17 D9 Q17 info move J16 visits 30 winrate 4498 prior 336 scoreMean -0.79 pv J16 F16 H17 F13 C12 C11 E12 G16 E17 C7 E16 info move R6 visits 17 winrate 4539 prior 153 scoreMean -0.45 pv R6 S7 D15 E15 E16 G15 B17 B18 B16 info move G17 visits 7 winrate 4507 prior 105 scoreMean -0.48 pv G17 F13 F12 G12 F11 info move C12 visits 4 winrate 4380 prior 86 scoreMean -0.56 pv C12 H17 C6 info move F13 visits 3 winrate 4359 prior 64 scoreMean -0.57 pv F13 F16 H17 info move G16 visits 2 winrate 4554 prior 27 scoreMean -0.42 pv G16 F13 F12 info move G13 visits 1 winrate 4414 prior 19 scoreMean -0.47 pv G13 info move G18 visits 1 winrate 4586 prior 13 scoreMean -0.36 pv G18];B[de]C[백 승률: 54.0% (-0.2%)
+리드: 0.4 (-0.0) stdev: 12.2
+(KataGo28blocks / 6.2k visits)
+덤: 6.5
+Move time: 2.084 초]LZ[KataGo28blocks 46.0 6.2k 0.4 12.2
+move E15 visits 6160 winrate 5396 prior 8806 scoreMean 0.36 pv E15 E16 G15 B17 G18 E18 B18 B16 C18 E17 C13 C12 B13 B12 info move F16 visits 39 winrate 4904 prior 911 scoreMean -0.12 pv F16 E16 E17 E15 G17 F18 G18 B17 B18 C18 B16 E18 A17 D18 info move G18 visits 5 winrate 4383 prior 171 scoreMean -0.49 pv G18 E16 E17 info move F18 visits 1 winrate 4046 prior 73 scoreMean -0.71 pv F18];W[ee]C[흑 승률: 47.3% (-0.7%)
+리드: -0.3 (-0.1) stdev: 14.5
+(KataGo18blocks / 8.2k visits)
+덤: 6.5
+Move time: 2.079 초]LZ[KataGo18blocks 52.7 8.2k -0.3 14.5
+move E16 visits 8183 winrate 4728 prior 8634 scoreMean -0.29 pv E16 G15 B17 G18 E18 B18 B16 O17 C6 O15 F3 F4 G4 F5 info move C12 visits 57 winrate 4029 prior 1211 scoreMean -1.00 pv C12 H17 E16 G15 C6 F3 E6 G14 info move B17 visits 4 winrate 3518 prior 110 scoreMean -1.61 pv B17 B18 E16];B[ed]C[백 승률: 54.1% (+0.1%)
+리드: 0.4 (-0.0) stdev: 12.1
+(KataGo28blocks / 8.4k visits)
+덤: 6.5
+Move time: 2.075 초]LZ[KataGo28blocks 45.9 8.4k 0.4 12.1
+move G15 visits 7659 winrate 5405 prior 7960 scoreMean 0.35 pv G15 B17 G18 E18 B18 B16 C18 E17 C13 C12 B13 B12 B14 A13 info move G14 visits 506 winrate 5335 prior 344 scoreMean 0.38 pv G14 C12 G18 E18 D18 F14 F15 G15 F13 F16 F14 H17 F18 H15 info move F14 visits 170 winrate 5261 prior 673 scoreMean 0.23 pv F14 F13 G14 B17 B18 B16 G18 E18 C18 F16 G16 A18 G13 N17 info move F13 visits 56 winrate 5061 prior 522 scoreMean 0.02 pv F13 C12 G18 F12 F14 F16 F18 E18 D18 B17 B18 D19 info move F16 visits 35 winrate 4769 prior 478 scoreMean -0.13 pv F16 E17 C13 B13 C12 B12 B16 B15 A15 B14 B18 G16];W[ge]C[흑 승률: 47.7% (+0.4%)
+리드: -0.2 (+0.1) stdev: 14.6
+(KataGo18blocks / 12k visits)
+덤: 6.5
+Move time: 2.078 초]LZ[KataGo18blocks 52.3 12k -0.2 14.6
+move B17 visits 11337 winrate 4772 prior 8119 scoreMean -0.21 pv B17 G18 E18 B18 B16 O17 G14 F15 C18 F13 F12 G12 G13 F14 info move F13 visits 140 winrate 4313 prior 887 scoreMean -0.83 pv F13 G14 B17 B18 B16 G18 E18 C18 G17 H17 J18 H18 E17 A18 info move E17 visits 9 winrate 3004 prior 214 scoreMean -2.51 pv E17 C13 C12 B13 info move C12 visits 6 winrate 2536 prior 273 scoreMean -2.92 pv C12 G18 C6 G14 F3 info move G18 visits 10 winrate 3326 prior 137 scoreMean -2.85 pv G18 C13 C12 B13 B14 B12 F13 info move H17 visits 5 winrate 3025 prior 162 scoreMean -2.94 pv H17 C13 B17 B18 B13 info move E18 visits 2 winrate 2561 prior 91 scoreMean -3.04 pv E18 C13 info move G13 visits 1 winrate 2657 prior 33 scoreMean -2.60 pv G13 info move F18 visits 1 winrate 2414 prior 23 scoreMean -3.68 pv F18 info move G14 visits 1 winrate 3528 prior 14 scoreMean -1.47 pv G14];B[bc]C[백 승률: 54.1% (+0.1%)
+리드: 0.4 (+0.0) stdev: 12.1
+(KataGo28blocks / 10k visits)
+덤: 6.5
+Move time: 2.088 초]LZ[KataGo28blocks 45.9 10k 0.4 12.1
+move G18 visits 5187 winrate 5414 prior 5505 scoreMean 0.36 pv G18 E18 B18 B16 C18 E17 C13 C12 B13 B12 B14 A13 G17 O17 info move B18 visits 4887 winrate 5414 prior 4447 scoreMean 0.36 pv B18 B16 G18 E18 C18 E17 C13 C12 B13 B12 B14 A13 G17 O17];W[gb]C[흑 승률: 49.8% (+2.1%)
+리드: 0.0 (+0.2) stdev: 14.5
+(KataGo18blocks / 8.5k visits)
+덤: 6.5
+Move time: 2.088 초]LZ[KataGo18blocks 50.2 8.5k 0.0 14.5
+move E18 visits 7916 winrate 4980 prior 2299 scoreMean 0.02 pv E18 B18 B16 O17 G14 F15 C18 F13 F12 G13 M17 D18 D19 C19 info move B18 visits 298 winrate 4547 prior 3195 scoreMean -0.48 pv B18 E17 C4 C5 C3 D5 E2 F3 E3 F4 J3 O17 E4 E5 info move F13 visits 92 winrate 4350 prior 1075 scoreMean -0.74 pv F13 G14 E18 B18 B16 C18 E17 A18 G17 H17 B19 C13 C12 B13 info move C18 visits 64 winrate 3687 prior 2111 scoreMean -1.83 pv C18 D18 F13 F16 E17 B18 E18 C19 F15 F14 info move E17 visits 104 winrate 4353 prior 626 scoreMean -0.76 pv E17 B18 B16 F13 F12 G13 G12 H13 C12 D18 E18 E19 F19 D19 info move D18 visits 9 winrate 2907 prior 270 scoreMean -3.24 pv D18 C18 B18 E18 E17 D19 G17 info move F18 visits 9 winrate 1673 prior 245 scoreMean -5.64 pv F18 B18 G17 B16 C12 H17 H18 info move G13 visits 3 winrate 2847 prior 85 scoreMean -3.61 pv G13 B18 F15 info move G14 visits 2 winrate 4472 prior 23 scoreMean -0.61 pv G14 F13 info move F16 visits 1 winrate 2443 prior 2 scoreMean -3.92 pv F16];B[eb]C[백 승률: 54.5% (+0.3%)
+리드: 0.4 (+0.0) stdev: 12.1
+(KataGo28blocks / 5.9k visits)
+덤: 6.5
+Move time: 2.101 초]LZ[KataGo28blocks 45.5 5.9k 0.4 12.1
+move B18 visits 5907 winrate 5446 prior 9825 scoreMean 0.38 pv B18 B16 C18 E17 C13 C12 B13 B12 B14 A13 G17 O17 F13 F12 info move F13 visits 1 winrate 4582 prior 43 scoreMean -0.16 pv F13 info move Q17 visits 1 winrate 4088 prior 44 scoreMean -0.72 pv Q17];W[bb]C[흑 승률: 50.2% (+0.4%)
+리드: 0.1 (+0.0) stdev: 14.4
+(KataGo18blocks / 10k visits)
+덤: 6.5
+Move time: 2.065 초]LZ[KataGo18blocks 49.8 10k 0.1 14.4
+move B16 visits 9893 winrate 5024 prior 8001 scoreMean 0.07 pv B16 O17 G14 F15 C18 F13 F12 G13 M17 G12 F11 O15 K15 G10 info move F13 visits 142 winrate 4281 prior 1358 scoreMean -0.90 pv F13 G14 B16 C18 E17 A18 G17 H17 B19 C13 C12 B13 B12 B14 info move A16 visits 23 winrate 3735 prior 348 scoreMean -1.47 pv A16 C18 E17 G17 A18 B19 D18 info move E17 visits 18 winrate 3845 prior 147 scoreMean -1.67 pv E17 B16 A17 A16 C18 A18 B17 A17 info move A17 visits 1 winrate 3690 prior 29 scoreMean -1.30 pv A17 info move C18 visits 1 winrate 1667 prior 46 scoreMean -6.14 pv C18 info move G14 visits 1 winrate 3755 prior 17 scoreMean -1.40 pv G14 info move G13 visits 1 winrate 831 prior 14 scoreMean -8.97 pv G13];B[bd]C[백 승률: 54.7% (+0.2%)
+리드: 0.4 (+0.0) stdev: 12.1
+(KataGo28blocks / 7.0k visits)
+덤: 6.5
+Move time: 2.067 초]LZ[KataGo28blocks 45.3 7.0k 0.4 12.1
+move C18 visits 6964 winrate 5466 prior 8685 scoreMean 0.39 pv C18 E17 C13 C12 B13 B12 B14 A13 G17 O17 F13 F12 G13 G12 info move O17 visits 40 winrate 4893 prior 899 scoreMean -0.30 pv O17 G14 F13 F12 G13 F14 F15 H14 G12 H15 G16 J16 C13 C12 info move C13 visits 4 winrate 5206 prior 56 scoreMean 0.26 pv C13 C12 B13 B12 info move Q17 visits 2 winrate 4792 prior 83 scoreMean -0.18 pv Q17 P17 info move F13 visits 2 winrate 5117 prior 46 scoreMean 0.03 pv F13 F12 info move G13 visits 1 winrate 4942 prior 27 scoreMean 0.12 pv G13 info move C7 visits 1 winrate 4464 prior 24 scoreMean -0.40 pv C7 info move N17 visits 1 winrate 4772 prior 17 scoreMean -0.09 pv N17 info move C6 visits 1 winrate 4462 prior 21 scoreMean -0.40 pv C6];W[cb]C[흑 승률: 50.1% (-0.1%)
+리드: 0.1 (-0.0) stdev: 14.0
+(KataGo18blocks / 6.0k visits)
+덤: 6.5
+Move time: 2.079 초]LZ[KataGo18blocks 49.9 6.0k 0.1 14.0
+move E17 visits 5894 winrate 5010 prior 6966 scoreMean 0.06 pv E17 G17 A18 F16 D18 O17 M17 O15 M15 Q14 H13 K15 Q18 K13 info move G17 visits 61 winrate 3994 prior 1582 scoreMean -3.17 pv G17 H17 E17 A18 G14 F15 J18 H18 B19 C13 info move F16 visits 10 winrate 2508 prior 791 scoreMean -5.29 pv F16 F15 A18 C13 info move F13 visits 6 winrate 3098 prior 259 scoreMean -2.80 pv F13 F16 E17 G17 F15 F14 info move F14 visits 4 winrate 3173 prior 168 scoreMean -2.40 pv F14 F15 G17 info move G14 visits 2 winrate 3247 prior 74 scoreMean -2.05 pv G14 F13 info move R6 visits 1 winrate 2962 prior 44 scoreMean -2.36 pv R6 info move G16 visits 1 winrate 976 prior 38 scoreMean -6.37 pv G16 info move A18 visits 1 winrate 2343 prior 22 scoreMean -4.88 pv A18];B[ec]C[백 승률: 54.8% (+0.2%)
+리드: 0.4 (+0.0) stdev: 12.0
+(KataGo28blocks / 8.1k visits)
+덤: 6.5
+Move time: 2.107 초]LZ[KataGo28blocks 45.2 8.1k 0.4 12.0
+move C13 visits 7797 winrate 5482 prior 7423 scoreMean 0.40 pv C13 C12 B13 B12 B14 A13 G17 O17 F13 F12 G13 G12 H13 A18 info move G17 visits 282 winrate 5256 prior 2243 scoreMean 0.20 pv G17 A18 F16 D18 O17 M17 O15 M15 Q14 H13 K15 Q18 K13 M13 info move F13 visits 17 winrate 5088 prior 155 scoreMean 0.03 pv F13 F12 G13 G12 H13 G17 C13 C12 B13 info move G13 visits 2 winrate 4677 prior 66 scoreMean -0.13 pv G13 F13 info move A18 visits 2 winrate 4307 prior 27 scoreMean -1.11 pv A18 G16 info move O17 visits 1 winrate 3603 prior 19 scoreMean -1.98 pv O17];W[cg]C[흑 승률: 51.1% (+1.0%)
+리드: 0.2 (+0.1) stdev: 13.4
+(KataGo18blocks / 4.2k visits)
+덤: 6.5
+Move time: 2.056 초]LZ[KataGo18blocks 48.9 4.2k 0.2 13.4
+move C12 visits 4057 winrate 5108 prior 4882 scoreMean 0.16 pv C12 B13 B12 B14 A13 F13 F12 G13 G17 H17 A14 O17 G12 H13 info move F13 visits 111 winrate 4025 prior 3403 scoreMean -1.22 pv F13 G14 C12 A18 C6 B13 B12 D6 D7 E6 C4 C3 C5 D3 info move G13 visits 41 winrate 4090 prior 974 scoreMean -1.10 pv G13 G14 C12 B13 B12 B14 A14 G17 A18 H13 info move F12 visits 13 winrate 3999 prior 231 scoreMean -1.17 pv F12 G13 C12 B13 B12 info move A18 visits 2 winrate 2736 prior 166 scoreMean -2.62 pv A18 C12 info move G17 visits 1 winrate 1590 prior 127 scoreMean -5.84 pv G17 info move B13 visits 1 winrate 3006 prior 104 scoreMean -2.29 pv B13 info move G14 visits 1 winrate 2711 prior 45 scoreMean -4.03 pv G14];B[ch]C[백 승률: 55.0% (+0.1%)
+리드: 0.4 (+0.0) stdev: 12.1
+(KataGo28blocks / 9.0k visits)
+덤: 6.5
+Move time: 2.093 초]LZ[KataGo28blocks 45.0 9.0k 0.4 12.1
+move B13 visits 8946 winrate 5495 prior 9697 scoreMean 0.40 pv B13 B12 B14 A13 G17 O17 F13 F12 G13 G12 H13 A18 K3 R7 info move G17 visits 7 winrate 4429 prior 265 scoreMean -0.33 pv G17 F13 G14 A18];W[bg]C[흑 승률: 52.0% (+0.9%)
+리드: 0.3 (+0.1) stdev: 13.4
+(KataGo18blocks / 7.1k visits)
+덤: 6.5
+Move time: 2.041 초]LZ[KataGo18blocks 48.0 7.1k 0.3 13.4
+move B12 visits 6837 winrate 5199 prior 2943 scoreMean 0.27 pv B12 B14 A13 G17 F13 G14 A18 A17 A16 O17 F3 E3 C3 F4 info move F13 visits 210 winrate 4026 prior 4790 scoreMean -1.18 pv F13 G14 B12 A18 C6 D6 D7 E6 C4 C3 C5 D3 K4 F8 info move B14 visits 42 winrate 3717 prior 1300 scoreMean -1.62 pv B14 F13 F12 G13 B12 G17 G12 H13 info move A18 visits 30 winrate 3790 prior 559 scoreMean -1.94 pv A18 F13 F12 B14 D18 D12 info move G13 visits 9 winrate 2556 prior 279 scoreMean -5.82 pv G13 B14 F15 F14 G14 F16 F13 F15 info move G14 visits 1 winrate 3247 prior 30 scoreMean -3.23 pv G14 info move F12 visits 1 winrate 2588 prior 24 scoreMean -5.09 pv F12 info move G17 visits 1 winrate 158 prior 20 scoreMean -19.75 pv G17 info move F14 visits 1 winrate 4134 prior 16 scoreMean -1.57 pv F14];B[bh]C[백 승률: 55.0% (+0.0%)
+리드: 0.4 (+0.0) stdev: 12.1
+(KataGo28blocks / 10k visits)
+덤: 6.5
+Move time: 2.093 초]LZ[KataGo28blocks 45.0 10k 0.4 12.1
+move B14 visits 10011 winrate 5498 prior 9107 scoreMean 0.40 pv B14 A13 G17 O17 F13 F12 G13 G12 H13 A18 K3 R7 R13 R11 info move G17 visits 22 winrate 4872 prior 516 scoreMean -0.06 pv G17 F13 G14 A18 O17 M17 O15 M15 Q14 Q18 G13 info move F13 visits 25 winrate 4947 prior 336 scoreMean 0.06 pv F13 F12 B14 G13 F14 A13 G12 F11];W[bf]C[흑 승률: 52.1% (+0.1%)
+리드: 0.3 (+0.0) stdev: 13.6
+(KataGo18blocks / 10k visits)
+덤: 6.5
+Move time: 2.054 초]LZ[KataGo18blocks 47.9 10k 0.3 13.6
+move A13 visits 9700 winrate 5213 prior 4707 scoreMean 0.30 pv A13 G17 F13 G14 A18 A17 A16 O17 C6 B19 F3 D6 D7 E6 info move F13 visits 238 winrate 4511 prior 3169 scoreMean -0.57 pv F13 G14 A13 A18 C6 D6 D7 E6 C4 C3 C5 D3 K4 O17 info move A14 visits 92 winrate 4531 prior 1151 scoreMean -0.45 pv A14 G17 O17 R7 A18 F13 F12 G13 G12 H13 C6 A17 info move B15 visits 16 winrate 3504 prior 511 scoreMean -1.59 pv B15 G17 F13 G14 A18 O17 M17 info move A18 visits 22 winrate 4571 prior 131 scoreMean -1.07 pv A18 F13 D12 F12 E11 B15 A15 info move G13 visits 3 winrate 1110 prior 179 scoreMean -12.86 pv G13 B15 F15 info move G14 visits 4 winrate 2728 prior 76 scoreMean -3.26 pv G14 F13 F12 G13 info move F14 visits 1 winrate 3474 prior 27 scoreMean -2.05 pv F14];B[ag]C[백 승률: 55.0% (+0.1%)
+리드: 0.4 (+0.0) stdev: 12.1
+(KataGo28blocks / 11k visits)
+덤: 6.5
+Move time: 2.061 초]LZ[KataGo28blocks 45.0 11k 0.4 12.1
+move G17 visits 11412 winrate 5504 prior 9802 scoreMean 0.40 pv G17 O17 F13 F12 G13 G12 H13 A18 K3 R7 R13 R11 S16 C6 info move F13 visits 23 winrate 5237 prior 128 scoreMean 0.26 pv F13 F12 G13 G12 H13 G17 H17 O17 E12 D12 E11 A14 info move A17 visits 2 winrate 4533 prior 27 scoreMean -0.35 pv A17 A14];W[gc]C[흑 승률: 52.4% (+0.3%)
+리드: 0.3 (+0.0) stdev: 13.9
+(KataGo18blocks / 12k visits)
+덤: 6.5
+Move time: 2.064 초]LZ[KataGo18blocks 47.6 12k 0.3 13.9
+move F13 visits 5193 winrate 5242 prior 3095 scoreMean 0.33 pv F13 G14 A18 O17 C6 O15 Q14 A17 A16 Q18 H12 B19 E5 E4 info move A18 visits 4931 winrate 5209 prior 3180 scoreMean 0.31 pv A18 O17 F13 G14 C6 O15 Q14 A17 A16 Q18 H12 B19 E5 E4 info move O17 visits 1385 winrate 5152 prior 1674 scoreMean 0.13 pv O17 A18 C6 D6 D7 E6 C4 C3 B5 C7 C8 B7 B3 D2 info move G13 visits 94 winrate 4867 prior 615 scoreMean -0.11 pv G13 F16 C6 D6 D7 E6 C4 C3 C5 D3 E7 info move N17 visits 71 winrate 4804 prior 405 scoreMean -0.22 pv N17 A18 C6 D6 D7 E6 C4 info move C6 visits 23 winrate 4460 prior 329 scoreMean -0.54 pv C6 D6 D7 E6 C4 C3 C5 D3 A18 info move G14 visits 8 winrate 3169 prior 215 scoreMean -2.43 pv G14 F13 F12 G13 F14 F15 info move C3 visits 4 winrate 3735 prior 132 scoreMean -1.25 pv C3 D3 C4 D5 info move O16 visits 2 winrate 4395 prior 42 scoreMean -0.60 pv O16 A18 info move R2 visits 2 winrate 3862 prior 57 scoreMean -1.15 pv R2 S2];B[fg]C[백 승률: 55.1% (+0.1%)
+리드: 0.4 (-0.0) stdev: 12.5
+(KataGo28blocks / 4.7k visits)
+덤: 6.5
+Move time: 2.085 초]LZ[KataGo28blocks 44.9 4.7k 0.4 12.5
+move G14 visits 4724 winrate 5511 prior 9966 scoreMean 0.37 pv G14 A18 O17 C6 D6 D7 E6 C4 C3 C5 D3 K3 Q18 R13 info move F16 visits 1 winrate 2518 prior 15 scoreMean -2.26 pv F16];W[gf]C[흑 승률: 52.4% (+0.0%)
+리드: 0.3 (+0.0) stdev: 13.9
+(KataGo18blocks / 7.8k visits)
+덤: 6.5
+Move time: 2.07 초]LZ[KataGo18blocks 47.6 7.8k 0.3 13.9
+move A18 visits 7177 winrate 5243 prior 7383 scoreMean 0.34 pv A18 O17 C6 O15 Q14 D6 D7 E6 C4 D3 E7 F7 C8 C3 info move O17 visits 414 winrate 5116 prior 1309 scoreMean 0.07 pv O17 A18 C6 D6 D7 E6 C4 C3 C5 D3 K3 F8 D8 H3 info move N17 visits 141 winrate 5083 prior 416 scoreMean -0.00 pv N17 A18 C6 D6 D7 E6 C4 C3 C5 D3 K3 F8 D8 H3 info move D19 visits 3 winrate 1598 prior 239 scoreMean -4.77 pv D19 A18 B19 info move C6 visits 3 winrate 3608 prior 118 scoreMean -1.46 pv C6 D6 info move O16 visits 3 winrate 3938 prior 66 scoreMean -1.18 pv O16 R7 info move F16 visits 2 winrate 2435 prior 81 scoreMean -2.95 pv F16 A18 info move R6 visits 2 winrate 3367 prior 44 scoreMean -1.76 pv R6 S7 info move D18 visits 1 winrate 2403 prior 90 scoreMean -2.99 pv D18 info move C3 visits 1 winrate 3941 prior 34 scoreMean -0.87 pv C3 info move D6 visits 1 winrate 3911 prior 33 scoreMean -1.05 pv D6];B[ab]C[백 승률: 55.0% (-0.1%)
+리드: 0.4 (-0.0) stdev: 12.5
+(KataGo28blocks / 6.5k visits)
+덤: 6.5
+Move time: 2.064 초]LZ[KataGo28blocks 45.0 6.5k 0.4 12.5
+move O17 visits 6317 winrate 5496 prior 8715 scoreMean 0.36 pv O17 C6 D6 D7 E6 C4 C3 C5 D3 K3 Q18 R17 P15 R14 info move A17 visits 126 winrate 5404 prior 774 scoreMean 0.29 pv A17 A16 O17 C6 O15 Q18 D6 D7 E6 C4 C3 C5 D3 K3 info move N17 visits 11 winrate 5201 prior 245 scoreMean 0.34 pv N17 P17 N15 C6 D6 D7 E6 info move N16 visits 2 winrate 5274 prior 34 scoreMean 0.40 pv N16 C6 info move O16 visits 1 winrate 5220 prior 27 scoreMean 0.32 pv O16 info move Q17 visits 1 winrate 5143 prior 18 scoreMean 0.24 pv Q17];W[nc]C[흑 승률: 52.9% (+0.5%)
+리드: 0.4 (+0.1) stdev: 13.9
+(KataGo18blocks / 8.7k visits)
+덤: 6.5
+Move time: 2.044 초]LZ[KataGo18blocks 47.1 8.7k 0.4 13.9
+move C6 visits 5872 winrate 5291 prior 879 scoreMean 0.41 pv C6 O15 Q18 D6 D7 E6 C4 C3 B5 C7 C8 B7 B3 D2 info move Q18 visits 520 winrate 5226 prior 814 scoreMean 0.32 pv Q18 A17 A16 O15 Q14 B19 C6 L3 F4 D6 D7 E6 C5 E4 info move M17 visits 517 winrate 5063 prior 3070 scoreMean 0.11 pv M17 A17 A16 B19 Q18 L3 R2 S2 S5 R5 R6 Q6 R7 S4 info move F3 visits 883 winrate 5234 prior 453 scoreMean 0.30 pv F3 A17 A16 E3 C3 F2 C4 D6 C6 C7 B6 E7 F4 G3 info move O15 visits 327 winrate 5245 prior 368 scoreMean 0.32 pv O15 A17 A16 B19 P18 R7 L3 O18 M16 L17 info move H12 visits 100 winrate 4982 prior 707 scoreMean 0.02 pv H12 A17 A16 B19 C6 D6 D7 E6 C4 C3 C5 D3 K3 F8 info move Q14 visits 85 winrate 5139 prior 298 scoreMean 0.20 pv Q14 A17 A16 B19 P17 O16 C6 D6 D7 E6 C4 C3 C5 D3 info move Q13 visits 78 winrate 5143 prior 307 scoreMean 0.21 pv Q13 A17 A16 B19 C6 D6 D7 E6 C4 C3 C5 D3 K4 R7 info move R14 visits 52 winrate 5042 prior 329 scoreMean 0.12 pv R14 A17 A16 B19 C6 D6 D7 E6 C4 C3 info move K15 visits 48 winrate 4755 prior 602 scoreMean -0.22 pv K15 A17 A16 B19 M17 O15 Q14 Q18 R17 R18 O18 P17 N17 info move M15 visits 46 winrate 5064 prior 306 scoreMean 0.12 pv M15 A17 A16 B19 M17 R17 Q17 Q18 P18 R18 O18 R16 Q14 Q15];B[cn]C[백 승률: 54.8% (-0.1%)
+리드: 0.4 (-0.0) stdev: 12.4
+(KataGo28blocks / 4.4k visits)
+덤: 6.5
+Move time: 2.072 초]LZ[KataGo28blocks 45.2 4.4k 0.4 12.4
+move O15 visits 2780 winrate 5482 prior 5793 scoreMean 0.36 pv O15 Q18 D6 D7 E6 C4 D3 C5 C3 K3 M4 G3 H4 H3 info move D6 visits 1374 winrate 5474 prior 2022 scoreMean 0.35 pv D6 D7 E6 C4 C3 C5 D3 K3 O15 Q18 M4 G3 H4 H3 info move A17 visits 106 winrate 5364 prior 704 scoreMean 0.26 pv A17 A16 D6 D7 E6 C4 C3 B5 E7 D8 E8 D3 info move H12 visits 38 winrate 5314 prior 638 scoreMean 0.34 pv H12 O15 M16 P18 D6 D7 E6 B5 E7 info move Q18 visits 44 winrate 5378 prior 234 scoreMean 0.37 pv Q18 F4 H12 E6 B5 info move P15 visits 13 winrate 5367 prior 151 scoreMean 0.41 pv P15 R14 Q18 N17 O18 info move Q14 visits 6 winrate 5323 prior 91 scoreMean 0.35 pv Q14 O15 M16 info move G13 visits 1 winrate 4956 prior 32 scoreMean 0.09 pv G13 info move R14 visits 1 winrate 5045 prior 28 scoreMean 0.16 pv R14];W[ne]C[흑 승률: 52.8% (-0.1%)
+리드: 0.4 (-0.0) stdev: 13.8
+(KataGo18blocks / 6.1k visits)
+덤: 6.5
+Move time: 2.078 초]LZ[KataGo18blocks 47.2 6.1k 0.4 13.8
+move Q18 visits 2832 winrate 5283 prior 2227 scoreMean 0.37 pv Q18 D6 D7 E6 C4 C3 B5 B3 E7 F7 F8 C7 C8 B7 info move Q14 visits 2283 winrate 5272 prior 2246 scoreMean 0.41 pv Q14 A17 A16 Q18 H12 B19 E6 C5 B6 F5 F6 G5 J3 G6 info move H12 visits 265 winrate 5163 prior 1052 scoreMean 0.30 pv H12 D6 D7 E6 C4 C3 C5 D3 E7 F7 F6 C7 C8 B7 info move E6 visits 228 winrate 5140 prior 1122 scoreMean 0.26 pv E6 C5 B6 F5 F6 G5 J3 G6 F3 G8 Q14 E2 F2 info move R14 visits 119 winrate 5174 prior 539 scoreMean 0.29 pv R14 A17 A16 D6 D7 E6 C4 C3 C5 info move C3 visits 99 winrate 5080 prior 646 scoreMean 0.18 pv C3 D3 C4 D5 D6 E6 E7 F7 F6 E5 C5 E8 D7 G7 info move F4 visits 105 winrate 5203 prior 173 scoreMean 0.33 pv F4 F5 G4 D6 D7 C5 E6 D5 C7 info move F3 visits 46 winrate 4968 prior 491 scoreMean 0.02 pv F3 D6 D7 E6 C4 D3 C3 C7 D5 E5 C5 D8 E4 info move Q13 visits 33 winrate 5118 prior 150 scoreMean 0.25 pv Q13 D6 D7 E6 C4 C3 B5 B3 E7 F7 info move G13 visits 23 winrate 4959 prior 224 scoreMean 0.05 pv G13 D6 D7 E6 C4 C3 C5 D3 K3 A17];B[pb]C[백 승률: 55.3% (+0.5%)
+리드: 0.4 (+0.0) stdev: 12.5
+(KataGo28blocks / 4.2k visits)
+덤: 6.5
+Move time: 2.077 초]LZ[KataGo28blocks 44.7 4.2k 0.4 12.5
+move D6 visits 3791 winrate 5531 prior 3330 scoreMean 0.39 pv D6 D7 E6 C4 D3 C5 C3 K3 M4 G3 H4 H3 K4 L3 info move Q15 visits 199 winrate 5260 prior 4156 scoreMean 0.27 pv Q15 R15 R14 P15 Q14 P16 R16 O16 R17 P14 P13 Q13 O13 N16 info move A17 visits 63 winrate 5309 prior 951 scoreMean 0.21 pv A17 A16 D6 D7 E6 C4 C3 C5 D3 K3 F8 D8 H3 M17 info move H12 visits 30 winrate 5369 prior 540 scoreMean 0.30 pv H12 Q14 P18 M15 R18 Q17 info move R14 visits 81 winrate 5328 prior 298 scoreMean 0.31 pv R14 Q14 Q13 P14 R17 P17 O18 R15 S16 S15 Q17 P16 P18 E6 info move Q14 visits 13 winrate 5292 prior 264 scoreMean 0.31 pv Q14 R14 R13 R15 Q15 Q13 R16 S16 R17 Q17 P13 Q12 P12 S13 info move L3 visits 2 winrate 5288 prior 29 scoreMean 0.23 pv L3 E5 info move G13 visits 1 winrate 5199 prior 29 scoreMean 0.28 pv G13 info move M3 visits 1 winrate 5244 prior 24 scoreMean 0.33 pv M3 info move P18 visits 1 winrate 4923 prior 35 scoreMean 0.19 pv P18];W[dn]C[흑 승률: 52.7% (-0.1%)
+리드: 0.4 (-0.0) stdev: 13.8
+(KataGo18blocks / 5.3k visits)
+덤: 6.5
+Move time: 2.062 초]LZ[KataGo18blocks 47.3 5.3k 0.4 13.8
+move D7 visits 5202 winrate 5272 prior 7614 scoreMean 0.36 pv D7 E6 C4 D3 C5 A17 A16 C3 K3 B19 G13 F8 D8 H3 info move M17 visits 96 winrate 4866 prior 1379 scoreMean -0.09 pv M17 C5 L15 Q14 P14 P15 Q15 info move D5 visits 10 winrate 4625 prior 265 scoreMean -0.34 pv D5 C5 E5 C4 C7 F3 info move Q14 visits 10 winrate 4786 prior 156 scoreMean -0.06 pv Q14 C5 M17 L15 M15 M14 N15 info move K15 visits 6 winrate 4883 prior 94 scoreMean 0.00 pv K15 L17 K17 L16 info move R6 visits 5 winrate 4822 prior 126 scoreMean -0.04 pv R6 S7 D7 E6 C4 info move C3 visits 3 winrate 4562 prior 108 scoreMean -0.18 pv C3 C5 D3 info move C5 visits 2 winrate 4807 prior 23 scoreMean -0.06 pv C5 D5 info move N16 visits 1 winrate 4355 prior 38 scoreMean -0.52 pv N16 info move F16 visits 1 winrate 3955 prior 26 scoreMean -0.88 pv F16];B[dm]C[백 승률: 55.7% (+0.3%)
+리드: 0.4 (+0.0) stdev: 12.5
+(KataGo28blocks / 5.4k visits)
+덤: 6.5
+Move time: 2.045 초]LZ[KataGo28blocks 44.3 5.4k 0.4 12.5
+move E6 visits 5366 winrate 5566 prior 8998 scoreMean 0.41 pv E6 C4 D3 C5 C3 K3 M4 H3 H12 M17 Q15 P16 O16 P15 info move E7 visits 29 winrate 5407 prior 353 scoreMean 0.33 pv E7 D8 C5 E6 D5 B6 E8 F6 F4 B5 B4 E9 info move A17 visits 22 winrate 5371 prior 296 scoreMean 0.27 pv A17 A16 E6 C4 C3 C5 D3 K3 F8 D8 H3 M17 L15 O18 info move C5 visits 14 winrate 5356 prior 249 scoreMean 0.31 pv C5 E6 D5 B6 E7 D8 E8 F6 F4 B5 B4 E9 info move C7 visits 1 winrate 4964 prior 32 scoreMean 0.03 pv C7];W[en]C[흑 승률: 52.7% (-0.1%)
+리드: 0.3 (-0.0) stdev: 13.9
+(KataGo18blocks / 7.8k visits)
+덤: 6.5
+Move time: 2.074 초]LZ[KataGo18blocks 47.3 7.8k 0.3 13.9
+move C4 visits 6671 winrate 5267 prior 5956 scoreMean 0.32 pv C4 D3 C5 C3 K3 F8 D8 G13 F11 G11 M17 P18 M15 Q14 info move C5 visits 802 winrate 5185 prior 1328 scoreMean 0.31 pv C5 C4 E7 A15 D18 A17 A16 D12 A12 G12 B4 B3 D5 F3 info move B5 visits 211 winrate 5014 prior 1581 scoreMean 0.07 pv B5 E7 D8 A17 A16 E8 K3 B19 Q14 P18 P17 info move M17 visits 67 winrate 4845 prior 681 scoreMean -0.11 pv M17 C5 M15 A17 A16 B19 Q14 K3 R2 S2 info move R6 visits 10 winrate 4709 prior 142 scoreMean -0.13 pv R6 S7 C4 C3 C5 D3 K3 A17 A16 B19 info move Q14 visits 3 winrate 4567 prior 58 scoreMean -0.24 pv Q14 C5 M17 L15 info move K15 visits 4 winrate 4650 prior 53 scoreMean -0.21 pv K15 A17 A16 info move N16 visits 1 winrate 4738 prior 15 scoreMean -0.03 pv N16 info move F16 visits 1 winrate 3884 prior 18 scoreMean -0.91 pv F16 info move A14 visits 1 winrate 2886 prior 13 scoreMean -1.97 pv A14];B[cp]C[백 승률: 55.8% (+0.1%)
+리드: 0.4 (+0.0) stdev: 12.7
+(KataGo28blocks / 7.2k visits)
+덤: 6.5
+Move time: 2.073 초]LZ[KataGo28blocks 44.2 7.2k 0.4 12.7
+move D3 visits 3522 winrate 5580 prior 3254 scoreMean 0.43 pv D3 C5 C3 K3 M4 H3 Q14 R14 R13 R15 Q13 F3 C7 C8 info move C3 visits 3694 winrate 5565 prior 6201 scoreMean 0.42 pv C3 C5 D3 K3 M4 H3 Q14 R14 R13 R15 Q13 F3 C7 C8 info move A17 visits 22 winrate 5297 prior 342 scoreMean 0.19 pv A17 A16 C3 C5 D3 K3 B19 E7 F7 F8 G8 F9 M4 G3 info move C7 visits 4 winrate 4925 prior 83 scoreMean -0.08 pv C7 C5 D3 C8 info move C5 visits 1 winrate 4954 prior 41 scoreMean 0.01 pv C5];W[dq]C[흑 승률: 53.3% (+0.6%)
+리드: 0.4 (+0.0) stdev: 13.9
+(KataGo18blocks / 6.7k visits)
+덤: 6.5
+Move time: 2.056 초]LZ[KataGo18blocks 46.7 6.7k 0.4 13.9
+move C5 visits 5525 winrate 5331 prior 2417 scoreMean 0.37 pv C5 C3 K3 F8 D8 G13 M17 A17 A16 B19 F11 P18 M15 Q14 info move C3 visits 504 winrate 4931 prior 4645 scoreMean 0.02 pv C3 C7 B6 D8 M15 E7 M17 A17 A16 B19 Q14 M4 N14 C2 info move H12 visits 328 winrate 5251 prior 348 scoreMean 0.44 pv H12 C7 C8 B7 B6 B8 C3 D8 D2 E2 C2 F8 K15 B19 info move E7 visits 180 winrate 5117 prior 862 scoreMean 0.25 pv E7 F7 C5 C3 F6 C7 C8 B7 B8 D5 B3 B2 A4 info move M17 visits 116 winrate 5079 prior 798 scoreMean 0.14 pv M17 A17 A16 B19 C5 C3 K3 P18 M15 Q14 R14 R13 R15 Q13 info move Q14 visits 28 winrate 5145 prior 120 scoreMean 0.28 pv Q14 C7 C8 B7 B6 D8 E7 B8 C3 C2 B2 D2 C9 info move R6 visits 18 winrate 4726 prior 284 scoreMean -0.23 pv R6 S7 C3 C7 C5 D8 D5 info move D8 visits 10 winrate 4745 prior 139 scoreMean -0.16 pv D8 C3 M17 A17 A16 info move K3 visits 6 winrate 4918 prior 43 scoreMean -0.09 pv K3 C7 C8 B7 B6 B8 info move G13 visits 2 winrate 4462 prior 39 scoreMean -0.51 pv G13 C7];B[co]C[백 승률: 55.4% (-0.4%)
+리드: 0.4 (-0.0) stdev: 12.7
+(KataGo28blocks / 4.2k visits)
+덤: 6.5
+Move time: 2.072 초]LZ[KataGo28blocks 44.6 4.2k 0.4 12.7
+move C3 visits 4107 winrate 5542 prior 8711 scoreMean 0.40 pv C3 K3 M4 Q14 M2 H4 R7 F3 P7 R2 S2 P2 O3 info move A17 visits 48 winrate 5287 prior 1087 scoreMean 0.20 pv A17 A16 C3 K3 B19 E7 F7 F8 G8 F9 M4 G3 G9 F10 info move E7 visits 2 winrate 4843 prior 71 scoreMean -0.03 pv E7 D8];W[cq]C[흑 승률: 53.4% (+0.1%)
+리드: 0.4 (+0.1) stdev: 14.3
+(KataGo18blocks / 5.7k visits)
+덤: 6.5
+Move time: 2.08 초]LZ[KataGo18blocks 46.6 5.7k 0.4 14.3
+move K4 visits 2445 winrate 5340 prior 1264 scoreMean 0.43 pv K4 F8 D8 G13 M17 A17 A16 B19 M15 Q14 R14 R13 R15 Q15 info move K3 visits 2559 winrate 5324 prior 2606 scoreMean 0.38 pv K3 F8 D8 G13 M17 A17 A16 B19 F11 Q15 R15 Q14 R14 R13 info move M17 visits 315 winrate 5132 prior 2234 scoreMean 0.18 pv M17 A17 A16 L3 E7 F7 F6 C7 C8 B7 B8 F8 E9 D5 info move H12 visits 95 winrate 5076 prior 795 scoreMean 0.11 pv H12 A17 A16 B19 K3 H3 Q14 F8 D8 L14 F7 E7 E8 info move E7 visits 74 winrate 5015 prior 702 scoreMean 0.11 pv E7 A15 D18 A17 A16 D12 A12 F7 F8 G12 G13 H13 H12 info move Q14 visits 52 winrate 4921 prior 764 scoreMean -0.01 pv Q14 A17 A16 L3 M17 L15 M15 M14 N15 N14 O14 P14 O13 info move L4 visits 47 winrate 5209 prior 222 scoreMean 0.27 pv L4 F8 M17 C7 C8 info move R6 visits 18 winrate 4745 prior 356 scoreMean -0.14 pv R6 S7 K3 A17 A16 B19 Q14 info move L3 visits 17 winrate 4885 prior 267 scoreMean -0.10 pv L3 A17 A16 B19 Q14 F8 D8 J3 info move J3 visits 14 winrate 5053 prior 180 scoreMean 0.11 pv J3 L3 J5 L5 F3];B[jp]C[백 승률: 55.9% (+0.5%)
+리드: 0.5 (+0.1) stdev: 13.1
+(KataGo28blocks / 1.3k visits)
+덤: 6.5
+Move time: 2.05 초]LZ[KataGo28blocks 44.1 1.3k 0.5 13.1
+move M4 visits 1092 winrate 5592 prior 3201 scoreMean 0.47 pv M4 H3 C7 C8 B7 B8 M6 M3 N3 M2 Q14 R14 R13 R15 info move Q14 visits 52 winrate 5520 prior 727 scoreMean 0.41 pv Q14 R14 R13 R15 Q13 G3 H12 M17 Q15 info move F8 visits 46 winrate 5387 prior 1452 scoreMean 0.23 pv F8 D8 H3 M17 L15 O18 A17 A16 info move Q15 visits 35 winrate 5212 prior 1866 scoreMean 0.20 pv Q15 R15 R14 P15 Q14 O16 N16 P16 R16 N17 M17 N18 M16 M18 info move R14 visits 18 winrate 5335 prior 598 scoreMean 0.30 pv R14 Q14 Q13 P14 R17 P17 O18 R15 S16 S15 Q17 info move A17 visits 14 winrate 5237 prior 997 scoreMean 0.20 pv A17 A16 F8 D8 H3 M17 info move H12 visits 9 winrate 5211 prior 694 scoreMean 0.20 pv H12 M17 P17 Q17 M15 Q13 info move G13 visits 1 winrate 5241 prior 41 scoreMean 0.33 pv G13];W[lp]C[흑 승률: 54.0% (+0.6%)
+리드: 0.5 (+0.1) stdev: 14.8
+(KataGo18blocks / 2.7k visits)
+덤: 6.5
+Move time: 2.059 초]LZ[KataGo18blocks 46.0 2.7k 0.5 14.8
+move H3 visits 1924 winrate 5398 prior 1212 scoreMean 0.52 pv H3 M6 H12 R7 Q7 Q8 R6 P7 Q6 S7 P8 O7 S5 R5 info move G3 visits 195 winrate 5324 prior 617 scoreMean 0.42 pv G3 M6 D8 G13 G12 H12 H11 G11 F12 J12 info move L6 visits 195 winrate 5288 prior 1135 scoreMean 0.35 pv L6 M6 M7 N6 N7 O6 R6 S7 O7 P6 P7 Q6 R5 S5 info move M17 visits 167 winrate 5173 prior 2604 scoreMean 0.22 pv M17 A17 A16 B19 L6 M6 M7 N6 R6 R5 N7 info move Q14 visits 33 winrate 5085 prior 725 scoreMean 0.21 pv Q14 M6 M3 N3 L3 O2 R2 S2 P2 info move H12 visits 36 winrate 4900 prior 1064 scoreMean -0.06 pv H12 B19 E7 F7 F6 C7 C8 B7 B8 F8 E9 D5 B3 B2 info move D8 visits 31 winrate 5120 prior 501 scoreMean 0.23 pv D8 A17 A16 H4 H3 J3 J4 H2 info move E7 visits 35 winrate 4999 prior 609 scoreMean 0.14 pv E7 F7 F6 C7 C8 B7 B8 F8 E9 G6 F5 D5 B3 B2 info move K6 visits 23 winrate 5189 prior 424 scoreMean 0.28 pv K6 A17 A16 M6 G3 B19 D18 info move R6 visits 21 winrate 5141 prior 357 scoreMean 0.25 pv R6 R5 R7 S7 R8];B[hq]C[백 승률: 56.7% (+0.7%)
+리드: 0.5 (+0.1) stdev: 13.1
+(KataGo28blocks / 1.7k visits)
+덤: 6.5
+Move time: 2.082 초]LZ[KataGo28blocks 43.3 1.7k 0.5 13.1
+move M6 visits 910 winrate 5666 prior 3961 scoreMean 0.53 pv M6 F3 C7 C8 B7 B8 R7 R2 S2 P2 P7 S1 Q14 R14 info move C7 visits 299 winrate 5623 prior 552 scoreMean 0.51 pv C7 C8 B7 B8 N6 F3 Q14 R14 R13 R15 Q15 Q13 R16 S16 info move N6 visits 161 winrate 5619 prior 690 scoreMean 0.52 pv N6 F3 C7 C8 B7 B8 Q14 R14 R13 R15 Q15 Q13 R16 S16 info move H12 visits 61 winrate 5602 prior 445 scoreMean 0.46 pv H12 M17 M6 M15 C7 C8 B7 info move Q14 visits 122 winrate 5554 prior 742 scoreMean 0.46 pv Q14 R14 R13 R15 Q13 R6 S7 L6 M6 R2 S2 M7 info move N7 visits 76 winrate 5522 prior 797 scoreMean 0.44 pv N7 F3 R7 D8 E2 Q7 Q8 P8 Q6 info move A17 visits 20 winrate 5316 prior 1004 scoreMean 0.24 pv A17 A16 M6 F3 R7 Q7 Q8 info move R7 visits 25 winrate 5430 prior 211 scoreMean 0.38 pv R7 Q7 Q8 R6 P7 Q6 S7 info move Q15 visits 7 winrate 5238 prior 405 scoreMean 0.18 pv Q15 R15 R14 P15 Q14 O16 info move F8 visits 3 winrate 5236 prior 210 scoreMean 0.24 pv F8 D8 F3];W[ln]C[흑 승률: 54.0% (+0.0%)
+리드: 0.5 (+0.0) stdev: 14.9
+(KataGo18blocks / 3.1k visits)
+덤: 6.5
+Move time: 2.066 초]LZ[KataGo18blocks 46.0 3.1k 0.5 14.9
+move F3 visits 1803 winrate 5399 prior 2134 scoreMean 0.53 pv F3 A15 D18 A17 A16 D12 C10 G12 E2 Q14 R14 R13 R15 Q13 info move H12 visits 573 winrate 5340 prior 1505 scoreMean 0.45 pv H12 R7 Q7 Q8 R6 P7 Q6 S5 R8 S7 P8 Q9 O7 P9 info move Q14 visits 368 winrate 5325 prior 1191 scoreMean 0.46 pv Q14 M2 F3 C7 C8 B7 B8 R7 Q7 Q8 info move M17 visits 158 winrate 5081 prior 2287 scoreMean 0.11 pv M17 A17 A16 Q15 R15 Q14 R14 R13 Q13 R16 S16 R17 Q17 info move D8 visits 94 winrate 5166 prior 1227 scoreMean 0.25 pv D8 A17 A16 F3 F2 G3 G2 H4 J3 info move K6 visits 94 winrate 5312 prior 428 scoreMean 0.39 pv K6 M8 F3 C7 C8 B7 B8 A17 A16 B19 info move P8 visits 35 winrate 5145 prior 349 scoreMean 0.22 pv P8 A17 A16 K6 F3 C7 info move G13 visits 5 winrate 5023 prior 134 scoreMean 0.12 pv G13 B19 D18 info move R6 visits 4 winrate 4939 prior 143 scoreMean 0.04 pv R6 S7 F3 info move Q13 visits 4 winrate 4826 prior 115 scoreMean -0.04 pv Q13 A17 A16];B[fq]C[백 승률: 57.5% (+0.8%)
+리드: 0.6 (+0.1) stdev: 13.0
+(KataGo28blocks / 1.7k visits)
+덤: 6.5
+Move time: 2.051 초]LZ[KataGo28blocks 42.5 1.7k 0.6 13.0
+move C7 visits 1375 winrate 5746 prior 4134 scoreMean 0.61 pv C7 C8 B7 B8 R7 Q7 Q8 R6 P7 S5 R5 Q6 S7 R2 info move H12 visits 105 winrate 5629 prior 954 scoreMean 0.47 pv H12 E2 C7 C8 B7 B8 F8 B6 F4 G4 G2 info move R7 visits 66 winrate 5589 prior 839 scoreMean 0.47 pv R7 D8 E2 Q7 Q8 R6 S8 P8 Q9 H12 P7 O7 Q6 R5 info move Q15 visits 25 winrate 5332 prior 1259 scoreMean 0.25 pv Q15 R15 C7 C8 B7 B8 R14 P15 Q14 info move Q6 visits 22 winrate 5415 prior 785 scoreMean 0.32 pv Q6 P6 Q7 R2 S2 P2 info move Q14 visits 33 winrate 5588 prior 349 scoreMean 0.47 pv Q14 D8 E2 H12 J6 R14 info move A17 visits 13 winrate 5329 prior 587 scoreMean 0.24 pv A17 A16 R7 Q7 Q8 info move G4 visits 52 winrate 5510 prior 208 scoreMean 0.38 pv G4 F4 C7 C8 B7 B8 H4 G3 G6 M3 L3 L4 K3 info move J6 visits 3 winrate 5393 prior 128 scoreMean 0.32 pv J6 D8 E2 info move N8 visits 3 winrate 5526 prior 64 scoreMean 0.44 pv N8 D8 E2 info move R14 visits 2 winrate 5210 prior 110 scoreMean 0.19 pv R14 Q14];W[cm]C[흑 승률: 55.5% (+1.5%)
+리드: 0.7 (+0.2) stdev: 14.8
+(KataGo18blocks / 2.1k visits)
+덤: 6.5
+Move time: 2.082 초]LZ[KataGo18blocks 44.5 2.1k 0.7 14.8
+move C8 visits 2146 winrate 5551 prior 9392 scoreMean 0.74 pv C8 B7 B8 N8 R6 S7 Q14 R2 info move B3 visits 1 winrate 2871 prior 307 scoreMean -2.32 pv B3 info move R6 visits 1 winrate 3196 prior 202 scoreMean -2.11 pv R6 info move B7 visits 1 winrate 3211 prior 59 scoreMean -2.10 pv B7];B[cl]C[백 승률: 57.2% (-0.3%)
+리드: 0.6 (-0.0) stdev: 13.0
+(KataGo28blocks / 2.4k visits)
+덤: 6.5
+Move time: 2.065 초]LZ[KataGo28blocks 42.8 2.4k 0.6 13.0
+move B7 visits 2343 winrate 5715 prior 9577 scoreMean 0.58 pv B7 B8 R7 Q7 Q8 R6 P7 S5 R5 Q6 S7 R2 S4 S3 info move A17 visits 9 winrate 5267 prior 348 scoreMean 0.21 pv A17 A16 B7 B8 G4 F4];W[bm]C[흑 승률: 55.2% (-0.4%)
+리드: 0.7 (-0.0) stdev: 14.8
+(KataGo18blocks / 3.7k visits)
+덤: 6.5
+Move time: 2.07 초]LZ[KataGo18blocks 44.8 3.7k 0.7 14.8
+move B8 visits 3667 winrate 5516 prior 9859 scoreMean 0.71 pv B8 N8 E7 R7 R2 S2 P2 O3 Q7 Q8 P8 Q6 P7 P6 info move B3 visits 1 winrate 2696 prior 95 scoreMean -2.87 pv B3];B[bl]C[백 승률: 57.9% (+0.7%)
+리드: 0.6 (+0.1) stdev: 13.0
+(KataGo28blocks / 3.3k visits)
+덤: 6.5
+Move time: 2.099 초]LZ[KataGo28blocks 42.1 3.3k 0.6 13.0
+move R7 visits 2568 winrate 5789 prior 1475 scoreMean 0.64 pv R7 Q7 Q8 R6 P7 S5 R5 Q6 S7 R2 S4 S3 T5 P2 info move G4 visits 176 winrate 5475 prior 3229 scoreMean 0.36 pv G4 F4 G6 K6 H4 J3 E2 M2 O3 info move Q14 visits 126 winrate 5755 prior 440 scoreMean 0.63 pv Q14 R14 R13 R15 Q13 H12 G4 M3 N3 info move H12 visits 134 winrate 5715 prior 366 scoreMean 0.56 pv H12 E2 F8 B6 F4 G4 G2 info move J6 visits 92 winrate 5467 prior 1688 scoreMean 0.33 pv J6 R6 R5 M3 N3 L3 Q6 R7 info move Q6 visits 104 winrate 5594 prior 445 scoreMean 0.50 pv Q6 P6 Q7 P7 P8 N7 O8 N6 K5 J5 K6 E7 J6 info move F8 visits 34 winrate 5338 prior 957 scoreMean 0.27 pv F8 D8 B4 B5 A4 A7 H12 M17 info move Q15 visits 8 winrate 5372 prior 275 scoreMean 0.31 pv Q15 R15 R14 P15 Q14 info move A17 visits 12 winrate 5252 prior 247 scoreMean 0.21 pv A17 A16 R7 Q7 Q8 R6 P7 S5 R5 Q6 info move M2 visits 5 winrate 5413 prior 129 scoreMean 0.34 pv M2 E7 F7];W[qm]C[흑 승률: 56.8% (+1.7%)
+리드: 0.9 (+0.2) stdev: 14.7
+(KataGo18blocks / 2.0k visits)
+덤: 6.5
+Move time: 2.088 초]LZ[KataGo18blocks 43.2 2.0k 0.9 14.7
+move Q7 visits 1910 winrate 5684 prior 5200 scoreMean 0.90 pv Q7 J6 Q8 O7 M17 Q15 R15 Q14 R14 info move E7 visits 42 winrate 5023 prior 1886 scoreMean 0.12 pv E7 F7 F8 G7 G8 H7 H8 J7 M3 N3 M2 info move R2 visits 41 winrate 5346 prior 898 scoreMean 0.48 pv R2 S2 P2 R1 M3 L3 L4 N3 M2 N2 M5 info move O7 visits 17 winrate 5288 prior 580 scoreMean 0.36 pv O7 N8 Q7 Q8 P8 Q6 P6 info move M17 visits 7 winrate 5202 prior 309 scoreMean 0.23 pv M17 Q15 R15 R14 info move E2 visits 7 winrate 5229 prior 258 scoreMean 0.32 pv E2 G5 Q7 Q8 R6 info move Q14 visits 6 winrate 5011 prior 399 scoreMean 0.08 pv Q14 O7 R2 info move H12 visits 4 winrate 5281 prior 64 scoreMean 0.40 pv H12 O7 R2 info move R14 visits 1 winrate 4976 prior 61 scoreMean 0.44 pv R14 info move P8 visits 1 winrate 4830 prior 54 scoreMean 0.15 pv P8];B[pm]C[백 승률: 57.6% (-0.3%)
+리드: 0.6 (-0.0) stdev: 13.0
+(KataGo28blocks / 3.1k visits)
+덤: 6.5
+Move time: 2.095 초]LZ[KataGo28blocks 42.4 3.1k 0.6 13.0
+move Q8 visits 3044 winrate 5759 prior 7072 scoreMean 0.62 pv Q8 R6 P7 S5 R5 Q6 S7 R2 S4 S3 T5 P2 Q14 R14 info move G4 visits 25 winrate 5412 prior 701 scoreMean 0.35 pv G4 F4 G5 E2 K2 K3 info move A17 visits 21 winrate 5326 prior 647 scoreMean 0.30 pv A17 A16 Q8 R6 P7 S5 R5 Q6 S7 R2 S4 info move J6 visits 18 winrate 5385 prior 519 scoreMean 0.29 pv J6 E7 F7 F8 G8 F6 G7 D5 info move F8 visits 4 winrate 5225 prior 163 scoreMean 0.19 pv F8 D8 B4 info move L2 visits 3 winrate 4983 prior 194 scoreMean -0.05 pv L2 R6 info move Q14 visits 4 winrate 5413 prior 88 scoreMean 0.38 pv Q14 R14 R13 info move Q15 visits 5 winrate 5117 prior 132 scoreMean 0.14 pv Q15 R15 R14 P15 Q14 info move K6 visits 1 winrate 5136 prior 74 scoreMean 0.29 pv K6 info move H12 visits 1 winrate 5347 prior 49 scoreMean 0.53 pv H12];W[pl]C[흑 승률: 56.9% (+0.0%)
+리드: 0.9 (+0.0) stdev: 14.6
+(KataGo18blocks / 3.5k visits)
+덤: 6.5
+Move time: 2.072 초]LZ[KataGo18blocks 43.1 3.5k 0.9 14.6
+move R6 visits 3407 winrate 5687 prior 7000 scoreMean 0.92 pv R6 S7 P7 P8 N7 N9 R2 M7 R14 L3 K3 S2 P2 O3 info move P7 visits 48 winrate 5128 prior 1389 scoreMean 0.16 pv P7 P8 N7 O8 R2 S2 P2 K5 J5 K6 info move P8 visits 19 winrate 4514 prior 1030 scoreMean -0.56 pv P8 Q6 P7 P6 O6 R6 O5 O7 N7 O8 info move R2 visits 9 winrate 5093 prior 305 scoreMean 0.16 pv R2 S2 P7 P8 N7 N9 info move E7 visits 1 winrate 4508 prior 89 scoreMean -0.45 pv E7 info move N5 visits 1 winrate 4699 prior 70 scoreMean -0.40 pv N5];B[qn]C[백 승률: 57.9% (+0.3%)
+리드: 0.7 (+0.0) stdev: 12.7
+(KataGo28blocks / 4.4k visits)
+덤: 6.5
+Move time: 2.077 초]LZ[KataGo28blocks 42.1 4.4k 0.7 12.7
+move S7 visits 775 winrate 5794 prior 879 scoreMean 0.65 pv S7 P7 P8 N7 N9 M7 L6 E7 F7 F8 G7 G8 H7 M3 info move P7 visits 3242 winrate 5756 prior 2251 scoreMean 0.61 pv P7 S5 R5 Q6 S7 R2 S4 S3 T5 P2 Q14 R14 Q13 R15 info move S8 visits 321 winrate 5373 prior 6447 scoreMean 0.31 pv S8 P8 Q9 R2 H12 K6 K3 L3 L4 info move R8 visits 12 winrate 5143 prior 342 scoreMean 0.12 pv R8 S5 R5 Q6 S4 P8 P9 O8 O6 O9 info move F8 visits 1 winrate 4499 prior 31 scoreMean -0.33 pv F8];W[rm]C[흑 승률: 55.7% (-1.1%)
+리드: 0.7 (-0.2) stdev: 14.5
+(KataGo18blocks / 4.1k visits)
+덤: 6.5
+Move time: 2.075 초]LZ[KataGo18blocks 44.3 4.1k 0.7 14.5
+move P7 visits 3212 winrate 5573 prior 2530 scoreMean 0.75 pv P7 P8 N7 N9 R2 M7 R14 L3 K3 K2 E7 F7 J2 S2 info move P8 visits 594 winrate 5450 prior 3561 scoreMean 0.80 pv P8 P7 Q6 O7 S5 S4 R5 T5 R8 Q9 S8 T6 R10 Q2 info move R2 visits 237 winrate 5311 prior 2218 scoreMean 0.42 pv R2 P7 P2 S2 Q14 L3 K3 R1 E2 F4 G4 G5 info move E7 visits 31 winrate 5035 prior 601 scoreMean 0.10 pv E7 P7 R2 F7 F8 G8 F6 info move O7 visits 11 winrate 4912 prior 357 scoreMean -0.03 pv O7 P7 P6 P8 R2 S2 info move N5 visits 11 winrate 4906 prior 218 scoreMean -0.09 pv N5 M5 P8 P7 Q6 O7 S5 R5 R2 info move R14 visits 8 winrate 5325 prior 61 scoreMean 0.48 pv R14 P7 R2 S2 M3 N3 M2 L4 K3 N2 N4 O4 N5 O5 info move M3 visits 3 winrate 4631 prior 125 scoreMean -0.25 pv M3 N3 L3 info move E2 visits 3 winrate 5022 prior 78 scoreMean 0.15 pv E2 P7 E7 F7 F6 info move Q14 visits 3 winrate 5079 prior 60 scoreMean 0.25 pv Q14 P7 R2 info move M17 visits 2 winrate 5203 prior 48 scoreMean 0.34 pv M17 P7];B[om]C[백 승률: 57.1% (-0.8%)
+리드: 0.6 (-0.1) stdev: 12.8
+(KataGo28blocks / 1.1k visits)
+덤: 6.5
+Move time: 2.047 초]LZ[KataGo28blocks 42.9 1.1k 0.6 12.8
+move P8 visits 1077 winrate 5714 prior 6135 scoreMean 0.59 pv P8 N7 N9 M7 L6 E7 F7 F8 G7 G8 H7 M3 N3 L3 info move O9 visits 41 winrate 5427 prior 1697 scoreMean 0.34 pv O9 N7 J5 K5 M7 P8 K6 J6 H5 info move A17 visits 9 winrate 5293 prior 603 scoreMean 0.26 pv A17 A16 P8 N7 N9 M7 info move F8 visits 8 winrate 5409 prior 325 scoreMean 0.30 pv F8 D8 P8 N7 M7 O8 O6 info move L2 visits 5 winrate 5232 prior 334 scoreMean 0.16 pv L2 K6 P8 info move J5 visits 5 winrate 5213 prior 361 scoreMean 0.12 pv J5 P8 G4 K5 info move Q15 visits 2 winrate 5248 prior 130 scoreMean 0.19 pv Q15 R15 info move G4 visits 1 winrate 5178 prior 86 scoreMean 0.19 pv G4];W[ol]C[흑 승률: 55.4% (-0.4%)
+리드: 0.7 (-0.0) stdev: 14.5
+(KataGo18blocks / 4.7k visits)
+덤: 6.5
+Move time: 2.074 초]LZ[KataGo18blocks 44.6 4.7k 0.7 14.5
+move N7 visits 4624 winrate 5537 prior 6072 scoreMean 0.71 pv N7 N9 M7 L6 E7 F7 F8 G7 G8 H7 M3 N3 L3 O4 info move O7 visits 44 winrate 4941 prior 942 scoreMean -0.06 pv O7 M8 O8 O9 N9 N8 R2 info move O8 visits 43 winrate 4235 prior 1921 scoreMean -0.90 pv O8 O7 N5 N6 R2 S2 O6 N7 M5 info move R2 visits 11 winrate 4396 prior 514 scoreMean -0.59 pv R2 O7 O6 N7 R14 info move N5 visits 7 winrate 4383 prior 377 scoreMean -0.70 pv N5 L4 K3 O7 R2 S2 info move E7 visits 1 winrate 4352 prior 64 scoreMean -0.63 pv E7 info move R14 visits 1 winrate 4840 prior 14 scoreMean 0.12 pv R14];B[mm]C[백 승률: 57.1% (-0.1%)
+리드: 0.6 (-0.0) stdev: 12.7
+(KataGo28blocks / 1.9k visits)
+덤: 6.5
+Move time: 2.065 초]LZ[KataGo28blocks 42.9 1.9k 0.6 12.7
+move N9 visits 1673 winrate 5707 prior 1909 scoreMean 0.58 pv N9 M7 L6 E7 F7 F8 G7 G8 H7 M3 N3 L3 N4 L7 info move M7 visits 113 winrate 5295 prior 3886 scoreMean 0.25 pv M7 O8 G4 H4 O6 O7 J6 D8 G6 info move J5 visits 23 winrate 5329 prior 760 scoreMean 0.22 pv J5 K5 M7 O8 O6 O7 K6 J6 J7 H6 H5 K7 L6 info move G4 visits 21 winrate 5411 prior 415 scoreMean 0.32 pv G4 H4 M7 O8 O6 O7 J6 D8 G6 info move M9 visits 17 winrate 5210 prior 678 scoreMean 0.15 pv M9 L8 K7 E7 F7 F8 G7 info move L2 visits 12 winrate 5307 prior 415 scoreMean 0.27 pv L2 O8 J4 J3 info move O8 visits 36 winrate 5277 prior 402 scoreMean 0.26 pv O8 R2 K6 Q14 L2 info move H5 visits 11 winrate 5174 prior 533 scoreMean 0.11 pv H5 K6 M7 O8 M8 info move F8 visits 5 winrate 5392 prior 147 scoreMean 0.24 pv F8 D8 M7 O8 info move K5 visits 5 winrate 5021 prior 280 scoreMean -0.03 pv K5 J5 J6 H5 info move A17 visits 4 winrate 5326 prior 175 scoreMean 0.26 pv A17 A16 N9 M7];W[mk]C[흑 승률: 57.1% (+1.7%)
+리드: 0.9 (+0.2) stdev: 14.3
+(KataGo18blocks / 5.9k visits)
+덤: 6.5
+Move time: 2.065 초]LZ[KataGo18blocks 42.9 5.9k 0.9 14.3
+move M7 visits 2666 winrate 5712 prior 4176 scoreMean 0.95 pv M7 K5 E7 F7 F8 G7 G8 H7 J5 K6 L4 M5 M2 Q14 info move M8 visits 562 winrate 5341 prior 4375 scoreMean 0.46 pv M8 N6 O7 J5 E7 F7 F8 G7 G8 K5 H7 G5 G4 F5 info move R2 visits 2226 winrate 5494 prior 329 scoreMean 0.67 pv R2 M7 Q14 L3 K3 K2 E7 F7 F8 G7 J2 S2 P2 G8 info move R14 visits 264 winrate 5429 prior 237 scoreMean 0.61 pv R14 M2 M8 N6 O7 J5 K2 K5 E2 L10 info move E7 visits 22 winrate 4811 prior 419 scoreMean -0.10 pv E7 M7 R2 S2 P2 F7 F8 info move Q14 visits 152 winrate 5415 prior 55 scoreMean 0.59 pv Q14 M7 R2 L3 K3 K2 E7 F7 F8 G7 J2 S2 P2 G8 info move O8 visits 4 winrate 5002 prior 93 scoreMean -0.09 pv O8 O9 M7 K5 info move M9 visits 3 winrate 4162 prior 100 scoreMean -1.14 pv M9 M7 O9 info move M17 visits 4 winrate 5275 prior 22 scoreMean 0.41 pv M17 M7 R2 L3 K3 S2 P2 O3 O4 R1 N3 N4 N2 K2 info move E2 visits 3 winrate 5161 prior 30 scoreMean 0.29 pv E2 M7 E7 F7 F6];B[lm]C[백 승률: 56.8% (-0.3%)
+리드: 0.6 (-0.0) stdev: 12.8
+(KataGo28blocks / 2.5k visits)
+덤: 6.5
+Move time: 2.091 초]LZ[KataGo28blocks 43.2 2.5k 0.6 12.8
+move L6 visits 1913 winrate 5678 prior 5760 scoreMean 0.56 pv L6 E7 F7 F8 G7 G8 H7 M3 N3 L3 N4 L7 K6 K7 info move K5 visits 567 winrate 5637 prior 3625 scoreMean 0.55 pv K5 J5 K6 E7 F7 F6 F8 E9 F4 G4 D5 B3 B2 A4 info move F8 visits 18 winrate 5497 prior 203 scoreMean 0.42 pv F8 D8 L6 M3 N3 L3 info move L7 visits 2 winrate 4816 prior 155 scoreMean -0.16 pv L7 L6 info move A17 visits 2 winrate 5094 prior 88 scoreMean -0.00 pv A17 A16 info move N6 visits 1 winrate 3342 prior 64 scoreMean -1.88 pv N6];W[kn]C[흑 승률: 59.1% (+1.9%)
+리드: 1.2 (+0.3) stdev: 14.4
+(KataGo18blocks / 2.9k visits)
+덤: 6.5
+Move time: 2.056 초]LZ[KataGo18blocks 40.9 2.9k 1.2 14.4
+move E7 visits 2587 winrate 5906 prior 3136 scoreMean 1.21 pv E7 L7 F6 F5 G5 G6 F7 G4 H5 F4 H4 L8 E2 D5 info move L7 visits 72 winrate 5072 prior 2687 scoreMean 0.10 pv L7 J6 K7 K6 M3 N3 M2 N2 N4 O4 N5 N6 O5 O6 info move M3 visits 89 winrate 5314 prior 1661 scoreMean 0.38 pv M3 N3 L3 O4 R2 K5 R14 J4 info move G6 visits 110 winrate 5592 prior 338 scoreMean 0.80 pv G6 H6 L7 K7 E7 info move R14 visits 17 winrate 5336 prior 462 scoreMean 0.45 pv R14 M2 K2 L7 E2 info move J6 visits 8 winrate 5089 prior 407 scoreMean 0.17 pv J6 L7 E7 F7 F6 F8 E9 G4 F4 F5 G6 info move E2 visits 7 winrate 5022 prior 399 scoreMean 0.05 pv E2 J6 R14 L2 info move R2 visits 6 winrate 4999 prior 312 scoreMean 0.11 pv R2 J6 M3 info move Q14 visits 4 winrate 5441 prior 114 scoreMean 0.47 pv Q14 L7 info move M9 visits 3 winrate 4940 prior 178 scoreMean -0.01 pv M9 J6 M3 info move H6 visits 3 winrate 5269 prior 89 scoreMean 0.41 pv H6 L7 E2];B[em]C[백 승률: 56.4% (-0.4%)
+리드: 0.5 (-0.0) stdev: 12.7
+(KataGo28blocks / 2.9k visits)
+덤: 6.5
+Move time: 2.078 초]LZ[KataGo28blocks 43.6 2.9k 0.5 12.7
+move F7 visits 2701 winrate 5642 prior 4708 scoreMean 0.54 pv F7 F8 G7 G8 H7 M3 N3 L3 N4 L7 K6 K7 J7 R2 info move G6 visits 45 winrate 5043 prior 1708 scoreMean 0.00 pv G6 F7 L7 R2 S2 M3 N3 L3 N4 info move L7 visits 34 winrate 5303 prior 634 scoreMean 0.26 pv L7 G7 B4 B5 A4 L8 info move G4 visits 23 winrate 5125 prior 780 scoreMean 0.13 pv G4 G7 J5 M3 N3 M2 R14 info move J5 visits 21 winrate 5113 prior 665 scoreMean 0.08 pv J5 F7 G4 M3 N3 M2 O4 info move H5 visits 17 winrate 4795 prior 910 scoreMean -0.17 pv H5 F7 L7 M3 N3 M2 info move G5 visits 8 winrate 4907 prior 367 scoreMean -0.05 pv G5 G7 J5 M3 N3 M2 info move A17 visits 1 winrate 4800 prior 41 scoreMean -0.25 pv A17 info move D5 visits 1 winrate 4797 prior 33 scoreMean -0.17 pv D5 info move N6 visits 1 winrate 3948 prior 42 scoreMean -1.37 pv N6];W[fm]C[흑 승률: 59.2% (+0.1%)
+리드: 1.2 (-0.0) stdev: 14.2
+(KataGo18blocks / 2.6k visits)
+덤: 6.5
+Move time: 2.051 초]LZ[KataGo18blocks 40.8 2.6k 1.2 14.2
+move F8 visits 2469 winrate 5916 prior 3328 scoreMean 1.17 pv F8 G7 G8 H8 J6 L7 H7 G9 E9 F9 E8 J8 F6 F4 info move F6 visits 62 winrate 4467 prior 3439 scoreMean -0.69 pv F6 F5 G6 G5 H6 H5 J5 J6 K6 J7 K7 info move J6 visits 52 winrate 5070 prior 1788 scoreMean 0.08 pv J6 L7 F6 F8 E9 G4 F4 F5 G6 G5 H5 H7 H6 E2 info move L7 visits 12 winrate 4694 prior 662 scoreMean -0.32 pv L7 F8 E9 J6 K7 info move M3 visits 7 winrate 4915 prior 324 scoreMean -0.05 pv M3 N3 L3 O4 R2 S2 info move H6 visits 3 winrate 5123 prior 127 scoreMean 0.35 pv H6 L7 F6 info move G6 visits 1 winrate 4865 prior 61 scoreMean -0.00 pv G6 info move R2 visits 1 winrate 4490 prior 41 scoreMean -0.32 pv R2 info move G5 visits 1 winrate 4809 prior 30 scoreMean 0.02 pv G5 info move J7 visits 1 winrate 4550 prior 27 scoreMean -0.33 pv J7];B[fl]C[백 승률: 55.7% (-0.8%)
+리드: 0.5 (-0.1) stdev: 12.6
+(KataGo28blocks / 3.4k visits)
+덤: 6.5
+Move time: 2.057 초]LZ[KataGo28blocks 44.3 3.4k 0.5 12.6
+move G7 visits 3360 winrate 5566 prior 5361 scoreMean 0.46 pv G7 G8 H7 M3 N3 L3 N4 L7 K6 K7 J7 R2 S2 K10 info move G8 visits 37 winrate 4292 prior 2123 scoreMean -0.80 pv G8 F6 G7 F5 G4 D5 F4 E4 E3 G3 info move G6 visits 17 winrate 4486 prior 964 scoreMean -0.42 pv G6 G8 J6 M3 N3 L3 O4 N5 N6 info move G4 visits 16 winrate 4690 prior 756 scoreMean -0.21 pv G4 G7 F6 G8 J5 M3 N3 M2 O4 info move D5 visits 8 winrate 4634 prior 448 scoreMean -0.30 pv D5 B3 B2 A4 G8 F6 G7 info move L7 visits 5 winrate 4811 prior 179 scoreMean -0.17 pv L7 F6 G7 info move J6 visits 2 winrate 4965 prior 20 scoreMean -0.11 pv J6 F6 info move H5 visits 2 winrate 4778 prior 9 scoreMean -0.21 pv H5 F6 info move A17 visits 1 winrate 4268 prior 26 scoreMean -0.99 pv A17 info move N6 visits 1 winrate 3820 prior 21 scoreMean -1.37 pv N6];W[gm]C[흑 승률: 58.0% (-1.1%)
+리드: 1.1 (-0.1) stdev: 14.3
+(KataGo18blocks / 3.9k visits)
+덤: 6.5
+Move time: 2.049 초]LZ[KataGo18blocks 42.0 3.9k 1.1 14.3
+move G8 visits 3540 winrate 5801 prior 1747 scoreMean 1.07 pv G8 H8 J6 L7 H7 G9 E9 F9 E8 J8 F6 F4 G6 L8 info move L7 visits 178 winrate 5127 prior 3287 scoreMean 0.20 pv L7 J6 G8 H8 H7 G9 F6 G6 H6 G5 J7 E8 info move M3 visits 61 winrate 4806 prior 1827 scoreMean -0.14 pv M3 N3 L3 O4 N5 N6 O5 O6 P5 J4 info move F5 visits 44 winrate 5138 prior 825 scoreMean 0.17 pv F5 G4 F4 F6 M3 N3 L3 info move F6 visits 21 winrate 5221 prior 357 scoreMean 0.34 pv F6 G4 G6 F4 J6 L7 info move H6 visits 19 winrate 4896 prior 571 scoreMean -0.06 pv H6 L7 L8 K8 M9 G8 K7 J5 info move J7 visits 12 winrate 5149 prior 264 scoreMean 0.20 pv J7 L7 G8 H7 H8 J6 M3 info move H7 visits 11 winrate 4170 prior 303 scoreMean -1.03 pv H7 G8 L7 K6 H6 K7 H8 info move J6 visits 6 winrate 4550 prior 244 scoreMean -0.56 pv J6 L7 L8 K8 K7 info move R2 visits 4 winrate 4454 prior 206 scoreMean -0.59 pv R2 G8 F9 L2];B[gl]C[백 승률: 55.2% (-0.4%)
+리드: 0.4 (-0.0) stdev: 12.6
+(KataGo28blocks / 4.2k visits)
+덤: 6.5
+Move time: 2.087 초]LZ[KataGo28blocks 44.8 4.2k 0.4 12.6
+move H7 visits 4018 winrate 5523 prior 6383 scoreMean 0.42 pv H7 M3 N3 L3 N4 L7 K6 K7 J7 R2 S2 K10 H9 M10 info move H8 visits 55 winrate 5105 prior 1080 scoreMean 0.04 pv H8 J6 G9 L7 E8 D8 F9 K7 R14 Q14 info move D5 visits 37 winrate 5012 prior 927 scoreMean 0.02 pv D5 B3 B2 A4 H7 M3 N3 L3 O4 N5 N6 info move J6 visits 31 winrate 4671 prior 1157 scoreMean -0.38 pv J6 H7 H6 D5 E5 E4 G6 B3 B2 B4 info move J7 visits 9 winrate 5001 prior 177 scoreMean -0.02 pv J7 H7 H6 H8 D5 info move O6 visits 2 winrate 4845 prior 51 scoreMean -0.32 pv O6 O7 info move J5 visits 1 winrate 4894 prior 30 scoreMean 0.05 pv J5 info move L7 visits 1 winrate 4240 prior 28 scoreMean -0.81 pv L7 info move N6 visits 1 winrate 3980 prior 28 scoreMean -1.26 pv N6 info move A17 visits 1 winrate 3771 prior 19 scoreMean -1.72 pv A17];W[hm]C[흑 승률: 60.4% (+2.4%)
+리드: 1.3 (+0.2) stdev: 13.6
+(KataGo18blocks / 2.7k visits)
+덤: 6.5
+Move time: 2.068 초]LZ[KataGo18blocks 39.6 2.7k 1.3 13.6
+move M3 visits 2482 winrate 6040 prior 4578 scoreMean 1.32 pv M3 N3 L3 H8 R2 Q14 R14 R13 R15 S13 M11 A17 A16 B19 info move L7 visits 189 winrate 5661 prior 2744 scoreMean 0.83 pv L7 J5 F5 G4 H4 G5 M3 N3 M2 info move F5 visits 14 winrate 5017 prior 663 scoreMean 0.06 pv F5 L7 F6 D5 B3 info move B3 visits 9 winrate 5352 prior 280 scoreMean 0.48 pv B3 B2 B4 H8 D5 info move R2 visits 8 winrate 4997 prior 397 scoreMean -0.06 pv R2 A17 A16 B19 info move H8 visits 6 winrate 5312 prior 241 scoreMean 0.41 pv H8 J8 J7 J6 K7 info move R14 visits 4 winrate 4829 prior 284 scoreMean -0.11 pv R14 L2 K2 info move J6 visits 5 winrate 4353 prior 344 scoreMean -0.91 pv J6 L7 J7 info move E2 visits 1 winrate 4197 prior 100 scoreMean -0.66 pv E2 info move K8 visits 1 winrate 4435 prior 75 scoreMean -0.70 pv K8];B[lq]C[백 승률: 55.1% (-0.2%)
+리드: 0.4 (-0.0) stdev: 12.6
+(KataGo28blocks / 4.8k visits)
+덤: 6.5
+Move time: 2.064 초]LZ[KataGo28blocks 44.9 4.8k 0.4 12.6
+move N3 visits 4519 winrate 5506 prior 5261 scoreMean 0.40 pv N3 L3 N4 L7 K6 K7 J7 R2 S2 K10 H9 M10 R14 Q14 info move S14 visits 54 winrate 5137 prior 905 scoreMean 0.07 pv S14 O18 N18 P17 N16 R15 N3 L3 O4 N5 N6 O5 O6 P5 info move H8 visits 66 winrate 5504 prior 109 scoreMean 0.29 pv H8 L4 Q14 R14 R13 R15 S13 Q13 info move R17 visits 53 winrate 5348 prior 368 scoreMean 0.15 pv R17 R16 Q17 P17 P16 P18 S18 O18 S16 R14 R15 Q15 S15 R18 info move R14 visits 43 winrate 4832 prior 1299 scoreMean -0.18 pv R14 Q14 Q13 P14 R17 P17 O18 R15 S16 R13 Q17 P16 P18 H8 info move A17 visits 27 winrate 5306 prior 366 scoreMean 0.19 pv A17 A16 N3 L3 O4 R2 S2 N5 info move Q14 visits 21 winrate 5063 prior 406 scoreMean -0.02 pv Q14 R14 R13 R15 S13 Q13 Q15 R17 O13 H8 J8 info move J4 visits 24 winrate 5000 prior 486 scoreMean -0.02 pv J4 J3 N3 L3 O4 R2 S2 P2 M2 info move L3 visits 22 winrate 4814 prior 388 scoreMean -0.21 pv L3 L4 N3 M2 O2 N4 M5 L2 Q2 O3 P3 N2 info move Q15 visits 8 winrate 5126 prior 150 scoreMean -0.03 pv Q15 R15 R14 P15 Q14 O16];W[mq]C[흑 승률: 60.9% (+0.5%)
+리드: 1.4 (+0.1) stdev: 13.5
+(KataGo18blocks / 4.2k visits)
+덤: 6.5
+Move time: 2.063 초]LZ[KataGo18blocks 39.1 4.2k 1.4 13.5
+move L3 visits 4001 winrate 6085 prior 6792 scoreMean 1.37 pv L3 H8 N2 Q14 R14 R13 R15 S13 Q13 P14 Q12 R11 M17 P18 info move M2 visits 155 winrate 5490 prior 3159 scoreMean 0.64 pv M2 O4 N2 L4 K3 H8 R14 G9 M17 O2];B[kq]C[백 승률: 55.8% (+0.8%)
+리드: 0.4 (-0.0) stdev: 11.7
+(KataGo28blocks / 5.4k visits)
+덤: 6.5
+Move time: 2.066 초]LZ[KataGo28blocks 44.2 5.4k 0.4 11.7
+move H8 visits 1101 winrate 5583 prior 353 scoreMean 0.37 pv H8 R2 Q14 R14 R13 R15 S13 Q13 P14 Q12 R11 N16 O16 M14 info move N4 visits 2611 winrate 5518 prior 612 scoreMean 0.44 pv N4 L7 K6 R2 S2 K7 J7 K10 H9 M10 R14 Q14 Q13 P14 info move O4 visits 1416 winrate 5439 prior 3701 scoreMean 0.32 pv O4 R2 L4 P2 M2 L2 H8 R14 S2 N2 O2 N5 N4 M1 info move O2 visits 60 winrate 4969 prior 1039 scoreMean -0.02 pv O2 R2 O5 P2 M2 L2 S2 L7 K6 J9 K9 K10 L9 info move R17 visits 44 winrate 5228 prior 460 scoreMean 0.12 pv R17 Q17 S15 R16 S16 R14 R18 P14 S14 info move R14 visits 39 winrate 4726 prior 1313 scoreMean -0.26 pv R14 Q14 Q13 P14 R17 P17 R15 O18 N17 N18 M17 info move S14 visits 30 winrate 5023 prior 599 scoreMean -0.02 pv S14 O18 N18 P17 N16 R15 O4 N5 N6 O5 O6 P5 Q2 P2 info move Q14 visits 21 winrate 4992 prior 451 scoreMean -0.05 pv Q14 R14 R13 R15 S13 Q13 Q15 R17 O13 H8 info move O6 visits 15 winrate 4643 prior 592 scoreMean -0.26 pv O6 N2 O7 R14 P18 Q17 info move Q15 visits 9 winrate 4912 prior 237 scoreMean -0.16 pv Q15 R15 R14 P15 Q14 O16 N16 info move A17 visits 8 winrate 5219 prior 97 scoreMean 0.16 pv A17 A16 O4 R2 S2 N5];W[hl]C[흑 승률: 61.4% (+0.5%)
+리드: 1.5 (+0.1) stdev: 13.4
+(KataGo18blocks / 4.4k visits)
+덤: 6.5
+Move time: 2.074 초]LZ[KataGo18blocks 38.6 4.4k 1.5 13.4
+move N2 visits 2393 winrate 6137 prior 614 scoreMean 1.48 pv N2 R15 Q15 R14 Q14 R17 R16 S16 R13 S18 P17 O18 S13 S15 info move L7 visits 1117 winrate 6019 prior 4526 scoreMean 1.30 pv L7 K7 R2 Q14 R14 R13 R15 S13 Q13 P14 Q12 R11 M17 P18 info move R2 visits 563 winrate 5967 prior 856 scoreMean 1.24 pv R2 Q14 R14 R13 R15 S13 Q13 P14 Q12 R11 M17 P18 M15 A17 info move P2 visits 121 winrate 5961 prior 151 scoreMean 1.14 pv P2 A17 A16 N6 O8 N2 O9 R2 N11 info move R14 visits 58 winrate 5288 prior 1489 scoreMean 0.49 pv R14 N4 L7 J5 R2 S2 P2 info move Q14 visits 24 winrate 5530 prior 473 scoreMean 0.70 pv Q14 N4 P2 N2 R2 S2 S1 info move M17 visits 13 winrate 5491 prior 265 scoreMean 0.63 pv M17 N4 R2 S2 P2 N2 info move R13 visits 14 winrate 5625 prior 216 scoreMean 0.83 pv R13 N4 R2 S2 P2 N2 info move O8 visits 11 winrate 5342 prior 252 scoreMean 0.46 pv O8 O9 L7 K6 K7 J6 N4 O4 info move R15 visits 13 winrate 5340 prior 248 scoreMean 0.51 pv R15 N4 R2 S2 P2 N2 L7];B[mr]C[백 승률: 63.1% (+7.3%)
+리드: 0.9 (+0.5) stdev: 11.5
+(KataGo28blocks / 932 visits)
+덤: 6.5
+Move time: 2.074 초]LZ[KataGo28blocks 36.9 932 0.9 11.5
+move R15 visits 171 winrate 6314 prior 154 scoreMean 0.87 pv R15 Q15 R14 Q14 R17 R16 S16 R13 S18 P17 O18 S13 T14 info move R17 visits 243 winrate 5536 prior 1264 scoreMean 0.24 pv R17 R16 Q17 P17 P16 P18 S18 O18 S16 R14 R15 Q15 S15 R18 info move R14 visits 195 winrate 5822 prior 3093 scoreMean 0.48 pv R14 Q14 R15 P16 O16 R16 S16 S17 Q15 P15 P14 Q13 S15 R13 info move S15 visits 119 winrate 6116 prior 356 scoreMean 0.83 pv S15 O18 P17 P18 Q17 R17 R16 S17 N17 N18 M17 R15 S16 info move S14 visits 85 winrate 5392 prior 2664 scoreMean 0.17 pv S14 O18 N18 P17 N16 R15 S15 S16 Q14 R14 R13 Q13 Q15 R16 info move Q14 visits 47 winrate 5568 prior 906 scoreMean 0.26 pv Q14 R14 R13 R15 S13 Q13 Q15 R17 Q12 P13 O14 H12 G9 E8 info move A17 visits 28 winrate 5541 prior 480 scoreMean 0.26 pv A17 A16 R17 R16 Q17 P17 P16 P18 S17 info move Q15 visits 6 winrate 5187 prior 423 scoreMean 0.03 pv Q15 R15 R14 P15 Q14 O16 info move R13 visits 5 winrate 5206 prior 196 scoreMean 0.03 pv R13 R15 P18 Q13 info move G9 visits 2 winrate 4849 prior 247 scoreMean -0.23 pv G9 R15 info move O3 visits 2 winrate 5188 prior 100 scoreMean 0.06 pv O3 O2];W[qe]C[흑 승률: 56.1% (-5.2%)
+리드: 0.8 (-0.7) stdev: 12.9
+(KataGo18blocks / 2.1k visits)
+덤: 6.5
+Move time: 2.052 초]LZ[KataGo18blocks 43.9 2.1k 0.8 12.9
+move O16 visits 1478 winrate 5614 prior 602 scoreMean 0.76 pv O16 N16 P16 Q14 P14 M15 N14 N15 P15 S17 Q12 R12 P13 R13 info move Q15 visits 551 winrate 5263 prior 8093 scoreMean 0.49 pv Q15 R14 Q14 R17 R16 S16 R13 S18 R18 S13 S12 S14 O14 N14 info move P15 visits 18 winrate 5576 prior 327 scoreMean 0.62 pv P15 P14 O16 N16 Q14 Q15 P16 info move R16 visits 14 winrate 4736 prior 524 scoreMean -0.25 pv R16 Q15 P15 P16 P14 S16 S17 info move O18 visits 10 winrate 4723 prior 365 scoreMean -0.26 pv O18 P17 P18 Q17 R17 R16 N17 info move P14 visits 1 winrate 4065 prior 26 scoreMean -0.78 pv P14];B[nd]C[백 승률: 60.9% (-2.2%)
+리드: 0.6 (-0.2) stdev: 10.4
+(KataGo28blocks / 853 visits)
+덤: 6.5
+Move time: 2.071 초]LZ[KataGo28blocks 39.1 853 0.6 10.4
+move N16 visits 466 winrate 6092 prior 5888 scoreMean 0.64 pv N16 P16 Q14 P14 M15 P15 N18 Q13 R13 R12 Q12 P13 info move P16 visits 196 winrate 5792 prior 3691 scoreMean 0.48 pv P16 Q15 N16 R14 G9 R12 F9 D8 A17 A16 B19 L7 info move A17 visits 52 winrate 5851 prior 294 scoreMean 0.49 pv A17 A16 P16 Q15 N16 R14 G9 R12 H12 L7 K5 info move O4 visits 2 winrate 4914 prior 21 scoreMean -0.25 pv O4 P2 info move E8 visits 2 winrate 4908 prior 2 scoreMean -0.15 pv E8 D8 info move D5 visits 2 winrate 4652 prior 1 scoreMean -0.48 pv D5 B3 info move O2 visits 1 winrate 4584 prior 31 scoreMean -0.40 pv O2 info move O3 visits 1 winrate 3268 prior 15 scoreMean -1.89 pv O3 info move P17 visits 1 winrate 3363 prior 10 scoreMean -1.38 pv P17 info move B15 visits 1 winrate 4808 prior 8 scoreMean -0.20 pv B15];W[md]C[흑 승률: 55.3% (-0.8%)
+리드: 0.6 (-0.2) stdev: 12.8
+(KataGo18blocks / 3.3k visits)
+덤: 6.5
+Move time: 2.05 초]LZ[KataGo18blocks 44.7 3.3k 0.6 12.8
+move P16 visits 3298 winrate 5530 prior 8157 scoreMean 0.61 pv P16 Q14 N17 M17 N18 M18 O18 M15 P14 P15 Q15 R14 M11 S17 info move Q15 visits 32 winrate 3598 prior 1713 scoreMean -1.41 pv Q15 R13 Q13 R14 R16 info move R16 visits 1 winrate 3665 prior 96 scoreMean -1.13 pv R16];B[od]C[백 승률: 62.4% (+1.5%)
+리드: 0.8 (+0.2) stdev: 10.3
+(KataGo28blocks / 1.4k visits)
+덤: 6.5
+Move time: 2.079 초]LZ[KataGo28blocks 37.6 1.4k 0.8 10.3
+move Q14 visits 1353 winrate 6240 prior 6493 scoreMean 0.80 pv Q14 P14 M15 P15 Q13 G10 F10 E8 G11 H9 H12 N17 M17 N18 info move N17 visits 36 winrate 5475 prior 1529 scoreMean 0.23 pv N17 Q14 R13 N15 O14 M15 L17 Q13 R12 N13 O13 O12 info move A17 visits 39 winrate 5904 prior 505 scoreMean 0.45 pv A17 A16 Q14 P14 N15 P15 N18 Q13 R13 R12 S13 info move Q13 visits 7 winrate 5280 prior 497 scoreMean 0.05 pv Q13 N17 M17 N18 M18 M16 info move P14 visits 3 winrate 4992 prior 252 scoreMean -0.21 pv P14 Q14 info move N15 visits 3 winrate 4777 prior 313 scoreMean -0.34 pv N15 Q14 Q15 info move M17 visits 1 winrate 5460 prior 88 scoreMean 0.25 pv M17 info move M16 visits 1 winrate 4793 prior 149 scoreMean -0.22 pv M16 info move N18 visits 1 winrate 5149 prior 65 scoreMean 0.07 pv N18];W[pf]C[흑 승률: 55.3% (+0.0%)
+리드: 0.6 (-0.0) stdev: 12.7
+(KataGo18blocks / 6.8k visits)
+덤: 6.5
+Move time: 2.041 초]LZ[KataGo18blocks 44.7 6.8k 0.6 12.7
+move N17 visits 2855 winrate 5531 prior 1943 scoreMean 0.57 pv N17 M17 N18 M18 O18 M15 P14 P15 M11 A17 A16 L9 L10 M10 info move P14 visits 3776 winrate 5529 prior 4778 scoreMean 0.60 pv P14 M15 N17 M17 N18 M18 O18 P15 M11 A17 A16 L9 L10 M10 info move N15 visits 158 winrate 4409 prior 2965 scoreMean -0.54 pv N15 M16 O14 P15 M15 L15 L16 L17 K16 M13 L14 K15 O18 N18 info move P15 visits 8 winrate 4189 prior 205 scoreMean -0.65 pv P15 N17 N15 M15 O14 info move R16 visits 1 winrate 3584 prior 25 scoreMean -1.36 pv R16 info move M16 visits 1 winrate 4311 prior 15 scoreMean -0.49 pv M16 info move S16 visits 1 winrate 2564 prior 14 scoreMean -2.50 pv S16];B[mc]C[백 승률: 65.0% (+2.6%)
+리드: 1.0 (+0.2) stdev: 10.9
+(KataGo28blocks / 985 visits)
+덤: 6.5
+Move time: 2.062 초]LZ[KataGo28blocks 35.0 985 1.0 10.9
+move M17 visits 902 winrate 6504 prior 9256 scoreMean 1.02 pv M17 N18 M18 O18 M15 P14 P15 Q15 Q13 H12 G9 E8 J10 M10 info move A17 visits 52 winrate 6170 prior 585 scoreMean 0.71 pv A17 A16 M17 N18 M18 O18 M15 P14 P15 Q15 Q13 H12 G9 E8 info move O4 visits 1 winrate 4812 prior 61 scoreMean -0.21 pv O4 info move O2 visits 1 winrate 5190 prior 17 scoreMean 0.15 pv O2 info move O3 visits 1 winrate 4230 prior 17 scoreMean -0.82 pv O3 info move M16 visits 1 winrate 5163 prior 15 scoreMean 0.13 pv M16 info move B15 visits 1 winrate 4526 prior 8 scoreMean -0.47 pv B15 info move A15 visits 1 winrate 4170 prior 6 scoreMean -0.72 pv A15 info move E8 visits 1 winrate 5310 prior 3 scoreMean 0.20 pv E8 info move Q2 visits 1 winrate 2656 prior 2 scoreMean -2.46 pv Q2];W[lc]C[흑 승률: 53.9% (-1.5%)
+리드: 0.4 (-0.2) stdev: 12.8
+(KataGo18blocks / 4.9k visits)
+덤: 6.5
+Move time: 2.049 초]LZ[KataGo18blocks 46.1 4.9k 0.4 12.8
+move N18 visits 4870 winrate 5385 prior 9973 scoreMean 0.42 pv N18 M18 O18 M15 P14 P15 M11 L9 L10 H12 K9 L8 Q15 Q13];B[mb]C[백 승률: 64.9% (-0.2%)
+리드: 1.0 (-0.0) stdev: 10.9
+(KataGo28blocks / 1.9k visits)
+덤: 6.5
+Move time: 2.039 초]LZ[KataGo28blocks 35.1 1.9k 1.0 10.9
+move M18 visits 1844 winrate 6487 prior 7548 scoreMean 1.00 pv M18 O18 M15 P14 P15 Q15 Q13 H12 G9 E8 J10 L7 J12 J13 info move A17 visits 46 winrate 6098 prior 593 scoreMean 0.66 pv A17 A16 M18 O18 N15 H12 J12 J11 info move M16 visits 19 winrate 5879 prior 762 scoreMean 0.43 pv M16 M18 L18 L17 K17 L16 L15 K16 K18 O18 J16 info move L18 visits 10 winrate 5632 prior 658 scoreMean 0.28 pv L18 N15 M16 P14 Q13 H9 G9 info move L17 visits 4 winrate 5148 prior 285 scoreMean -0.03 pv L17 N15 M16 P14 info move O3 visits 1 winrate 5240 prior 43 scoreMean 0.13 pv O3 info move N15 visits 1 winrate 4950 prior 26 scoreMean -0.01 pv N15];W[lb]C[흑 승률: 52.5% (-1.3%)
+리드: 0.3 (-0.1) stdev: 12.9
+(KataGo18blocks / 7.4k visits)
+덤: 6.5
+Move time: 2.05 초]LZ[KataGo18blocks 47.5 7.4k 0.3 12.9
+move O18 visits 7025 winrate 5253 prior 3404 scoreMean 0.27 pv O18 M15 P14 P15 M11 L9 L10 H12 H11 J11 K9 L8 L7 K8 info move M16 visits 235 winrate 4001 prior 4893 scoreMean -1.00 pv M16 N15 O18 L16 P14 G9 E8 H12 P15 Q13 H9 A17 A16 B19 info move N15 visits 88 winrate 4499 prior 1160 scoreMean -0.43 pv N15 M16 P14 O18 R16 Q13 N14 B19 D18 F18 D19 F16 info move P14 visits 52 winrate 4452 prior 477 scoreMean -0.44 pv P14 O18 N15 M16 R16 Q13 N14 B19 D18 F18 D19 F16 info move P15 visits 1 winrate 1509 prior 18 scoreMean -4.25 pv P15];B[nb]C[백 승률: 65.9% (+1.0%)
+리드: 1.2 (+0.2) stdev: 10.4
+(KataGo28blocks / 2.8k visits)
+덤: 6.5
+Move time: 2.103 초]LZ[KataGo28blocks 34.1 2.8k 1.2 10.4
+move N15 visits 763 winrate 6586 prior 1772 scoreMean 1.21 pv N15 G10 J11 H12 J12 H13 G9 F9 H9 H10 J10 info move M15 visits 1964 winrate 6488 prior 7201 scoreMean 0.98 pv M15 P14 P15 Q15 Q13 H12 G9 E8 J10 L7 A17 A16 E9 M10 info move M16 visits 20 winrate 5868 prior 577 scoreMean 0.44 pv M16 G10 H11 P14 P15 Q15 R14 M10 info move A17 visits 14 winrate 6031 prior 363 scoreMean 0.60 pv A17 A16 M15 P14 P15 Q15 Q13 H12 G9 E8 J11 J12 K12 K13];W[me]C[흑 승률: 65.4% (+12.9%)
+리드: 1.6 (+1.3) stdev: 11.6
+(KataGo18blocks / 2.3k visits)
+덤: 6.5
+Move time: 2.079 초]LZ[KataGo18blocks 34.6 2.3k 1.6 11.6
+move P14 visits 1937 winrate 6543 prior 4351 scoreMean 1.61 pv P14 G9 P15 Q12 E8 E9 G13 F9 D8 B4 B5 B3 H9 H11 info move H12 visits 101 winrate 5995 prior 2261 scoreMean 1.11 pv H12 K13 H9 J9 H10 J10 J11 K11 M9 M10 N10 O8 info move M16 visits 236 winrate 3979 prior 1140 scoreMean -1.02 pv M16 L16 P14 G9 E8 H12 P15 Q13 H9 A17 A16 B19 J9 G4 info move G10 visits 7 winrate 5426 prior 354 scoreMean 0.37 pv G10 H11 P14 P15 Q15 info move M10 visits 7 winrate 5266 prior 388 scoreMean 0.21 pv M10 G9 E8 info move L7 visits 4 winrate 4940 prior 340 scoreMean -0.12 pv L7 G9 P14 info move M11 visits 5 winrate 5540 prior 212 scoreMean 0.49 pv M11 G9 M9 info move J12 visits 1 winrate 4372 prior 159 scoreMean -0.40 pv J12 info move G13 visits 1 winrate 4485 prior 131 scoreMean -0.31 pv G13 info move H9 visits 1 winrate 4094 prior 122 scoreMean -0.86 pv H9];B[of]C[백 승률: 71.5% (+5.6%)
+리드: 1.7 (+0.5) stdev: 10.9
+(KataGo28blocks / 1.2k visits)
+덤: 6.5
+Move time: 2.055 초]LZ[KataGo28blocks 28.5 1.2k 1.7 10.9
+move P15 visits 1171 winrate 7148 prior 5693 scoreMean 1.70 pv P15 H12 K12 M10 M9 L9 L8 Q15 R14 K10 J11 L13 L15 info move G9 visits 14 winrate 4801 prior 2708 scoreMean -0.19 pv G9 P15 Q13 E8 H12 P13 info move A17 visits 6 winrate 5792 prior 433 scoreMean 0.30 pv A17 A16 P15 M16 L16 info move P13 visits 3 winrate 4364 prior 849 scoreMean -0.52 pv P13 P15 O13 info move H12 visits 1 winrate 4500 prior 172 scoreMean -0.42 pv H12 info move Q13 visits 1 winrate 4574 prior 35 scoreMean -0.26 pv Q13 info move A15 visits 1 winrate 4563 prior 12 scoreMean -0.41 pv A15 info move O3 visits 1 winrate 4882 prior 10 scoreMean -0.21 pv O3 info move O4 visits 1 winrate 5030 prior 10 scoreMean -0.19 pv O4 info move O2 visits 1 winrate 5063 prior 6 scoreMean 0.01 pv O2];W[oe]C[흑 승률: 58.1% (-7.4%)
+리드: 0.9 (-0.7) stdev: 12.6
+(KataGo18blocks / 1.7k visits)
+덤: 6.5
+Move time: 2.048 초]LZ[KataGo18blocks 41.9 1.7k 0.9 12.6
+move M11 visits 413 winrate 5807 prior 558 scoreMean 0.94 pv M11 G9 M9 A17 A16 B19 E8 O7 Q15 R14 info move H12 visits 297 winrate 5307 prior 1790 scoreMean 0.31 pv H12 K13 M11 L9 K12 L12 K11 L11 M10 info move Q15 visits 215 winrate 4980 prior 3499 scoreMean -0.03 pv Q15 R14 H12 K12 M10 O7 O8 O6 O9 O4 O3 info move M10 visits 340 winrate 5429 prior 838 scoreMean 0.45 pv M10 G9 M9 A17 A16 B19 E8 J10 Q15 R14 P13 Q12 M16 L16 info move M16 visits 310 winrate 5225 prior 1385 scoreMean 0.55 pv M16 L16 M15 E8 D8 M14 H9 H12 G10 A17 A16 info move J12 visits 33 winrate 5056 prior 424 scoreMean -0.01 pv J12 L13 G13 B19 D18 F18 A17 info move H9 visits 28 winrate 5260 prior 190 scoreMean 0.27 pv H9 J9 H10 J10 M16 L16 Q15 info move K12 visits 10 winrate 5275 prior 88 scoreMean 0.30 pv K12 L13 G13 info move G10 visits 11 winrate 4735 prior 219 scoreMean -0.33 pv G10 H11 Q15 R14 P13 S17 info move K11 visits 9 winrate 5198 prior 96 scoreMean 0.17 pv K11 L13 H12 info move L12 visits 5 winrate 4501 prior 237 scoreMean -0.39 pv L12 L14 H12];B[li]C[백 승률: 70.9% (-0.5%)
+리드: 1.6 (-0.1) stdev: 11.3
+(KataGo28blocks / 946 visits)
+덤: 6.5
+Move time: 2.09 초]LZ[KataGo28blocks 29.1 946 1.6 11.3
+move L10 visits 526 winrate 7094 prior 1763 scoreMean 1.63 pv L10 L11 H12 K10 L9 N10 K9 P12 P13 Q12 N12 info move L9 visits 173 winrate 6820 prior 1240 scoreMean 1.30 pv L9 H12 K13 L10 J11 K9 L8 L7 info move G9 visits 41 winrate 6077 prior 3206 scoreMean 0.62 pv G9 M9 F9 E8 E9 D8 H12 N10 B4 B5 info move O7 visits 34 winrate 6187 prior 1329 scoreMean 0.88 pv O7 O8 O6 O9 O4 P2 N10 Q15 Q13 M16 info move M10 visits 54 winrate 6568 prior 449 scoreMean 1.07 pv M10 Q15 R14 P13 L15 R12 S17 info move H12 visits 16 winrate 5920 prior 705 scoreMean 0.46 pv H12 M9 O7 Q15 Q13 O8 O9 info move A17 visits 21 winrate 6423 prior 322 scoreMean 0.85 pv A17 A16 L10 Q15 Q13 M16 L16 info move M14 visits 3 winrate 5530 prior 207 scoreMean 0.21 pv M14 M9 O7 info move P13 visits 1 winrate 5347 prior 153 scoreMean 0.15 pv P13 info move O2 visits 5 winrate 5949 prior 7 scoreMean 0.54 pv O2 O3 G9 M9 A17 info move K12 visits 4 winrate 5830 prior 35 scoreMean 0.40 pv K12 M9 O7 O8];W[kj]C[흑 승률: 47.8% (-10.3%)
+리드: -0.2 (-1.2) stdev: 14.3
+(KataGo18blocks / 1.9k visits)
+덤: 6.5
+Move time: 2.048 초]LZ[KataGo18blocks 52.2 1.9k -0.2 14.3
+move L11 visits 630 winrate 4777 prior 2925 scoreMean -0.24 pv L11 H12 K10 L9 N10 O9 H11 J11 M9 M10 K11 H10 K8 M8 info move Q15 visits 613 winrate 4570 prior 5044 scoreMean -0.78 pv Q15 Q13 J12 H12 K10 L11 L12 L9 M16 M15 L16 L15 K16 K15 info move J12 visits 275 winrate 4696 prior 469 scoreMean -0.39 pv J12 H12 Q15 R14 L11 L15 P12 K10 info move M16 visits 304 winrate 4572 prior 942 scoreMean -1.36 pv M16 L16 M15 M14 Q15 E8 D8 R14 L11 E9 info move K12 visits 28 winrate 4179 prior 406 scoreMean -0.84 pv K12 H12 Q15 Q13 M16 M15 L16 L15 K16 K15 K10 info move H12 visits 3 winrate 3772 prior 82 scoreMean -1.52 pv H12 K12 Q15 info move K11 visits 1 winrate 3675 prior 20 scoreMean -1.27 pv K11 info move N10 visits 1 winrate 3989 prior 16 scoreMean -1.20 pv N10 info move K13 visits 1 winrate 3108 prior 10 scoreMean -1.95 pv K13 info move G13 visits 1 winrate 3619 prior 8 scoreMean -1.43 pv G13];B[ki]C[백 승률: 70.4% (-0.5%)
+리드: 1.6 (+0.0) stdev: 12.0
+(KataGo28blocks / 1.3k visits)
+덤: 6.5
+Move time: 2.071 초]LZ[KataGo28blocks 29.6 1.3k 1.6 12.0
+move H12 visits 1090 winrate 7043 prior 1407 scoreMean 1.64 pv H12 K10 L9 N10 O9 M9 M8 L8 K9 M10 N8 O10 P12 P11 info move K10 visits 137 winrate 6886 prior 3036 scoreMean 1.48 pv K10 K11 H12 J10 G9 M9 M10 N10 K9 Q15 Q13 info move G9 visits 62 winrate 6359 prior 3825 scoreMean 0.88 pv G9 K10 L9 H12 L13 E8 J11 J12 K11 info move A17 visits 8 winrate 6675 prior 333 scoreMean 1.04 pv A17 A16 H12 K10 L9 J12 H11 M16 info move P13 visits 5 winrate 5806 prior 563 scoreMean 0.36 pv P13 K10 G9 E8 A17 info move L13 visits 2 winrate 6201 prior 189 scoreMean 0.66 pv L13 K10 info move L14 visits 1 winrate 5753 prior 130 scoreMean 0.42 pv L14 info move M14 visits 1 winrate 5927 prior 110 scoreMean 0.53 pv M14 info move J12 visits 1 winrate 6019 prior 71 scoreMean 0.66 pv J12 info move L15 visits 1 winrate 5761 prior 57 scoreMean 0.44 pv L15];W[hh]C[흑 승률: 46.3% (-1.5%)
+리드: -0.4 (-0.2) stdev: 14.7
+(KataGo18blocks / 2.4k visits)
+덤: 6.5
+Move time: 2.075 초]LZ[KataGo18blocks 53.7 2.4k -0.4 14.7
+move K10 visits 2205 winrate 4629 prior 3880 scoreMean -0.44 pv K10 L9 N10 O9 L15 Q15 J12 J11 K11 H11 K8 L8 L7 K9 info move Q15 visits 48 winrate 3786 prior 1875 scoreMean -1.45 pv Q15 Q13 K10 L9 H11 J11 J12 H10 G11 K12 info move P12 visits 22 winrate 3930 prior 681 scoreMean -1.23 pv P12 Q15 K10 L9 N10 O9 J12 H11 J11 info move H11 visits 28 winrate 4381 prior 271 scoreMean -0.72 pv H11 J11 K10 L9 J12 K12 Q15 Q13 M16 info move M9 visits 26 winrate 4344 prior 425 scoreMean -0.88 pv M9 M10 N10 N11 O10 O9 Q15 Q13 M16 L16 K11 L9 info move J12 visits 24 winrate 3693 prior 1165 scoreMean -1.69 pv J12 K10 Q15 Q13 H11 G12 M16 info move L15 visits 13 winrate 4272 prior 169 scoreMean -0.76 pv L15 Q15 K10 L9 J12 J11 K11 J13 K8 info move J11 visits 14 winrate 3449 prior 801 scoreMean -1.94 pv J11 K10 Q15 Q13 M16 L16 info move M16 visits 3 winrate 3316 prior 196 scoreMean -2.03 pv M16 L16 Q15 info move M13 visits 4 winrate 3710 prior 113 scoreMean -1.49 pv M13 P13 K10];B[jj]C[백 승률: 69.8% (-0.6%)
+리드: 1.7 (+0.0) stdev: 12.4
+(KataGo28blocks / 1.9k visits)
+덤: 6.5
+Move time: 2.072 초]LZ[KataGo28blocks 30.2 1.9k 1.7 12.4
+move L9 visits 1827 winrate 6980 prior 5522 scoreMean 1.66 pv L9 N10 O8 J12 H11 P12 O13 O12 N12 M9 N11 info move A17 visits 54 winrate 6739 prior 658 scoreMean 1.27 pv A17 A16 L9 H11 G12 J12 G9 E8 E9 info move G9 visits 27 winrate 5846 prior 1899 scoreMean 0.44 pv G9 M9 M10 N10 L9 K8 M8 L8 O10 N11 info move O7 visits 20 winrate 6148 prior 1007 scoreMean 0.75 pv O7 O8 O6 O9 O4 P2 N10 info move P13 visits 7 winrate 5578 prior 608 scoreMean 0.28 pv P13 M9 M10 N10 L9 K8 N11 O10 info move O11 visits 1 winrate 5271 prior 109 scoreMean 0.19 pv O11];W[kk]C[흑 승률: 47.9% (+1.6%)
+리드: -0.2 (+0.2) stdev: 14.8
+(KataGo18blocks / 3.9k visits)
+덤: 6.5
+Move time: 2.054 초]LZ[KataGo18blocks 52.1 3.9k -0.2 14.8
+move N10 visits 3443 winrate 4789 prior 2691 scoreMean -0.22 pv N10 O9 L15 L16 O13 P13 P12 O14 N13 O11 J12 H11 J11 H10 info move J12 visits 146 winrate 4178 prior 2414 scoreMean -1.00 pv J12 H11 L15 M14 L14 M16 N10 O9 J11 H10 M13 N13 N12 L13 info move Q15 visits 114 winrate 4110 prior 2053 scoreMean -1.16 pv Q15 Q13 N10 O8 J12 H11 J11 info move P12 visits 49 winrate 4631 prior 458 scoreMean -0.39 pv P12 Q15 N10 O9 M13 G9 R12 O11 info move H11 visits 60 winrate 4272 prior 876 scoreMean -0.93 pv H11 J11 J12 K12 Q15 Q13 J13 H10 M16 L16 K11 G11 info move L15 visits 26 winrate 4303 prior 209 scoreMean -0.79 pv L15 Q15 J12 J11 K11 J13 K8 info move K13 visits 14 winrate 4233 prior 186 scoreMean -0.83 pv K13 P13 M16 L16 info move K9 visits 8 winrate 4199 prior 186 scoreMean -0.99 pv K9 L8 Q15 Q13 M16 L16 info move J11 visits 5 winrate 3673 prior 214 scoreMean -1.41 pv J11 G9 K8 info move M16 visits 18 winrate 2768 prior 396 scoreMean -3.29 pv M16 L16 J12 H11 H13 G13 M15 M14 info move L14 visits 4 winrate 4133 prior 82 scoreMean -1.01 pv L14 P13 M16];B[mj]C[백 승률: 69.2% (-0.6%)
+리드: 1.5 (-0.1) stdev: 12.3
+(KataGo28blocks / 2.6k visits)
+덤: 6.5
+Move time: 2.097 초]LZ[KataGo28blocks 30.8 2.6k 1.5 12.3
+move O8 visits 748 winrate 6916 prior 1029 scoreMean 1.52 pv O8 L15 L16 P12 N12 M9 M10 N11 O12 info move O9 visits 1203 winrate 6801 prior 3560 scoreMean 1.52 pv O9 L15 L16 O13 P13 P12 O14 N13 O11 J12 J11 K11 H11 K8 info move K9 visits 478 winrate 6856 prior 2571 scoreMean 1.43 pv K9 P12 O13 R13 P13 Q12 R11 P10 O9 R10 S10 R9 Q11 P11 info move L7 visits 57 winrate 6748 prior 355 scoreMean 1.22 pv L7 P12 P13 Q12 N12 P10 O9 O10 R11 info move A17 visits 32 winrate 6775 prior 229 scoreMean 1.28 pv A17 A16 K9 P12 P13 Q12 N12 P10 O9 info move G9 visits 15 winrate 5735 prior 877 scoreMean 0.36 pv G9 M9 M10 K8 M8 L8 O10 N11 info move P13 visits 16 winrate 5374 prior 965 scoreMean 0.19 pv P13 M9 M10 K8 N11 O10 M8 L8 O8 info move O7 visits 10 winrate 6418 prior 250 scoreMean 0.95 pv O7 M9 O8 K8 info move Q15 visits 1 winrate 5638 prior 43 scoreMean 0.31 pv Q15];W[nl]C[흑 승률: 51.5% (+3.6%)
+리드: 0.3 (+0.5) stdev: 13.4
+(KataGo18blocks / 2.2k visits)
+덤: 6.5
+Move time: 2.061 초]LZ[KataGo18blocks 48.5 2.2k 0.3 13.4
+move J11 visits 1111 winrate 5151 prior 488 scoreMean 0.26 pv J11 G9 K8 K9 J9 J8 M9 L8 L7 K7 M10 A17 A16 H9 info move P12 visits 211 winrate 4952 prior 806 scoreMean 0.01 pv P12 Q15 J12 H11 M13 O11 info move J12 visits 132 winrate 4692 prior 2173 scoreMean -0.32 pv J12 H11 P12 O13 O12 N12 M9 N11 M10 O10 Q15 R14 info move L15 visits 221 winrate 4896 prior 573 scoreMean -0.02 pv L15 A17 A16 L16 J12 B19 Q15 Q13 info move Q15 visits 50 winrate 4452 prior 1773 scoreMean -0.50 pv Q15 Q13 L15 L16 J12 H11 N13 O13 O12 info move K8 visits 416 winrate 4711 prior 850 scoreMean -0.28 pv K8 K9 J9 L7 J11 K12 L8 M9 K11 H9 H11 G11 G10 G9 info move H11 visits 29 winrate 4470 prior 817 scoreMean -0.58 pv H11 J11 M9 M10 K11 H10 K8 N11 info move M9 visits 25 winrate 4263 prior 712 scoreMean -0.83 pv M9 M10 K8 K9 J9 M8 L8 M9 J11 G9 J8 K12 K11 J6 info move M16 visits 10 winrate 3716 prior 561 scoreMean -1.41 pv M16 L16 J12 G9 H13 info move K13 visits 9 winrate 4225 prior 322 scoreMean -0.69 pv K13 P13 J11 info move L14 visits 7 winrate 4363 prior 188 scoreMean -0.62 pv L14 P13 M16];B[ii]C[백 승률: 72.6% (+3.5%)
+리드: 2.1 (+0.6) stdev: 13.9
+(KataGo28blocks / 1.0k visits)
+덤: 6.5
+Move time: 2.061 초]LZ[KataGo28blocks 27.4 1.0k 2.1 13.9
+move N5 visits 454 winrate 7262 prior 37 scoreMean 2.08 pv N5 O3 G9 E8 H9 H11 G12 G11 F11 info move G9 visits 370 winrate 6884 prior 5706 scoreMean 1.53 pv G9 E8 H9 L15 L16 M9 M10 K8 info move K12 visits 46 winrate 6346 prior 2399 scoreMean 0.95 pv K12 J12 K13 J13 K14 K11 G9 E8 G13 H9 H10 info move A17 visits 28 winrate 6634 prior 396 scoreMean 1.31 pv A17 A16 G9 E8 K12 J12 K13 K11 H11 info move H11 visits 14 winrate 6159 prior 622 scoreMean 0.77 pv H11 K8 K9 J9 L7 L8 info move O2 visits 26 winrate 6688 prior 84 scoreMean 1.39 pv O2 O3 N4 P2 G9 E8 H11 M9 L7 info move O4 visits 9 winrate 6195 prior 194 scoreMean 0.88 pv O4 P2 G9 E8 H11 M9 info move N4 visits 1 winrate 5450 prior 200 scoreMean 0.15 pv N4 info move G11 visits 10 winrate 6220 prior 38 scoreMean 0.79 pv G11 K8 K9 J9 J8 info move O3 visits 7 winrate 6255 prior 60 scoreMean 0.97 pv O3 O2 G9 E8 K12 info move E9 visits 7 winrate 6194 prior 9 scoreMean 0.88 pv E9 E8 G9 H9 H10];W[mo]C[흑 승률: 46.6% (-4.9%)
+리드: -0.4 (-0.6) stdev: 15.2
+(KataGo18blocks / 2.0k visits)
+덤: 6.5
+Move time: 2.042 초]LZ[KataGo18blocks 53.4 2.0k -0.4 15.2
+move P2 visits 264 winrate 4657 prior 673 scoreMean -0.37 pv P2 G9 K8 K9 J9 J8 P12 P13 Q12 N12 P10 M9 O13 info move L7 visits 1112 winrate 4341 prior 1722 scoreMean -0.88 pv L7 O2 O4 N4 O7 M2 L2 K9 J9 J8 M9 M10 K8 M8 info move O3 visits 128 winrate 4278 prior 711 scoreMean -0.80 pv O3 G9 M9 K8 P12 N12 info move Q15 visits 122 winrate 4216 prior 1649 scoreMean -1.00 pv Q15 Q13 L7 O2 O4 N4 O7 M2 L2 Q2 M9 K9 info move K8 visits 60 winrate 4171 prior 507 scoreMean -1.19 pv K8 O2 O4 N4 O7 K9 J9 L7 L8 info move R2 visits 38 winrate 4205 prior 284 scoreMean -1.12 pv R2 O2 O4 N4 S3 S4 S5 S2 P2 M2 T4 info move K9 visits 42 winrate 3789 prior 1130 scoreMean -1.77 pv K9 O2 O4 N4 R2 S2 S5 M2 P2 info move G10 visits 50 winrate 3576 prior 1625 scoreMean -2.21 pv G10 O2 O4 N4 R2 P2 S3 S4 S5 S2 R5 info move M9 visits 32 winrate 4304 prior 197 scoreMean -0.97 pv M9 O2 O4 N4 O7 M10 K9 L8 L7 K8 info move L15 visits 15 winrate 4331 prior 148 scoreMean -0.73 pv L15 Q15 K13 O2 O3];B[or]C[백 승률: 72.6% (+0.0%)
+리드: 2.3 (+0.2) stdev: 14.8
+(KataGo28blocks / 1.1k visits)
+덤: 6.5
+Move time: 2.049 초]LZ[KataGo28blocks 27.4 1.1k 2.3 14.8
+move G9 visits 1010 winrate 7264 prior 6378 scoreMean 2.31 pv G9 E8 H11 M9 K9 J9 L7 J12 N12 J8 J7 M10 L8 O11 info move A17 visits 28 winrate 6988 prior 592 scoreMean 1.92 pv A17 A16 G9 E8 H11 M9 L8 P12 info move K12 visits 24 winrate 6347 prior 1902 scoreMean 1.04 pv K12 J12 K13 J13 K14 K11 G9 G13 H13 J14 K15 info move H11 visits 13 winrate 6469 prior 849 scoreMean 1.15 pv H11 M9 M10 K8 O10 info move G11 visits 2 winrate 6783 prior 139 scoreMean 1.38 pv G11 K8 info move N12 visits 1 winrate 3967 prior 18 scoreMean -0.97 pv N12 info move K9 visits 1 winrate 5318 prior 15 scoreMean 0.13 pv K9 info move A15 visits 1 winrate 5540 prior 14 scoreMean 0.55 pv A15 info move P13 visits 1 winrate 3707 prior 14 scoreMean -1.18 pv P13 info move J9 visits 1 winrate 5608 prior 10 scoreMean 0.33 pv J9];W[gk]C[흑 승률: 44.6% (-2.0%)
+리드: -0.6 (-0.2) stdev: 14.8
+(KataGo18blocks / 2.1k visits)
+덤: 6.5
+Move time: 2.082 초]LZ[KataGo18blocks 55.4 2.1k -0.6 14.8
+move J12 visits 1007 winrate 4461 prior 875 scoreMean -0.61 pv J12 N12 M9 A17 A16 L7 M10 O7 O11 B19 info move K8 visits 382 winrate 4238 prior 2283 scoreMean -0.84 pv K8 K9 J9 J8 P12 N12 Q15 Q13 N13 P13 O12 O13 M13 info move E8 visits 219 winrate 4257 prior 1470 scoreMean -1.08 pv E8 H11 M9 L8 P12 N12 Q15 Q13 P13 Q12 Q11 P11 O11 info move L15 visits 116 winrate 4374 prior 261 scoreMean -0.69 pv L15 P13 K13 K15 K8 K9 J9 J8 M9 info move P12 visits 124 winrate 4254 prior 1143 scoreMean -0.83 pv P12 N12 M9 K8 L13 O11 Q15 R14 N13 info move K14 visits 121 winrate 4161 prior 829 scoreMean -0.94 pv K14 K13 M16 M14 L16 K12 M9 L7 L8 K9 Q15 Q13 info move M9 visits 65 winrate 4219 prior 467 scoreMean -0.79 pv M9 K8 P12 N12 L13 O11 Q15 R14 N13 info move K13 visits 49 winrate 4132 prior 479 scoreMean -0.99 pv K13 N12 M9 L7 L8 K8 O9 info move Q15 visits 19 winrate 3838 prior 583 scoreMean -1.27 pv Q15 Q13 K14 K13 M16 M14 L16 K12 L7 K6 info move O12 visits 13 winrate 3977 prior 155 scoreMean -1.28 pv O12 K12 J12 K13 K11 info move L7 visits 9 winrate 3813 prior 304 scoreMean -1.54 pv L7 K8 K7 J9 P12];B[ih]C[백 승률: 75.6% (+3.0%)
+리드: 2.1 (-0.2) stdev: 12.4
+(KataGo28blocks / 1.0k visits)
+덤: 6.5
+Move time: 2.074 초]LZ[KataGo28blocks 24.4 1.0k 2.1 12.4
+move L14 visits 192 winrate 7560 prior 608 scoreMean 2.07 pv L14 E8 H9 H11 E9 H13 F9 D8 A17 A16 B4 B5 info move K14 visits 235 winrate 7450 prior 2078 scoreMean 1.92 pv K14 E8 H9 O12 P13 P12 O10 Q13 O14 info move L13 visits 111 winrate 7395 prior 671 scoreMean 2.31 pv L13 K14 N13 E8 H11 H10 G10 info move F9 visits 99 winrate 7233 prior 1488 scoreMean 1.94 pv F9 E8 E9 D8 K9 Q15 Q13 M16 M15 L16 info move N12 visits 109 winrate 7196 prior 2084 scoreMean 2.07 pv N12 Q15 R14 M16 M15 L16 L15 K16 K15 K8 L7 L8 M9 info move L15 visits 87 winrate 7364 prior 242 scoreMean 1.79 pv L15 P10 P12 P11 Q12 E8 H9 H11 G12 G11 info move A17 visits 48 winrate 7201 prior 452 scoreMean 1.73 pv A17 A16 K14 E8 H9 P12 N12 M9 K9 info move E9 visits 30 winrate 7192 prior 237 scoreMean 1.59 pv E9 D8 L14 L7 K7 K8 K9 info move P13 visits 23 winrate 7134 prior 615 scoreMean 1.58 pv P13 K14 F9 E8 E9 D8 H9 info move K13 visits 7 winrate 6654 prior 581 scoreMean 1.31 pv K13 J13 K14 G13 H13 info move O11 visits 19 winrate 7032 prior 53 scoreMean 1.57 pv O11 Q15 R14 M16 M15 L16 L15];W[kf]C[흑 승률: 47.0% (+2.4%)
+리드: -0.3 (+0.3) stdev: 15.1
+(KataGo18blocks / 2.0k visits)
+덤: 6.5
+Move time: 2.072 초]LZ[KataGo18blocks 53.0 2.0k -0.3 15.1
+move E8 visits 1691 winrate 4699 prior 2930 scoreMean -0.35 pv E8 H9 P12 O11 Q15 R14 N13 N12 M16 L16 O12 M13 M12 N11 info move K8 visits 62 winrate 3977 prior 1991 scoreMean -1.01 pv K8 K9 J9 J8 P12 O11 Q15 R14 O12 R12 M9 L8 L7 info move P12 visits 57 winrate 4053 prior 1545 scoreMean -1.08 pv P12 O11 Q15 R14 O12 N12 N13 M13 N11 M12 O10 info move O11 visits 47 winrate 4058 prior 947 scoreMean -0.97 pv O11 A17 A16 B19 E8 K9 Q15 info move M9 visits 30 winrate 4170 prior 320 scoreMean -0.79 pv M9 L7 P12 N12 P10 Q11 P11 info move O12 visits 28 winrate 4244 prior 412 scoreMean -0.87 pv O12 O11 Q15 R14 P12 N12 N13 M13 N11 M12 O10 info move L7 visits 21 winrate 4229 prior 185 scoreMean -0.90 pv L7 K8 K7 J9 P12 info move P11 visits 16 winrate 4166 prior 226 scoreMean -0.95 pv P11 B19 E8 K9 Q15 Q13 info move P10 visits 15 winrate 4171 prior 170 scoreMean -0.90 pv P10 A17 A16 B19 E8 K9 P12 info move K14 visits 7 winrate 3973 prior 215 scoreMean -1.10 pv K14 K13 J13 J14 E8];B[el]C[백 승률: 74.8% (-0.8%)
+리드: 2.1 (+0.0) stdev: 12.3
+(KataGo28blocks / 1.2k visits)
+덤: 6.5
+Move time: 2.08 초]LZ[KataGo28blocks 25.2 1.2k 2.1 12.3
+move H9 visits 1043 winrate 7480 prior 4174 scoreMean 2.09 pv H9 P12 O11 Q15 R14 N13 Q12 P11 O10 M14 L15 L13 N12 M12 info move H11 visits 104 winrate 7082 prior 1374 scoreMean 2.09 pv H11 P12 O11 Q15 R14 O12 info move A17 visits 34 winrate 7226 prior 443 scoreMean 1.66 pv A17 A16 H9 H11 E9 H13 B19 B3 F9 D8 B2 B4 F4 G4 info move K9 visits 12 winrate 5953 prior 1116 scoreMean 0.46 pv K9 H11 G12 H9 J9 H10 F11 F10 A17 info move G11 visits 6 winrate 6169 prior 588 scoreMean 0.90 pv G11 K8 L8 L7 info move G12 visits 6 winrate 6433 prior 464 scoreMean 1.20 pv G12 H9 J9 H10 G10 info move H10 visits 5 winrate 5343 prior 839 scoreMean 0.12 pv H10 H11 G11 H13 G12 info move E9 visits 5 winrate 6257 prior 372 scoreMean 1.01 pv E9 H9 H10 J9 F9 info move J9 visits 3 winrate 5904 prior 375 scoreMean 0.53 pv J9 H10 H9 info move O11 visits 1 winrate 3987 prior 54 scoreMean -0.87 pv O11];W[hk]C[흑 승률: 48.5% (+1.5%)
+리드: -0.1 (+0.2) stdev: 14.6
+(KataGo18blocks / 3.1k visits)
+덤: 6.5
+Move time: 2.063 초]LZ[KataGo18blocks 51.5 3.1k -0.1 14.6
+move P12 visits 2635 winrate 4851 prior 3219 scoreMean -0.14 pv P12 A17 A16 O11 Q15 R14 N13 N12 M16 L16 O12 info move K14 visits 144 winrate 4550 prior 894 scoreMean -0.45 pv K14 K13 J13 J14 K15 M13 H14 J15 G13 H13 H11 B19 D18 F18 info move O11 visits 58 winrate 4304 prior 936 scoreMean -0.59 pv O11 Q11 K14 K13 J13 J14 K15 M13 H14 J15 G13 info move P11 visits 70 winrate 4549 prior 481 scoreMean -0.52 pv P11 N12 O10 R11 H11 G12 G11 info move L13 visits 65 winrate 4353 prior 712 scoreMean -0.81 pv L13 K13 J13 K14 G13 H13 H11 G12 G11 F12 F11 E12 info move O12 visits 40 winrate 4152 prior 890 scoreMean -0.94 pv O12 A17 A16 B19 K9 K8 L8 info move H11 visits 45 winrate 4254 prior 630 scoreMean -0.86 pv H11 G12 G11 E9 F9 F10 D8 F11 G13 H13 F12 G10 H14 J13 info move M9 visits 30 winrate 3785 prior 1160 scoreMean -1.46 pv M9 M10 K8 K9 J9 M8 L8 M9 J8 L7 H11 G12 G11 info move K9 visits 9 winrate 3959 prior 268 scoreMean -1.03 pv K9 K8 P12 O11 info move N13 visits 8 winrate 4291 prior 135 scoreMean -0.65 pv N13 P13 O11 info move G11 visits 8 winrate 3932 prior 166 scoreMean -1.12 pv G11 G12 H11 E9 F9 F10 D8 F11 G13 H13 F12 G10 H14 J13];B[oh]C[백 승률: 71.1% (-3.7%)
+리드: 1.7 (-0.4) stdev: 12.6
+(KataGo28blocks / 1.6k visits)
+덤: 6.5
+Move time: 2.066 초]LZ[KataGo28blocks 28.9 1.6k 1.7 12.6
+move N12 visits 693 winrate 7109 prior 4301 scoreMean 1.71 pv N12 M9 K9 K8 M10 J9 M8 L8 M9 O9 N8 N11 O12 P11 info move O11 visits 725 winrate 7099 prior 3163 scoreMean 1.83 pv O11 Q15 R13 N13 N12 R12 P13 O12 O13 P11 O10 N11 L13 L12 info move A17 visits 80 winrate 7135 prior 561 scoreMean 1.83 pv A17 A16 O11 Q15 R14 O12 N12 N13 M13 N11 M12 Q13 R13 info move Q15 visits 71 winrate 7129 prior 387 scoreMean 1.62 pv Q15 H11 G12 G11 E9 F9 F10 D8 F11 info move R12 visits 38 winrate 6776 prior 730 scoreMean 1.24 pv R12 N13 M13 M12 L13 H11 G12 info move Q11 visits 12 winrate 6757 prior 306 scoreMean 1.16 pv Q11 M9 K9 Q12 info move P13 visits 5 winrate 6169 prior 263 scoreMean 0.66 pv P13 O11 A17 info move O12 visits 1 winrate 5860 prior 77 scoreMean 0.66 pv O12 info move M13 visits 1 winrate 5821 prior 42 scoreMean 0.65 pv M13 info move S17 visits 1 winrate 5719 prior 40 scoreMean 0.46 pv S17];W[mh]C[흑 승률: 47.5% (-1.1%)
+리드: -0.2 (-0.1) stdev: 14.1
+(KataGo18blocks / 3.3k visits)
+덤: 6.5
+Move time: 2.103 초]LZ[KataGo18blocks 52.5 3.3k -0.2 14.1
+move M9 visits 2130 winrate 4745 prior 2066 scoreMean -0.23 pv M9 O7 L7 K9 M10 K7 O11 R12 K6 K5 K8 J4 J3 info move P10 visits 352 winrate 4464 prior 2079 scoreMean -0.58 pv P10 Q11 P11 Q12 M9 K9 Q10 O7 R9 S11 M10 info move O11 visits 309 winrate 4573 prior 1499 scoreMean -0.39 pv O11 R12 R11 S11 M13 N13 M14 L13 Q15 R14 Q12 L15 info move N13 visits 328 winrate 4428 prior 2023 scoreMean -0.66 pv N13 M13 R12 Q11 Q15 R14 Q12 S17 S18 R17 R18 P13 O12 O13 info move Q15 visits 66 winrate 4092 prior 1042 scoreMean -0.96 pv Q15 R14 M9 K9 N13 M13 R12 Q11 Q13 S12 S11 S13 R11 S17 info move R12 visits 67 winrate 4413 prior 332 scoreMean -0.56 pv R12 Q15 N11 Q11 P11 Q12 M9 K9 info move L13 visits 18 winrate 3740 prior 514 scoreMean -1.47 pv L13 M13 P10 N11 M10 O10 O11 info move K9 visits 8 winrate 4224 prior 102 scoreMean -1.03 pv K9 L8 L7 K8 K7 H11 info move H11 visits 4 winrate 3811 prior 91 scoreMean -1.31 pv H11 O10 M9 info move K14 visits 1 winrate 3964 prior 43 scoreMean -1.02 pv K14];B[lk]C[백 승률: 69.5% (-1.6%)
+리드: 1.6 (-0.1) stdev: 12.6
+(KataGo28blocks / 1.8k visits)
+덤: 6.5
+Move time: 2.087 초]LZ[KataGo28blocks 30.5 1.8k 1.6 12.6
+move K9 visits 1335 winrate 6953 prior 2048 scoreMean 1.57 pv K9 K8 O7 M10 L8 P10 Q11 P11 R11 L7 K7 M8 J8 H11 info move O7 visits 293 winrate 6918 prior 1037 scoreMean 1.57 pv O7 P10 Q11 P11 M10 N11 Q12 K8 K9 J9 M8 L8 M9 J8 info move O11 visits 105 winrate 6519 prior 1541 scoreMean 1.06 pv O11 K8 K9 O10 P11 L8 J9 M10 J6 P10 Q11 O7 A17 A16 info move O10 visits 33 winrate 5225 prior 2988 scoreMean -0.22 pv O10 O11 N11 M10 Q15 L8 O7 N13 M12 M13 info move L7 visits 33 winrate 6471 prior 680 scoreMean 0.99 pv L7 P10 Q11 P11 M10 N11 Q12 Q10 A17 info move K8 visits 19 winrate 6637 prior 269 scoreMean 1.11 pv K8 P10 Q11 P11 Q12 Q10 O7 info move M10 visits 8 winrate 5279 prior 864 scoreMean 0.17 pv M10 N11 O12 P11 O11 O10 P10 info move N11 visits 7 winrate 5952 prior 355 scoreMean 0.73 pv N11 M10 O10 O11 Q15 L8 O7 N13 M12 M13 info move A17 visits 4 winrate 6665 prior 97 scoreMean 1.28 pv A17 A16 O10 O11 info move S17 visits 1 winrate 5199 prior 64 scoreMean 0.07 pv S17];W[jk]C[흑 승률: 45.9% (-1.6%)
+리드: -0.4 (-0.2) stdev: 15.3
+(KataGo18blocks / 4.1k visits)
+덤: 6.5
+Move time: 2.053 초]LZ[KataGo18blocks 54.1 4.1k -0.4 15.3
+move P10 visits 1089 winrate 4587 prior 2050 scoreMean -0.42 pv P10 Q11 M10 O7 P11 Q12 Q10 A15 A17 B15 A12 B19 D18 F16 info move M10 visits 1903 winrate 4564 prior 1586 scoreMean -0.39 pv M10 O11 O10 P11 P10 Q10 Q11 R11 K8 L8 L7 K7 Q12 N13 info move Q15 visits 256 winrate 4429 prior 1147 scoreMean -0.58 pv Q15 R13 M10 O7 L7 K7 K8 L8 P10 Q11 P11 Q10 O9 info move N13 visits 221 winrate 4251 prior 1989 scoreMean -0.82 pv N13 M13 O12 M12 N11 R12 R11 P10 R13 S12 S13 Q13 info move R12 visits 184 winrate 4470 prior 551 scoreMean -0.55 pv R12 Q11 Q15 R14 Q13 S12 R11 S11 Q10 O10 O11 N11 M10 info move K8 visits 160 winrate 4687 prior 64 scoreMean -0.36 pv K8 M10 J9 M8 L8 M9 O9 N8 N11 O12 J8 L7 P11 O11 info move Q11 visits 138 winrate 4580 prior 244 scoreMean -0.46 pv Q11 P10 Q15 Q13 P13 R12 N13 M13 N14 L15 M12 info move L13 visits 43 winrate 3941 prior 659 scoreMean -1.15 pv L13 O11 Q15 R14 N13 O13 M14 P13 info move R13 visits 24 winrate 4091 prior 142 scoreMean -1.07 pv R13 Q13 Q12 O11 O10 P11 Q11 P10 info move O11 visits 15 winrate 3342 prior 582 scoreMean -1.93 pv O11 M10 N11 R12 R11 Q12 Q11 P10 P11 info move H11 visits 19 winrate 4034 prior 236 scoreMean -1.15 pv H11 A17 A16 B19 M10 O11];B[oj]C[백 승률: 70.9% (+1.3%)
+리드: 1.6 (+0.0) stdev: 12.2
+(KataGo28blocks / 1.6k visits)
+덤: 6.5
+Move time: 2.084 초]LZ[KataGo28blocks 29.1 1.6k 1.6 12.2
+move Q11 visits 1500 winrate 7087 prior 7135 scoreMean 1.60 pv Q11 M10 O11 O10 P11 O7 A17 A16 B19 R9 Q10 Q9 R8 P9 info move M10 visits 29 winrate 6619 prior 678 scoreMean 1.25 pv M10 N11 O12 R12 O11 O10 P11 Q11 Q10 Q9 info move A17 visits 23 winrate 6599 prior 581 scoreMean 1.30 pv A17 A16 Q11 M10 O7 P11 Q12 Q10 L13 info move R12 visits 22 winrate 6694 prior 413 scoreMean 1.23 pv R12 Q11 N11 M10 O10 info move O11 visits 3 winrate 5895 prior 272 scoreMean 0.66 pv O11 O10 M10 info move R11 visits 3 winrate 6418 prior 151 scoreMean 0.86 pv R11 M10 info move N11 visits 3 winrate 3971 prior 544 scoreMean -1.17 pv N11 M10 O10 info move O7 visits 1 winrate 5091 prior 90 scoreMean 0.14 pv O7 info move O10 visits 1 winrate 5499 prior 29 scoreMean 0.48 pv O10 info move S17 visits 1 winrate 4677 prior 23 scoreMean -0.40 pv S17];W[pi]C[흑 승률: 45.0% (-0.9%)
+리드: -0.5 (-0.1) stdev: 13.6
+(KataGo18blocks / 3.7k visits)
+덤: 6.5
+Move time: 2.08 초]LZ[KataGo18blocks 55.0 3.7k -0.5 13.6
+move M10 visits 2290 winrate 4500 prior 2483 scoreMean -0.54 pv M10 A17 A16 O11 O10 P11 K8 B19 F5 F6 Q10 R10 R9 S9 info move P11 visits 876 winrate 4291 prior 3443 scoreMean -0.77 pv P11 M10 N11 A17 A16 Q12 Q10 B19 O7 M8 O9 N8 R10 S11 info move L13 visits 338 winrate 4311 prior 647 scoreMean -0.75 pv L13 P11 O11 O12 M10 O7 Q10 R11 H11 G12 G11 F12 F11 E12 info move H11 visits 55 winrate 4239 prior 460 scoreMean -0.79 pv H11 G12 M10 O7 K8 J9 G11 E9 F12 info move N13 visits 52 winrate 3660 prior 884 scoreMean -1.53 pv N13 M13 O12 M12 R13 Q15 R9 R11 info move Q15 visits 42 winrate 3820 prior 658 scoreMean -1.14 pv Q15 R13 M10 O7 P11 P13 Q12 R12 R11 info move Q12 visits 26 winrate 3627 prior 373 scoreMean -1.85 pv Q12 O11 Q15 R14 P11 O10 O12 N11 N13 O14 info move K14 visits 22 winrate 3901 prior 313 scoreMean -1.20 pv K14 K13 J13 K15 P11 M10 N11 Q12 info move O12 visits 14 winrate 3304 prior 382 scoreMean -1.89 pv O12 N13 R13 O11 info move R13 visits 5 winrate 3668 prior 120 scoreMean -1.41 pv R13 P11 Q15 R14 Q13 info move K8 visits 5 winrate 3867 prior 77 scoreMean -1.48 pv K8 M10 J9 M8];B[lj]C[백 승률: 71.4% (+0.5%)
+리드: 1.3 (-0.3) stdev: 8.7
+(KataGo28blocks / 2.1k visits)
+덤: 6.5
+Move time: 2.095 초]LZ[KataGo28blocks 28.6 2.1k 1.3 8.7
+move O11 visits 1127 winrate 7138 prior 2074 scoreMean 1.34 pv O11 O10 P11 O7 A17 A16 B19 R9 Q10 Q9 R8 P9 R2 F10 info move O7 visits 904 winrate 6828 prior 7160 scoreMean 1.51 pv O7 P11 R11 K8 L8 L7 K7 O9 J8 M13 L13 N13 A17 A16 info move A17 visits 20 winrate 6446 prior 622 scoreMean 1.23 pv A17 A16 O7 P11 Q12 Q10 L13 info move P11 visits 1 winrate 4356 prior 55 scoreMean -0.39 pv P11 info move Q10 visits 1 winrate 4308 prior 39 scoreMean -0.32 pv Q10];W[ni]C[흑 승률: 43.5% (-1.5%)
+리드: -0.6 (-0.1) stdev: 11.4
+(KataGo18blocks / 3.8k visits)
+덤: 6.5
+Move time: 2.066 초]LZ[KataGo18blocks 56.5 3.8k -0.6 11.4
+move O10 visits 3629 winrate 4354 prior 6067 scoreMean -0.62 pv O10 P11 K8 L8 L7 K7 O7 J8 Q10 R11 R10 S9 H11 B19 info move K8 visits 77 winrate 3245 prior 2545 scoreMean -1.88 pv K8 O10 K7 O7 O6 N6 N8 O9 L8 O5 P6 info move L7 visits 45 winrate 3999 prior 524 scoreMean -0.97 pv L7 K6 O10 P11 Q10 R10 R9 S9 O7 B19 info move O7 visits 5 winrate 2282 prior 325 scoreMean -2.46 pv O7 O10 M13 info move Q15 visits 2 winrate 3017 prior 93 scoreMean -2.25 pv Q15 R14 info move F10 visits 2 winrate 3059 prior 82 scoreMean -1.68 pv F10 O10 info move N8 visits 3 winrate 2631 prior 139 scoreMean -2.15 pv N8 P11 K8 info move K14 visits 1 winrate 2559 prior 36 scoreMean -2.20 pv K14 info move O9 visits 1 winrate 1802 prior 32 scoreMean -3.61 pv O9 info move M14 visits 1 winrate 1622 prior 28 scoreMean -4.05 pv M14];B[nj]C[백 승률: 71.7% (+0.4%)
+리드: 1.4 (+0.1) stdev: 8.5
+(KataGo28blocks / 2.2k visits)
+덤: 6.5
+Move time: 2.07 초]LZ[KataGo28blocks 28.3 2.2k 1.4 8.5
+move P11 visits 2177 winrate 7174 prior 8531 scoreMean 1.40 pv P11 O7 A17 A16 B19 R9 Q10 Q9 R8 P9 R2 F10 B4 B5 info move A17 visits 27 winrate 6101 prior 760 scoreMean 0.71 pv A17 A16 P11 K8 L8 L7 K7 O7 Q10 K6 J8 J6 M8 N8 info move O7 visits 4 winrate 3607 prior 653 scoreMean -1.38 pv O7 P11 Q12 Q10];W[oi]C[흑 승률: 40.8% (-2.7%)
+리드: -0.8 (-0.2) stdev: 9.9
+(KataGo18blocks / 5.5k visits)
+덤: 6.5
+Move time: 2.098 초]LZ[KataGo18blocks 59.2 5.5k -0.8 9.9
+move O7 visits 2479 winrate 4082 prior 5130 scoreMean -0.82 pv O7 A17 A16 B19 B3 B2 Q10 R10 R9 S9 B4 D5 R16 F18 info move K8 visits 2779 winrate 4122 prior 2861 scoreMean -0.80 pv K8 L8 L7 K7 O7 J8 Q10 R11 R10 S9 H11 A17 A16 B19 info move L7 visits 120 winrate 3827 prior 934 scoreMean -1.10 pv L7 K6 Q10 R10 R9 S9 O7 B19 R16 S16 info move F10 visits 50 winrate 4075 prior 127 scoreMean -1.05 pv F10 A17 A16 B19 Q10 O7 R11 R12 Q12 info move Q10 visits 43 winrate 3389 prior 462 scoreMean -2.02 pv Q10 O7 R11 R12 L7 K7 K8 info move N6 visits 16 winrate 3204 prior 328 scoreMean -1.67 pv N6 B19 Q10 R10 R9 S9 D18 info move L8 visits 4 winrate 3558 prior 65 scoreMean -1.20 pv L8 K8 O7 B19 D18 info move H11 visits 4 winrate 3666 prior 24 scoreMean -1.17 pv H11 A17 A16 info move O6 visits 1 winrate 3567 prior 15 scoreMean -0.89 pv O6];B[nm]C[백 승률: 73.4% (+1.6%)
+리드: 1.6 (+0.2) stdev: 8.5
+(KataGo28blocks / 3.4k visits)
+덤: 6.5
+Move time: 2.084 초]LZ[KataGo28blocks 26.6 3.4k 1.6 8.5
+move A17 visits 3029 winrate 7338 prior 2822 scoreMean 1.57 pv A17 A16 B19 R9 Q10 Q9 R8 P9 R2 F5 B4 B5 A4 F6 info move Q10 visits 189 winrate 6664 prior 3816 scoreMean 0.91 pv Q10 B3 B2 B4 F4 F10 F18 G4 G5 E4 F5 D5 info move F18 visits 44 winrate 7043 prior 350 scoreMean 1.26 pv F18 Q10 R10 R9 S9 B3 B2 B4 F4 G4 F9 F5 info move S17 visits 25 winrate 5356 prior 1490 scoreMean 0.11 pv S17 R9 Q10 Q9 R8 P9 R2 F10 A17 A16 B19 D18 F16 C19 info move E9 visits 33 winrate 6633 prior 466 scoreMean 0.92 pv E9 B3 F9 D8 B2 B4 A17 A16 B19 info move F16 visits 16 winrate 6380 prior 508 scoreMean 0.81 pv F16 B3 B2 B4 D5 Q10 R10 R9 info move B19 visits 15 winrate 6828 prior 240 scoreMean 1.01 pv B19 Q10 R10 R9 S9 B3 info move F9 visits 1 winrate 5004 prior 135 scoreMean 0.10 pv F9 info move A15 visits 1 winrate 4433 prior 80 scoreMean -0.38 pv A15 info move B4 visits 1 winrate 5571 prior 39 scoreMean 0.35 pv B4];W[ac]C[흑 승률: 38.0% (-2.9%)
+리드: -1.0 (-0.2) stdev: 9.7
+(KataGo18blocks / 5.7k visits)
+덤: 6.5
+Move time: 2.057 초]LZ[KataGo18blocks 62.0 5.7k -1.0 9.7
+move A16 visits 5696 winrate 3795 prior 9565 scoreMean -1.02 pv A16 B19 R9 Q10 Q9 R8 B3 B2 B4 D5 P9 R2 D18 F16 info move D19 visits 4 winrate 947 prior 188 scoreMean -6.43 pv D19 A19 A15 info move F5 visits 3 winrate 2204 prior 60 scoreMean -3.37 pv F5 A19 info move Q10 visits 2 winrate 2146 prior 63 scoreMean -3.01 pv Q10 A19 info move R9 visits 1 winrate 2655 prior 28 scoreMean -2.13 pv R9 info move Q15 visits 1 winrate 2606 prior 17 scoreMean -2.75 pv Q15 info move A14 visits 1 winrate 1085 prior 12 scoreMean -4.02 pv A14];B[ad]C[백 승률: 73.2% (-0.2%)
+리드: 1.6 (+0.0) stdev: 8.7
+(KataGo28blocks / 4.2k visits)
+덤: 6.5
+Move time: 2.074 초]LZ[KataGo28blocks 26.8 4.2k 1.6 8.7
+move B19 visits 3764 winrate 7317 prior 4016 scoreMean 1.59 pv B19 R9 Q10 Q9 R8 P9 R2 F5 E9 L7 J6 F6 F9 D8 info move Q10 visits 383 winrate 6930 prior 4190 scoreMean 1.21 pv Q10 B3 B2 B4 F4 F10 B19 G4 H11 S16 R16 R17 S17 S18 info move E9 visits 31 winrate 6788 prior 395 scoreMean 0.99 pv E9 B3 F9 D8 B2 B4 B19 D5 E5 info move S17 visits 24 winrate 5684 prior 1099 scoreMean 0.34 pv S17 R9 Q10 Q9 R8 P9 R2 B3 B2 B4 info move F9 visits 15 winrate 6846 prior 118 scoreMean 1.06 pv F9 Q10 E9 D8 R10 R9 S9 B3 B2 B4 info move A15 visits 1 winrate 3020 prior 61 scoreMean -1.13 pv A15 info move B4 visits 1 winrate 5577 prior 38 scoreMean 0.37 pv B4 info move F16 visits 1 winrate 5308 prior 20 scoreMean 0.42 pv F16];W[ba]C[흑 승률: 37.9% (-0.0%)
+리드: -1.0 (+0.0) stdev: 9.5
+(KataGo18blocks / 12k visits)
+덤: 6.5
+Move time: 2.057 초]LZ[KataGo18blocks 62.1 12k -1.0 9.5
+move B3 visits 4285 winrate 3791 prior 772 scoreMean -1.00 pv B3 B2 R9 Q10 B4 D5 Q9 R8 P9 R2 F5 F6 F10 S17 info move R9 visits 3974 winrate 3787 prior 1275 scoreMean -1.00 pv R9 Q10 B3 B2 B4 D5 Q9 R8 P9 R2 F5 F6 F10 S17 info move Q10 visits 3391 winrate 3716 prior 3614 scoreMean -1.12 pv Q10 R10 B3 B2 B4 D5 R9 S9 S16 S15 D18 F16 C19 D19 info move D18 visits 131 winrate 2384 prior 1747 scoreMean -2.38 pv D18 F16 B3 B2 B4 F2 G2 F4 G4 info move F5 visits 62 winrate 3076 prior 442 scoreMean -1.83 pv F5 F6 B3 B2 B4 E9 Q10 R10 R9 S9 D18 info move S16 visits 35 winrate 2817 prior 409 scoreMean -1.86 pv S16 F18 R9 Q10 Q9 info move F16 visits 28 winrate 2299 prior 436 scoreMean -2.43 pv F16 G16 D18 F18 R9 Q10 Q9 R8 P9 R2 C19 D19 E19 E9 info move K8 visits 22 winrate 2233 prior 368 scoreMean -2.63 pv K8 K7 L8 E9 B3 B2 B4 F4 info move F10 visits 14 winrate 3391 prior 69 scoreMean -1.29 pv F10 S17 Q10 R10 R9 info move D19 visits 13 winrate 672 prior 440 scoreMean -7.65 pv D19 F16 D18 F18 A17 A15];B[bq]C[백 승률: 73.8% (+0.7%)
+리드: 1.7 (+0.1) stdev: 9.2
+(KataGo28blocks / 2.5k visits)
+덤: 6.5
+Move time: 2.068 초]LZ[KataGo28blocks 26.2 2.5k 1.7 9.2
+move B2 visits 2519 winrate 7384 prior 8528 scoreMean 1.73 pv B2 B4 F2 G2 E9 R9 Q10 L7 K6 Q9 R8 P9 R2 D5 info move G4 visits 11 winrate 6445 prior 440 scoreMean 0.75 pv G4 D5 E5 E4 B2 B4 info move E9 visits 7 winrate 6194 prior 323 scoreMean 0.73 pv E9 D5 F9 D8 E5 E4 info move F4 visits 6 winrate 6850 prior 182 scoreMean 1.03 pv F4 Q10 R10 R9 info move F9 visits 2 winrate 6089 prior 147 scoreMean 0.63 pv F9 D5 info move Q10 visits 1 winrate 4803 prior 187 scoreMean -0.09 pv Q10 info move D5 visits 1 winrate 5759 prior 75 scoreMean 0.39 pv D5 info move D9 visits 1 winrate 4956 prior 25 scoreMean 0.05 pv D9];W[br]C[흑 승률: 38.4% (+0.5%)
+리드: -1.0 (+0.0) stdev: 9.4
+(KataGo18blocks / 11k visits)
+덤: 6.5
+Move time: 2.084 초]LZ[KataGo18blocks 61.6 11k -1.0 9.4
+move Q10 visits 3086 winrate 3839 prior 1586 scoreMean -0.98 pv Q10 R10 B4 G4 F4 D5 S16 S15 F16 G16 D18 F18 C19 D19 info move B4 visits 5885 winrate 3836 prior 5516 scoreMean -0.96 pv B4 D5 Q10 R10 R9 S9 S16 S15 D18 F16 C19 D19 F5 F6 info move R9 visits 1438 winrate 3836 prior 788 scoreMean -0.95 pv R9 Q10 B4 D5 Q9 R8 P9 R2 F5 F6 F10 S17 M19 L19 info move A4 visits 275 winrate 3645 prior 825 scoreMean -1.36 pv A4 F4 Q10 R10 R9 S9 G4 E9 F5 F9 D8 E4 J6 L7 info move D18 visits 41 winrate 2921 prior 485 scoreMean -1.91 pv D18 F18 B4 D5 R9 Q10 Q9 R8 P9 info move F16 visits 19 winrate 2645 prior 235 scoreMean -2.21 pv F16 F18 D18 G16 B4 F2 G2 info move D19 visits 6 winrate 1262 prior 236 scoreMean -5.23 pv D19 F16 D18 F18 info move L7 visits 4 winrate 2680 prior 75 scoreMean -1.94 pv L7 J5 B4 info move K8 visits 3 winrate 1928 prior 91 scoreMean -2.86 pv K8 K7 B4 info move Q15 visits 2 winrate 2756 prior 24 scoreMean -2.05 pv Q15 R14];B[pj]C[백 승률: 79.6% (+5.7%)
+리드: 2.3 (+0.6) stdev: 9.2
+(KataGo28blocks / 2.9k visits)
+덤: 6.5
+Move time: 2.089 초]LZ[KataGo28blocks 20.4 2.9k 2.3 9.2
+move R10 visits 2861 winrate 7959 prior 5400 scoreMean 2.29 pv R10 R9 S9 B4 F2 G2 E9 L7 K6 K7 J6 D5 E5 E4 info move E9 visits 44 winrate 6580 prior 2135 scoreMean 0.96 pv E9 B4 F9 D8 B9 C9 C10 B10 R10 D5 info move B4 visits 17 winrate 6206 prior 1036 scoreMean 0.54 pv B4 R11 R2 Q12 E9 A7 info move F9 visits 6 winrate 6640 prior 348 scoreMean 0.94 pv F9 B4 E9 D8 B9 C9 C10 B10 R10 D5 info move F18 visits 7 winrate 5768 prior 547 scoreMean 0.40 pv F18 R11 R12 R2 R10 R9 info move R11 visits 2 winrate 6415 prior 228 scoreMean 0.55 pv R11 B4 info move F16 visits 2 winrate 6366 prior 186 scoreMean 0.72 pv F16 R11 info move R2 visits 1 winrate 6064 prior 32 scoreMean 0.58 pv R2];W[qj]C[흑 승률: 36.1% (-2.3%)
+리드: -1.2 (-0.2) stdev: 9.3
+(KataGo18blocks / 7.4k visits)
+덤: 6.5
+Move time: 2.09 초]LZ[KataGo18blocks 63.9 7.4k -1.2 9.3
+move R9 visits 3067 winrate 3609 prior 2558 scoreMean -1.17 pv R9 S9 B4 G4 F4 D5 S16 S15 D18 F16 C19 D19 E19 F9 info move B4 visits 4090 winrate 3556 prior 5382 scoreMean -1.20 pv B4 G4 F4 D5 S16 S15 R9 S9 D18 F16 C19 D19 E19 F9 info move A4 visits 222 winrate 3409 prior 821 scoreMean -1.65 pv A4 F2 G2 E9 D8 F16 D5 E5 E4 F4 info move D18 visits 22 winrate 2313 prior 438 scoreMean -2.53 pv D18 F16 B4 F4 C19 D19 E19 info move F16 visits 11 winrate 2242 prior 240 scoreMean -2.75 pv F16 F18 D18 G16 B4 info move D19 visits 3 winrate 1045 prior 201 scoreMean -5.33 pv D19 F16 D18 info move K8 visits 2 winrate 1827 prior 84 scoreMean -3.00 pv K8 K7 info move L7 visits 2 winrate 2041 prior 73 scoreMean -2.77 pv L7 J5 info move Q15 visits 2 winrate 2370 prior 42 scoreMean -2.53 pv Q15 R14 info move F10 visits 1 winrate 2458 prior 22 scoreMean -1.94 pv F10];B[qk]C[백 승률: 76.8% (-2.8%)
+리드: 2.1 (-0.2) stdev: 9.2
+(KataGo28blocks / 2.5k visits)
+덤: 6.5
+Move time: 2.071 초]LZ[KataGo28blocks 23.2 2.5k 2.1 9.2
+move S9 visits 2486 winrate 7678 prior 7433 scoreMean 2.06 pv S9 B4 F2 G2 E9 S16 F9 D8 F18 R13 R14 R11 S10 S13 info move R11 visits 31 winrate 6097 prior 1690 scoreMean 0.49 pv R11 B4 F4 Q9 R2 G4 F9 F5 info move S10 visits 5 winrate 5221 prior 569 scoreMean 0.05 pv S10 B4 F2 info move B4 visits 1 winrate 4549 prior 141 scoreMean -0.51 pv B4 info move E9 visits 1 winrate 4990 prior 49 scoreMean -0.02 pv E9 info move F18 visits 1 winrate 5878 prior 35 scoreMean 0.51 pv F18];W[rk]C[흑 승률: 34.5% (-1.6%)
+리드: -1.2 (-0.1) stdev: 8.9
+(KataGo18blocks / 5.7k visits)
+덤: 6.5
+Move time: 2.074 초]LZ[KataGo18blocks 65.5 5.7k -1.2 8.9
+move B4 visits 5237 winrate 3448 prior 6621 scoreMean -1.23 pv B4 G4 F4 D5 S16 S15 D18 F16 C19 D19 E19 F9 C19 R2 info move A4 visits 308 winrate 3346 prior 862 scoreMean -1.80 pv A4 F2 G2 E9 D8 F18 F5 F6 D5 E5 E4 A2 H11 info move F16 visits 30 winrate 2569 prior 440 scoreMean -2.27 pv F16 F18 D18 G16 B4 F2 G2 info move D18 visits 28 winrate 2389 prior 596 scoreMean -2.58 pv D18 F16 B4 D5 R16 F18 R11 S10 R13 Q15 O12 info move L7 visits 12 winrate 2656 prior 185 scoreMean -1.86 pv L7 J5 B4 G4 F4 G5 H4 H5 D18 F16 info move R16 visits 7 winrate 2230 prior 208 scoreMean -2.44 pv R16 S16 S17 E9 info move K8 visits 6 winrate 1826 prior 209 scoreMean -2.83 pv K8 K7 B4 F4 G4 info move Q15 visits 5 winrate 2088 prior 166 scoreMean -2.78 pv Q15 R14 B4 F4 info move R11 visits 4 winrate 2097 prior 121 scoreMean -2.78 pv R11 S10 R16 info move D19 visits 3 winrate 1236 prior 176 scoreMean -4.82 pv D19 F16 D18];B[bp]C[백 승률: 76.5% (-0.2%)
+리드: 2.0 (-0.0) stdev: 9.2
+(KataGo28blocks / 3.8k visits)
+덤: 6.5
+Move time: 2.062 초]LZ[KataGo28blocks 23.5 3.8k 2.0 9.2
+move F2 visits 2904 winrate 7654 prior 1458 scoreMean 2.05 pv F2 G2 F9 S16 F18 R13 R12 Q13 Q15 S15 F4 J14 K15 R2 info move G4 visits 269 winrate 7394 prior 1581 scoreMean 1.45 pv G4 F4 D5 S16 F9 R13 R14 Q13 S13 R11 S10 S15 S14 O12 info move F4 visits 322 winrate 7262 prior 1447 scoreMean 1.92 pv F4 G4 F9 J6 K6 F6 F5 G6 E9 D8 G5 H6 H4 info move D5 visits 115 winrate 6924 prior 2236 scoreMean 1.09 pv D5 S16 F18 R13 R14 Q13 S11 R12 O13 R11 info move E9 visits 65 winrate 6859 prior 840 scoreMean 1.51 pv E9 D5 F9 D8 F2 L7 J6 E5 G2 K7 info move B6 visits 38 winrate 6971 prior 747 scoreMean 1.19 pv B6 A2 G4 F4 D5 F5 F6 F9 info move A3 visits 28 winrate 6944 prior 501 scoreMean 1.26 pv A3 B6 F4 G4 F18 J6 J5 info move F9 visits 26 winrate 6701 prior 438 scoreMean 1.29 pv F9 D5 E9 D8 F2 L7 J6 E5 G2 K7 info move E2 visits 10 winrate 6937 prior 194 scoreMean 1.03 pv E2 F5 F6 A2 info move G2 visits 5 winrate 6352 prior 311 scoreMean 0.72 pv G2 F2 F4 G4 G5];W[fr]C[흑 승률: 33.6% (-0.9%)
+리드: -1.6 (-0.4) stdev: 10.9
+(KataGo18blocks / 2.6k visits)
+덤: 6.5
+Move time: 2.051 초]LZ[KataGo18blocks 66.4 2.6k -1.6 10.9
+move G2 visits 2300 winrate 3362 prior 4782 scoreMean -1.65 pv G2 E9 D8 F16 L7 K6 K7 J6 F5 F6 D5 E5 E4 info move L7 visits 55 winrate 3111 prior 455 scoreMean -1.60 pv L7 J6 G2 F4 G4 E9 F5 E4 H5 F6 info move D18 visits 47 winrate 2812 prior 794 scoreMean -2.44 pv D18 G2 K8 K7 L8 info move F16 visits 39 winrate 2780 prior 602 scoreMean -2.18 pv F16 F18 D18 G16 G2 F4 C19 D19 E19 S17 info move R11 visits 36 winrate 3516 prior 153 scoreMean -1.26 pv R11 S10 G2 E9 D5 F9 D8 E5 E4 F4 info move K8 visits 19 winrate 2648 prior 455 scoreMean -2.08 pv K8 K7 G2 F18 F5 F6 info move E2 visits 11 winrate 2031 prior 512 scoreMean -2.66 pv E2 E3 G2 F4 F1 F16 G4 info move R16 visits 11 winrate 2279 prior 382 scoreMean -2.85 pv R16 G2 R11 S10 info move D5 visits 5 winrate 1107 prior 567 scoreMean -7.91 pv D5 E5 E4 F4 F5 info move Q15 visits 8 winrate 2540 prior 172 scoreMean -2.18 pv Q15 R14 G2 F4 R16];B[gr]C[백 승률: 76.7% (+0.1%)
+리드: 1.8 (-0.2) stdev: 8.7
+(KataGo28blocks / 4.1k visits)
+덤: 6.5
+Move time: 2.075 초]LZ[KataGo28blocks 23.3 4.1k 1.8 8.7
+move F9 visits 2515 winrate 7665 prior 2062 scoreMean 1.83 pv F9 S16 F18 R13 R12 Q13 Q15 S15 F4 J14 S13 S14 S12 R14 info move E9 visits 1322 winrate 7590 prior 2001 scoreMean 2.06 pv E9 S16 F9 D8 F16 R13 R14 R11 S10 S13 P13 S15 S14 T14 info move F4 visits 131 winrate 6395 prior 3111 scoreMean 0.62 pv F4 G4 G5 S16 F18 R13 R14 R11 S10 info move F18 visits 62 winrate 6715 prior 529 scoreMean 1.24 pv F18 F10 F4 G4 S17 J6 K6 F5 info move S17 visits 31 winrate 6731 prior 368 scoreMean 1.23 pv S17 D5 E5 E4 F4 E3 E2 G3 A2 L7 K7 info move E2 visits 19 winrate 6616 prior 322 scoreMean 0.88 pv E2 F5 A2 F10 info move G4 visits 13 winrate 5663 prior 616 scoreMean 0.28 pv G4 F4 D5 S16 F18 info move F16 visits 19 winrate 6611 prior 218 scoreMean 1.33 pv F16 L7 K6 D5 E5 info move B6 visits 8 winrate 6070 prior 317 scoreMean 0.61 pv B6 A2 F9 D5 info move D5 visits 4 winrate 6200 prior 161 scoreMean 0.50 pv D5 D18 info move A3 visits 4 winrate 5608 prior 169 scoreMean 0.33 pv A3 F5 F6];W[fk]C[흑 승률: 37.9% (+4.2%)
+리드: -1.3 (+0.4) stdev: 11.5
+(KataGo18blocks / 3.0k visits)
+덤: 6.5
+Move time: 2.085 초]LZ[KataGo18blocks 62.1 3.0k -1.3 11.5
+move E9 visits 2365 winrate 3785 prior 193 scoreMean -1.26 pv E9 E10 F11 F10 F5 F6 D5 E5 E4 F18 R16 A14 A12 D9 info move F5 visits 234 winrate 3079 prior 1895 scoreMean -1.94 pv F5 E9 D8 F6 D5 E5 E4 B6 A2 S17 K8 K7 L8 F18 info move D18 visits 97 winrate 2923 prior 2582 scoreMean -2.18 pv D18 F16 C19 D19 E19 S17 D5 E5 E4 F4 E3 E2 G3 E9 info move L7 visits 149 winrate 3776 prior 376 scoreMean -1.18 pv L7 J6 D5 E5 E4 F4 E3 E2 G3 A2 K7 K6 info move D5 visits 34 winrate 2107 prior 1728 scoreMean -3.31 pv D5 E9 D8 E5 E4 F4 E3 E2 G3 A2 G5 L7 D18 F16 info move R16 visits 33 winrate 2735 prior 786 scoreMean -2.35 pv R16 F18 R13 Q15 R11 S10 info move F16 visits 35 winrate 3420 prior 435 scoreMean -1.61 pv F16 G16 D18 F18 D5 E5 E4 E9 D8 info move S16 visits 18 winrate 2965 prior 349 scoreMean -1.87 pv S16 F16 R11 S10 R13 R12 Q13 info move J6 visits 18 winrate 3081 prior 280 scoreMean -2.01 pv J6 L7 F6 E9 D8 F4 info move F6 visits 9 winrate 2161 prior 360 scoreMean -4.29 pv F6 F4 F5 E9 D8 info move K8 visits 8 winrate 2337 prior 320 scoreMean -2.35 pv K8 K7 F5 F6 D5];B[ek]C[백 승률: 79.8% (+3.2%)
+리드: 2.8 (+1.0) stdev: 9.8
+(KataGo28blocks / 1.8k visits)
+덤: 6.5
+Move time: 2.097 초]LZ[KataGo28blocks 20.2 1.8k 2.8 9.8
+move E10 visits 1618 winrate 7982 prior 4936 scoreMean 2.79 pv E10 F5 F6 D5 D9 D8 B6 A7 E5 E4 A3 A6 E2 info move F4 visits 24 winrate 5034 prior 2895 scoreMean -0.01 pv F4 F11 S17 G4 G5 D18 F16 C19 D19 info move B6 visits 28 winrate 6507 prior 1097 scoreMean 0.97 pv B6 F5 F6 E10 A3 A2 A1 A7 S17 info move G4 visits 3 winrate 4441 prior 451 scoreMean -0.36 pv G4 F4 D5 info move E2 visits 1 winrate 3913 prior 287 scoreMean -0.54 pv E2 info move S17 visits 1 winrate 4224 prior 172 scoreMean -0.47 pv S17 info move F18 visits 1 winrate 5399 prior 51 scoreMean 0.38 pv F18 info move A3 visits 1 winrate 3312 prior 24 scoreMean -0.86 pv A3 info move F16 visits 1 winrate 5175 prior 22 scoreMean 0.23 pv F16 info move D5 visits 1 winrate 3984 prior 13 scoreMean -0.44 pv D5];W[ej]C[흑 승률: 41.4% (+3.5%)
+리드: -1.0 (+0.3) stdev: 11.9
+(KataGo18blocks / 4.9k visits)
+덤: 6.5
+Move time: 2.09 초]LZ[KataGo18blocks 58.6 4.9k -1.0 11.9
+move L7 visits 740 winrate 4140 prior 502 scoreMean -0.95 pv L7 J6 F11 D9 D8 F10 K7 K6 F5 E4 F6 info move F11 visits 2278 winrate 3795 prior 371 scoreMean -1.34 pv F11 G12 L7 J6 F12 F10 D5 D9 D8 E5 E4 F4 E3 E2 info move F5 visits 1495 winrate 3592 prior 1884 scoreMean -1.56 pv F5 F6 F11 F10 D5 E5 E4 F18 B6 K5 J5 D9 A7 J6 info move D18 visits 164 winrate 3082 prior 2718 scoreMean -2.09 pv D18 F16 F11 F10 D5 E5 E4 F4 E3 E2 G3 info move D5 visits 78 winrate 2635 prior 1783 scoreMean -2.80 pv D5 E5 E4 F4 E3 E2 G3 A2 F11 F10 F6 F5 G5 G6 info move F16 visits 40 winrate 2998 prior 688 scoreMean -2.00 pv F16 G16 D18 F18 F5 F6 D5 E5 info move F10 visits 72 winrate 3044 prior 246 scoreMean -2.00 pv F10 F11 F5 F6 G10 G12 H10 G5 D5 E5 E4 F4 E3 E2 info move R16 visits 15 winrate 2132 prior 543 scoreMean -3.47 pv R16 F16 Q15 R14 R11 info move J6 visits 17 winrate 3346 prior 115 scoreMean -1.58 pv J6 L7 F10 F11 G10 F4 info move D19 visits 7 winrate 1797 prior 289 scoreMean -4.21 pv D19 F16 D18 F18 info move K8 visits 6 winrate 2100 prior 235 scoreMean -2.77 pv K8 K7 L8 F4];B[km]C[백 승률: 81.7% (+1.9%)
+리드: 3.0 (+0.2) stdev: 9.9
+(KataGo28blocks / 1.6k visits)
+덤: 6.5
+Move time: 2.078 초]LZ[KataGo28blocks 18.3 1.6k 3.0 9.9
+move K6 visits 1017 winrate 8169 prior 3198 scoreMean 2.99 pv K6 D5 E5 E4 F4 E3 E2 G3 A2 K7 J6 F11 F10 H11 info move J6 visits 283 winrate 8036 prior 1976 scoreMean 2.69 pv J6 F11 D9 D8 B9 B6 C9 A7 F10 F5 info move K7 visits 102 winrate 7469 prior 2467 scoreMean 2.10 pv K7 G5 F4 G4 K5 F6 D9 D8 E3 D5 F1 info move D9 visits 74 winrate 7734 prior 993 scoreMean 2.36 pv D9 D8 K6 F5 F6 D5 B6 A7 info move J5 visits 54 winrate 7559 prior 965 scoreMean 1.94 pv J5 G5 F5 D5 F4 E5 F6 E4 info move B6 visits 8 winrate 7313 prior 244 scoreMean 1.80 pv B6 A7 D9 D8 B9 A6 info move A14 visits 1 winrate 4552 prior 106 scoreMean -0.09 pv A14 info move K5 visits 1 winrate 4448 prior 12 scoreMean -0.42 pv K5 info move C9 visits 1 winrate 4811 prior 10 scoreMean -0.44 pv C9 info move B9 visits 1 winrate 5060 prior 3 scoreMean -0.24 pv B9];W[jn]C[흑 승률: 28.9% (-12.5%)
+리드: -3.2 (-2.3) stdev: 13.1
+(KataGo18blocks / 3.4k visits)
+덤: 6.5
+Move time: 2.043 초]LZ[KataGo18blocks 71.1 3.4k -3.2 13.1
+move F11 visits 1263 winrate 2893 prior 492 scoreMean -3.22 pv F11 F10 D18 F18 D5 E5 E4 F4 E3 E2 G3 D9 D8 info move D5 visits 666 winrate 2630 prior 2052 scoreMean -3.49 pv D5 E5 E4 F4 E3 E2 G3 A2 F11 F10 K7 J6 H11 G5 info move D18 visits 477 winrate 2697 prior 2511 scoreMean -2.71 pv D18 F16 D5 E5 E4 F4 E3 E2 G3 A2 F11 F10 K7 J6 info move F16 visits 367 winrate 2875 prior 672 scoreMean -2.42 pv F16 F15 F5 F4 G4 E4 F10 F11 G10 G12 info move K7 visits 340 winrate 2827 prior 622 scoreMean -3.31 pv K7 J6 F11 F10 F5 F4 G4 E4 H5 F6 D18 F16 info move F5 visits 166 winrate 2388 prior 2032 scoreMean -3.31 pv F5 F4 G4 E4 F10 F12 G11 H11 G12 F11 G13 info move F10 visits 76 winrate 2863 prior 267 scoreMean -2.20 pv F10 F12 D5 E5 E4 F4 E3 E2 G3 A2 G11 H11 G12 F11 info move R16 visits 15 winrate 1645 prior 478 scoreMean -4.05 pv R16 F16 R13 Q15 R11 S10 info move D19 visits 11 winrate 1542 prior 288 scoreMean -4.72 pv D19 F16 D18 F18 A14 info move F6 visits 7 winrate 2010 prior 146 scoreMean -4.98 pv F6 F4 D5 E5 F5];B[fi]C[백 승률: 90.2% (+8.5%)
+리드: 4.7 (+1.7) stdev: 9.6
+(KataGo28blocks / 2.2k visits)
+덤: 6.5
+Move time: 2.08 초]LZ[KataGo28blocks 9.8 2.2k 4.7 9.6
+move F10 visits 1743 winrate 9016 prior 2926 scoreMean 4.71 pv F10 D5 E5 E4 F4 E3 E2 G3 A2 K7 J6 H11 D9 D8 info move D9 visits 219 winrate 8039 prior 3077 scoreMean 2.72 pv D9 D8 B6 A6 F10 D5 E5 E4 F4 E3 E2 G3 A2 info move G12 visits 117 winrate 8243 prior 1588 scoreMean 3.23 pv G12 K7 J6 D5 E5 E4 F4 E3 E2 G3 info move B6 visits 65 winrate 7863 prior 1360 scoreMean 2.40 pv B6 A7 D9 D8 F10 D5 E5 E4 F4 E3 E2 G3 A2 K7 info move F4 visits 4 winrate 4109 prior 699 scoreMean -0.65 pv F4 F10 S17 G4 info move F12 visits 1 winrate 5446 prior 232 scoreMean 0.37 pv F12 info move E2 visits 1 winrate 2071 prior 24 scoreMean -2.47 pv E2 info move C9 visits 1 winrate 5848 prior 24 scoreMean 0.52 pv C9 info move G4 visits 1 winrate 3189 prior 18 scoreMean -1.13 pv G4 info move A14 visits 1 winrate 4190 prior 17 scoreMean -0.68 pv A14];W[fj]C[흑 승률: 27.5% (-1.4%)
+리드: -2.7 (+0.5) stdev: 11.5
+(KataGo18blocks / 3.7k visits)
+덤: 6.5
+Move time: 2.042 초]LZ[KataGo18blocks 72.5 3.7k -2.7 11.5
+move R13 visits 348 winrate 2750 prior 19 scoreMean -2.68 pv R13 Q15 S16 S15 D5 E5 E4 F4 E3 E2 G3 A2 info move F16 visits 1510 winrate 2198 prior 391 scoreMean -3.15 pv F16 F4 D18 G16 A14 D9 D8 B9 B6 C9 A7 S17 G4 F5 info move D18 visits 602 winrate 2034 prior 1917 scoreMean -3.04 pv D18 F4 A14 D9 D8 B9 B6 C9 A7 S17 G4 F5 M13 N13 info move D5 visits 437 winrate 1983 prior 2641 scoreMean -5.76 pv D5 E5 E4 F4 E3 E2 G3 A2 F6 G11 F5 F16 R16 S16 info move F5 visits 325 winrate 1850 prior 2753 scoreMean -4.82 pv F5 F4 K7 J6 E4 G4 D5 E3 E5 G3 G5 info move K7 visits 347 winrate 2133 prior 1059 scoreMean -5.39 pv K7 J6 F5 F4 E4 G4 D5 E3 E5 G3 G5 info move F6 visits 25 winrate 1705 prior 275 scoreMean -6.15 pv F6 F4 D5 E5 F5 E4 G5 G4 H5 H4 J5 G11 E2 J4 info move R16 visits 17 winrate 1666 prior 302 scoreMean -4.04 pv R16 F18 R13 Q15 R11 S10 info move D19 visits 13 winrate 1195 prior 301 scoreMean -5.80 pv D19 F16 D18 F18 A14 F19 info move G5 visits 26 winrate 1919 prior 40 scoreMean -4.62 pv G5 F4 D5 D9 D8 E5 info move R11 visits 9 winrate 2125 prior 50 scoreMean -3.29 pv R11 S10 O12 Q12 Q13];B[qg]C[백 승률: 90.7% (+0.5%)
+리드: 4.7 (-0.0) stdev: 9.6
+(KataGo28blocks / 1.4k visits)
+덤: 6.5
+Move time: 2.091 초]LZ[KataGo28blocks 9.3 1.4k 4.7 9.6
+move Q15 visits 531 winrate 9070 prior 2046 scoreMean 4.69 pv Q15 K7 J6 D5 E5 F5 F6 E4 G11 info move S17 visits 266 winrate 8889 prior 2066 scoreMean 4.25 pv S17 S16 R16 R17 R18 Q17 S15 S18 T16 D5 E5 E4 info move D9 visits 219 winrate 8946 prior 1831 scoreMean 4.27 pv D9 D8 Q15 F5 F6 D5 E5 E4 B6 A7 S17 info move R12 visits 172 winrate 8924 prior 1144 scoreMean 3.92 pv R12 K7 J6 D5 E5 E4 F4 E3 E2 G3 info move P13 visits 45 winrate 8792 prior 129 scoreMean 3.72 pv P13 K7 J6 D5 E5 E4 F4 info move B6 visits 20 winrate 8307 prior 395 scoreMean 3.10 pv B6 A7 D9 D8 B9 A6 Q15 F5 F6 info move R11 visits 7 winrate 7131 prior 567 scoreMean 1.43 pv R11 Q15 R14 Q13 S13 info move F4 visits 7 winrate 7448 prior 483 scoreMean 1.91 pv F4 Q15 R14 Q13 S13 info move R14 visits 8 winrate 7783 prior 214 scoreMean 1.99 pv R14 R11 S10 O12 N11 N13 info move E2 visits 3 winrate 7258 prior 331 scoreMean 1.59 pv E2 Q15];W[pe]C[흑 승률: 22.4% (-5.1%)
+리드: -4.5 (-1.8) stdev: 12.7
+(KataGo18blocks / 3.8k visits)
+덤: 6.5
+Move time: 2.042 초]LZ[KataGo18blocks 77.6 3.8k -4.5 12.7
+move S16 visits 1272 winrate 2237 prior 960 scoreMean -4.48 pv S16 S15 R11 S10 O12 Q12 D5 E5 E4 F4 E3 E2 G3 A2 info move D5 visits 1758 winrate 2176 prior 2624 scoreMean -5.18 pv D5 E5 S16 S15 K7 J6 E4 D9 D8 F4 E3 E2 G3 A2 info move R11 visits 187 winrate 2246 prior 447 scoreMean -3.97 pv R11 S10 O12 Q12 D5 E5 E4 F4 E3 E2 G3 A2 K7 J6 info move K7 visits 185 winrate 1956 prior 1055 scoreMean -5.48 pv K7 J6 D5 E5 E4 F4 E3 E2 G3 A2 G11 G5 H5 H6 info move D18 visits 140 winrate 1879 prior 1032 scoreMean -3.84 pv D18 F4 R16 S15 G4 F16 info move F5 visits 104 winrate 1199 prior 2697 scoreMean -5.77 pv F5 F4 G4 E4 S16 S15 K7 J6 G5 F6 info move F16 visits 60 winrate 2192 prior 227 scoreMean -3.39 pv F16 G16 D5 E5 E4 F4 E3 E2 G3 A2 K7 J6 info move F6 visits 24 winrate 1663 prior 221 scoreMean -5.92 pv F6 F4 D5 E5 F5 E4 G5 G4 H5 H4 info move R16 visits 13 winrate 1614 prior 164 scoreMean -3.90 pv R16 F18 R11 S10 O12 N11 info move D19 visits 11 winrate 1045 prior 294 scoreMean -6.17 pv D19 F16 D18 F18 A14];B[rd]C[백 승률: 91.7% (+1.0%)
+리드: 5.4 (+0.7) stdev: 9.6
+(KataGo28blocks / 1.8k visits)
+덤: 6.5
+Move time: 2.063 초]LZ[KataGo28blocks 8.3 1.8k 5.4 9.6
+move S15 visits 1172 winrate 9172 prior 3067 scoreMean 5.36 pv S15 D5 E5 E4 F4 E3 E2 G3 A2 K7 J6 H11 G5 H5 info move D9 visits 329 winrate 9121 prior 1814 scoreMean 4.93 pv D9 D8 B9 A7 S15 D5 C9 B6 F4 E5 E4 E2 info move R16 visits 162 winrate 8655 prior 3460 scoreMean 3.64 pv R16 R17 S15 D5 E5 E4 F4 E3 E2 G3 D9 D8 A2 F6 info move B6 visits 45 winrate 8632 prior 665 scoreMean 3.13 pv B6 A6 D9 D8 B9 B5 S15 F5 F6 D5 info move F4 visits 16 winrate 8277 prior 416 scoreMean 1.88 pv F4 S15 R12 G4 E3 info move A14 visits 9 winrate 8096 prior 319 scoreMean 2.72 pv A14 A12 D9 D8 B9 info move E2 visits 1 winrate 6744 prior 100 scoreMean 0.82 pv E2 info move F18 visits 1 winrate 6960 prior 54 scoreMean 1.30 pv F18 info move G4 visits 1 winrate 6981 prior 17 scoreMean 1.09 pv G4 info move D18 visits 1 winrate 7028 prior 14 scoreMean 1.31 pv D18];W[re]C[흑 승률: 17.6% (-4.7%)
+리드: -6.2 (-1.7) stdev: 13.6
+(KataGo18blocks / 5.4k visits)
+덤: 6.5
+Move time: 2.043 초]LZ[KataGo18blocks 82.4 5.4k -6.2 13.6
+move R11 visits 1872 winrate 1764 prior 373 scoreMean -6.17 pv R11 S10 D5 E5 K7 J6 E4 F4 E3 E2 G3 A2 H11 G5 info move D5 visits 2105 winrate 1699 prior 2628 scoreMean -7.40 pv D5 E5 R11 S10 K7 J6 E4 F4 E3 E2 G3 A2 H11 G5 info move F16 visits 588 winrate 1778 prior 383 scoreMean -4.12 pv F16 F4 D19 G16 D18 K13 R2 S17 info move D18 visits 243 winrate 1354 prior 1526 scoreMean -4.66 pv D18 F4 A14 D9 D8 B9 B6 G4 R11 info move F5 visits 237 winrate 1087 prior 2866 scoreMean -6.70 pv F5 F4 K7 J6 D5 E5 F6 E4 G5 G4 H5 H4 J5 G11 info move K7 visits 206 winrate 1431 prior 1273 scoreMean -8.28 pv K7 J6 D5 E5 E4 F4 E3 E2 G3 A2 G11 D9 D8 G5 info move F6 visits 54 winrate 1329 prior 251 scoreMean -7.59 pv F6 F4 D5 E5 G5 G4 H5 H4 J5 J4 K5 G11 E2 J3 info move N13 visits 45 winrate 2148 prior 47 scoreMean -3.34 pv N13 O13 D5 E5 E4 F4 info move D19 visits 17 winrate 720 prior 321 scoreMean -7.61 pv D19 F16 D18 F18 A14 F19 F5 info move G5 visits 19 winrate 1389 prior 76 scoreMean -6.30 pv G5 F4 D5 D9 D8 info move Q9 visits 15 winrate 1530 prior 22 scoreMean -5.50 pv Q9 R8 R11 S10 O12 Q12 Q13 O13 P13 N11 D5];B[qi]C[백 승률: 92.7% (+0.9%)
+리드: 5.7 (+0.4) stdev: 9.2
+(KataGo28blocks / 2.6k visits)
+덤: 6.5
+Move time: 2.059 초]LZ[KataGo28blocks 7.3 2.6k 5.7 9.2
+move S10 visits 2494 winrate 9265 prior 9122 scoreMean 5.74 pv S10 D5 E5 E4 F4 E3 E2 G3 A2 F6 G11 O12 Q12 Q13 info move D9 visits 8 winrate 5343 prior 766 scoreMean -0.43 pv D9 S10 D8 R2 S2 info move B6 visits 1 winrate 5974 prior 80 scoreMean 0.61 pv B6 info move C9 visits 1 winrate 5427 prior 9 scoreMean -0.03 pv C9 info move B9 visits 1 winrate 5925 prior 5 scoreMean 0.44 pv B9 info move A14 visits 1 winrate 457 prior 4 scoreMean -12.40 pv A14 info move A7 visits 1 winrate 2666 prior 1 scoreMean -4.44 pv A7 info move A15 visits 1 winrate 172 prior 0 scoreMean -17.34 pv A15 info move P17 visits 1 winrate 647 prior 0 scoreMean -12.06 pv P17 info move D8 visits 1 winrate 2914 prior 0 scoreMean -3.47 pv D8];W[rj]C[흑 승률: 15.6% (-2.0%)
+리드: -5.9 (+0.3) stdev: 12.2
+(KataGo18blocks / 5.5k visits)
+덤: 6.5
+Move time: 2.064 초]LZ[KataGo18blocks 84.4 5.5k -5.9 12.2
+move N13 visits 1619 winrate 1563 prior 176 scoreMean -5.89 pv N13 O13 D5 E5 E4 F4 E3 E2 G3 A2 O12 Q12 K7 J6 info move D5 visits 1604 winrate 1414 prior 2994 scoreMean -7.93 pv D5 E5 K7 J6 O12 Q12 F5 F4 F6 E4 G5 G4 H5 info move K7 visits 552 winrate 1418 prior 1197 scoreMean -7.20 pv K7 J6 D5 E5 O12 Q12 F5 F4 F6 E4 G5 G4 H5 info move O12 visits 892 winrate 1459 prior 794 scoreMean -7.70 pv O12 Q12 D5 E5 E4 F4 E3 E2 G3 A2 K7 J6 G11 G5 info move F5 visits 370 winrate 1025 prior 3042 scoreMean -6.55 pv F5 F4 E4 G4 D5 D9 D8 E3 E5 G3 G5 G11 H4 F3 info move D18 visits 222 winrate 1273 prior 800 scoreMean -5.13 pv D18 F4 O12 Q12 G4 F16 Q13 O13 F5 E4 info move F6 visits 158 winrate 1150 prior 468 scoreMean -8.67 pv F6 F4 D5 E5 G5 G4 H5 H4 J5 G11 E2 J4 K5 J3 info move F16 visits 79 winrate 1488 prior 124 scoreMean -4.24 pv F16 F18 D5 E5 E4 D9 D8 B9 info move G5 visits 18 winrate 1105 prior 62 scoreMean -6.79 pv G5 F4 F6 G4 H5 H4 info move D19 visits 10 winrate 622 prior 152 scoreMean -7.69 pv D19 F16 D18 F18 A14];B[mg]C[백 승률: 95.4% (+2.7%)
+리드: 6.7 (+1.0) stdev: 9.1
+(KataGo28blocks / 1.7k visits)
+덤: 6.5
+Move time: 2.073 초]LZ[KataGo28blocks 4.6 1.7k 6.7 9.1
+move O13 visits 1061 winrate 9535 prior 4343 scoreMean 6.70 pv O13 D5 E5 E4 F4 E3 E2 G3 A2 K7 J6 H11 G5 L4 info move D9 visits 167 winrate 9443 prior 1291 scoreMean 5.60 pv D9 D8 B9 B6 O13 D5 C9 A7 F4 E5 E4 info move O12 visits 106 winrate 9294 prior 1098 scoreMean 5.17 pv O12 K7 J6 D5 E5 E4 F4 E3 E2 G3 D9 info move Q12 visits 71 winrate 9276 prior 1026 scoreMean 4.84 pv Q12 D5 E5 E4 F4 E3 E2 G3 D9 D8 B9 F6 F5 G5 info move B6 visits 50 winrate 9257 prior 260 scoreMean 4.65 pv B6 A6 D9 D8 B9 B5 O13 F5 F6 info move M13 visits 23 winrate 8474 prior 963 scoreMean 3.86 pv M13 O12 Q12 D5 E5 E4 F4 E3 E2 info move M12 visits 10 winrate 7145 prior 954 scoreMean 1.60 pv M12 O12 N11 M13 Q12 Q13 info move A14 visits 1 winrate 6788 prior 23 scoreMean 1.67 pv A14 info move C9 visits 1 winrate 8537 prior 6 scoreMean 3.37 pv C9 info move F4 visits 1 winrate 8436 prior 5 scoreMean 2.76 pv F4];W[ng]C[흑 승률: 7.8% (-7.8%)
+리드: -5.4 (+0.5) stdev: 9.5
+(KataGo18blocks / 4.5k visits)
+덤: 6.5
+Move time: 2.047 초]LZ[KataGo18blocks 92.2 4.5k -5.4 9.5
+move F16 visits 500 winrate 779 prior 262 scoreMean -5.42 pv F16 F4 D19 G16 D18 E3 G3 R2 info move D5 visits 2212 winrate 886 prior 2830 scoreMean -9.21 pv D5 E5 O12 Q12 E4 F4 E3 E2 G3 A2 F6 G11 J6 K7 info move K7 visits 453 winrate 855 prior 1226 scoreMean -9.19 pv K7 J6 D5 E5 E4 F4 E3 E2 G3 A2 H11 G5 L4 D9 info move O12 visits 423 winrate 931 prior 38 scoreMean -8.17 pv O12 Q12 D5 E5 E4 F4 E3 E2 G3 A2 F6 G11 J6 K7 info move F5 visits 273 winrate 550 prior 3027 scoreMean -8.57 pv F5 F4 K7 G4 J6 J5 H5 J7 G5 H6 H4 info move D18 visits 190 winrate 697 prior 1079 scoreMean -6.79 pv D18 F4 G4 F16 F5 E4 C19 D19 E19 E3 info move F6 visits 180 winrate 784 prior 423 scoreMean -11.24 pv F6 F4 G5 G4 D5 E5 H5 D9 D8 G3 H11 B9 B6 info move G5 visits 180 winrate 850 prior 144 scoreMean -10.12 pv G5 F4 D5 E5 F6 G4 H5 D9 D8 G3 H11 B9 B6 info move D19 visits 34 winrate 378 prior 543 scoreMean -9.64 pv D19 F16 D18 F18 A14 F19 F5 F6 info move H5 visits 16 winrate 458 prior 128 scoreMean -7.49 pv H5 F4 F5 F6 G4 E4 K7 J6 E2 G11 D18 F16];B[fd]C[백 승률: 98.1% (+2.7%)
+리드: 5.6 (-1.1) stdev: 7.1
+(KataGo28blocks / 1.3k visits)
+덤: 6.5
+Move time: 2.077 초]LZ[KataGo28blocks 1.9 1.3k 5.6 7.1
+move D9 visits 293 winrate 9809 prior 1453 scoreMean 5.60 pv D9 D8 F4 D19 G16 A14 B9 B6 E3 info move F4 visits 333 winrate 9830 prior 3186 scoreMean 4.88 pv F4 D19 F18 A14 D9 D8 B9 B6 info move G16 visits 341 winrate 9696 prior 1907 scoreMean 6.36 pv G16 K7 D9 D8 B9 B6 J6 F5 F6 D5 info move F18 visits 113 winrate 9635 prior 1142 scoreMean 6.14 pv F18 D18 F15 D5 E5 E4 F4 E3 E2 info move E2 visits 55 winrate 9591 prior 661 scoreMean 5.79 pv E2 A2 G4 F4 G3 G5 H4 J6 H5 H6 info move B6 visits 52 winrate 9654 prior 524 scoreMean 4.84 pv B6 A6 D9 D8 B9 B5 info move F15 visits 30 winrate 9570 prior 302 scoreMean 5.68 pv F15 D5 E5 E4 F4 E3 E2 G3 D9 info move E19 visits 11 winrate 8991 prior 533 scoreMean 4.31 pv E19 D18 F18 D19 G16 F19 F15 A14 info move G4 visits 2 winrate 9069 prior 49 scoreMean 2.50 pv G4 F4 info move A14 visits 1 winrate 7216 prior 77 scoreMean 1.65 pv A14];W[dk]C[백 승률: 96.0% (-2.1%)
+리드: 6.5 (+0.9) stdev: 9.0
+(KataGo18blocks / 2.6k visits)
+덤: 6.5
+Move time: 2.057 초]LZ[KataGo18blocks 96.0 2.6k -6.5 9.0
+move D8 visits 2531 winrate 402 prior 9954 scoreMean -6.51 pv D8 F4 D19 B9 B6 G16 D18 E3 G4 G5 F5 info move D5 visits 1 winrate 63 prior 2 scoreMean -20.78 pv D5 info move Q12 visits 1 winrate 64 prior 1 scoreMean -25.72 pv Q12 info move O12 visits 1 winrate 73 prior 1 scoreMean -25.45 pv O12 info move L16 visits 1 winrate 58 prior 1 scoreMean -32.21 pv L16 info move D19 visits 1 winrate 30 prior 1 scoreMean -35.65 pv D19 info move A7 visits 1 winrate 54 prior 0 scoreMean -25.25 pv A7 info move B6 visits 1 winrate 55 prior 0 scoreMean -26.35 pv B6 info move R5 visits 1 winrate 54 prior 0 scoreMean -34.72 pv R5 info move D18 visits 1 winrate 32 prior 0 scoreMean -34.65 pv D18])

@@ -4,7 +4,7 @@ import React, { useState, useMemo } from 'react';
 import { User, ServerAction, AdminProps, LiveGameSession, GameMode, Quest, DailyQuestData, WeeklyQuestData, MonthlyQuestData } from '../../types/index.js';
 import DraggableWindow from '../DraggableWindow.js';
 import Button from '../Button.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants';
 
 interface UserManagementModalProps {
     user: User;

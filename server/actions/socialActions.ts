@@ -6,6 +6,7 @@ import { updateQuestProgress } from './../questService.js';
 import { containsProfanity } from '../../profanity.js';
 import * as tournamentService from '../tournamentService.js';
 import * as summaryService from '../summaryService.js';
+import { broadcast } from '../socket.js';
 
 
 type HandleActionResult = { 
@@ -74,6 +75,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             
             delete volatileState.userConnections[user.id];
             delete volatileState.userStatuses[user.id];
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             return {};
         }
         case 'SEND_CHAT_MESSAGE': {
@@ -151,6 +153,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             const currentUserStatus = volatileState.userStatuses[user.id];
             if (currentUserStatus && (currentUserStatus.status === UserStatus.Waiting || currentUserStatus.status === 'resting')) {
                 currentUserStatus.status = status;
+                broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             } else {
                 return { error: 'Cannot change status while in-game or negotiating.' };
             }
@@ -159,6 +162,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
         case 'ENTER_WAITING_ROOM': {
             const { mode } = payload;
             volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode };
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             return {};
         }
         case 'LEAVE_WAITING_ROOM': {
@@ -166,6 +170,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             if (userStatus && (userStatus.status === UserStatus.Waiting || userStatus.status === UserStatus.Resting)) {
                 userStatus.status = UserStatus.Online;
             }
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             return {};
         }
         case 'ENTER_TOURNAMENT_VIEW': {
@@ -189,6 +194,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             if (volatileState.userStatuses[user.id]) {
                 volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
             }
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
 
             const ongoingRematchNegotiation = Object.values(volatileState.negotiations).find(
                 neg => neg.rematchOfGameId === gameId
@@ -222,6 +228,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             if (volatileState.userStatuses[user.id]) {
                 volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
             }
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             
             // If the user leaves before the game is officially over (e.g. resigns), end the game.
             if (!['ended', 'no_contest'].includes(game.gameStatus)) {
@@ -235,6 +242,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             const game = await db.getLiveGame(gameId);
             if (!game) return { error: 'Game not found.' };
             volatileState.userStatuses[user.id] = { status: UserStatus.Spectating, spectatingGameId: gameId, mode: game.mode };
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             return {};
         }
         case 'LEAVE_SPECTATING': {
@@ -244,6 +252,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                 delete userStatus.spectatingGameId;
                 delete userStatus.gameId; 
             }
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             return {};
         }
         default:

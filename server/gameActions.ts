@@ -7,11 +7,11 @@ import { isDifferentDayKST, isDifferentWeekKST, isDifferentMonthKST } from '../u
 import * as effectService from './effectService.js';
 import { regenerateActionPoints } from './effectService.js';
 import { updateGameStates } from './gameModes.js';
-import { DAILY_QUESTS, WEEKLY_QUESTS, MONTHLY_QUESTS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, ACTION_POINT_REGEN_INTERVAL_MS, ITEM_SELL_PRICES, MATERIAL_SELL_PRICES } from '../constants.js';
+import { DAILY_QUESTS, WEEKLY_QUESTS, MONTHLY_QUESTS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, ACTION_POINT_REGEN_INTERVAL_MS, ITEM_SELL_PRICES, MATERIAL_SELL_PRICES } from '../constants';
 import { initializeGame } from './gameModes.js';
 import { handleStrategicGameAction } from './modes/standard.js';
 import { handlePlayfulGameAction } from './modes/playful.js';
-import { createDefaultUser, createDefaultQuests } from './initialData.js';
+import { createDefaultUser, createDefaultQuests } from './initialData.ts';
 import { containsProfanity } from '../profanity.js';
 import * as mannerService from './mannerService.js';
 

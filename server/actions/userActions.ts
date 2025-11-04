@@ -1,7 +1,7 @@
 import * as db from '../db.js';
 // FIX: Import the full namespace to access enums like CoreStat.
 import * as types from '../../types.js';
-import { AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES } from '../../constants.js';
+import { AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES } from '../../constants';
 import { containsProfanity } from '../../profanity.js';
 import { UserStatus } from '../../types/enums.js';
 
@@ -49,9 +49,8 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             if (!user.isAdmin) {
                 user.diamonds -= cost;
             }
-            user.nickname = newNickname;
             await db.updateUser(user);
-            return {};
+            return { clientResponse: { updatedUser: user } };
         }
         case 'UPDATE_MBTI': {
             const { mbti, isMbtiPublic } = payload;
@@ -104,13 +103,9 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
                 if (volatileState.userStatuses[user.id]) {
                     volatileState.userStatuses[user.id].status = UserStatus.Resting;
                 }
-            } else if (volatileState.userStatuses[user.id]?.status === UserStatus.Resting) {
-                if (volatileState.userStatuses[user.id]) {
-                    volatileState.userStatuses[user.id].status = UserStatus.Waiting;
-                }
             }
             await db.updateUser(user);
-            return {};
+            return { clientResponse: { updatedUser: user } };
         }
         case 'SAVE_PRESET': {
             const { preset, index } = payload as { preset: types.EquipmentPreset, index: number };

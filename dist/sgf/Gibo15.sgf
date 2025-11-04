@@ -1,0 +1,641 @@
+(;DT[2025-08-31]KM[6.5]PB[LeelaZero 20blocks]RE[흑 불계승]DZ[KW]PW[KataGo 18blocks Human]SZ[19]CA[UTF-8]AP[Lizzie: 2.5.3]C[Engine Rules: 한국(일본)룰
+
+흑 사용시간: 146.536 초
+Total visits:  507759
+백 사용시간: 145.624 초
+Total visits:  10307
+White Rules: 한국(일본)룰]LZOP[LeelaZero20blocks 57.4 52k
+move D16 visits 10089 winrate 4260 prior 1516 pv D16 Q4 Q16 D4 R3 R4 Q3 P4 O2 C17 D17 C16 C14 B14 B13 C15 D14 D15 E15 E16 E18 F16 info move Q16 visits 10195 winrate 4259 prior 1545 pv Q16 D4 C3 D3 C4 D5 B6 R4 C16 E17 D15 O3 H17 R14 O16 P15 info move Q4 visits 10086 winrate 4259 prior 1538 pv Q4 D16 C17 D17 C16 D15 B14 R16 C4 E3 H3 E6 C6 Q3 R3 P3 info move D4 visits 10205 winrate 4259 prior 1556 pv D4 Q16 R17 R16 Q17 P16 O18 Q3 D17 C15 C12 F15 F17 C4 C3 C5 info move D3 visits 1441 winrate 4225 prior 378 pv D3 Q16 D17 Q4 R17 R16 Q17 P16 O18 C15 E16 D5 info move Q3 visits 1390 winrate 4225 prior 366 pv Q3 D16 Q17 D4 C17 C16 D17 E16 F18 R15 P16 Q5 info move D17 visits 1386 winrate 4224 prior 368 pv D17 Q4 D3 Q16 R17 R16 Q17 P16 O18 C15 E16 D5 info move R4 visits 1383 winrate 4224 prior 371 pv R4 D16 C4 Q16 R17 Q17 R16 Q15 S14 P3 Q5 E4 info move R16 visits 1363 winrate 4223 prior 370 pv R16 D4 C16 Q4 R3 Q3 R4 Q5 S6 P17 Q15 E16 info move C4 visits 1356 winrate 4224 prior 363 pv C4 Q16 R4 D16 R17 Q17 R16 Q15 S14 P3 Q5 E4];B[dd]C[백 승률: 52.5% 
+리드: 0.3  stdev: 14.3
+(KataGo18blocksHuman / 414 visits)
+덤: 6.5]LZ[KataGo18blocksHuman 47.5 414 0.3 14.3
+move Q4 visits 304 winrate 5253 prior 4421 scoreMean 0.31 pv Q4 R3 R4 Q3 P4 O2 D4 Q16 C17 C16 D17 E16 F18 C6 info move D4 visits 110 winrate 5244 prior 2004 scoreMean 0.29 pv D4 C3 C4 D3 E4 F2 Q4 Q16 R17 R16 Q17 P16 O18 R6 info move Q16 visits 110 winrate 5244 prior 2004 scoreMean 0.29 pv Q16 R17 Q17 R16 Q15 S14 Q4 D4 C3 D3 C4 D5 B6 O3];W[pp]C[흑 승률: 42.6% (-0.0%)
+(LeelaZero20blocks / 19k visits)
+덤: 6.5]LZ[LeelaZero20blocks 57.4 19k
+move R3 visits 4546 winrate 4260 prior 1891 pv R3 Q3 R4 Q5 S6 C4 R16 P17 Q15 F3 M17 C14 F16 E15 E16 B16 info move Q16 visits 5923 winrate 4247 prior 2854 pv Q16 D4 C3 C4 D3 E4 F2 R17 Q17 R16 R14 R15 Q15 S14 R3 R4 Q3 P4 P3 O4 O3 R13 Q14 R18 P12 info move D4 visits 5762 winrate 4247 prior 2772 pv D4 Q16 R3 Q3 R4 Q5 S6 C17 C16 D17 F17 E17 E16 F18 R17 Q17 R16 Q15 R15 Q14 R14 G17 F16 B17 H15 info move R6 visits 891 winrate 4232 prior 490 pv R6 D4 Q16 C17 D17 C16 C14 B14 B13 C15 D14 D15 E15 E16 E18 F16 F15 info move O3 visits 839 winrate 4232 prior 459 pv O3 Q16 D4 C17 C16 D17 F17 F18 G18 E17 F16 E16 E15 D15 B15 info move R16 visits 541 winrate 4222 prior 328 pv R16 D4 C3 C4 D3 E4 F2 C17 C16 D17 E16 F18 C8 P17 E8 Q15 info move D3 visits 447 winrate 4219 prior 280 pv D3 Q16 R17 Q17 R16 Q15 S14 C17 D17 C16 D15 B14 M17 C5 M15 E4 info move Q17 visits 78 winrate 4188 prior 64 pv Q17 D4 Q14 C14 C6 F17 F16 G16 F15 D17 C17 E17 C16 D13 J16 info move C4 visits 64 winrate 4181 prior 54 pv C4 Q16 F4 C17 D17 C16 C14 B14 B13 C15 D14 info move E4 visits 51 winrate 4218 prior 32 pv E4 C3 C5 D4 D5 E3 F3 F2 F4 G2 Q16 R17 R16 Q17 O17];B[qq]C[백 승률: 52.3% (-0.2%)
+리드: 0.3 (-0.0) stdev: 14.3
+(KataGo18blocksHuman / 337 visits)
+덤: 6.5
+Move time: 2.08 초]LZ[KataGo18blocksHuman 47.7 337 0.3 14.3
+move Q3 visits 328 winrate 5232 prior 4363 scoreMean 0.28 pv Q3 R4 Q5 S6 Q16 D4 C17 D17 C16 D15 B14 O17 F3 R14 info move R4 visits 328 winrate 5232 prior 4363 scoreMean 0.28 pv R4 Q3 P4 O2 D4 Q16 C17 C16 D17 E16 F18 C6 R14 F3 info move D4 visits 2 winrate 5044 prior 179 scoreMean 0.18 pv D4 R4 info move Q16 visits 2 winrate 5044 prior 179 scoreMean 0.18 pv Q16 Q3 info move C17 visits 7 winrate 5152 prior 302 scoreMean 0.29 pv C17 C16 Q3];W[pq]C[흑 승률: 42.6% (-0.0%)
+(LeelaZero20blocks / 8.3k visits)
+덤: 6.5
+Move time: 2.1 초]LZ[LeelaZero20blocks 57.4 8.3k
+move R4 visits 8251 winrate 4259 prior 9602 pv R4 Q5 S6 Q16 D4 C17 C16 D17 F17 E17 E16 F18 R17 Q17 R16 Q15 R15 Q14 R14 G17 F16 B17 H15 F3 H3];B[qp]C[백 승률: 50.3% (-2.0%)
+리드: 0.0 (-0.3) stdev: 14.2
+(KataGo18blocksHuman / 613 visits)
+덤: 6.5
+Move time: 2.044 초]LZ[KataGo18blocksHuman 49.7 613 0.0 14.2
+move R5 visits 7 winrate 5034 prior 481 scoreMean 0.01 pv R5 S5 Q16 D4 S6 R6 Q5 info move Q5 visits 592 winrate 5237 prior 8583 scoreMean 0.28 pv Q5 S6 Q16 D4 C17 D17 C16 D15 B14 O17 F3 R14 Q14 Q13 info move R6 visits 14 winrate 5088 prior 798 scoreMean 0.11 pv R6 S6 Q16 D4 Q5 S7 C17];W[qo]C[흑 승률: 43.7% (+1.1%)
+(LeelaZero20blocks / 4.0k visits)
+덤: 6.5
+Move time: 2.098 초]LZ[LeelaZero20blocks 56.3 4.0k
+move S5 visits 4015 winrate 4373 prior 9544 pv S5 Q16 Q5 R6 S6 R7 P5 Q2 R8 S7 R2 N3 Q8 S8 S9 Q7 P4 P3 N4 M3 P7 R9 Q9 R10 S10 S11 R11 Q10 S12 Q11 R12 P6 O7 O6 N6 N7 Q6 info move Q2 visits 9 winrate 3781 prior 3 pv Q2 P2 S5 R2 S2 Q1 info move Q5 visits 5 winrate 3524 prior 3 pv Q5 R6 Q2 P2 R2 info move D4 visits 1 winrate 3225 prior 2 pv D4 info move D3 visits 1 winrate 2912 prior 2 pv D3 info move Q16 visits 1 winrate 2621 prior 2 pv Q16 info move O3 visits 1 winrate 2159 prior 2 pv O3 info move S11 visits 1 winrate 1745 prior 2 pv S11];B[ro]C[백 승률: 48.1% (-2.2%)
+리드: -0.1 (-0.2) stdev: 14.4
+(KataGo18blocksHuman / 82 visits)
+덤: 6.5
+Move time: 2.031 초]LZ[KataGo18blocksHuman 51.9 82 -0.1 14.4
+move S6 visits 7 winrate 4809 prior 1775 scoreMean -0.14 pv S6 R6 Q5 S7 S4 T6 S3 info move D4 visits 17 winrate 4994 prior 2024 scoreMean 0.08 pv D4 Q16 R6 S6 R7 S7 R8 info move Q16 visits 58 winrate 5055 prior 4485 scoreMean 0.13 pv Q16 D4 S6 R6 Q5 S7 S4 T6 S3 R2 S2 O17 P17 O16];W[rn]C[흑 승률: 44.8% (+1.1%)
+(LeelaZero20blocks / 3.4k visits)
+덤: 6.5
+Move time: 2.073 초]LZ[LeelaZero20blocks 55.2 3.4k
+move R6 visits 3364 winrate 4482 prior 9654 pv R6 Q5 S7 S4 T6 S3 R16 D4 C3 C4 D3 E4 F2 C17 C16 D17 F17 E17 E16 F18 C8 P17];B[qn]C[백 승률: 48.0% (-0.1%)
+리드: -0.1 (+0.0) stdev: 14.2
+(KataGo18blocksHuman / 97 visits)
+덤: 6.5
+Move time: 2.068 초]LZ[KataGo18blocksHuman 52.0 97 -0.1 14.2
+move Q5 visits 97 winrate 4797 prior 9968 scoreMean -0.13 pv Q5 S7 S4 T6 S3 R2 S2 R16 D4 P16 C17 C16 D17 F17];W[po]C[흑 승률: 44.9% (+0.1%)
+(LeelaZero20blocks / 6.9k visits)
+덤: 6.5
+Move time: 2.035 초]LZ[LeelaZero20blocks 55.1 6.9k
+move S7 visits 6896 winrate 4490 prior 9560 pv S7 S4 T6 S3 R16 D4 P16 C14 C12 C17 C16 D17 E16 B16 B15 B17 B14 F17 C6 F3 E6 B4 G4 F4 G5];B[rm]C[백 승률: 47.8% (-0.2%)
+리드: -0.2 (-0.0) stdev: 14.1
+(KataGo18blocksHuman / 202 visits)
+덤: 6.5
+Move time: 2.054 초]LZ[KataGo18blocksHuman 52.2 202 -0.2 14.1
+move S4 visits 202 winrate 4776 prior 9765 scoreMean -0.16 pv S4 T6 S3 R2 S2 R16 D4 P16 C17 C16 D17 F17 F18 G18];W[rp]C[흑 승률: 45.0% (+0.1%)
+(LeelaZero20blocks / 10k visits)
+덤: 6.5
+Move time: 2.027 초]LZ[LeelaZero20blocks 55.0 10k
+move T6 visits 10315 winrate 4496 prior 9812 pv T6 S3 R16 D4 P16 C14 C12 C17 C16 D17 E16 B16 B15 B17 B14 F17 C6 F3 E6 B4 G4 F4 G5 D7];B[sn]C[백 승률: 47.7% (-0.1%)
+리드: -0.2 (-0.0) stdev: 14.2
+(KataGo18blocksHuman / 285 visits)
+덤: 6.5
+Move time: 2.051 초]LZ[KataGo18blocksHuman 52.3 285 -0.2 14.2
+move S3 visits 285 winrate 4768 prior 9954 scoreMean -0.17 pv S3 R2 S2 R16 D4 P16 C17 C16 D17 F17 F18 G18 E17 F16];W[rq]C[흑 승률: 45.3% (+0.3%)
+(LeelaZero20blocks / 14k visits)
+덤: 6.5
+Move time: 2.03 초]LZ[LeelaZero20blocks 54.7 14k
+move R16 visits 8671 winrate 4528 prior 3795 pv R16 D4 P16 C14 C12 C17 C16 D17 E16 B16 B15 B17 B14 F17 C6 F3 E6 B4 G4 F4 G5 D7 D6 D11 info move R2 visits 3083 winrate 4476 prior 2510 pv R2 S2 R16 D4 C3 C4 D3 E4 F2 C17 C16 D17 F17 E17 E16 F18 C8 P17 Q15 C11 E8 E11 info move Q16 visits 2165 winrate 4452 prior 2069 pv Q16 C4 E3 D6 Q6 R14 R15 Q14 O16 Q10 C8 H3 G4 H4 G6 info move Q17 visits 325 winrate 4423 prior 372 pv Q17 D4 Q14 C17 C16 D17 F17 E17 E16 F18 B17 G17 F16 H18 info move D4 visits 122 winrate 4334 prior 219 pv D4 Q16 O17 R14 F17 C3 C4 D3 F3 E3 E4 F2 info move D3 visits 72 winrate 4345 prior 124 pv D3 Q16 R14 O17 D5 F17 E17 F16 D14 info move C4 visits 29 winrate 4362 prior 45 pv C4 Q16 R14 O17 E4 F17 E17 F16 D14 info move Q15 visits 25 winrate 4392 prior 34 pv Q15 C4 Q17 F3 D4 D3 C5 B4 D5 info move Q6 visits 6 winrate 4162 prior 20 pv Q6 Q16 D4 R14 F17 C3];B[qd]C[백 승률: 47.6% (-0.1%)
+리드: -0.2 (-0.0) stdev: 14.1
+(KataGo18blocksHuman / 301 visits)
+덤: 6.5
+Move time: 2.079 초]LZ[KataGo18blocksHuman 52.4 301 -0.2 14.1
+move D4 visits 166 winrate 4760 prior 5189 scoreMean -0.18 pv D4 R2 S2 P16 C17 C16 D17 F17 F18 G18 E17 F16 E16 E15 info move C4 visits 117 winrate 4759 prior 3629 scoreMean -0.18 pv C4 R2 S2 Q6 F3 P16 C17 C16 D17 F17 E17 E16 info move D3 visits 18 winrate 4753 prior 588 scoreMean -0.15 pv D3 R2 S2 C5 C17 D17];W[dp]C[흑 승률: 45.8% (+0.5%)
+(LeelaZero20blocks / 9.2k visits)
+덤: 6.5
+Move time: 2.034 초]LZ[LeelaZero20blocks 54.2 9.2k
+move P16 visits 2866 winrate 4576 prior 1584 pv P16 C14 C12 C17 C16 D17 E16 B16 B15 B17 B14 F17 C6 G3 Q6 Q12 C3 C4 D3 E4 B4 B5 B3 C5 info move C3 visits 3046 winrate 4512 prior 3231 pv C3 D3 C4 C6 C5 D5 B6 C17 D17 C16 D15 C15 C14 B14 M17 P7 Q9 K4 P16 R11 R13 R17 info move R2 visits 929 winrate 4492 prior 1116 pv R2 S2 C3 C4 D3 E4 F2 C17 C16 D17 F17 E17 E16 F18 C8 P17 Q15 C11 E8 info move O16 visits 721 winrate 4494 prior 847 pv O16 C14 C12 C17 C16 D17 E16 B16 B15 B17 B14 F17 C6 F3 E6 B4 G4 F4 G5 D11 D12 info move Q6 visits 666 winrate 4468 prior 949 pv Q6 C17 D17 C16 C14 C15 D15 B14 P16 Q12 K16 R14 R10 N17 O17 C13 D14 C18 info move C6 visits 465 winrate 4460 prior 697 pv C6 C17 C16 D17 F17 E17 E16 F18 F3 F4 G4 F5 D3 C3 E3 D6 B17 B18 E18 D18 G18 P17 M16 F16 G17 info move C14 visits 358 winrate 4441 prior 603 pv C14 P17 Q14 P7 Q9 M17 C6 G3 C3 C4 D3 E4 info move O17 visits 95 winrate 4412 prior 186 pv O17 C17 C16 D17 F17 E17 E16 F18 B17 B18 E18 D18 G18 E19 info move M17 visits 32 winrate 4465 prior 47 pv M17 P7 Q9 C17 D17 C16 C14 C15 info move F3 visits 21 winrate 4391 prior 44 pv F3 C6 P16 C14 C15 D14 F16 D10 Q6 Q12];B[od]C[백 승률: 46.5% (-1.1%)
+리드: -0.3 (-0.2) stdev: 14.5
+(KataGo18blocksHuman / 264 visits)
+덤: 6.5
+Move time: 2.062 초]LZ[KataGo18blocksHuman 53.5 264 -0.3 14.5
+move C14 visits 12 winrate 4646 prior 687 scoreMean -0.33 pv C14 R2 S2 Q6 C17 info move P7 visits 82 winrate 4753 prior 903 scoreMean -0.20 pv P7 Q9 C17 C16 D17 F17 E17 R2 S2 E16 F18 B17 B18 E18 info move R10 visits 1 winrate 4426 prior 284 scoreMean -0.34 pv R10 info move C6 visits 10 winrate 4588 prior 775 scoreMean -0.35 pv C6 Q6 C17 C16 info move C17 visits 159 winrate 4692 prior 5701 scoreMean -0.24 pv C17 C16 D17 R2 S2 F17 F18 G18 E17 F16 E16 E15 D15 B15];W[cf]C[흑 승률: 45.6% (-0.1%)
+(LeelaZero20blocks / 5.1k visits)
+덤: 6.5
+Move time: 2.05 초]LZ[LeelaZero20blocks 54.4 5.1k
+move C6 visits 1301 winrate 4564 prior 2247 pv C6 F3 C12 C17 C16 D17 E16 B16 B15 B17 B14 F17 E6 B4 G4 F4 G5 D7 D6 D11 D12 F11 info move C12 visits 1319 winrate 4560 prior 2220 pv C12 C17 C16 D17 E16 B16 B15 B17 B14 F17 C6 F3 E6 B4 G4 F4 G5 D7 D6 D11 D12 F11 info move C15 visits 597 winrate 4558 prior 1101 pv C15 D14 F16 D10 B12 C17 B14 C12 C3 C4 D3 F3 E3 E4 F2 F18 D17 D18 F17 E18 H17 info move R2 visits 529 winrate 4511 prior 1143 pv R2 S2 C12 C17 C16 D17 E16 B16 B15 B17 B14 F17 C6 F3 E6 B4 G4 F4 G5 D7 D6 D11 D12 info move C3 visits 433 winrate 4461 prior 1234 pv C3 C4 D3 E4 F2 F17 F16 G16 F15 D17 C17 E17 C16 C12 J16 G15 D13 D14 F13 B15 E16 H17 J17 info move F16 visits 429 winrate 4630 prior 350 pv F16 E15 C15 E16 E17 F17 G17 F18 D17 G18 H17 G16 F15 H16 E14 J17 info move F17 visits 341 winrate 4538 prior 636 pv F17 C16 C17 B17 C15 B16 D15 B15 D14 C13 Q6 Q12 M16 E12 C6 C5 D6 info move Q6 visits 94 winrate 4505 prior 211 pv Q6 C17 C16 D17 E16 B16 B15 B17 C3 C4 D3 E4 E3 F3 F2 F17 info move F3 visits 54 winrate 4532 prior 103 pv F3 H3 Q6 C17 C16 D17 E16 B16 B15 B17 C6 F4 B14 C13 C11 F17];B[cn]C[백 승률: 47.1% (+0.6%)
+리드: -0.3 (+0.0) stdev: 14.5
+(KataGo18blocksHuman / 89 visits)
+덤: 6.5
+Move time: 2.051 초]LZ[KataGo18blocksHuman 52.9 89 -0.3 14.5
+move C8 visits 9 winrate 4709 prior 886 scoreMean -0.28 pv C8 E6 G4 C10 info move F3 visits 42 winrate 4773 prior 1883 scoreMean -0.22 pv F3 R2 S2 Q6 C17 C16 D17 info move F17 visits 16 winrate 4650 prior 2002 scoreMean -0.23 pv F17 R2 S2 F16 G16 F15 D17 info move C17 visits 8 winrate 4661 prior 1008 scoreMean -0.27 pv C17 R2 S2 C16 D17 E16 info move G3 visits 14 winrate 4669 prior 1671 scoreMean -0.30 pv G3 R2 S2 Q6 C17];W[cl]C[흑 승률: 45.8% (+0.2%)
+(LeelaZero20blocks / 3.5k visits)
+덤: 6.5
+Move time: 2.043 초]LZ[LeelaZero20blocks 54.2 3.5k
+move E6 visits 1074 winrate 4583 prior 3532 pv E6 G4 C10 C17 C16 D17 E16 B16 B15 B17 B14 F17 C13 E8 G6 C4 J3 G8 H5 G2 Q6 Q12 B5 B4 E10 info move K17 visits 601 winrate 4634 prior 1297 pv K17 C17 D17 C16 D15 D14 E14 E13 F13 F14 E15 E12 F12 F11 G14 C15 E11 F10 D9 D6 F9 G9 F8 info move F17 visits 573 winrate 4673 prior 908 pv F17 G3 Q6 Q12 C12 C16 C17 B17 D15 C15 D14 C13 info move C15 visits 239 winrate 4540 prior 856 pv C15 D14 F16 D10 C3 C4 D3 E4 B4 B5 B3 B6 F3 R10 R12 P7 Q9 Q10 P9 P10 O9 O10 N9 info move R2 visits 224 winrate 4571 prior 852 pv R2 S2 E6 G4 C10 C17 C16 D17 E16 B16 B15 B17 B14 F17 C13 E8 B4 C3 B3 J4 Q6 Q12 info move Q6 visits 215 winrate 4619 prior 482 pv Q6 C17 D17 C16 D15 B13 D14 L17 J17 N17 O17 J16 H16 K16 H17 N16 O14 info move L17 visits 169 winrate 4633 prior 339 pv L17 C17 D17 C16 D15 C18 E13 P7 Q9 G3 D18 L14 info move K16 visits 163 winrate 4654 prior 267 pv K16 C17 D17 C16 D15 D14 E14 E13 F13 F14 E15 E12 F12 F11 G14 C15 E11 G11 H12 E8 H11 info move F16 visits 113 winrate 4628 prior 241 pv F16 G3 Q6 Q12 C15 C5 C10 D6 E10 info move D14 visits 47 winrate 4509 prior 195 pv D14 D13 E14 B15 C17 E13 F13 F14 G13 F15 E16 F16 F17 G17 F18];B[en]C[백 승률: 46.0% (-1.1%)
+리드: -0.3 (-0.0) stdev: 14.3
+(KataGo18blocksHuman / 90 visits)
+덤: 6.5
+Move time: 2.12 초]LZ[KataGo18blocksHuman 54.0 90 -0.3 14.3
+move F4 visits 26 winrate 4604 prior 3105 scoreMean -0.32 pv F4 R2 S2 C10 C17 C16 D17 E16 B16 B15 B17 B14 F17 C13 info move F3 visits 3 winrate 4572 prior 421 scoreMean -0.38 pv F3 C10 C17 info move G4 visits 40 winrate 4646 prior 3704 scoreMean -0.28 pv G4 C10 C17 R2 S2 C16 D17 E16 B16 B15 B17 B14 F17 C13 info move F17 visits 13 winrate 4680 prior 834 scoreMean -0.29 pv F17 R2 S2 D14 D13 info move G3 visits 8 winrate 4579 prior 1115 scoreMean -0.37 pv G3 C10 C17 R2 S2 C16];W[fp]C[흑 승률: 45.3% (-0.5%)
+(LeelaZero20blocks / 4.4k visits)
+덤: 6.5
+Move time: 2.11 초]LZ[LeelaZero20blocks 54.7 4.4k
+move C10 visits 3882 winrate 4528 prior 8053 pv C10 E8 E10 C17 C16 D17 E16 B16 B15 B17 C15 F17 G6 B14 A14 B12 D14 D13 E13 D12 E12 D11 info move R2 visits 461 winrate 4513 prior 889 pv R2 S2 C10 E8 E10 C17 C16 D17 E16 B16 B15 B17 C15 F17 B4 B14 A14 A13 A15 B12 D14 D13 info move D12 visits 33 winrate 4448 prior 96 pv D12 E14 F16 E8 C10 C5 B5 B4 C15 J4 info move C12 visits 21 winrate 4442 prior 64 pv C12 E14 E12 F16 B16 E8 F15 info move C11 visits 17 winrate 4322 prior 80 pv C11 E8 E11 C17 C16 D17 E16 B16 info move H3 visits 14 winrate 4456 prior 41 pv H3 C5 B6 D10 G5 G2 G4 F3];B[cj]C[백 승률: 46.2% (+0.1%)
+리드: -0.4 (-0.1) stdev: 14.7
+(KataGo18blocksHuman / 109 visits)
+덤: 6.5
+Move time: 2.13 초]LZ[KataGo18blocksHuman 53.8 109 -0.4 14.7
+move E8 visits 9 winrate 4615 prior 361 scoreMean -0.39 pv E8 R2 S2 E10 C17 info move D9 visits 4 winrate 4526 prior 457 scoreMean -0.49 pv D9 D10 F9 info move F17 visits 7 winrate 4523 prior 783 scoreMean -0.42 pv F17 R2 S2 F16 info move C17 visits 71 winrate 4576 prior 4997 scoreMean -0.31 pv C17 R2 S2 C16 D17 E16 B16 B15 B17 B14 F17 C13 E8 B4 info move F16 visits 3 winrate 4444 prior 363 scoreMean -0.43 pv F16 F15 G15 info move E9 visits 15 winrate 4490 prior 1847 scoreMean -0.49 pv E9 R2 S2 D11 C9 D14];W[el]C[흑 승률: 45.1% (-0.2%)
+(LeelaZero20blocks / 6.3k visits)
+덤: 6.5
+Move time: 2.032 초]LZ[LeelaZero20blocks 54.9 6.3k
+move E10 visits 4204 winrate 4510 prior 5515 pv E10 C17 C16 D17 E16 B16 B15 B17 C15 F17 G6 B14 D14 B4 Q6 Q12 H4 R14 R10 N17 N16 M16 N15 O17 info move R2 visits 889 winrate 4492 prior 1193 pv R2 S2 E10 C17 C16 D17 E16 B16 B15 B17 C15 F17 B4 B14 D14 C3 G6 J4 C13 G8 B3 F10 Q6 Q12 J6 info move C12 visits 620 winrate 4566 prior 408 pv C12 D11 D10 C11 B11 D12 B12 D13 F10 F16 F15 G15 F14 E16 D15 E15 info move C15 visits 456 winrate 4346 prior 1396 pv C15 D14 F16 E10 D12 F12 E13 F15 F13 B15 B16 G16 F17 D15 info move B8 visits 101 winrate 4174 prior 514 pv B8 C17 C16 D17 E16 B16 B15 B17 R2 S2 H3 C15 G5 G3 H2 info move H3 visits 26 winrate 4419 prior 56 pv H3 E10 G5 B4 C12 E14 E12 F16 B16];B[ej]C[백 승률: 43.9% (-2.2%)
+리드: -0.4 (+0.0) stdev: 14.9
+(KataGo18blocksHuman / 120 visits)
+덤: 6.5
+Move time: 2.08 초]LZ[KataGo18blocksHuman 56.1 120 -0.4 14.9
+move C12 visits 1 winrate 4391 prior 346 scoreMean -0.38 pv C12 info move C5 visits 1 winrate 4153 prior 384 scoreMean -0.67 pv C5 info move C17 visits 118 winrate 4755 prior 8200 scoreMean -0.16 pv C17 R2 S2 C16 D17 E16 B16 B15 B17 C15 F17 B4 B14 D14];W[ch]C[흑 승률: 50.6% (+5.5%)
+(LeelaZero20blocks / 3.0k visits)
+덤: 6.5
+Move time: 2.117 초]LZ[LeelaZero20blocks 49.4 3.0k
+move C15 visits 2005 winrate 5058 prior 4825 pv C15 D14 F16 G13 G10 G8 B8 D9 D10 B7 B9 B6 C4 C5 D5 B5 E4 D3 info move R2 visits 497 winrate 5064 prior 1060 pv R2 S2 C15 D14 F16 G13 G10 C5 B6 B10 B9 C9 B11 D10 C11 D11 B8 B12 A10 C17 C16 J4 info move H3 visits 283 winrate 4971 prior 936 pv H3 H4 J4 H5 G3 F3 C15 D14 F16 G8 F13 B8 B11 F14 info move B8 visits 44 winrate 4640 prior 426 pv B8 B16 C17 K17 M17 G17 F16 G16 F14 B17 info move Q6 visits 32 winrate 4715 prior 263 pv Q6 F16 F15 G15 F14 G16 E16 info move G16 visits 30 winrate 4728 prior 238 pv G16 C17 C16 B16 B15 B17 C15 E18 F17 info move G6 visits 29 winrate 4632 prior 282 pv G6 J4 Q6 G8 B8 D9 C9 D10 info move K17 visits 25 winrate 4648 prior 231 pv K17 C17 C16 D17 E16 B16 B15 B17 C15 F17 E12 B14 A14 C5 info move B15 visits 17 winrate 4614 prior 170 pv B15 B10 D9 C9 D8 C11 info move G17 visits 7 winrate 4686 prior 65 pv G17 F15 D14 C15 D15 info move F17 visits 6 winrate 4588 prior 69 pv F17 B16 D13 D14 E14 E15];B[ce]C[백 승률: 42.7% (-1.2%)
+리드: -0.7 (-0.3) stdev: 14.7
+(KataGo18blocksHuman / 82 visits)
+덤: 6.5
+Move time: 2.096 초]LZ[KataGo18blocksHuman 57.3 82 -0.7 14.7
+move D14 visits 82 winrate 4269 prior 9578 scoreMean -0.70 pv D14 R2 S2 F16 G13 J16 C5 B5 B4 G10];W[df]C[흑 승률: 50.5% (-0.1%)
+(LeelaZero20blocks / 5.6k visits)
+덤: 6.5
+Move time: 2.041 초]LZ[LeelaZero20blocks 49.6 5.6k
+move F16 visits 4933 winrate 5045 prior 8708 pv F16 G13 G10 H17 H16 G16 G15 G17 F15 E18 J17 J18 J16 K18 F18 F17 E17 D17 E16 G18 D18 F19 info move R2 visits 663 winrate 5068 prior 853 pv R2 S2 F16 G13 G10 H17 H16 G16 G15 G17 F15 E18 J16 J17 K16 K17 L16 M17 D11 D12 B15 H12];B[fd]C[백 승률: 41.5% (-1.2%)
+리드: -0.8 (-0.1) stdev: 14.6
+(KataGo18blocksHuman / 112 visits)
+덤: 6.5
+Move time: 2.097 초]LZ[KataGo18blocksHuman 58.5 112 -0.8 14.6
+move G8 visits 5 winrate 4151 prior 783 scoreMean -0.84 pv G8 B8 B7 R2 info move B10 visits 5 winrate 3976 prior 1219 scoreMean -0.92 pv B10 B11 C11 B9 info move C5 visits 39 winrate 4306 prior 2395 scoreMean -0.62 pv C5 B6 B10 B9 C9 B11 D10 C11 D11 info move G13 visits 62 winrate 4295 prior 4086 scoreMean -0.71 pv G13 B8 B7 R2 S2 C7 B9 D8 C9 D9 B10 info move P7 visits 1 winrate 4005 prior 410 scoreMean -0.92 pv P7];W[gl]C[흑 승률: 52.6% (+2.1%)
+(LeelaZero20blocks / 4.0k visits)
+덤: 6.5
+Move time: 2.119 초]LZ[LeelaZero20blocks 47.4 4.0k
+move F13 visits 1302 winrate 5259 prior 808 pv F13 F14 G14 G13 E14 E13 F15 F12 H13 F14 R2 E15 S2 E16 E17 F17 D17 H14 G17 G15 G16 C5 info move G10 visits 961 winrate 5181 prior 1751 pv G10 G13 B8 D9 D10 B7 B9 B6 C4 C5 D5 B5 E4 D3 E3 F5 E5 C3 F6 G6 H3 H5 F3 K4 K2 info move B8 visits 770 winrate 5043 prior 2813 pv B8 B7 C7 B9 D8 C9 D9 B10 G6 J4 Q6 Q12 K17 R14 R10 Q10 R11 Q11 O14 R9 S9 R8 info move R2 visits 448 winrate 5111 prior 1154 pv R2 S2 F13 F14 G14 G13 E14 E13 F15 F12 H13 F14 Q2 P2 F13 G12 E12 F14 P3 O3 F13 D13 H12 F14 G11 E15 info move G14 visits 116 winrate 4984 prior 530 pv G14 F13 H11 H12 J11 J12 K12 H14 F11 G15 info move F14 visits 112 winrate 4831 prior 780 pv F14 F13 G13 F12 B8 B7 C7 B9 D8 C9 D9 B10 B6 B4 G6 H4 G10 G12 info move Q6 visits 83 winrate 5200 prior 93 pv Q6 G13 G10 C5 J16 J13 J10 L12 L10 N12 info move G13 visits 51 winrate 4941 prior 259 pv G13 F12 F13 E12 H11 G10 G11 F10 B8 info move G11 visits 43 winrate 4900 prior 256 pv G11 G13 J11 J13 B8 D9 D10 B9 B7 info move F12 visits 31 winrate 4931 prior 169 pv F12 G13 H11 F13 J16 J13 K11 L13 B8 D9 info move H3 visits 27 winrate 4900 prior 158 pv H3 G13 B8 B7 C7 B9 D8];B[fg]C[백 승률: 38.7% (-2.8%)
+리드: -1.3 (-0.4) stdev: 14.6
+(KataGo18blocksHuman / 80 visits)
+덤: 6.5
+Move time: 2.108 초]LZ[KataGo18blocksHuman 61.3 80 -1.3 14.6
+move F14 visits 7 winrate 3870 prior 978 scoreMean -1.26 pv F14 G14 G13 E14 E13 F15 info move B10 visits 6 winrate 3894 prior 794 scoreMean -1.03 pv B10 B11 C11 B9 D10 info move F12 visits 2 winrate 3934 prior 393 scoreMean -1.07 pv F12 E12 info move F11 visits 1 winrate 3957 prior 327 scoreMean -0.98 pv F11 E11 info move C5 visits 32 winrate 4136 prior 1510 scoreMean -0.83 pv C5 Q6 B6 F9 F8 info move F15 visits 2 winrate 3878 prior 322 scoreMean -1.13 pv F15 G15 info move H17 visits 2 winrate 4002 prior 366 scoreMean -0.98 pv H17 K17 info move G10 visits 2 winrate 3807 prior 706 scoreMean -1.24 pv G10 F11 info move P7 visits 22 winrate 4147 prior 1061 scoreMean -0.90 pv P7 H3 R8 R10 K3 K4 info move J4 visits 3 winrate 3891 prior 669 scoreMean -1.19 pv J4 Q6 B4 info move G13 visits 1 winrate 3859 prior 400 scoreMean -1.16 pv G13];W[ff]C[흑 승률: 57.7% (+5.1%)
+(LeelaZero20blocks / 4.4k visits)
+덤: 6.5
+Move time: 2.022 초]LZ[LeelaZero20blocks 42.4 4.4k
+move G14 visits 4014 winrate 5765 prior 5137 pv G14 G13 E14 E13 F15 F12 H13 F14 R2 E15 S2 E16 E17 F17 D17 F18 B8 H14 C7 M3 B4 N17 H3 K3 H5 F6 info move R2 visits 175 winrate 5309 prior 1311 pv R2 S2 G14 G13 E14 E13 F15 F12 H13 F14 Q2 P2 F13 G12 E12 F14 P3 O3 F13 D13 H12 F14 G11 F11 F10 E15 E11 F13 E16 H14 G15 info move G13 visits 88 winrate 4713 prior 1457 pv G13 G14 H14 G16 G17 H15 H17 J15 J13 E13 F11 info move B8 visits 83 winrate 4897 prior 1126 pv B8 B9 C9 B7 D8 A8 D7 B10 G6 J4 Q6 G13 G12 H13 H12 J12];B[gf]C[백 승률: 32.6% (-6.1%)
+리드: -2.2 (-1.0) stdev: 15.5
+(KataGo18blocksHuman / 79 visits)
+덤: 6.5
+Move time: 2.109 초]LZ[KataGo18blocksHuman 67.4 79 -2.2 15.5
+move F15 visits 30 winrate 3255 prior 1045 scoreMean -2.21 pv F15 R2 S2 G15 G13 F12 D15 C16 G16 F17 G12 G11 info move G13 visits 28 winrate 2613 prior 7993 scoreMean -3.39 pv G13 E14 E13 F15 F12 R2 S2 Q2 P2 E12 F14 P3 O3 F13 info move C17 visits 21 winrate 3258 prior 349 scoreMean -2.17 pv C17 B15 G13 E14 E13 F15 F12 R2 S2];W[fe]C[흑 승률: 62.0% (+4.4%)
+(LeelaZero20blocks / 3.9k visits)
+덤: 6.5
+Move time: 2.117 초]LZ[LeelaZero20blocks 38.0 3.9k
+move G15 visits 3780 winrate 6202 prior 8288 pv G15 G13 F12 B15 B16 G16 H16 G17 F17 H17 J16 K17 K16 J17 L16 L17 M16 info move R2 visits 86 winrate 5780 prior 555 pv R2 S2 G15 G13 F12 G16 E16 D15 B15 B14 H16 G17 H17 C16 C17 info move G16 visits 13 winrate 4519 prior 370 pv G16 G13 H14 F12 B8 C17 B15 info move O2 visits 11 winrate 5168 prior 4 pv O2 P2 G15 G13 F12 D15 C16 G16 info move E15 visits 2 winrate 3943 prior 5 pv E15 E14 info move H16 visits 1 winrate 3801 prior 3 pv H16 info move H15 visits 1 winrate 3456 prior 3 pv H15 info move H17 visits 1 winrate 3254 prior 3 pv H17 info move J16 visits 1 winrate 3162 prior 3 pv J16 info move H14 visits 1 winrate 2914 prior 3 pv H14];B[ge]C[백 승률: 32.0% (-0.5%)
+리드: -2.3 (-0.1) stdev: 15.5
+(KataGo18blocksHuman / 99 visits)
+덤: 6.5
+Move time: 2.057 초]LZ[KataGo18blocksHuman 68.0 99 -2.3 15.5
+move D15 visits 10 winrate 3204 prior 1156 scoreMean -2.26 pv D15 R2 S2 C16 G13 info move G13 visits 83 winrate 3278 prior 7237 scoreMean -2.32 pv G13 R2 S2 F12 D15 C16 G16 F17 G12 J14 F11 E11 E12 E13 info move G16 visits 1 winrate 2229 prior 475 scoreMean -3.69 pv G16 info move B15 visits 4 winrate 3031 prior 688 scoreMean -2.44 pv B15 B16 G13 F12 info move F11 visits 1 winrate 2626 prior 283 scoreMean -2.78 pv F11];W[de]C[흑 승률: 64.2% (+2.1%)
+(LeelaZero20blocks / 6.0k visits)
+덤: 6.5
+Move time: 2.051 초]LZ[LeelaZero20blocks 35.8 6.0k
+move C16 visits 5115 winrate 6417 prior 6009 pv C16 G13 F12 G16 F17 F11 E11 G12 J14 F10 D12 C11 F9 E9 G11 G10 H11 D10 C3 C4 B4 B5 B3 C5 E2 E13 info move R2 visits 756 winrate 6335 prior 1202 pv R2 S2 C16 G13 F12 G16 F17 F11 G11 H13 J14 E11 J13 F10 B8 B9 C9 B7 D8 C7 D7 B6 C5 C4 B5 info move B16 visits 155 winrate 5488 prior 1866 pv B16 G13 F12 G16 F17 G12 H16 F11 E11 E12 E13 D12 G11 F10 H11 E14 F9 D13 G10 F12 F8 F7 E7 E9 G9 info move E16 visits 2 winrate 4510 prior 68 pv E16 C16];B[cd]C[백 승률: 29.8% (-2.2%)
+리드: -2.9 (-0.6) stdev: 15.7
+(KataGo18blocksHuman / 154 visits)
+덤: 6.5
+Move time: 2.067 초]LZ[KataGo18blocksHuman 70.2 154 -2.9 15.7
+move G13 visits 105 winrate 2984 prior 5712 scoreMean -2.91 pv G13 R2 S2 F12 G16 F17 G12 J14 F11 E11 G11 D12 C11 B10 info move G16 visits 49 winrate 2942 prior 4112 scoreMean -3.11 pv G16 F17 G13 F12 G12 J14 F11 E11 G11 D12 C11 B10];W[gg]C[흑 승률: 63.5% (-0.6%)
+(LeelaZero20blocks / 6.9k visits)
+덤: 6.5
+Move time: 2.019 초]LZ[LeelaZero20blocks 36.5 6.9k
+move F12 visits 6128 winrate 6354 prior 6609 pv F12 G16 F17 G12 J14 G11 F11 B10 B9 C9 B11 D10 C11 D11 G10 H10 D9 D12 D8 D7 E9 C7 E7 D6 G9 H9 info move R2 visits 638 winrate 6315 prior 761 pv R2 S2 F12 G16 F17 F11 G11 H13 J14 E11 J13 F10 B8 B9 C9 B7 D8 C7 D7 B6 C5 C4 B5 info move G16 visits 66 winrate 5706 prior 538 pv G16 F12 H13 G12 B8 B7 C7 B9 D8 A8 D9 info move G17 visits 21 winrate 5498 prior 219 pv G17 F12 H13 G12 B8 B7 C7 B9 D8 C9 D9 info move E13 visits 20 winrate 4561 prior 434 pv E13 G12 G17 D11 D10 E11 B8 info move H13 visits 10 winrate 4767 prior 181 pv H13 G12 F12 H12 F11 G16 F17 B10 B9 C9 info move H16 visits 6 winrate 5771 prior 50 pv H16 F12 H13 G12 B8 info move J14 visits 4 winrate 5404 prior 39 pv J14 F12 B8 B9];B[fh]C[백 승률: 25.2% (-4.6%)
+리드: -4.3 (-1.4) stdev: 16.4
+(KataGo18blocksHuman / 128 visits)
+덤: 6.5
+Move time: 2.094 초]LZ[KataGo18blocksHuman 74.8 128 -4.3 16.4
+move G16 visits 60 winrate 2523 prior 3340 scoreMean -4.34 pv G16 F17 G12 J14 F11 E11 G11 D12 C11 B10 D10 D9 info move G12 visits 41 winrate 2325 prior 4461 scoreMean -4.53 pv G12 G11 H11 G10 G16 H16 E16 G17 E17 C18 H10 H9 info move B10 visits 8 winrate 2258 prior 757 scoreMean -3.51 pv B10 B9 C9 B11 D10 C11 D11 info move F11 visits 19 winrate 2479 prior 1195 scoreMean -4.01 pv F11 E11 G12 G11 H11 F10 G16 H16];W[gd]C[흑 승률: 63.3% (-0.2%)
+(LeelaZero20blocks / 7.7k visits)
+덤: 6.5
+Move time: 2.086 초]LZ[LeelaZero20blocks 36.7 7.7k
+move F17 visits 7470 winrate 6334 prior 6862 pv F17 G12 J14 G11 D12 C11 D10 B10 B9 B11 C9 B8 A8 A7 A9 B7 D8 D7 D9 D6 C7 B6 C5 B5 C4 B4 C3 B3 E7 D5 F8 G7 G9 H9 G10 H10 F11 F9 info move E16 visits 238 winrate 5742 prior 1628 pv E16 B10 B9 C9 B11 D10 C11 D11 B8 H16 J15 J16 J14 M17 G17 H18 L15 L16 info move H16 visits 37 winrate 4458 prior 770 pv H16 E16 G17 E17 D18 E18 C18 H13 H11 G10 E11 B15 B16 B13];B[fc]C[백 승률: 20.7% (-4.5%)
+리드: -4.2 (+0.1) stdev: 15.4
+(KataGo18blocksHuman / 126 visits)
+덤: 6.5
+Move time: 2.058 초]LZ[KataGo18blocksHuman 79.3 126 -4.2 15.4
+move H13 visits 7 winrate 2068 prior 1133 scoreMean -4.22 pv H13 J14 B10 B9 C9 info move G12 visits 92 winrate 2794 prior 3654 scoreMean -3.54 pv G12 J14 G11 F11 B10 B9 C9 B11 D10 C11 D11 D9 B12 A10 info move B10 visits 7 winrate 1981 prior 1268 scoreMean -3.97 pv B10 B9 C9 B11 D10 C11 D11 info move F11 visits 15 winrate 2148 prior 2017 scoreMean -5.45 pv F11 E11 G12 J14 G11 D12 C11 B10 D10 D9 info move G11 visits 5 winrate 1906 prior 1189 scoreMean -4.82 pv G11 D12 G12 J14 C11 D10 B10 B9 B11 C9 B8];W[hg]C[흑 승률: 74.1% (+10.7%)
+(LeelaZero20blocks / 3.2k visits)
+덤: 6.5
+Move time: 2.007 초]LZ[LeelaZero20blocks 25.9 3.2k
+move J14 visits 3190 winrate 7406 prior 7706 pv J14 B10 B9 C9 B11 D10 C11 D11 D9 B12 A10 E11 F11 E13 B8 C7 B7 H14 H15 J15 H16 J16 H17 K14 E9 F10 F9 info move H16 visits 42 winrate 5897 prior 1219 pv H16 H15 G17 H14 G16 B10 B9 C9 B11 D10 C11 D11 B8 H11 D9 B12 A10 E11 J3 R10];B[if]C[백 승률: 10.7% (-9.9%)
+리드: -6.7 (-2.5) stdev: 15.2
+(KataGo18blocksHuman / 76 visits)
+덤: 6.5
+Move time: 2.075 초]LZ[KataGo18blocksHuman 89.3 76 -6.7 15.2
+move B10 visits 21 winrate 1073 prior 3104 scoreMean -6.71 pv B10 B9 C9 B11 D10 C11 D11 B8 H14 H15 J15 H16 J13 K14 info move G11 visits 3 winrate 999 prior 688 scoreMean -7.16 pv G11 C11 info move F11 visits 18 winrate 820 prior 4688 scoreMean -8.23 pv F11 E11 E12 G12 F10 F9 G10 info move E11 visits 11 winrate 1221 prior 832 scoreMean -6.14 pv E11 F11 F10 G10 F9 D12 info move B15 visits 23 winrate 1351 prior 368 scoreMean -5.81 pv B15 B16 B10 B9 C9 B11 D10 C11 D11 B8];W[bj]C[흑 승률: 78.0% (+3.9%)
+(LeelaZero20blocks / 4.4k visits)
+덤: 6.5
+Move time: 2.109 초]LZ[LeelaZero20blocks 22.0 4.4k
+move B9 visits 4094 winrate 7798 prior 2181 pv B9 C9 B11 D10 C11 D11 D9 B12 A10 E11 F11 E13 B8 C7 B7 J13 K14 K13 L14 N17 L17 L16 K16 K17 J17 K18 info move H11 visits 139 winrate 6393 prior 2797 pv H11 C9 J13 C3 N17 M17 M16 L16 N16 G17 J16 F18 E18 J17 info move R2 visits 78 winrate 7125 prior 561 pv R2 S2 B9 C9 B11 D10 C11 D11 B8 H14 H15 J15 H16 K14 J16 J13 L15 M13 info move D9 visits 43 winrate 6134 prior 1056 pv D9 C9 D8 D7 E7 C7 F8 D6 J13 N17 L17 info move B11 visits 39 winrate 6149 prior 936 pv B11 C11 B9 D10 C9 D9 B8 J13 K14 K13 L14 L13 M14 M17 O17 G17 J16 info move J13 visits 31 winrate 6609 prior 534 pv J13 H11 G11 H12 H10 H14 H15 J15 H16 info move J15 visits 15 winrate 6197 prior 345 pv J15 C9 H11 N17 C3 C4 info move F9 visits 6 winrate 5754 prior 185 pv F9 C9 J13 H11 F8];B[bk]C[백 승률: 6.7% (-4.0%)
+리드: -8.0 (-1.3) stdev: 15.0
+(KataGo18blocksHuman / 92 visits)
+덤: 6.5
+Move time: 2.014 초]LZ[KataGo18blocksHuman 93.3 92 -8.0 15.0
+move C9 visits 49 winrate 672 prior 7553 scoreMean -8.01 pv C9 B11 D10 C11 D11 B8 H14 H15 J15 H16 J13 K14 K13 info move B11 visits 43 winrate 935 prior 1742 scoreMean -7.31 pv B11 C9 B8 A8 B6 D8 D7 D9 E7 C7 B7];W[ck]C[흑 승률: 78.5% (+0.5%)
+(LeelaZero20blocks / 7.6k visits)
+덤: 6.5
+Move time: 2.056 초]LZ[LeelaZero20blocks 21.5 7.6k
+move B11 visits 7588 winrate 7851 prior 7334 pv B11 D10 C11 D11 B8 J13 D9 B12 A10 E11 K14 K13 L14 N17 L17 L16 K17 Q17 P17 P18 Q16 info move D9 visits 36 winrate 3101 prior 1851 pv D9 C11 D10 B8 D8 H11 G6 J8 H5 H3 J15 N17 info move R2 visits 13 winrate 7126 prior 108 pv R2 S2 B11 D10 C11 D11 B8 J13 J15 L13 L14 M14 K13 info move J13 visits 4 winrate 5103 prior 123 pv J13 D10 C3 C4];B[bi]C[백 승률: 5.9% (-0.8%)
+리드: -8.2 (-0.1) stdev: 14.9
+(KataGo18blocksHuman / 124 visits)
+덤: 6.5
+Move time: 2.104 초]LZ[KataGo18blocksHuman 94.1 124 -8.2 14.9
+move D10 visits 124 winrate 592 prior 9730 scoreMean -8.15 pv D10 C11 D11 B8 J13 K14 K13 L14 M17 D9];W[dj]C[흑 승률: 78.9% (+0.4%)
+(LeelaZero20blocks / 11k visits)
+덤: 6.5
+Move time: 2.029 초]LZ[LeelaZero20blocks 21.1 11k
+move C11 visits 10551 winrate 7892 prior 9456 pv C11 D11 D12 E12 E11 D13 D9 D12 B8 C7 B7 G11 J13 B5 B6 H11 J16 N17 O17 N16 O14 K17 J17 J18 info move A10 visits 4 winrate 4754 prior 117 pv A10 D11 B8 J13];B[ci]C[백 승률: 5.8% (-0.1%)
+리드: -8.2 (-0.1) stdev: 15.0
+(KataGo18blocksHuman / 201 visits)
+덤: 6.5
+Move time: 2.077 초]LZ[KataGo18blocksHuman 94.2 201 -8.2 15.0
+move D11 visits 201 winrate 583 prior 9742 scoreMean -8.23 pv D11 B8 J13 K14 K13 L14 M17 D9 B12 A10];W[di]C[흑 승률: 79.1% (+0.2%)
+(LeelaZero20blocks / 14k visits)
+덤: 6.5
+Move time: 2.042 초]LZ[LeelaZero20blocks 20.9 14k
+move D12 visits 5614 winrate 7912 prior 2394 pv D12 E12 E11 D13 D9 D12 B8 C7 B7 G11 J13 B5 B6 H11 J16 N17 O17 N16 O14 K17 J17 J18 H18 info move B8 visits 6476 winrate 7864 prior 5260 pv B8 J13 D9 B12 A10 E11 K14 K13 L14 N17 F11 E13 L17 Q17 P17 P18 Q16 R18 L13 info move D9 visits 1574 winrate 7890 prior 768 pv D9 B12 A10 E11 F11 E13 B8 H14 H15 J15 H16 K14 J16 J13 L15 N17 L17 Q17 P17 P18 Q16 R18 R17 Q18 S18 S19 info move R2 visits 59 winrate 7377 prior 243 pv R2 S2 B8 H14 H15 J15 H16 K14 J16 J13 L15 M13 info move J13 visits 12 winrate 5572 prior 222 pv J13 B8 D12 E12 E11 D13 D9 info move B12 visits 9 winrate 5450 prior 182 pv B12 D12 B8 J13 K14 K13 L14 L13 M14];B[dh]C[백 승률: 7.5% (+1.7%)
+리드: -7.4 (+0.8) stdev: 14.9
+(KataGo18blocksHuman / 82 visits)
+덤: 6.5
+Move time: 2.085 초]LZ[KataGo18blocksHuman 92.5 82 -7.4 14.9
+move B12 visits 15 winrate 752 prior 2613 scoreMean -7.40 pv B12 A10 E12 E11 D13 D9 D12 D8 D7 info move E12 visits 60 winrate 904 prior 5561 scoreMean -6.32 pv E12 B8 E9 J13 M17 O17 G17 J16 info move E11 visits 6 winrate 637 prior 1370 scoreMean -7.40 pv E11 F11 E12 E13 info move D9 visits 1 winrate 290 prior 305 scoreMean -10.60 pv D9];W[bh]C[흑 승률: 83.0% (+3.9%)
+(LeelaZero20blocks / 4.0k visits)
+덤: 6.5
+Move time: 2.02 초]LZ[LeelaZero20blocks 17.0 4.0k
+move A10 visits 3952 winrate 8299 prior 9541 pv A10 E12 E11 D9 E13 A12 A11 B8 E15 B14 E14 N17 O17 N16 O14 K17 Q6 N18 O11 R11 R13];B[aj]C[백 승률: 4.0% (-3.5%)
+리드: -10.5 (-3.1) stdev: 15.5
+(KataGo18blocksHuman / 85 visits)
+덤: 6.5
+Move time: 2.113 초]LZ[KataGo18blocksHuman 96.0 85 -10.5 15.5
+move E12 visits 53 winrate 400 prior 7366 scoreMean -10.45 pv E12 E11 D13 D9 D12 D8 D7 E9 C7 E7 D6 D5 C5 E5 info move E11 visits 22 winrate 467 prior 1845 scoreMean -8.38 pv E11 F11 F10 B8 H11 J13 info move D9 visits 10 winrate 535 prior 492 scoreMean -8.42 pv D9 B8 H11 E11 D13];W[eh]C[흑 승률: 85.0% (+2.0%)
+(LeelaZero20blocks / 5.8k visits)
+덤: 6.5
+Move time: 2.058 초]LZ[LeelaZero20blocks 15.0 5.8k
+move E11 visits 4952 winrate 8503 prior 952 pv E11 D13 D9 D12 D8 D7 E9 C7 E7 D6 D5 C5 E5 B6 F8 G11 E4 D3 F11 A12 A11 A8 E3 N17 J15 K17 O17 N16 H17 info move B8 visits 743 winrate 7847 prior 6018 pv B8 J13 E11 D13 D9 D12 K14 K13 L14 L13 M14 N17 L17 Q17 P17 P18 Q16 R18 R17 Q18 S18 M18 L18 info move D9 visits 67 winrate 7022 prior 1231 pv D9 E11 E13 F11 G11 D13 F10 D12 B8 C7 B7 J13 K14 K13 L14 M17 K17 P18 info move R2 visits 22 winrate 6980 prior 421 pv R2 S2 B8 H14 H15 J15 H16 K14 J16 J13 L15 N17 info move J13 visits 4 winrate 4900 prior 209 pv J13 B8 H12 M17 info move D13 visits 2 winrate 6673 prior 62 pv D13 E13];B[ei]C[백 승률: 2.4% (-1.6%)
+리드: -12.1 (-1.7) stdev: 15.7
+(KataGo18blocksHuman / 119 visits)
+덤: 6.5
+Move time: 2.065 초]LZ[KataGo18blocksHuman 97.6 119 -12.1 15.7
+move D13 visits 75 winrate 239 prior 8221 scoreMean -12.14 pv D13 D9 D12 D8 D7 E9 C7 E7 D6 D5 C5 E5 B6 F8 info move D9 visits 44 winrate 571 prior 1676 scoreMean -11.34 pv D9 E13 A12 A11 B8 E15 E14];W[dg]C[흑 승률: 86.7% (+1.6%)
+(LeelaZero20blocks / 8.4k visits)
+덤: 6.5
+Move time: 2.011 초]LZ[LeelaZero20blocks 13.3 8.4k
+move D9 visits 8143 winrate 8665 prior 6131 pv D9 D12 D8 D7 E9 C7 E7 D6 D5 C5 E5 B6 F8 G11 B8 B7 E4 D3 E3 F11 J16 N17 O17 N16 O14 K17 J17 J18 H18 Q17 info move B8 visits 242 winrate 7655 prior 2547 pv B8 E9 J13 M17 K17 P18 H12 K16 J16 K18 J17 L17 Q18 info move R2 visits 38 winrate 7829 prior 342 pv R2 S2 D9 D12 B8 C7 B7 J13 J15 K13 L15 info move J13 visits 2 winrate 6022 prior 68 pv J13 B8];B[dk]C[백 승률: 2.4% (-0.0%)
+리드: -12.2 (-0.0) stdev: 15.5
+(KataGo18blocksHuman / 157 visits)
+덤: 6.5
+Move time: 2.074 초]LZ[KataGo18blocksHuman 97.6 157 -12.2 15.5
+move D12 visits 147 winrate 235 prior 8625 scoreMean -12.17 pv D12 D8 D7 E9 C7 E7 D6 D5 C5 E5 B6 F8 A12 E4 info move H14 visits 7 winrate 209 prior 508 scoreMean -12.60 pv H14 H15 J15 H16 D12 info move J16 visits 3 winrate 204 prior 259 scoreMean -12.74 pv J16 J15];W[dh]C[흑 승률: 86.9% (+0.3%)
+(LeelaZero20blocks / 15k visits)
+덤: 6.5
+Move time: 2.052 초]LZ[LeelaZero20blocks 13.1 15k
+move D8 visits 13228 winrate 8690 prior 3899 pv D8 D7 E9 C7 E7 D6 D5 C5 E5 B6 F8 G11 B8 B7 E4 D3 E3 F11 J16 G9 E2 J3 B3 B4 C2 N17 O17 N16 L17 info move B8 visits 1122 winrate 8239 prior 3876 pv B8 C7 B7 G11 J13 J11 J16 N17 O17 N16 L17 L16 K17 O14 P14 O13 P13 O12 Q11 P7 info move R2 visits 146 winrate 8322 prior 408 pv R2 S2 B8 C7 B7 J13 K14 K13 L14 N17 L17 Q17 P17 P18 Q16 info move E9 visits 31 winrate 6322 prior 540 pv E9 D8 B8 H11 J13 G11 J16 N17 O18 K17 J17 info move J13 visits 28 winrate 7723 prior 202 pv J13 B8 D8 D7 E9 C7 E7 D6 F8 G11 F11 N17 D5 C5];B[dl]C[백 승률: 2.4% (+0.1%)
+리드: -12.2 (-0.0) stdev: 15.5
+(KataGo18blocksHuman / 226 visits)
+덤: 6.5
+Move time: 2.067 초]LZ[KataGo18blocksHuman 97.6 226 -12.2 15.5
+move D7 visits 174 winrate 244 prior 4753 scoreMean -12.18 pv D7 E9 C7 E7 D6 D5 C5 E5 B6 F8 A12 E4 D3 E3 info move E9 visits 52 winrate 95 prior 4484 scoreMean -13.45 pv E9 D7 H11 J13 J12 K12 H14];W[dm]C[흑 승률: 87.0% (+0.1%)
+(LeelaZero20blocks / 21k visits)
+덤: 6.5
+Move time: 2.061 초]LZ[LeelaZero20blocks 13.0 21k
+move E9 visits 20796 winrate 8698 prior 9450 pv E9 C7 E7 D6 D5 C5 E5 B6 F8 G11 B8 B7 E4 D3 E3 F11 J16 G9 J4 N17 L17 Q17 P17 P18 Q16 R18 R17 Q18];B[ek]C[백 승률: 2.5% (+0.1%)
+리드: -11.9 (+0.2) stdev: 15.4
+(KataGo18blocksHuman / 272 visits)
+덤: 6.5
+Move time: 2.065 초]LZ[KataGo18blocksHuman 97.5 272 -11.9 15.4
+move C7 visits 272 winrate 251 prior 9259 scoreMean -11.93 pv C7 E7 D6 D5 C5 E5 B6 F8 A12 E4 D3 E3 N17 C4];W[cm]C[흑 승률: 87.1% (+0.1%)
+(LeelaZero20blocks / 29k visits)
+덤: 6.5
+Move time: 2.05 초]LZ[LeelaZero20blocks 12.9 29k
+move E7 visits 28783 winrate 8707 prior 9297 pv E7 D6 D5 C5 E5 B6 F8 G11 B8 B7 E4 D3 F11 A12 E3 H14 H15 J15 H16 J16 H17 K14 J17 J13 C4 C3 B4 B5 E2 C2 K4 R10 R12 P7 Q9 Q10 P9 info move F8 visits 10 winrate 6827 prior 97 pv F8 E7 F7 D6 B7 D5 info move B7 visits 2 winrate 5293 prior 33 pv B7 E7 info move R2 visits 1 winrate 4611 prior 21 pv R2];B[em]C[백 승률: 2.5% (-0.1%)
+리드: -12.0 (-0.1) stdev: 15.5
+(KataGo18blocksHuman / 360 visits)
+덤: 6.5
+Move time: 2.088 초]LZ[KataGo18blocksHuman 97.5 360 -12.0 15.5
+move D6 visits 345 winrate 246 prior 7924 scoreMean -11.98 pv D6 D5 C5 E5 B6 F8 A12 E4 D3 E3 N17 C4 C3 info move F8 visits 2 winrate 38 prior 250 scoreMean -21.01 pv F8 D6 info move B6 visits 4 winrate 99 prior 397 scoreMean -22.00 pv B6 D6 B7 info move F11 visits 9 winrate 90 prior 821 scoreMean -16.79 pv F11 D6 F9];W[dn]C[흑 승률: 87.6% (+0.6%)
+(LeelaZero20blocks / 35k visits)
+덤: 6.5
+Move time: 2.076 초]LZ[LeelaZero20blocks 12.4 35k
+move D5 visits 26842 winrate 8763 prior 3725 pv D5 C5 E5 B6 F8 G11 E4 D3 B8 B7 C4 C3 B4 B5 F11 A12 A11 A8 E3 H14 H15 J15 H16 J16 H17 K14 J17 J13 E2 C2 K4 R10 R12 P7 Q9 Q10 P9 P10 O9 O10 info move F8 visits 7961 winrate 8650 prior 4236 pv F8 G11 D5 C5 E5 B6 B8 B7 E4 D3 E3 F11 J16 N17 O17 N16 O14 K17 J17 J18 H18 Q17 info move B7 visits 81 winrate 5974 prior 986 pv B7 D5 B8 F11 F8 G9 G7 G11 J16 N17 O17 N16 O14 K17 J17 J18 info move G11 visits 9 winrate 7733 prior 43 pv G11 F8 B7 D5 info move B8 visits 4 winrate 6600 prior 41 pv B8 B7 F8 A12 info move R2 visits 1 winrate 6096 prior 15 pv R2 info move E15 visits 1 winrate 5930 prior 11 pv E15];B[do]C[백 승률: 2.3% (-0.2%)
+리드: -11.5 (+0.5) stdev: 15.3
+(KataGo18blocksHuman / 411 visits)
+덤: 6.5
+Move time: 2.072 초]LZ[KataGo18blocksHuman 97.7 411 -11.5 15.3
+move C5 visits 387 winrate 226 prior 7364 scoreMean -11.49 pv C5 E5 B6 F8 A12 E4 D3 E3 N17 C4 C3 info move E5 visits 24 winrate 45 prior 2376 scoreMean -21.18 pv E5 C5 F6 F8 F7 E8 F11 B7 G11 J16 J3 Q6];W[co]C[흑 승률: 87.9% (+0.2%)
+(LeelaZero20blocks / 31k visits)
+덤: 6.5
+Move time: 2.073 초]LZ[LeelaZero20blocks 12.2 31k
+move E5 visits 30704 winrate 8785 prior 8797 pv E5 B6 F8 G11 E4 D3 B8 B7 C4 C3 B4 B5 F11 A12 A11 A8 E3 H14 H15 J15 H16 J16 H17 K14 J17 J13 E2 C2 K4 R10 R12 P7 Q9 Q10 P9 P10 O9 O10 info move F8 visits 31 winrate 6263 prior 374 pv F8 E5 B8 B7 A8 B15 B16 A13 J15 G11 F11 G7 G10 info move B8 visits 14 winrate 6197 prior 172 pv B8 E5 G11 B7 A8 B15 B16 info move B7 visits 2 winrate 6124 prior 25 pv B7 E5 info move G11 visits 1 winrate 5912 prior 21 pv G11];B[eo]C[백 승률: 2.3% (+0.0%)
+리드: -11.5 (+0.0) stdev: 15.3
+(KataGo18blocksHuman / 481 visits)
+덤: 6.5
+Move time: 2.103 초]LZ[KataGo18blocksHuman 97.7 481 -11.5 15.3
+move B6 visits 466 winrate 228 prior 8908 scoreMean -11.45 pv B6 F8 A12 E4 D3 E3 N17 C4 C3 info move B7 visits 15 winrate 175 prior 668 scoreMean -14.81 pv B7 B5 B6 C4 F8 G11 B4];W[bn]C[흑 승률: 88.9% (+1.0%)
+(LeelaZero20blocks / 35k visits)
+덤: 6.5
+Move time: 2.079 초]LZ[LeelaZero20blocks 11.2 35k
+move B8 visits 15450 winrate 8885 prior 800 pv B8 B7 F8 G11 E4 D3 C4 C3 B4 B5 F11 A12 A11 A8 E3 H14 H15 J15 H16 J16 H17 K14 J17 J13 E2 C2 K4 R10 R12 P7 Q9 Q10 P9 P10 O9 O10 N9 N10 M9 M10 info move F8 visits 19371 winrate 8757 prior 7956 pv F8 G11 E4 D3 B8 B7 C4 C3 B4 B5 F11 A12 A11 A8 E3 H14 H15 J15 H16 J16 H17 K14 J17 J13 E2 C2 K4 R10 R12 P7 Q9 Q10 P9 P10 O9 O10 info move E4 visits 25 winrate 5988 prior 312 pv E4 F8 G11 H14 H15 J15 H16 J16 info move G11 visits 7 winrate 6097 prior 92 pv G11 F8 B8 B7 J13 A12 E4 info move C4 visits 4 winrate 7104 prior 37 pv C4 B4 F8 E4 info move R2 visits 1 winrate 5541 prior 24 pv R2];B[bl]C[백 승률: 2.0% (-0.3%)
+리드: -10.8 (+0.7) stdev: 14.4
+(KataGo18blocksHuman / 315 visits)
+덤: 6.5
+Move time: 2.102 초]LZ[KataGo18blocksHuman 98.0 315 -10.8 14.4
+move B7 visits 253 winrate 198 prior 7057 scoreMean -10.77 pv B7 F8 G11 F11 A12 E4 H14 H15 J15 H16 J16 H17 J17 info move F8 visits 53 winrate 293 prior 1869 scoreMean -19.20 pv F8 B7 C6 G11 H11 H10 G10 H12 J11 J13 H9 E4 D3 info move F11 visits 5 winrate 89 prior 484 scoreMean -17.59 pv F11 B7 C6 F8 G11 info move A12 visits 4 winrate 152 prior 296 scoreMean -17.11 pv A12 B7 C6 A11];W[bm]C[흑 승률: 89.0% (+0.2%)
+(LeelaZero20blocks / 20k visits)
+덤: 6.5
+Move time: 2.046 초]LZ[LeelaZero20blocks 11.0 20k
+move F8 visits 19685 winrate 8904 prior 8418 pv F8 G11 E4 D3 C4 C3 B4 B5 F11 A12 A11 A8 E3 H14 H15 J15 H16 J16 H17 K14 J17 K4 Q6 J13 P5 R2 P11 O7 L5 K5 L7 P6 info move E4 visits 15 winrate 6027 prior 274 pv E4 F8 G10 J13 J10 E3 C4 B4 info move G11 visits 15 winrate 5635 prior 311 pv G11 F8 J13 A12 E4 E3 D3 C4 info move C4 visits 2 winrate 6519 prior 40 pv C4 B4 info move E15 visits 1 winrate 6386 prior 28 pv E15 info move R2 visits 1 winrate 5590 prior 24 pv R2];B[fl]C[백 승률: 2.2% (+0.2%)
+리드: -10.0 (+0.8) stdev: 14.3
+(KataGo18blocksHuman / 347 visits)
+덤: 6.5
+Move time: 2.076 초]LZ[KataGo18blocksHuman 97.8 347 -10.0 14.3
+move A12 visits 157 winrate 216 prior 3714 scoreMean -10.00 pv A12 E4 D3 E3 N17 C4 C3 info move E4 visits 28 winrate 99 prior 1745 scoreMean -16.25 pv E4 A8 F11 G11 G9 F10 B15 info move G11 visits 162 winrate 217 prior 3673 scoreMean -10.08 pv G11 F11 A12 E4 D3 A11 A8 E3 H14 H15 J15 H16];W[ah]C[흑 승률: 90.0% (+0.9%)
+(LeelaZero20blocks / 6.2k visits)
+덤: 6.5
+Move time: 2.055 초]LZ[LeelaZero20blocks 10.0 6.2k
+move E4 visits 4054 winrate 8996 prior 4809 pv E4 D3 C4 C3 B4 B5 E3 N17 E2 C2 K4 G11 L17 K16 L16 L15 M15 info move A11 visits 1436 winrate 8921 prior 2657 pv A11 G11 E4 D3 E3 A8 J15 F11 M16 G9 J4 G6 G5 N17 M17 M18 L18 N16 info move R2 visits 573 winrate 8930 prior 875 pv R2 S2 E4 D3 E3 N17 A11 A8 J15 K17 O17 N16 H17 O14 K4 info move C4 visits 100 winrate 8839 prior 262 pv C4 B4 E4 N17 A11 A8 D3 K4 Q6 P18 L17 L16 K16 M16 info move J15 visits 10 winrate 7541 prior 168 pv J15 E4 A11 A8 G7 N17 L17 N15 O14 K16];B[ep]C[백 승률: 1.9% (-0.3%)
+리드: -10.5 (-0.5) stdev: 14.5
+(KataGo18blocksHuman / 171 visits)
+덤: 6.5
+Move time: 2.062 초]LZ[KataGo18blocksHuman 98.1 171 -10.5 14.5
+move D3 visits 35 winrate 185 prior 1869 scoreMean -10.52 pv D3 E3 N17 C4 C3 info move G11 visits 22 winrate 184 prior 1176 scoreMean -10.29 pv G11 J15 F11 M16 info move N17 visits 43 winrate 201 prior 1907 scoreMean -10.20 pv N17 A11 A8 D3 C4 J15 E3 F3 info move G17 visits 4 winrate 185 prior 280 scoreMean -11.62 pv G17 J16 F18 E18 info move M17 visits 16 winrate 224 prior 619 scoreMean -10.06 pv M17 A11 A8 O17 G17 info move K17 visits 34 winrate 203 prior 1490 scoreMean -10.11 pv K17 A11 A8 H16 N17 D3 info move J17 visits 17 winrate 179 prior 970 scoreMean -10.70 pv J17 A11 A8 H16 D3];W[dq]C[흑 승률: 91.3% (+1.4%)
+(LeelaZero20blocks / 7.8k visits)
+덤: 6.5
+Move time: 2.035 초]LZ[LeelaZero20blocks 8.7 7.8k
+move C4 visits 4284 winrate 9132 prior 646 pv C4 C3 B4 B5 E3 N17 E2 C2 K4 G11 J16 K17 F11 H18 G17 K8 K6 L11 info move E3 visits 1583 winrate 8888 prior 4021 pv E3 H14 H15 J15 H16 J16 H17 K14 J17 G11 C4 C3 B4 B5 E2 C2 K4 G9 H5 G6 G5 L3 K3 K2 L4 info move A11 visits 1560 winrate 8969 prior 2543 pv A11 A8 C4 C3 B4 B5 E3 G11 J15 F11 E2 C2 M16 J3 G9 G7 J9 J8 K9 info move R2 visits 318 winrate 8867 prior 815 pv R2 S2 E3 N17 A11 A8 J15 K17 O17 N16 H17 O14 K4 info move J15 visits 52 winrate 8323 prior 434 pv J15 E3 A11 A8 N16 G11 F11 M16 N15 N17 O17 L17 N18 info move J13 visits 4 winrate 8025 prior 52 pv J13 E3 N17 G11];B[cp]C[백 승률: 1.5% (-0.3%)
+리드: -10.8 (-0.3) stdev: 14.0
+(KataGo18blocksHuman / 88 visits)
+덤: 6.5
+Move time: 2.113 초]LZ[KataGo18blocksHuman 98.5 88 -10.8 14.0
+move B4 visits 49 winrate 152 prior 4258 scoreMean -10.80 pv B4 E3 N17 J15 K17 A11 info move C3 visits 37 winrate 123 prior 4682 scoreMean -13.89 pv C3 B4 B5 E3 K17 A11 info move E3 visits 2 winrate 83 prior 483 scoreMean -16.20 pv E3 A11];W[bp]C[흑 승률: 93.5% (+2.2%)
+(LeelaZero20blocks / 3.6k visits)
+덤: 6.5
+Move time: 2.127 초]LZ[LeelaZero20blocks 6.5 3.6k
+move E3 visits 2554 winrate 9349 prior 6307 pv E3 N17 J16 P18 M17 M16 L17 Q17 Q16 R17 N16 N18 N15 J13 K14 info move A11 visits 550 winrate 9310 prior 1118 pv A11 A8 E3 G11 J16 F11 C3 N17 O17 N16 L17 L16 K17 info move R2 visits 502 winrate 9346 prior 1157 pv R2 S2 E3 N17 J16 K17 O17 N16 J17 O14 K4 D2 P14 info move J15 visits 15 winrate 8649 prior 204 pv J15 E3 A11 A8 N16 G11 F11 M16 N15];B[eq]C[백 승률: 1.1% (-0.4%)
+리드: -11.3 (-0.5) stdev: 13.6
+(KataGo18blocksHuman / 108 visits)
+덤: 6.5
+Move time: 2.113 초]LZ[KataGo18blocksHuman 98.9 108 -11.3 13.6
+move G11 visits 11 winrate 108 prior 1060 scoreMean -11.25 pv G11 J15 F11 M16 info move H14 visits 3 winrate 132 prior 353 scoreMean -12.17 pv H14 H15 J15 info move N17 visits 28 winrate 145 prior 2138 scoreMean -10.88 pv N17 J15 K17 Q6 G17 J17 info move M17 visits 12 winrate 164 prior 821 scoreMean -10.90 pv M17 O17 G17 J16 F18 info move L17 visits 9 winrate 142 prior 680 scoreMean -10.90 pv L17 J15 J17 info move K17 visits 31 winrate 158 prior 2180 scoreMean -10.99 pv K17 M17 G17 J16 F18 info move O17 visits 2 winrate 109 prior 293 scoreMean -11.77 pv O17 P17 info move J17 visits 12 winrate 120 prior 1095 scoreMean -11.48 pv J17 H16 N17 L17 L18];W[gi]C[흑 승률: 93.9% (+0.4%)
+(LeelaZero20blocks / 3.9k visits)
+덤: 6.5
+Move time: 2.068 초]LZ[LeelaZero20blocks 6.1 3.9k
+move J16 visits 1090 winrate 9393 prior 926 pv J16 N17 O17 N16 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 R17 info move J15 visits 837 winrate 9340 prior 1043 pv J15 N17 L17 Q17 P17 P18 Q16 R18 R17 Q18 S18 S19 S17 M18 L18 O17 info move C3 visits 527 winrate 9260 prior 1106 pv C3 D2 C2 G17 J16 F18 E18 H18 F19 L17 G18 J17 N17 N16 O17 K15 H15 info move A11 visits 400 winrate 9169 prior 1359 pv A11 F11 C3 D2 C2 G17 J16 F18 E18 H18 F19 G19 G18 G2 E2 F18 E19 info move R2 visits 384 winrate 9302 prior 513 pv R2 S2 J15 F11 M16 D2 G9 L14 L15 N17 M17 O15 O16 N14 info move F11 visits 139 winrate 9076 prior 676 pv F11 H14 H15 J15 H16 J16 H17 K14 J17 D2 G12 J13 J11 L16 K4 R10 R12 P7 info move J13 visits 109 winrate 9167 prior 375 pv J13 N17 L17 L16 K17 J16 H14 K16 H18 N15 info move M16 visits 90 winrate 9005 prior 496 pv M16 H14 H15 J15 H16 J16 H17 K14 J17 D2 G9 R10 R12 P7 Q9 Q10 P9 P10 O9 info move Q6 visits 67 winrate 9141 prior 259 pv Q6 N17 J16 P18 F11 D2 N16 M17 Q18 P17 Q17 info move K4 visits 60 winrate 9143 prior 223 pv K4 D2 J15 F11 G9 N17 L17 Q17 P17 info move H16 visits 59 winrate 9194 prior 174 pv H16 D2 F11 N17 O17 N16 O14 L14 Q6 J13 N12 Q17 Q16];B[id]C[백 승률: 0.8% (-0.3%)
+리드: -11.7 (-0.5) stdev: 12.8
+(KataGo18blocksHuman / 78 visits)
+덤: 6.5
+Move time: 2.112 초]LZ[KataGo18blocksHuman 99.2 78 -11.7 12.8
+move F11 visits 29 winrate 82 prior 3328 scoreMean -11.73 pv F11 C3 G2 B3 A3 A2 A4 C2 K3 info move D2 visits 13 winrate 133 prior 1028 scoreMean -10.68 pv D2 F11 N17 A11 A8 info move N17 visits 36 winrate 114 prior 3247 scoreMean -11.02 pv N17 L17 L18 K18 Q17];W[fi]C[흑 승률: 95.7% (+1.8%)
+(LeelaZero20blocks / 3.6k visits)
+덤: 6.5
+Move time: 2.117 초]LZ[LeelaZero20blocks 4.3 3.6k
+move C3 visits 1612 winrate 9572 prior 1830 pv C3 N17 L17 Q17 R17 P17 O16 L16 K17 Q16 Q15 R15 info move R2 visits 457 winrate 9455 prior 800 pv R2 S2 C3 N17 O17 N16 L17 L16 K16 L18 K17 O14 P14 P13 O13 info move G9 visits 342 winrate 9351 prior 1181 pv G9 N17 O17 N16 O14 K17 J17 J18 H18 Q17 O18 Q16 Q15 P15 O15 info move Q6 visits 240 winrate 9373 prior 740 pv Q6 N17 O17 N16 O14 K17 J17 J18 H18 Q17 O18 Q16 Q15 P15 info move N16 visits 219 winrate 9377 prior 662 pv N16 L17 N18 D2 G9 Q15 Q16 R11 J13 R8 Q6 info move N17 visits 170 winrate 9385 prior 490 pv N17 D2 G9 H9 G7 H8 Q11 H7 G6 S16 R17 R13 S14 O13 info move D2 visits 153 winrate 9329 prior 589 pv D2 N17 O17 N16 L17 L16 K17 Q17 Q16 O18 P17 P18 info move M16 visits 85 winrate 9340 prior 305 pv M16 D2 G9 N17 M17 M18 L18 O18 P17 N16 info move N15 visits 47 winrate 9421 prior 105 pv N15 D2 G9 L17 N17 N18 O18 M17 N16 J18 H17 info move J13 visits 46 winrate 9314 prior 189 pv J13 N17 O17 N16 O14 K17 J17 J18 H18 K15 K16 L16 info move K4 visits 40 winrate 9279 prior 187 pv K4 N17 L17 Q17 P17 P18 O18 R18];B[cq]C[백 승률: 0.7% (-0.1%)
+리드: -12.0 (-0.2) stdev: 12.5
+(KataGo18blocksHuman / 96 visits)
+덤: 6.5
+Move time: 2.095 초]LZ[KataGo18blocksHuman 99.3 96 -12.0 12.5
+move D2 visits 5 winrate 73 prior 474 scoreMean -11.97 pv D2 C2 N17 L17 info move N17 visits 38 winrate 83 prior 2783 scoreMean -11.55 pv N17 L17 Q17 P17 P18 O18 info move K15 visits 18 winrate 82 prior 1340 scoreMean -11.82 pv K15 J15 N17 O17 N16 L17 info move M17 visits 2 winrate 72 prior 276 scoreMean -12.30 pv M17 O17 K17 info move G2 visits 33 winrate 82 prior 2596 scoreMean -11.96 pv G2 B3 A3 A2 A4 C2 K3 Q6 N17 O17];W[dr]C[흑 승률: 96.9% (+1.2%)
+(LeelaZero20blocks / 3.5k visits)
+덤: 6.5
+Move time: 2.072 초]LZ[LeelaZero20blocks 3.1 3.5k
+move C2 visits 2770 winrate 9687 prior 5167 pv C2 N17 L17 Q17 R2 S2 P17 P18 Q16 R18 R17 Q18 S18 S19 S17 M18 L18 O17 N15 O19 Q11 Q10 R10 info move R2 visits 590 winrate 9689 prior 754 pv R2 S2 C2 N17 L17 Q17 P17 P18 Q16 R18 R17 Q18 S18 S19 S17 M18 L18 O17 info move G9 visits 74 winrate 9082 prior 824 pv G9 N17 C2 K17 J17 P18 L3 J18 H18 info move J13 visits 16 winrate 8755 prior 279 pv J13 N17 O17 N16 O14 K17 J17 J18 info move N16 visits 13 winrate 8689 prior 219 pv N16 E2 F3 F2 G3 Q11 info move Q6 visits 10 winrate 8855 prior 144 pv Q6 N17 O17 N16 O14 K17 J17 J18 info move H3 visits 8 winrate 8644 prior 161 pv H3 E2 F2 C2 G9 info move N17 visits 5 winrate 8625 prior 104 pv N17 E2 F2 F3 G2 info move J3 visits 5 winrate 8570 prior 107 pv J3 E2 F2 C2 info move H11 visits 4 winrate 8504 prior 87 pv H11 E2 F2 F3 info move M16 visits 4 winrate 8005 prior 121 pv M16 E2 F2 F3];B[cr]C[백 승률: 0.6% (-0.1%)
+리드: -13.4 (-1.5) stdev: 12.8
+(KataGo18blocksHuman / 76 visits)
+덤: 6.5
+Move time: 2.117 초]LZ[KataGo18blocksHuman 99.4 76 -13.4 12.8
+move G2 visits 5 winrate 60 prior 512 scoreMean -13.43 pv G2 E2 K3 Q6 info move N17 visits 35 winrate 65 prior 3113 scoreMean -12.02 pv N17 L17 Q17 P17 P18 Q16 info move M17 visits 8 winrate 58 prior 877 scoreMean -12.93 pv M17 O17 K15 J15 K17 K16 L16 info move K15 visits 25 winrate 64 prior 2346 scoreMean -12.28 pv K15 J15 N17 L17 L18 M17 info move P7 visits 3 winrate 64 prior 354 scoreMean -12.62 pv P7 Q9 N17];W[gr]C[흑 승률: 97.8% (+0.9%)
+(LeelaZero20blocks / 3.1k visits)
+덤: 6.5
+Move time: 2.022 초]LZ[LeelaZero20blocks 2.2 3.1k
+move E2 visits 1666 winrate 9782 prior 3382 pv E2 K3 Q6 N17 O17 N16 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 info move F2 visits 893 winrate 9665 prior 3358 pv F2 N17 O17 N16 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 info move F3 visits 533 winrate 9700 prior 1657 pv F3 K3 Q6 N17 O17 N16 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 R17 info move R2 visits 14 winrate 9168 prior 172 pv R2 S2 E2 K3 Q6 N17];B[er]C[백 승률: 0.5% (-0.1%)
+리드: -14.2 (-0.8) stdev: 13.0
+(KataGo18blocksHuman / 83 visits)
+덤: 6.5
+Move time: 2.069 초]LZ[KataGo18blocksHuman 99.5 83 -14.2 13.0
+move K4 visits 5 winrate 45 prior 550 scoreMean -14.20 pv K4 Q6 N17 L17 info move K3 visits 38 winrate 48 prior 3430 scoreMean -13.76 pv K3 Q6 N17 L17 Q17 P17 info move N17 visits 26 winrate 48 prior 2450 scoreMean -13.88 pv N17 L17 K3 Q6 Q17 P17 info move K15 visits 14 winrate 43 prior 1345 scoreMean -13.91 pv K15 J15 N17 O17];W[jp]C[흑 승률: 98.0% (+0.2%)
+(LeelaZero20blocks / 2.9k visits)
+덤: 6.5
+Move time: 2.133 초]LZ[LeelaZero20blocks 2.0 2.9k
+move Q6 visits 817 winrate 9800 prior 1764 pv Q6 N17 O17 N16 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 R17 P14 O15 info move R2 visits 374 winrate 9772 prior 748 pv R2 S2 Q6 N17 O17 N16 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 R17 info move M16 visits 311 winrate 9768 prior 633 pv M16 P7 Q9 R11 R13 P11 O9 N11 J13 O14 N15 R17 Q17 S16 info move N17 visits 263 winrate 9757 prior 593 pv N17 P7 R10 R8 S8 P11 J13 R9 S9 Q10 R11 L13 N13 K15 J15 info move N16 visits 142 winrate 9759 prior 316 pv N16 P7 Q9 R11 R13 P11 O9 N11 J13 R17 Q17 S16 S17 R15 info move P7 visits 131 winrate 9760 prior 289 pv P7 N17 L17 Q17 P17 P18 Q16 R18 R17 Q18 S18 S19 info move L4 visits 77 winrate 9776 prior 146 pv L4 L3 Q6 N17 M3 K3 L17 Q17 P17 P18 Q16 info move Q10 visits 68 winrate 9764 prior 146 pv Q10 N17 O18 K17 J17 J18 H18 K15 K16 L16 L15 M16 L14 L18 info move M17 visits 56 winrate 9708 prior 179 pv M17 P7 Q9 R11 R13 P11 O9 N11 Q7 P8 P9 Q8 R8 Q6 S9 R10 info move Q11 visits 38 winrate 9717 prior 115 pv Q11 P7 Q9 N17 L17 Q17 P17 P18 Q16 info move K3 visits 36 winrate 9748 prior 89 pv K3 J4 Q6 N17 O17 N16 O14 K17];B[pn]C[백 승률: 0.5% (+0.0%)
+리드: -14.0 (+0.2) stdev: 13.2
+(KataGo18blocksHuman / 83 visits)
+덤: 6.5
+Move time: 2.012 초]LZ[KataGo18blocksHuman 99.5 83 -14.0 13.2
+move N17 visits 42 winrate 49 prior 3532 scoreMean -13.99 pv N17 L17 Q17 P17 P18 Q16 R18 info move M17 visits 3 winrate 48 prior 353 scoreMean -14.99 pv M17 O17 K17 info move K15 visits 30 winrate 49 prior 2562 scoreMean -14.26 pv K15 J15 N17 O17 N16 O14 K17 info move Q12 visits 8 winrate 40 prior 835 scoreMean -15.15 pv Q12 O13 R14 R10];W[mc]C[흑 승률: 98.1% (+0.0%)
+(LeelaZero20blocks / 4.2k visits)
+덤: 6.5
+Move time: 2.027 초]LZ[LeelaZero20blocks 2.0 4.2k
+move O17 visits 1039 winrate 9805 prior 1743 pv O17 N16 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 R17 P14 O15 info move L17 visits 1022 winrate 9781 prior 1901 pv L17 L18 K18 Q17 R17 M17 L16 R18 S18 P18 R19 Q19 Q18 info move O18 visits 552 winrate 9786 prior 1177 pv O18 K17 J17 J18 H18 K15 K16 L16 L15 M16 L14 L18 J19 K19 K18 Q15 info move P5 visits 515 winrate 9811 prior 933 pv P5 R2 L17 L18 K18 Q17 R17 P18 R18 K17 K16 L16 J17 M17 L15 info move R2 visits 472 winrate 9784 prior 647 pv R2 S2 O17 N16 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 R17 info move P18 visits 115 winrate 9767 prior 186 pv P18 K17 J17 J18 H18 K15 K16 L16 L15 M16 info move N16 visits 65 winrate 9758 prior 114 pv N16 M16 N15 O18 P18 K17 J17 J18 H18 P17 info move L4 visits 62 winrate 9776 prior 92 pv L4 L5 L17 Q17 P17 P18 Q16 R18 info move P11 visits 53 winrate 9739 prior 109 pv P11 K17 O17 N16 J17 Q17 P18 Q16 Q15 R17 info move P12 visits 43 winrate 9719 prior 101 pv P12 K17 J17 P18 Q17 J18 H18 K18 P10 G18];B[nc]C[백 승률: 0.5% (-0.0%)
+리드: -14.7 (-0.7) stdev: 13.7
+(KataGo18blocksHuman / 95 visits)
+덤: 6.5
+Move time: 2.072 초]LZ[KataGo18blocksHuman 99.5 95 -14.7 13.7
+move N16 visits 34 winrate 47 prior 2816 scoreMean -14.70 pv N16 O14 K17 J17 R14 O18 info move O18 visits 5 winrate 43 prior 454 scoreMean -13.88 pv O18 P18 R15 R13 info move K15 visits 12 winrate 45 prior 996 scoreMean -14.27 pv K15 J15 N16 O14 K17 K16 info move R15 visits 44 winrate 48 prior 3362 scoreMean -13.90 pv R15 Q15 R14 S16 O18 N16 Q17];W[md]C[흑 승률: 98.0% (-0.0%)
+(LeelaZero20blocks / 3.7k visits)
+덤: 6.5
+Move time: 2.162 초]LZ[LeelaZero20blocks 2.0 3.7k
+move P14 visits 515 winrate 9804 prior 1011 pv P14 K17 J17 J18 H18 Q11 K16 L18 L17 K18 L16 N18 O18 N14 info move O14 visits 600 winrate 9781 prior 1621 pv O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 R17 P14 O15 info move L17 visits 531 winrate 9779 prior 1085 pv L17 L16 K16 L18 K17 O14 P14 P13 O13 P15 Q14 Q15 R15 O15 R13 info move P5 visits 393 winrate 9802 prior 608 pv P5 R2 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 R17 P14 info move P13 visits 389 winrate 9779 prior 747 pv P13 K17 J17 J18 H18 R14 R12 Q17 Q16 O18 P17 P18 info move R2 visits 324 winrate 9774 prior 651 pv R2 S2 O14 K17 J17 J18 H18 Q17 P18 Q16 Q15 P15 R17 info move P12 visits 198 winrate 9788 prior 355 pv P12 K17 J17 Q17 P18 Q16 Q15 R17 R15 P15 O15 O16 info move Q12 visits 155 winrate 9769 prior 322 pv Q12 O14 L17 L16 K16 L18 L15 M17 M16 info move Q13 visits 135 winrate 9797 prior 220 pv Q13 K17 J17 J18 H18 Q17 P17 Q16 Q15 R17 R15 info move O13 visits 117 winrate 9787 prior 208 pv O13 K17 J17 J18 H18 Q17 P17 P14 R14 O14 Q12 N13];B[of]C[백 승률: 0.5% (-0.0%)
+리드: -14.3 (+0.4) stdev: 13.4
+(KataGo18blocksHuman / 90 visits)
+덤: 6.5
+Move time: 2.078 초]LZ[KataGo18blocksHuman 99.5 90 -14.3 13.4
+move K17 visits 18 winrate 47 prior 1543 scoreMean -14.29 pv K17 J17 Q15 P15 Q17 Q16 O18 P18 P17 Q18 info move K15 visits 19 winrate 53 prior 1645 scoreMean -15.01 pv K15 K16 J15 H16 Q15 P15 info move Q15 visits 40 winrate 57 prior 2885 scoreMean -13.35 pv Q15 P15 Q17 Q16 O18 P18 P17 O16 Q18 N18 P19 info move L17 visits 7 winrate 43 prior 676 scoreMean -15.13 pv L17 K18 Q15 P15 info move R15 visits 6 winrate 51 prior 525 scoreMean -14.72 pv R15 Q15 R14];W[jc]C[흑 승률: 97.9% (-0.2%)
+(LeelaZero20blocks / 3.7k visits)
+덤: 6.5
+Move time: 2.059 초]LZ[LeelaZero20blocks 2.1 3.7k
+move J17 visits 1940 winrate 9786 prior 3986 pv J17 J18 H18 R11 P11 S14 S15 R9 P9 R14 O18 K15 J15 info move K16 visits 581 winrate 9763 prior 850 pv K16 J18 H18 L16 J17 L18 J19 R11 R13 S13 S14 Q13 info move P5 visits 497 winrate 9768 prior 1144 pv P5 R2 J17 J18 H18 Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 R17 K18 O10 G18 G17 H19 info move R2 visits 438 winrate 9775 prior 779 pv R2 S2 J17 J18 H18 R11 R13 S13 S14 Q13 R14 P10 O12 R8 O7 P8 info move H18 visits 119 winrate 9692 prior 311 pv H18 Q10 Q12 O10 N7 K15 J15 K16 M3 L3 info move L16 visits 64 winrate 9736 prior 119 pv L16 L17 J17 K16 K15 L15 L14 M15 P11 S16 S15 R17 R15 Q18 N18 M18 info move J18 visits 54 winrate 9624 prior 200 pv J18 J17 H17 H18 G18 H16 H15 K16 G17 info move H17 visits 12 winrate 9604 prior 49 pv H17 R11 R13 S13 S14 Q13 R14 P10 info move P11 visits 11 winrate 9645 prior 39 pv P11 H18 G17 N18 O6 P18 O18 O19 Q18 P17 info move B3 visits 3 winrate 9032 prior 42 pv B3 H18 G17];B[ic]C[백 승률: 0.5% (+0.0%)
+리드: -14.6 (-0.3) stdev: 13.4
+(KataGo18blocksHuman / 90 visits)
+덤: 6.5
+Move time: 2.079 초]LZ[KataGo18blocksHuman 99.5 90 -14.6 13.4
+move J18 visits 11 winrate 49 prior 939 scoreMean -14.58 pv J18 H18 Q15 P15 Q17 Q16 O18 info move K15 visits 7 winrate 46 prior 725 scoreMean -15.97 pv K15 K16 J15 H14 info move Q15 visits 50 winrate 54 prior 3712 scoreMean -13.72 pv Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 R17 J18 info move R11 visits 7 winrate 38 prior 709 scoreMean -15.96 pv R11 R13 S13 S14 O11 info move R12 visits 10 winrate 43 prior 892 scoreMean -15.24 pv R12 P12 Q15 P15 info move R15 visits 5 winrate 38 prior 527 scoreMean -14.91 pv R15 Q15 R14 S16];W[ib]C[흑 승률: 97.9% (+0.0%)
+(LeelaZero20blocks / 4.1k visits)
+덤: 6.5
+Move time: 2.015 초]LZ[LeelaZero20blocks 2.1 4.1k
+move H18 visits 1983 winrate 9791 prior 3325 pv H18 R11 R13 S13 S14 Q13 R14 P10 O7 L18 J19 O5 N10 R8 O6 N5 info move K16 visits 659 winrate 9741 prior 1228 pv K16 L18 H18 L16 J19 R11 R13 S13 S14 Q13 R14 P10 O6 R8 info move R2 visits 599 winrate 9765 prior 972 pv R2 S2 H18 R11 R13 S13 S14 Q13 R14 P10 O12 R8 O7 P8 info move P5 visits 564 winrate 9732 prior 946 pv P5 R2 H18 Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 R17 K18 O10 G18 G17 H19 H17 O7 info move L18 visits 99 winrate 9672 prior 258 pv L18 O18 K18 Q17 R17 P17 P11 Q16 Q15 R15 R14 S15 S14 info move E15 visits 72 winrate 9696 prior 161 pv E15 E14 H18 L18 P11 G18 G17 H19 H17 S16 info move L16 visits 51 winrate 9750 prior 71 pv L16 L17 H18 K16 K15 L15 L14 M15 P11 S16 S15 R17 R15 Q18 P18 S18 info move L17 visits 17 winrate 9376 prior 128 pv L17 K16 K15 L16 H18 R11 R13 S13 S14 Q13 R14 P10 info move N18 visits 14 winrate 9564 prior 62 pv N18 M18 H18 O18 P18 N19 P11 info move P11 visits 6 winrate 9494 prior 35 pv P11 H18 G17 N18 O6 O9];B[hb]C[백 승률: 0.4% (-0.1%)
+리드: -15.8 (-1.2) stdev: 13.1
+(KataGo18blocksHuman / 83 visits)
+덤: 6.5
+Move time: 2.096 초]LZ[KataGo18blocksHuman 99.6 83 -15.8 13.1
+move K15 visits 8 winrate 39 prior 867 scoreMean -15.80 pv K15 K16 L16 L15 info move R11 visits 8 winrate 38 prior 891 scoreMean -15.63 pv R11 R13 S13 S14 Q13 R12 info move Q15 visits 50 winrate 51 prior 3926 scoreMean -13.89 pv Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 R17 K18 L16 info move R12 visits 14 winrate 43 prior 1253 scoreMean -15.08 pv R12 P12 Q15 info move R15 visits 3 winrate 39 prior 383 scoreMean -15.32 pv R15 Q15 R14];W[je]C[흑 승률: 98.3% (+0.4%)
+(LeelaZero20blocks / 3.0k visits)
+덤: 6.5
+Move time: 2.087 초]LZ[LeelaZero20blocks 1.7 3.0k
+move K16 visits 975 winrate 9830 prior 2064 pv K16 L16 L17 K18 L15 M16 L18 J15 H17 H14 K14 H15 M14 info move R2 visits 417 winrate 9806 prior 815 pv R2 S2 K16 L16 L15 L18 M15 M16 J19 K19 K18 Q17 O18 J18 Q2 P2 K18 info move J15 visits 416 winrate 9801 prior 1264 pv J15 R11 K16 L16 L17 R14 S15 R8 P5 O4 P8 Q17 O18 Q16 info move P5 visits 384 winrate 9827 prior 855 pv P5 R2 K16 L16 L15 L18 M16 M17 L17 Q17 O18 L16 M15 N15 L17 info move P11 visits 236 winrate 9780 prior 511 pv P11 J15 K16 L16 K18 Q17 O18 R13 R11 S16 S15 R15 Q15 info move O11 visits 89 winrate 9782 prior 189 pv O11 J15 K16 L16 K18 Q17 O18 R14 R15 R11 S14 P10 P11 Q10 info move O12 visits 56 winrate 9796 prior 104 pv O12 J15 K16 L16 K18 Q17 O18 R14 R15 R11 L15 info move J13 visits 54 winrate 9791 prior 106 pv J13 J15 H14 K16 K18 L13 H11 G12 J12 O13 P13 info move O10 visits 51 winrate 9801 prior 91 pv O10 J15 O12 Q17 P18 R13 S14 R14 R15 S13 info move L4 visits 40 winrate 9779 prior 87 pv L4 J15 K16 L16 K18 L3 M3 K3 L5];B[jd]C[백 승률: 0.4% (-0.0%)
+리드: -16.7 (-0.9) stdev: 12.8
+(KataGo18blocksHuman / 85 visits)
+덤: 6.5
+Move time: 2.087 초]LZ[KataGo18blocksHuman 99.6 85 -16.7 12.8
+move L16 visits 39 winrate 35 prior 3398 scoreMean -16.72 pv L16 L17 L14 J15 Q15 info move Q15 visits 41 winrate 36 prior 3455 scoreMean -16.23 pv Q15 P15 Q17 Q16 O18 P18 P17 Q18 L16 L17 info move R15 visits 5 winrate 30 prior 474 scoreMean -16.81 pv R15 Q15 R14];W[kd]C[흑 승률: 98.2% (-0.1%)
+(LeelaZero20blocks / 4.5k visits)
+덤: 6.5
+Move time: 2.045 초]LZ[LeelaZero20blocks 1.8 4.5k
+move L15 visits 1132 winrate 9822 prior 2044 pv L15 M15 L14 L18 J19 K18 N18 M18 O18 M14 L13 M13 P11 L12 J13 J12 info move L17 visits 904 winrate 9826 prior 1449 pv L17 K18 L15 M16 K14 L18 N18 M18 P11 G18 G17 H19 P5 info move K18 visits 618 winrate 9814 prior 1128 pv K18 J15 L15 K14 L14 N14 K13 H15 L17 M13 L13 info move P5 visits 562 winrate 9836 prior 549 pv P5 R2 L15 L18 M16 M17 L17 Q17 O18 L16 M15 N15 L17 Q15 Q16 P15 info move R2 visits 520 winrate 9819 prior 963 pv R2 S2 L15 L18 M15 M16 J19 K19 K18 Q17 O18 J18 Q2 P2 K18 Q16 info move P11 visits 204 winrate 9768 prior 400 pv P11 J15 K18 Q17 O18 S16 S15 Q16 Q15 R17 R15 S18 info move J15 visits 119 winrate 9690 prior 369 pv J15 L18 J19 R12 R10 Q10 R9 P12 N13 R14 O18 L13 N11 S16 info move O11 visits 98 winrate 9816 prior 124 pv O11 J15 K18 Q17 O18 R14 R15 R11 S14 P10 P11 Q10 info move P10 visits 52 winrate 9796 prior 80 pv P10 L18 J19 P12 O13 R12 R10 S10 S9 R11 Q10 S15 info move K14 visits 47 winrate 9778 prior 83 pv K14 L18 J19 R11 R13 S13 S14 Q13 R14];B[ke]C[백 승률: 0.4% (+0.1%)
+리드: -14.2 (+2.5) stdev: 12.5
+(KataGo18blocksHuman / 96 visits)
+덤: 6.5
+Move time: 2.106 초]LZ[KataGo18blocksHuman 99.6 96 -14.2 12.5
+move M15 visits 48 winrate 43 prior 3416 scoreMean -14.19 pv M15 L14 L18 J19 Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 R17 info move L18 visits 14 winrate 26 prior 1599 scoreMean -18.74 pv L18 M16 L17 M15 N18 J19 K19 info move Q17 visits 4 winrate 30 prior 409 scoreMean -17.30 pv Q17 O18 M15 L14 info move Q15 visits 30 winrate 33 prior 2677 scoreMean -15.84 pv Q15 P15 Q17 Q16 O18 L17 R17];W[le]C[흑 승률: 97.7% (-0.5%)
+(LeelaZero20blocks / 3.7k visits)
+덤: 6.5
+Move time: 2.025 초]LZ[LeelaZero20blocks 2.3 3.7k
+move L14 visits 2394 winrate 9771 prior 5155 pv L14 L18 J19 K18 N18 M18 O18 M14 L13 M13 P11 L12 J13 J12 H14 J15 info move R2 visits 822 winrate 9771 prior 1967 pv R2 S2 L14 L18 J19 K18 P11 H15 J15 H14 G17 S16 S15 R17 R15 Q18 info move P5 visits 487 winrate 9770 prior 724 pv P5 R2 L14 L18 J19 K18 N18 M18 O18 M14 L13 M13 P11 H15 J15 H14 info move E15 visits 26 winrate 9596 prior 112 pv E15 E14 L14 L18 J19 K18 P11 H15 H14 J15 G17 info move A11 visits 10 winrate 9618 prior 39 pv A11 A8 L14 L18 J19 K18 info move P11 visits 9 winrate 9559 prior 41 pv P11 L14 O6 J15 K18 P9 Q9];B[kf]C[백 승률: 0.5% (+0.0%)
+리드: -14.2 (-0.1) stdev: 12.5
+(KataGo18blocksHuman / 132 visits)
+덤: 6.5
+Move time: 2.062 초]LZ[KataGo18blocksHuman 99.5 132 -14.2 12.5
+move L18 visits 93 winrate 46 prior 6213 scoreMean -14.25 pv L18 J19 Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 R17 K18 O10 info move Q15 visits 39 winrate 43 prior 2712 scoreMean -14.59 pv Q15 P15 L18 J19 Q17 Q16 O18 P18 P17 Q18 O16 R17 K18 O10];W[kb]C[흑 승률: 98.0% (+0.3%)
+(LeelaZero20blocks / 5.9k visits)
+덤: 6.5
+Move time: 2.048 초]LZ[LeelaZero20blocks 2.0 5.9k
+move J19 visits 2097 winrate 9799 prior 2302 pv J19 K18 P11 H15 H14 J15 G17 K14 H16 K13 P5 R2 N7 S16 S15 R17 info move P11 visits 913 winrate 9759 prior 1372 pv P11 H19 G19 J19 G17 S16 S15 R17 R15 Q18 O18 S18 T16 T17 info move P5 visits 836 winrate 9780 prior 770 pv P5 R2 J19 K18 N18 M18 O18 M14 L13 M13 P11 H15 J15 H14 info move R2 visits 654 winrate 9771 prior 628 pv R2 S2 J19 K18 P11 H15 J15 H14 G17 S16 S15 R17 R15 Q18 P18 info move Q11 visits 258 winrate 9713 prior 430 pv Q11 J15 J19 K18 H15 H17 K14 G18 G17 H19 P5 R2 M5 M3 N8 Q17 P18 info move N18 visits 187 winrate 9744 prior 236 pv N18 M18 P11 H19 G19 J19 G17 S16 S15 R17 R15 P18 O18 P17 info move P10 visits 179 winrate 9694 prior 343 pv P10 J15 H15 H17 K14 G18 G17 H19 P5 R2 M5 P12 R12 N12 M3 L3 info move M14 visits 131 winrate 9681 prior 272 pv M14 N14 J19 K18 N13 H15 O14 J15 H17 N15 info move Q10 visits 130 winrate 9752 prior 154 pv Q10 H19 G19 J19 G17 P6 P7 O6 O7 N6 N7 info move Q12 visits 52 winrate 9744 prior 68 pv Q12 H19 G19 J19 G17 Q10 O10 R12 R13 R11 S13 P9 P5];B[ia]C[백 승률: 0.4% (-0.1%)
+리드: -17.2 (-2.9) stdev: 13.2
+(KataGo18blocksHuman / 158 visits)
+덤: 6.5
+Move time: 2.068 초]LZ[KataGo18blocksHuman 99.6 158 -17.2 13.2
+move K18 visits 11 winrate 39 prior 786 scoreMean -17.19 pv K18 N18 J15 K14 H17 info move M14 visits 4 winrate 40 prior 254 scoreMean -16.10 pv M14 L13 Q15 info move R11 visits 7 winrate 41 prior 404 scoreMean -15.76 pv R11 R13 Q13 info move R12 visits 18 winrate 39 prior 976 scoreMean -14.98 pv R12 N13 Q15 P15 Q17 Q16 info move Q15 visits 105 winrate 47 prior 4265 scoreMean -13.91 pv Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 R17 K18 M18 J15 K14 info move R15 visits 13 winrate 36 prior 756 scoreMean -15.33 pv R15 Q15 R14 S16 R11 K18];W[jb]C[흑 승률: 97.8% (-0.1%)
+(LeelaZero20blocks / 3.9k visits)
+덤: 6.5
+Move time: 2.062 초]LZ[LeelaZero20blocks 2.2 3.9k
+move P11 visits 570 winrate 9784 prior 1110 pv P11 H15 H14 J15 K14 H17 H16 N18 O6 R2 O18 K19 M5 M3 L8 H4 N14 L10 info move N18 visits 573 winrate 9777 prior 1003 pv N18 M18 O18 M14 L13 M13 L12 M12 P11 H15 H14 J15 G17 K14 info move R2 visits 381 winrate 9773 prior 640 pv R2 S2 N18 M18 O18 Q10 Q12 O10 O6 R12 R13 R11 S13 M4 N4 info move Q11 visits 367 winrate 9769 prior 658 pv Q11 J15 H15 H17 K14 G18 G17 H19 P5 R2 M5 M3 N8 Q17 P18 Q18 P17 info move P5 visits 355 winrate 9789 prior 505 pv P5 R2 N18 M18 O18 M14 L13 M13 P11 H15 J15 H14 G17 info move P10 visits 247 winrate 9746 prior 516 pv P10 J15 H16 H15 G17 H14 N13 G16 G15 S16 S15 R17 R15 info move K14 visits 239 winrate 9711 prior 636 pv K14 R11 R13 S13 S14 R12 Q13 R8 N18 M18 O18 info move M14 visits 191 winrate 9736 prior 433 pv M14 N14 N13 O14 O13 P13 P12 Q13 Q12 R13 R12 info move O18 visits 138 winrate 9776 prior 225 pv O18 R11 P11 S14 S15 R9 P9 R13 S12 R12 S9 info move N13 visits 128 winrate 9774 prior 213 pv N13 J15 K14 H15 H14 H17 H16 O18 P18 N18 P5 R2 O9 info move Q10 visits 112 winrate 9704 prior 309 pv Q10 J15 K14 H15 H14 H17 H16 O18 P18 N18 P5];B[oi]C[백 승률: 0.3% (-0.1%)
+리드: -16.5 (+0.7) stdev: 12.5
+(KataGo18blocksHuman / 88 visits)
+덤: 6.5
+Move time: 2.091 초]LZ[KataGo18blocksHuman 99.7 88 -16.5 12.5
+move M14 visits 6 winrate 30 prior 612 scoreMean -16.54 pv M14 L13 J15 info move P9 visits 7 winrate 37 prior 665 scoreMean -18.04 pv P9 N18 M18 O18 info move H15 visits 7 winrate 26 prior 1032 scoreMean -21.31 pv H15 H14 H17 G17 S16 R17 info move Q15 visits 5 winrate 28 prior 443 scoreMean -16.18 pv Q15 P15 Q17 Q16 O18 info move H17 visits 10 winrate 26 prior 1168 scoreMean -18.61 pv H17 G17 S16 R17 R12 info move S16 visits 15 winrate 27 prior 1471 scoreMean -16.87 pv S16 R17 R12 N18 info move J15 visits 23 winrate 49 prior 1331 scoreMean -13.86 pv J15 K14 H17 H15 G18 G17 H19 M3 info move R17 visits 3 winrate 26 prior 359 scoreMean -17.26 pv R17 S16 Q15 info move R15 visits 12 winrate 33 prior 1156 scoreMean -16.78 pv R15 N18 Q15 P15 Q16];W[lf]C[흑 승률: 98.5% (+0.6%)
+(LeelaZero20blocks / 2.7k visits)
+덤: 6.5
+Move time: 2.043 초]LZ[LeelaZero20blocks 1.5 2.7k
+move K14 visits 516 winrate 9845 prior 1209 pv K14 R12 P5 R2 R10 S10 R11 S11 S13 R9 info move L13 visits 473 winrate 9698 prior 2222 pv L13 J15 H16 H15 G17 H14 N11 G16 G15 S16 R17 R13 S14 O12 info move P5 visits 352 winrate 9829 prior 582 pv P5 R2 K14 Q17 N18 Q16 Q15 R17 S16 R15 info move O6 visits 306 winrate 9816 prior 517 pv O6 K14 L13 K13 N18 M18 O18 N12 O10 N8 O8 N10 N9 M9 info move R2 visits 222 winrate 9773 prior 569 pv R2 S2 K14 R11 P5 Q2 R13 S13 S14 R14 S12 Q13 info move O7 visits 178 winrate 9821 prior 281 pv O7 H15 H14 J15 G17 H16 H17 K14 K13 Q17 O18 Q16 Q15 R17 info move N18 visits 172 winrate 9791 prior 374 pv N18 H15 J15 H14 G17 L13 K14 S16 S15 R17 R15 P18 info move M3 visits 91 winrate 9800 prior 182 pv M3 H15 H14 J15 G17 K14 H16 L13 O9 Q17 R17 O18 P5 R2 info move O9 visits 63 winrate 9834 prior 82 pv O9 H15 H14 J15 G17 H16 H17 K14 K13 P6 P7 O6 info move K13 visits 47 winrate 9782 prior 111 pv K13 L13 K14 K12 H14 R11 R13 S13 S14 Q9 P5 R2 info move P6 visits 36 winrate 9816 prior 61 pv P6 K14 L13 K13 N11 J15 H16 G17 G18 H15 H17 Q17];B[jf]C[백 승률: 0.3% (-0.0%)
+리드: -16.3 (+0.3) stdev: 12.1
+(KataGo18blocksHuman / 76 visits)
+덤: 6.5
+Move time: 2.064 초]LZ[KataGo18blocksHuman 99.7 76 -16.3 12.1
+move P9 visits 9 winrate 27 prior 937 scoreMean -16.27 pv P9 N18 M18 Q9 info move Q15 visits 5 winrate 30 prior 542 scoreMean -15.80 pv Q15 P15 Q17 Q16 O18 info move S16 visits 24 winrate 29 prior 2307 scoreMean -15.93 pv S16 S15 R17 R15 N18 info move R12 visits 8 winrate 33 prior 822 scoreMean -16.83 pv R12 N18 M18 P18 G18 info move R17 visits 5 winrate 28 prior 569 scoreMean -16.06 pv R17 S16 Q15 P15 info move G18 visits 4 winrate 37 prior 456 scoreMean -16.51 pv G18 G17 S16 info move R15 visits 21 winrate 38 prior 2069 scoreMean -16.45 pv R15 N18 Q15 P15 Q16 Q17 R17 S16];W[ok]C[흑 승률: 98.3% (-0.2%)
+(LeelaZero20blocks / 3.1k visits)
+덤: 6.5
+Move time: 2.039 초]LZ[LeelaZero20blocks 1.7 3.1k
+move O8 visits 325 winrate 9827 prior 721 pv O8 O9 P5 R2 Q10 Q9 R10 P6 P7 O6 info move P5 visits 375 winrate 9824 prior 858 pv P5 O4 N6 R10 R12 R8 R2 S2 O3 Q2 N4 O5 O6 P4 info move N18 visits 342 winrate 9823 prior 782 pv N18 M18 P5 R2 Q9 P6 P7 O6 O7 N6 N7 M6 M7 info move Q10 visits 324 winrate 9822 prior 744 pv Q10 P6 P7 O6 O7 N7 R2 S2 N6 N5 Q2 P2 P3 info move Q9 visits 336 winrate 9821 prior 775 pv Q9 Q8 Q10 R8 O7 O8 P7 P8 S9 S8 T8 info move R2 visits 258 winrate 9807 prior 665 pv R2 S2 Q10 P6 P7 O6 O7 N6 N7 M7 M8 L7 N18 M18 O18 info move O6 visits 165 winrate 9820 prior 385 pv O6 R10 R12 R8 M3 L3 M4 S12 S13 S11 N18 M18 O18 R13 S14 info move O7 visits 148 winrate 9839 prior 292 pv O7 R9 R11 N9 N5 N3 N18 M18 O18 K19 H19 Q8 P5 O4 info move R10 visits 132 winrate 9797 prior 364 pv R10 P6 P7 O6 O7 N6 N7 M6 N18 M18 O18 K19 H19 N9 info move N7 visits 106 winrate 9833 prior 223 pv N7 R10 R12 R8 P7 N9 M4 S12 S13 S11 P5 R2 N18 M18];B[nl]C[백 승률: 0.3% (-0.0%)
+리드: -15.8 (+0.5) stdev: 12.4
+(KataGo18blocksHuman / 61 visits)
+덤: 6.5
+Move time: 2.039 초]LZ[KataGo18blocksHuman 99.7 61 -15.8 12.4
+move O9 visits 22 winrate 26 prior 2854 scoreMean -15.79 pv O9 N18 M18 Q10 P6 P7 info move R9 visits 4 winrate 29 prior 572 scoreMean -16.82 pv R9 N18 M18 info move R11 visits 4 winrate 30 prior 649 scoreMean -17.14 pv R11 N18 M18 O18 info move R10 visits 14 winrate 37 prior 1750 scoreMean -16.94 pv R10 N18 M18 O9 R13 info move S16 visits 4 winrate 33 prior 614 scoreMean -16.63 pv S16 S15 R15 info move R15 visits 13 winrate 38 prior 1687 scoreMean -16.23 pv R15 N18 Q15 P15 Q16 Q17];W[nk]C[흑 승률: 98.3% (-0.0%)
+(LeelaZero20blocks / 3.5k visits)
+덤: 6.5
+Move time: 2.052 초]LZ[LeelaZero20blocks 1.8 3.5k
+move P5 visits 514 winrate 9825 prior 1033 pv P5 O4 Q10 N8 N7 O7 P8 Q9 R9 N6 M7 info move N9 visits 410 winrate 9817 prior 852 pv N9 N10 P8 Q10 Q11 R11 R12 R10 S12 O11 P5 O4 R2 S2 info move Q10 visits 574 winrate 9808 prior 1303 pv Q10 P6 P7 O6 N8 N9 M8 P8 O7 N6 R8 H4 N18 info move R2 visits 489 winrate 9803 prior 1125 pv R2 S2 P5 Q2 Q10 Q9 R10 P6 P7 O6 N8 M6 N9 H5 info move Q9 visits 353 winrate 9815 prior 724 pv Q9 P8 P5 R2 Q10 P6 P7 O6 O7 N6 M7 M6 M8 M9 L9 info move N18 visits 317 winrate 9819 prior 631 pv N18 M18 Q10 P6 R2 S2 P7 O6 N8 N9 M8 Q9 R10 M6 L5 L7 K5 info move N8 visits 271 winrate 9820 prior 535 pv N8 N9 P5 R2 Q10 Q9 R10 P6 P7 O6 N6 O5 info move R10 visits 128 winrate 9805 prior 284 pv R10 P6 P7 O6 N8 N9 M8 R9 S9 R8 S8 info move M3 visits 62 winrate 9837 prior 106 pv M3 L3 P5 R2 Q10 Q9 R9 R8 S9 P6 info move M4 visits 49 winrate 9835 prior 83 pv M4 R10 R12 N8 N7 O7 P8 M7];B[oo]C[백 승률: 0.3% (+0.0%)
+리드: -15.7 (+0.1) stdev: 12.1
+(KataGo18blocksHuman / 69 visits)
+덤: 6.5
+Move time: 2.054 초]LZ[KataGo18blocksHuman 99.7 69 -15.7 12.1
+move R2 visits 25 winrate 27 prior 3344 scoreMean -15.73 pv R2 N18 M18 Q10 Q9 info move O4 visits 40 winrate 31 prior 5070 scoreMean -16.01 pv O4 N18 M18 N9 N10 O10 R15 info move O3 visits 4 winrate 22 prior 565 scoreMean -15.91 pv O3 N18 M18];W[qr]C[흑 승률: 98.4% (+0.2%)
+(LeelaZero20blocks / 3.2k visits)
+덤: 6.5
+Move time: 2.031 초]LZ[LeelaZero20blocks 1.6 3.2k
+move Q10 visits 696 winrate 9840 prior 1920 pv Q10 P6 P7 O6 N6 O5 N5 O4 N8 Q9 R9 R8 info move Q9 visits 479 winrate 9842 prior 1269 pv Q9 P8 Q10 P6 P7 O6 O7 N6 M7 M6 M8 M9 L9 M10 Q8 H4 info move N9 visits 471 winrate 9832 prior 1341 pv N9 N10 P8 Q10 Q11 R11 R12 R10 S12 O11 M4 P13 Q13 O14 info move N8 visits 426 winrate 9833 prior 729 pv N8 N9 Q10 Q9 R10 P6 P7 O6 N6 O5 N5 O4 M8 Q7 info move N18 visits 422 winrate 9843 prior 872 pv N18 M18 Q10 P6 P7 O6 N8 N6 N9 N10 O10 H4 O18 K19 H19 H14 info move R10 visits 218 winrate 9858 prior 273 pv R10 N8 O7 R9 S9 Q10 R11 Q11 Q12 P12 Q13 R8 S8 info move R11 visits 87 winrate 9843 prior 133 pv R11 N8 O7 O11 O12 N11 N7 M8 M3 L3 M4 L6 N18 info move M3 visits 86 winrate 9839 prior 139 pv M3 R10 R12 N8 N7 O7 P8 M8 M7 O6 N5 O5 info move L4 visits 53 winrate 9819 prior 105 pv L4 L3 M3 K3 Q10 Q9 R10 P6 P7 O6 info move P8 visits 36 winrate 9806 prior 79 pv P8 Q10 Q11 R11 R12 R10 S12 N9 M4 info move M8 visits 35 winrate 9823 prior 67 pv M8 R10 R12 P7 P6 O7 N5 R8 M3 L3];B[pj]C[백 승률: 0.2% (-0.1%)
+리드: -15.8 (-0.1) stdev: 11.1
+(KataGo18blocksHuman / 85 visits)
+덤: 6.5
+Move time: 2.012 초]LZ[KataGo18blocksHuman 99.8 85 -15.8 11.1
+move Q9 visits 28 winrate 20 prior 2964 scoreMean -15.79 pv Q9 R10 P6 P7 O6 N6 info move P6 visits 21 winrate 21 prior 2399 scoreMean -16.45 pv P6 O6 P7 P8 Q7 Q8 R7 R8 S6 R6 info move Q15 visits 22 winrate 69 prior 1070 scoreMean -12.57 pv Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 info move R17 visits 14 winrate 28 prior 1395 scoreMean -15.07 pv R17 S16 Q15 P15 Q17];W[pk]C[흑 승률: 98.2% (-0.2%)
+(LeelaZero20blocks / 3.2k visits)
+덤: 6.5
+Move time: 2.102 초]LZ[LeelaZero20blocks 1.8 3.2k
+move R10 visits 1037 winrate 9818 prior 2623 pv R10 P6 P7 O6 N8 M6 N9 H5 N18 M18 O18 K19 H19 O13 info move R9 visits 848 winrate 9806 prior 2284 pv R9 R8 S9 P6 P7 O6 N6 O5 N5 O4 N8 Q7 N9 O10 S8 N10 M10 info move S9 visits 406 winrate 9820 prior 794 pv S9 P6 P7 O6 N6 O5 N5 O4 N8 Q7 R7 O7 P8 N7 M8 M7 N10 info move N18 visits 319 winrate 9845 prior 310 pv N18 M18 R10 P6 P7 O6 N6 O5 N5 O4 N8 Q7 Q8 P8 R7 O7 info move N8 visits 143 winrate 9829 prior 179 pv N8 R9 S10 S9 N5 R10 R11 S11 S12 T10 info move L4 visits 68 winrate 9823 prior 94 pv L4 L3 M3 K3 R10 P6 P7 O6 info move M3 visits 39 winrate 9803 prior 66 pv M3 R9 L5 L3 L4 K3 S10 S9 R10 N4 info move N5 visits 37 winrate 9813 prior 56 pv N5 R9 R10 S10 S11 S9 N8 S12 info move E15 visits 36 winrate 9801 prior 64 pv E15 E14 R10 P6 P7 O6 N6 O5 N5 N7 O7 O4 N8 info move N9 visits 35 winrate 9781 prior 74 pv N9 N10 R10 O11 N18 M18 O18 P6 P7 O6 N6];B[qj]C[백 승률: 0.2% (+0.0%)
+리드: -15.7 (+0.0) stdev: 10.9
+(KataGo18blocksHuman / 99 visits)
+덤: 6.5
+Move time: 2.068 초]LZ[KataGo18blocksHuman 99.8 99 -15.7 10.9
+move P6 visits 31 winrate 20 prior 2920 scoreMean -15.74 pv P6 P7 O6 N6 O5 N5 info move Q15 visits 29 winrate 61 prior 1544 scoreMean -13.59 pv Q15 P15 Q17 N18 Q16 P18 R15 M13 N13 N14 info move O13 visits 14 winrate 17 prior 1438 scoreMean -16.03 pv O13 N18 M18 P13 P6 info move R17 visits 15 winrate 26 prior 1332 scoreMean -15.30 pv R17 Q17 P6 P7 info move N5 visits 8 winrate 12 prior 933 scoreMean -16.71 pv N5 N18 M18 N6 info move N18 visits 2 winrate 13 prior 316 scoreMean -16.62 pv N18 M3];W[on]C[흑 승률: 98.4% (+0.2%)
+(LeelaZero20blocks / 3.2k visits)
+덤: 6.5
+Move time: 2.138 초]LZ[LeelaZero20blocks 1.7 3.2k
+move L4 visits 486 winrate 9835 prior 1046 pv L4 L3 M3 K3 L5 P7 N4 K5 L6 O5 M8 R17 S16 Q15 info move L5 visits 428 winrate 9822 prior 928 pv L5 P7 L4 L3 M3 K3 N4 J6 L7 O5 O3 Q15 P15 Q17 Q16 info move P7 visits 546 winrate 9803 prior 1803 pv P7 O6 N6 O5 N5 O4 N8 Q7 R7 O7 P8 N7 N9 N10 M10 N11 info move M3 visits 292 winrate 9834 prior 530 pv M3 L3 L5 P7 L4 K3 N4 K5 L6 O5 M8 R17 S16 Q15 info move O6 visits 210 winrate 9811 prior 478 pv O6 P7 P8 O5 O7 P4 Q7 H4 N18 M18 O18 K19 H19 N9 info move N18 visits 138 winrate 9827 prior 265 pv N18 M18 P7 O6 N6 O5 N5 O4 N8 Q7 Q8 P8 R7 O7 info move N6 visits 127 winrate 9788 prior 337 pv N6 P7 M4 L6 K3 J3 L3 J2 M6 L7 M8 info move K3 visits 119 winrate 9819 prior 248 pv K3 L3 P7 O6 J3 J4 H3 L4 N8 N9 M8 info move M5 visits 100 winrate 9777 prior 284 pv M5 P7 M3 L3 L6 M2 M8 M4 O5 N9 M9 O11 O12 info move M4 visits 95 winrate 9805 prior 223 pv M4 P7 M6 M3 N3 L3 O5 M8 K5 L5 L6 M5 info move N5 visits 92 winrate 9810 prior 206 pv N5 P7 M3 L3 L5 M2 M8 M4 N3 L4 N4 M5 M6];B[kp]C[백 승률: 0.2% (+0.0%)
+리드: -15.2 (+0.5) stdev: 10.8
+(KataGo18blocksHuman / 71 visits)
+덤: 6.5
+Move time: 2.074 초]LZ[KataGo18blocksHuman 99.8 71 -15.2 10.8
+move L3 visits 33 winrate 22 prior 3733 scoreMean -15.24 pv L3 M3 K3 P7 O6 N6 O5 info move L5 visits 3 winrate 24 prior 443 scoreMean -15.98 pv L5 K3 J3 info move K3 visits 26 winrate 21 prior 3017 scoreMean -15.61 pv K3 P7 O6 N6 O7 N8 info move R17 visits 9 winrate 31 prior 1007 scoreMean -15.28 pv R17 Q17 L3];W[kq]C[흑 승률: 98.0% (-0.3%)
+(LeelaZero20blocks / 3.3k visits)
+덤: 6.5
+Move time: 2.059 초]LZ[LeelaZero20blocks 2.0 3.3k
+move M3 visits 785 winrate 9801 prior 1769 pv M3 K3 L5 P7 N4 J6 L7 O5 O3 Q15 P15 Q17 Q16 info move P7 visits 528 winrate 9784 prior 1507 pv P7 O6 N6 O5 M3 K3 N5 N7 O7 O4 N8 M7 info move K5 visits 486 winrate 9802 prior 1284 pv K5 P7 M4 M3 N5 J4 N3 N2 M8 O5 N18 M18 info move M4 visits 305 winrate 9760 prior 709 pv M4 K5 K3 J3 K2 L2 J2 H2 J4 H3 K6 J5 P7 O6 N7 info move L5 visits 304 winrate 9792 prior 856 pv L5 M3 P7 O6 N8 N9 M8 N5 L10 N11 N18 M18 O18 M12 info move M5 visits 208 winrate 9801 prior 334 pv M5 P7 M3 K3 K5 J5 K6 M2 N3 N2 N18 M18 O18 K19 H19 H15 H14 info move N18 visits 173 winrate 9801 prior 276 pv N18 M18 M3 K3 L5 P7 N4 K5 L6 R9 S9 S10 S8 S11 info move K3 visits 164 winrate 9770 prior 352 pv K3 J3 K2 L2 P7 O6 N6 O5 N5 O4 O7 R9 info move O6 visits 99 winrate 9778 prior 199 pv O6 P7 M3 K3 L5 M2 N3 N2 N5 Q7 R7 M8 L7 L8 K7 K8 info move N6 visits 92 winrate 9788 prior 163 pv N6 P7 M3 K3 L5 M2 N3 N2 M8 O5 N5 R17 S16 Q15];B[lq]C[백 승률: 0.3% (+0.0%)
+리드: -14.9 (+0.3) stdev: 10.9
+(KataGo18blocksHuman / 85 visits)
+덤: 6.5
+Move time: 2.104 초]LZ[KataGo18blocksHuman 99.7 85 -14.9 10.9
+move K3 visits 57 winrate 27 prior 5243 scoreMean -14.94 pv K3 P7 O6 N6 O5 N5 N7 info move K5 visits 4 winrate 23 prior 514 scoreMean -16.01 pv K5 P7 O6 info move P7 visits 14 winrate 33 prior 1312 scoreMean -15.50 pv P7 K3 L2 M2 K2 info move H17 visits 4 winrate 38 prior 393 scoreMean -15.55 pv H17 G17 K3 info move R17 visits 6 winrate 30 prior 637 scoreMean -15.42 pv R17 Q17 K3];W[jq]C[흑 승률: 98.2% (+0.2%)
+(LeelaZero20blocks / 3.2k visits)
+덤: 6.5
+Move time: 2.08 초]LZ[LeelaZero20blocks 1.8 3.2k
+move L5 visits 821 winrate 9817 prior 1680 pv L5 P7 N4 J6 L7 O5 O3 Q15 P15 Q17 Q16 O18 P18 P17 Q18 info move P7 visits 516 winrate 9760 prior 1772 pv P7 O6 N6 O5 N5 N7 O7 O4 N8 M7 L6 M8 N9 K7 N18 M18 info move N6 visits 262 winrate 9777 prior 560 pv N6 P7 L5 M2 N3 N2 M8 O5 N5 R17 S16 Q15 Q16 info move M5 visits 260 winrate 9799 prior 617 pv M5 P7 K5 J5 K6 M2 N3 N2 N18 M18 O18 K19 H19 H15 H14 H17 G17 H16 J15 R9 info move O5 visits 258 winrate 9761 prior 621 pv O5 P7 L5 M2 N4 N3 M4 O3 M8 N9 M9 O11 O12 N11 info move N18 visits 224 winrate 9804 prior 372 pv N18 M18 L5 P7 N4 K5 L6 R9 S9 S10 S8 S11 info move L6 visits 153 winrate 9776 prior 330 pv L6 Q7 R7 P7 M5 K5 M8 O5 N18 M18 info move M4 visits 133 winrate 9764 prior 317 pv M4 P7 L6 K5 M8 O5 N6 K6 L7 R17 Q17 S16 S17 info move O6 visits 111 winrate 9741 prior 371 pv O6 P7 L5 M2 N3 N2 N5 Q7 R7 M8 L7 L8 K7 K8 K5 R17 info move N5 visits 102 winrate 9788 prior 197 pv N5 P7 L5 M2 N3 N2 M8 O5 N18 M18 O18 K19 H19 H14 H15 H16 J15 R9 S9 info move K5 visits 97 winrate 9745 prior 266 pv K5 M4 P7 O6 N6 O5 N5 L5 O4 P4 O7 P5];B[ko]C[백 승률: 0.2% (-0.1%)
+리드: -15.3 (-0.4) stdev: 10.7
+(KataGo18blocksHuman / 88 visits)
+덤: 6.5
+Move time: 2.072 초]LZ[KataGo18blocksHuman 99.8 88 -15.3 10.7
+move O6 visits 3 winrate 19 prior 321 scoreMean -15.30 pv O6 N4 info move P7 visits 29 winrate 40 prior 2619 scoreMean -14.67 pv P7 N4 Q15 P15 Q17 Q16 O18 info move Q7 visits 34 winrate 29 prior 3236 scoreMean -14.43 pv Q7 R9 M2 N2 M4 info move Q15 visits 6 winrate 51 prior 451 scoreMean -13.86 pv Q15 P15 Q17 N18 info move R17 visits 16 winrate 34 prior 1506 scoreMean -14.48 pv R17 Q17 Q7 R9];W[nn]C[흑 승률: 98.5% (+0.3%)
+(LeelaZero20blocks / 2.8k visits)
+덤: 6.5
+Move time: 2.087 초]LZ[LeelaZero20blocks 1.5 2.8k
+move N4 visits 551 winrate 9845 prior 1517 pv N4 J6 L7 Q7 R9 R7 S6 S8 R8 T5 T4 T7 T8 T9 S9 O5 info move N5 visits 553 winrate 9835 prior 1623 pv N5 Q7 R7 M2 N3 N2 M8 O5 N18 M18 O18 K19 H19 H14 H15 H16 info move M8 visits 341 winrate 9830 prior 725 pv M8 Q7 R7 N5 N4 O4 K6 N3 M4 M2 N2 O3 L2 K2 info move K5 visits 328 winrate 9816 prior 743 pv K5 J5 J6 H5 N5 O5 M8 M2 N3 N2 N18 M18 O18 K19 H19 H17 info move N18 visits 266 winrate 9825 prior 557 pv N18 M18 N4 J6 L7 N8 N7 O7 M8 N9 N6 O5 N5 O18 info move N6 visits 189 winrate 9768 prior 604 pv N6 N5 N7 Q7 R7 O5 M5 L7 K5 J5 info move L7 visits 139 winrate 9838 prior 256 pv L7 Q7 R7 M4 N5 N4 O5 N8 N7 O7 O3 N3 M8 info move N8 visits 68 winrate 9800 prior 175 pv N8 Q7 R7 M7 K5 J5 J6 K6 L6 K7 L7 L8 info move P7 visits 60 winrate 9778 prior 176 pv P7 N8 N4 J6 L7 O7 K8 Q15 P15 Q17 Q16 info move N7 visits 57 winrate 9802 prior 145 pv N7 Q7 R7 N6 M6 M7 L7 M8 N5 O5 N4 K6 L6];B[mp]C[백 승률: 0.2% (+0.0%)
+리드: -15.8 (-0.5) stdev: 10.6
+(KataGo18blocksHuman / 73 visits)
+덤: 6.5
+Move time: 2.081 초]LZ[KataGo18blocksHuman 99.8 73 -15.8 10.6
+move J6 visits 11 winrate 23 prior 1467 scoreMean -15.81 pv J6 L7 Q7 R9 info move Q7 visits 27 winrate 38 prior 3117 scoreMean -14.71 pv Q7 R9 Q15 P15 Q17 P18 info move Q15 visits 19 winrate 66 prior 1502 scoreMean -12.90 pv Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 info move R17 visits 16 winrate 32 prior 1870 scoreMean -14.96 pv R17 Q17 Q7 R9];W[in]C[흑 승률: 98.5% (+0.0%)
+(LeelaZero20blocks / 2.8k visits)
+덤: 6.5
+Move time: 2.016 초]LZ[LeelaZero20blocks 1.5 2.8k
+move K6 visits 455 winrate 9848 prior 1301 pv K6 J7 K7 K5 M6 K8 L8 L7 L6 M7 N7 info move L7 visits 539 winrate 9846 prior 1442 pv L7 Q7 R9 R7 S6 R8 S8 P8 M8 M6 L6 M5 M4 K8 N9 O5 info move K7 visits 388 winrate 9838 prior 990 pv K7 Q7 R7 R9 S9 S10 S8 P13 Q13 Q14 O14 Q12 R13 P12 R12 O11 info move M8 visits 316 winrate 9827 prior 1175 pv M8 Q7 R7 R9 S9 S10 S8 P13 Q13 Q14 O13 P15 P12 info move N6 visits 176 winrate 9780 prior 515 pv N6 N7 K6 N8 J7 H6 L7 M6 N5 M7 K5 J5 L9 info move M7 visits 154 winrate 9811 prior 354 pv M7 Q7 R7 N5 K7 O4 J7 H7 K6 H6 J9 G9 info move N7 visits 147 winrate 9812 prior 336 pv N7 Q7 R7 L7 N6 O5 N5 P7 N9 R9 S9 info move L8 visits 96 winrate 9797 prior 246 pv L8 Q7 R7 L7 M7 M6 L6 K7 N6 N7 M5 M8 info move K5 visits 85 winrate 9814 prior 187 pv K5 J5 L7 N8 L9 R9 S9 S10 S8 S11 R12 info move O3 visits 65 winrate 9822 prior 136 pv O3 Q7 R7 M6 N2 L2 P2 M2 O5 P4 info move O5 visits 61 winrate 9783 prior 165 pv O5 N6 K6 Q7 R7 J7 K7 K8 L8 L9 M8];B[jn]C[백 승률: 0.2% (+0.0%)
+리드: -15.6 (+0.2) stdev: 10.1
+(KataGo18blocksHuman / 72 visits)
+덤: 6.5
+Move time: 2.093 초]LZ[KataGo18blocksHuman 99.8 72 -15.6 10.1
+move J7 visits 3 winrate 24 prior 443 scoreMean -15.64 pv J7 K7 Q7 info move K5 visits 4 winrate 20 prior 575 scoreMean -15.75 pv K5 L6 Q7 info move M6 visits 10 winrate 35 prior 1204 scoreMean -15.64 pv M6 J7 H6 L8 info move Q7 visits 22 winrate 33 prior 2683 scoreMean -14.90 pv Q7 R9 Q15 P15 Q17 Q16 info move Q15 visits 18 winrate 67 prior 1412 scoreMean -12.68 pv Q15 P15 Q17 Q16 O18 P18 P17 Q18 O16 info move R17 visits 15 winrate 37 prior 1785 scoreMean -14.82 pv R17 S16 Q15 P15 Q17];W[im]C[흑 승률: 98.2% (-0.3%)
+(LeelaZero20blocks / 2.7k visits)
+덤: 6.5
+Move time: 2.026 초]LZ[LeelaZero20blocks 1.8 2.7k
+move K7 visits 594 winrate 9821 prior 2013 pv K7 N8 N7 M8 J8 K5 M7 O7 L8 M6 L6 info move L8 visits 372 winrate 9843 prior 760 pv L8 N8 K7 J8 L10 O11 O12 P12 Q12 N12 P13 M6 info move M8 visits 346 winrate 9750 prior 1306 pv M8 M6 L6 Q7 R7 K8 L8 O11 O12 N11 L10 info move N7 visits 344 winrate 9818 prior 858 pv N7 Q7 R7 N5 K7 O4 K8 R17 Q17 Q15 R15 info move M7 visits 274 winrate 9825 prior 617 pv M7 K7 L7 Q7 R7 M9 N8 P7 N9 N10 M10 O11 info move N6 visits 192 winrate 9773 prior 624 pv N6 N7 K7 M6 N5 M8 J8 H8 K9 O11 O12 N11 K11 info move O5 visits 118 winrate 9767 prior 404 pv O5 M6 K7 M8 L8 M9 J8 H8 J9 H10 info move N8 visits 104 winrate 9729 prior 433 pv N8 M7 M8 L7 K7 L8 K8 L9 J8 H8 J10 K10 K11 info move M6 visits 95 winrate 9822 prior 221 pv M6 M8 O5 N8 N6 P8 O3 R9 S9 info move K8 visits 57 winrate 9820 prior 135 pv K8 K7 L7 L8 M8 L9 N7 M9 O5 N6 M6 P7 info move L7 visits 49 winrate 9695 prior 237 pv L7 M6 M7 Q7 R7 M9 N8 P7 N9 N10];B[jm]C[백 승률: 0.2% (-0.0%)
+리드: -15.4 (+0.2) stdev: 10.4
+(KataGo18blocksHuman / 69 visits)
+덤: 6.5
+Move time: 2.108 초]LZ[KataGo18blocksHuman 99.8 69 -15.4 10.4
+move M6 visits 10 winrate 24 prior 1153 scoreMean -15.40 pv M6 L8 Q7 R9 info move K5 visits 8 winrate 18 prior 1023 scoreMean -16.05 pv K5 N7 Q7 R9 info move M7 visits 4 winrate 23 prior 524 scoreMean -16.20 pv M7 M6 K8 info move Q7 visits 27 winrate 34 prior 2908 scoreMean -15.31 pv Q7 R9 Q15 P15 Q17 P18 info move Q15 visits 6 winrate 51 prior 619 scoreMean -14.66 pv Q15 P15 Q17 N18 info move R17 visits 14 winrate 31 prior 1583 scoreMean -15.30 pv R17 Q17 Q7 R9];W[ln]C[흑 승률: 98.2% (+0.0%)
+(LeelaZero20blocks / 3.3k visits)
+덤: 6.5
+Move time: 2.095 초]LZ[LeelaZero20blocks 1.8 3.3k
+move L8 visits 642 winrate 9823 prior 1539 pv L8 J8 N8 Q7 R7 M9 M8 P7 N9 N10 M10 info move K8 visits 497 winrate 9812 prior 1399 pv K8 M8 J8 H8 J10 H10 K11 R9 S9 S10 S8 S11 R12 S12 R13 S13 info move M7 visits 462 winrate 9811 prior 1001 pv M7 N7 J8 M8 L8 H8 M9 N8 J9 H10 L10 N18 O18 info move K9 visits 346 winrate 9834 prior 499 pv K9 K8 L8 J8 M7 Q7 R7 O11 O12 N11 N6 N5 N7 M5 M4 O5 info move J8 visits 292 winrate 9752 prior 832 pv J8 K8 L8 K9 M7 L9 M9 M10 N9 N10 N7 N6 K5 J5 P7 Q7 O7 info move M8 visits 208 winrate 9657 prior 931 pv M8 K8 L8 Q7 R7 O11 O12 N11 L10 K9 N10 O10 K10 K12 info move L9 visits 193 winrate 9770 prior 487 pv L9 K8 L8 L7 M7 L6 K5 M5 M4 O5 J5 H5 H4 J4 J8 K9 info move N7 visits 120 winrate 9761 prior 322 pv N7 M5 M4 O5 K8 K5 L6 M7 M8 N9 L10 O12 P12 R17 info move N8 visits 109 winrate 9730 prior 351 pv N8 M8 J8 M9 K9 H8 L10 M10 L11 R9 S9 S10 S8 info move K5 visits 85 winrate 9734 prior 266 pv K5 J5 L8 Q7 R7 O11 O12 N11 J8 R9 S9];B[kl]C[백 승률: 0.2% (-0.1%)
+리드: -16.0 (-0.6) stdev: 10.1
+(KataGo18blocksHuman / 76 visits)
+덤: 6.5
+Move time: 2.087 초]LZ[KataGo18blocksHuman 99.8 76 -16.0 10.1
+move N8 visits 2 winrate 18 prior 337 scoreMean -16.00 pv N8 J8 info move J8 visits 12 winrate 32 prior 1427 scoreMean -16.17 pv J8 N8 Q7 R9 info move Q7 visits 26 winrate 41 prior 2660 scoreMean -14.83 pv Q7 R9 Q15 P15 Q17 P18 info move O11 visits 4 winrate 22 prior 487 scoreMean -15.89 pv O11 O12 Q7 info move Q15 visits 15 winrate 59 prior 1195 scoreMean -13.77 pv Q15 P15 Q17 Q16 O18 P18 P17 Q18 info move R17 visits 17 winrate 36 prior 1744 scoreMean -14.95 pv R17 N18 S16 R15 S15];W[ml]C[흑 승률: 98.4% (+0.1%)
+(LeelaZero20blocks / 2.9k visits)
+덤: 6.5
+Move time: 2.016 초]LZ[LeelaZero20blocks 1.6 2.9k
+move J8 visits 640 winrate 9838 prior 1925 pv J8 H8 J9 H10 K11 R9 S9 S10 S8 S11 R12 S12 R13 info move L10 visits 371 winrate 9860 prior 643 pv L10 J8 N11 R9 S9 S10 S8 S11 Q7 N10 M11 L9 info move M9 visits 369 winrate 9862 prior 639 pv M9 O11 O12 N11 J8 K5 L6 R9 S9 S10 R8 T9 S8 info move N18 visits 258 winrate 9795 prior 761 pv N18 M18 J8 O18 P18 N19 G9 K5 L6 G6 G7 Q18 Q17 P19 R18 P17 B3 info move M7 visits 184 winrate 9835 prior 407 pv M7 N7 J8 H8 J9 H10 K11 R9 S9 S10 S8 S11 R12 info move K5 visits 140 winrate 9792 prior 424 pv K5 J5 J8 H8 J9 H10 K11 R9 S9 S10 R8 T9 S8 R11 info move N11 visits 118 winrate 9824 prior 283 pv N11 K8 M7 N7 L9 L6 K5 J5 L7 info move N5 visits 71 winrate 9825 prior 169 pv N5 N6 J8 H8 J9 H10 K11 R9 S9 S10 R8 T9 S8 info move N10 visits 71 winrate 9823 prior 174 pv N10 O11 J8 P12 Q12 R9 S9 S10 R8 Q13 P13 info move O5 visits 68 winrate 9812 prior 180 pv O5 J8 O3 N2 M2 N5 L10 O11 O12 N11];B[il]C[백 승률: 0.2% (+0.1%)
+리드: -15.9 (+0.1) stdev: 10.5
+(KataGo18blocksHuman / 73 visits)
+덤: 6.5
+Move time: 2.102 초]LZ[KataGo18blocksHuman 99.8 73 -15.9 10.5
+move H8 visits 7 winrate 24 prior 877 scoreMean -15.92 pv H8 J9 Q15 P15 info move Q7 visits 2 winrate 15 prior 338 scoreMean -17.06 pv Q7 N18 info move Q15 visits 33 winrate 76 prior 2351 scoreMean -13.40 pv Q15 P15 Q17 P18 Q16 N18 R15 M13 N13 info move R17 visits 22 winrate 45 prior 2381 scoreMean -14.71 pv R17 Q17 N18 O18 G6 B3 info move N18 visits 9 winrate 20 prior 1244 scoreMean -15.75 pv N18 O18 G6 B3];W[hl]C[흑 승률: 98.5% (+0.2%)
+(LeelaZero20blocks / 3.2k visits)
+덤: 6.5
+Move time: 2.01 초]LZ[LeelaZero20blocks 1.5 3.2k
+move J9 visits 804 winrate 9853 prior 1920 pv J9 H10 K11 K5 L6 N18 O18 R9 S9 S10 S8 S11 R12 S12 info move L10 visits 257 winrate 9841 prior 340 pv L10 J9 K8 O11 P12 K5 L6 R17 S16 Q15 Q16 P15 O15 info move M7 visits 226 winrate 9823 prior 369 pv M7 N7 J9 H10 K11 R9 S9 S10 S8 S11 R12 S12 info move N5 visits 212 winrate 9813 prior 385 pv N5 N6 J9 H10 J10 R9 S9 S10 R8 T9 S8 S11 R12 S12 R13 info move K5 visits 189 winrate 9794 prior 491 pv K5 J5 J9 H10 K11 R9 S9 S10 R8 T9 S8 R11 Q11 R12 Q13 Q7 info move K9 visits 159 winrate 9783 prior 378 pv K9 J9 K8 O11 O12 P12 Q12 N12 P13 K11 info move M9 visits 153 winrate 9806 prior 300 pv M9 J9 K8 O11 P12 M11 N9 M8 L10 K12 K11 L12 info move K10 visits 143 winrate 9833 prior 209 pv K10 J9 K8 G6 N10 O11 P12 B2 D1 N18 O18 K19 H19 H14 H15 H16 info move N18 visits 136 winrate 9713 prior 492 pv N18 J9 K9 K8 L10 M9 J8 R9 S9 K8 L9 O11 O12 info move J10 visits 97 winrate 9756 prior 274 pv J10 J9 K8 O11 O12 P12 Q12 N12 P13 K9 L9 info move O5 visits 91 winrate 9776 prior 227 pv O5 J9 N7 N6 M7 O7 N9 P8 M9];B[ik]C[백 승률: 0.2% (-0.1%)
+리드: -16.8 (-0.9) stdev: 10.5
+(KataGo18blocksHuman / 87 visits)
+덤: 6.5
+Move time: 2.064 초]LZ[KataGo18blocksHuman 99.8 87 -16.8 10.5
+move H10 visits 5 winrate 18 prior 564 scoreMean -16.85 pv H10 N18 M18 O18 info move Q7 visits 3 winrate 13 prior 380 scoreMean -17.10 pv Q7 N18 M18 info move Q15 visits 30 winrate 59 prior 1937 scoreMean -14.58 pv Q15 P15 Q17 N18 Q16 P18 R15 N12 M18 info move R17 visits 26 winrate 34 prior 2219 scoreMean -15.24 pv R17 Q17 N18 O18 G6 info move N18 visits 17 winrate 18 prior 1858 scoreMean -15.99 pv N18 O18 G6 B3 info move K19 visits 6 winrate 21 prior 602 scoreMean -16.09 pv K19 N18 M18];W[hj]C[흑 승률: 98.5% (-0.1%)
+(LeelaZero20blocks / 2.9k visits)
+덤: 6.5
+Move time: 2.03 초]LZ[LeelaZero20blocks 1.5 2.9k
+move K11 visits 490 winrate 9847 prior 1669 pv K11 N18 O18 K19 H19 A16 B17 R9 S9 S10 S8 S11 info move M9 visits 314 winrate 9850 prior 770 pv M9 O11 O12 N11 K11 R9 S9 S10 S8 S11 R12 S12 info move N18 visits 314 winrate 9848 prior 776 pv N18 M18 O18 O11 K11 P12 Q12 P10 Q11 R9 S9 S10 R8 T9 S8 info move J10 visits 278 winrate 9872 prior 562 pv J10 B2 D1 N18 O18 R9 S9 S10 S8 S11 info move M7 visits 219 winrate 9845 prior 634 pv M7 N7 M9 O11 O12 N11 K11 R9 S9 S10 S8 S11 R12 S12 info move N10 visits 158 winrate 9823 prior 468 pv N10 M9 J10 O11 P12 K12 K11 L11 J12 J13 L10 H14 info move L11 visits 148 winrate 9868 prior 310 pv L11 R9 S9 S10 S8 S11 R12 S12 R13 S13 S14 R14 Q14 R7 info move L10 visits 124 winrate 9853 prior 295 pv L10 M9 L9 R17 S16 Q15 Q16 P15 O15 O16 O13 P18 info move N11 visits 81 winrate 9840 prior 213 pv N11 M10 J10 K12 H11 G10 L11 M11 L12 M12 info move N5 visits 61 winrate 9832 prior 171 pv N5 N6 J10 R9 S9 S10 R8 T9 S8 S11 R12];B[ji]C[백 승률: 0.1% (-0.1%)
+리드: -16.7 (+0.1) stdev: 9.1
+(KataGo18blocksHuman / 79 visits)
+덤: 6.5
+Move time: 2.097 초]LZ[KataGo18blocksHuman 99.9 79 -16.7 9.1
+move Q7 visits 4 winrate 12 prior 444 scoreMean -16.73 pv Q7 N18 M18 O18 info move Q15 visits 19 winrate 45 prior 1592 scoreMean -17.39 pv Q15 P15 Q17 N18 Q16 P18 R15 N10 info move N18 visits 19 winrate 16 prior 1856 scoreMean -16.04 pv N18 O18 A16 B3 info move L11 visits 2 winrate 18 prior 290 scoreMean -17.22 pv L11 N18 info move R17 visits 29 winrate 28 prior 2417 scoreMean -15.85 pv R17 N18 S16 M18 N11 R15 info move K19 visits 6 winrate 14 prior 623 scoreMean -16.08 pv K19 N18 M18];W[pm]C[흑 승률: 98.4% (-0.1%)
+(LeelaZero20blocks / 2.9k visits)
+덤: 6.5
+Move time: 2.086 초]LZ[LeelaZero20blocks 1.6 2.9k
+move R7 visits 589 winrate 9841 prior 1340 pv R7 R9 S9 S10 S8 P13 Q13 Q14 O14 Q12 R13 P12 R12 O11 info move R8 visits 444 winrate 9815 prior 1167 pv R8 R7 S6 R9 S9 Q8 S8 R17 S16 Q15 Q16 P15 O15 O16 info move N18 visits 401 winrate 9810 prior 1058 pv N18 M18 O18 S8 R8 R9 S9 T8 T9 R7 T7 info move B3 visits 359 winrate 9823 prior 564 pv B3 S8 S9 R9 R8 T8 T9 R7 T7 K5 L6 M5 M4 S6 N18 M18 info move S8 visits 269 winrate 9822 prior 441 pv S8 N18 O18 K19 G18 R9 S9 K5 L6 M5 M4 H14 H15 info move R9 visits 269 winrate 9819 prior 823 pv R9 R7 S6 R8 S8 N18 O18 K19 H19 A16 B15 A15 B17 info move O18 visits 149 winrate 9803 prior 299 pv O18 N18 R8 R7 S6 R9 S9 Q8 S8 K5 L6 M5 M4 M7 M9 K19 H19 B2 info move S9 visits 142 winrate 9804 prior 282 pv S9 N18 B3 P18 R18 A16 B15 A15 B17 Q17 R17 P13 info move K5 visits 80 winrate 9755 prior 234 pv K5 J5 R7 R9 S9 S10 S8 P13 Q13 Q14 O14 Q12 R13 info move P18 visits 44 winrate 9776 prior 112 pv P18 N18 R7 R9 S9 S10 S8 K5];B[qm]C[백 승률: 0.3% (+0.2%)
+리드: -14.3 (+2.4) stdev: 9.4
+(KataGo18blocksHuman / 81 visits)
+덤: 6.5
+Move time: 2.126 초]LZ[KataGo18blocksHuman 99.7 81 -14.3 9.4
+move R9 visits 3 winrate 34 prior 337 scoreMean -14.30 pv R9 S9 R17 info move Q15 visits 25 winrate 62 prior 1785 scoreMean -15.02 pv Q15 P15 Q17 N18 Q16 P18 R15 N12 M18 info move N18 visits 13 winrate 17 prior 1368 scoreMean -14.91 pv N18 O18 K19 H19 info move R17 visits 26 winrate 37 prior 2112 scoreMean -14.17 pv R17 N18 S16 M18 Q16 info move K19 visits 10 winrate 22 prior 1064 scoreMean -14.79 pv K19 N18 M18 H19 info move A16 visits 4 winrate 15 prior 459 scoreMean -15.23 pv A16 N18 M18];W[qk]C[흑 승률: 98.1% (-0.3%)
+(LeelaZero20blocks / 3.6k visits)
+덤: 6.5
+Move time: 2.029 초]LZ[LeelaZero20blocks 1.9 3.6k
+move S9 visits 3575 winrate 9808 prior 8100 pv S9 S10 S8 R17 Q17 S16 S17 R15 R18 R13 S11 Q14 P13 S14 T13 info move N18 visits 6 winrate 9123 prior 82 pv N18 M18 S9 S10 S8 info move S10 visits 1 winrate 8228 prior 48 pv S10];B[rk]C[백 승률: 0.4% (+0.1%)
+리드: -15.7 (-1.4) stdev: 10.3
+(KataGo18blocksHuman / 76 visits)
+덤: 6.5
+Move time: 2.109 초]LZ[KataGo18blocksHuman 99.6 76 -15.7 10.3
+move S10 visits 1 winrate 42 prior 298 scoreMean -15.75 pv S10 S8 info move Q15 visits 20 winrate 55 prior 1569 scoreMean -15.54 pv Q15 P15 Q17 N18 P18 O18 Q16 S17 info move N18 visits 17 winrate 18 prior 1693 scoreMean -14.95 pv N18 O18 A16 B3 info move R17 visits 23 winrate 33 prior 1966 scoreMean -14.68 pv R17 N18 S16 M18 N11 info move K19 visits 12 winrate 24 prior 1177 scoreMean -15.09 pv K19 N18 M18 B3 info move A16 visits 3 winrate 13 prior 344 scoreMean -16.03 pv A16 N18 M18];W[rj]C[흑 승률: 98.2% (+0.2%)
+(LeelaZero20blocks / 5.3k visits)
+덤: 6.5
+Move time: 2.126 초]LZ[LeelaZero20blocks 1.8 5.3k
+move S8 visits 3036 winrate 9824 prior 4405 pv S8 R17 Q17 S16 S17 R15 R18 R13 S11 Q14 P13 S14 T13 S12 T12 T14 info move S11 visits 1129 winrate 9850 prior 976 pv S11 S8 T10 R8 T8 O18 P18 N18 B3 A16 B17 A17 B15 A15 B14 A14 A4 B5 B18 info move R8 visits 675 winrate 9583 prior 2691 pv R8 T9 S8 S11 R12 S12 S13 R13 Q13 R14 S14 Q12 R11 P10 Q11 O11 P12 S15 R15 T14 Q14 K5 info move T8 visits 282 winrate 9814 prior 283 pv T8 R8 S8 P13 Q13 Q14 O14 Q12 R13 P12 R12 info move T9 visits 210 winrate 9795 prior 261 pv T9 P13 Q13 Q14 O14 Q12 R13 P12 R12];B[rl]C[흑 승률: 99.8% (+1.5%)
+리드: 15.8 (+15.8) stdev: 10.4
+(KataGo18blocksHuman / 76 visits)
+덤: 6.5
+Move time: 2.122 초]LZ[KataGo18blocksHuman 99.8 76 -15.8 10.4
+move P13 visits 5 winrate 23 prior 599 scoreMean -15.77 pv P13 O13 O14 info move Q15 visits 30 winrate 58 prior 2507 scoreMean -15.31 pv Q15 P15 Q17 N18 Q16 P18 R15 N11 M18 info move R17 visits 34 winrate 41 prior 3082 scoreMean -14.76 pv R17 Q17 O18 P18 O16 P17 S16 info move N18 visits 7 winrate 15 prior 858 scoreMean -16.07 pv N18 O18 A16])

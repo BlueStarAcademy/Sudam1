@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { GameMode, ServerAction } from '../types';
+import { GameMode } from '../types';
 import { useAppContext } from '../hooks/useAppContext';
 import Button from './Button';
 
@@ -10,7 +10,7 @@ const gameOptions = [
     { mode: GameMode.Thief, name: '도둑잡기' },
     { mode: GameMode.Alkkagi, name: '알까기' },
     { mode: GameMode.Curling, name: '컬링' },
-    { mode: GameMode.Go, name: '일반 바둑' },
+    { mode: GameMode.Standard, name: '일반 바둑' },
 ];
 
 interface GameRejectionSettingsModalProps {
@@ -22,8 +22,8 @@ const GameRejectionSettingsModal: React.FC<GameRejectionSettingsModalProps> = ({
   const [rejectedGameModes, setRejectedGameModes] = useState<GameMode[]>([]);
 
   useEffect(() => {
-    if (currentUserWithStatus?.gameRejectionSettings?.rejectedModes) {
-      setRejectedGameModes(currentUserWithStatus.gameRejectionSettings.rejectedModes);
+    if (currentUserWithStatus?.rejectedGameModes) {
+      setRejectedGameModes(currentUserWithStatus.rejectedGameModes);
     }
   }, [currentUserWithStatus]);
 
@@ -35,11 +35,9 @@ const GameRejectionSettingsModal: React.FC<GameRejectionSettingsModalProps> = ({
 
   const handleSaveSettings = () => {
     handlers.handleAction({
-      type: ServerAction.UpdateUserSettings,
+      type: 'UPDATE_REJECTION_SETTINGS',
       payload: {
-        gameRejectionSettings: {
-          rejectedModes: rejectedGameModes,
-        },
+        rejectedGameModes: rejectedGameModes,
       },
     });
     onClose();
@@ -51,8 +49,8 @@ const GameRejectionSettingsModal: React.FC<GameRejectionSettingsModalProps> = ({
         <h2 className="text-xl font-bold mb-4 text-white">대국 거부 설정</h2>
         <p className="text-gray-300 mb-4">선택한 게임 모드의 대국 신청을 자동으로 거부합니다.</p>
         <div className="flex flex-col gap-2 mb-6">
-          {gameOptions.map((option) => (
-            <label key={option.mode} className="flex items-center text-white cursor-pointer">
+          {gameOptions.map((option, index) => (
+            <label key={index} className="flex items-center text-white cursor-pointer">
               <input
                 type="checkbox"
                 checked={rejectedGameModes.includes(option.mode)}
@@ -64,8 +62,8 @@ const GameRejectionSettingsModal: React.FC<GameRejectionSettingsModalProps> = ({
           ))}
         </div>
         <div className="flex justify-end gap-3">
-          <Button onClick={onClose} variant="secondary">취소</Button>
-          <Button onClick={handleSaveSettings} variant="primary">저장</Button>
+          <Button onClick={onClose} colorScheme="gray">취소</Button>
+          <Button onClick={handleSaveSettings} colorScheme="green">저장</Button>
         </div>
       </div>
     </div>

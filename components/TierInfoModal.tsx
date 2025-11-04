@@ -1,6 +1,6 @@
 import React from 'react';
 import DraggableWindow from './DraggableWindow.js';
-import { RANKING_TIERS, SEASONAL_TIER_REWARDS, CONSUMABLE_ITEMS } from '../constants.js';
+import { RANKING_TIERS, SEASONAL_TIER_REWARDS, CONSUMABLE_ITEMS } from '../constants';
 import { QuestReward } from '../types.js';
 
 interface TierInfoModalProps {

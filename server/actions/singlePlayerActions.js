@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
 import { Player, GameMode, UserStatus } from '../../types.js';
-import { SINGLE_PLAYER_STAGES, SINGLE_PLAYER_MISSIONS } from '../../constants/singlePlayerConstants.js';
+import { SINGLE_PLAYER_STAGES, SINGLE_PLAYER_MISSIONS } from '../../constants/singlePlayerConstants';
 import { getAiUser } from '../aiPlayer.js';
 // Helper function to place stones randomly without overlap
 const placeStonesOnBoard = (board, boardSize, count, player) => {

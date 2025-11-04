@@ -1,7 +1,7 @@
 import * as db from '../db.js';
 import { SHOP_ITEMS } from '../shop.js';
 import { isSameDayKST, isDifferentWeekKST } from '../../utils/timeUtils.js';
-import { ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT, SHOP_BORDER_ITEMS } from '../../constants.js';
+import { ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT, SHOP_BORDER_ITEMS } from '../../constants';
 import { addItemsToInventory } from '../../utils/inventoryUtils.js';
 export const handleShopAction = async (volatileState, action, user) => {
     const { type, payload } = action;

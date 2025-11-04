@@ -1,7 +1,7 @@
 import React from 'react';
 import DraggableWindow from './DraggableWindow.js';
 import { CoreStat, SpecialStat, MythicStat } from '../types.js';
-import { CORE_STATS_DATA, SPECIAL_STATS_DATA, MYTHIC_STATS_DATA } from '../constants.js';
+import { CORE_STATS_DATA, SPECIAL_STATS_DATA, MYTHIC_STATS_DATA } from '../constants';
 
 interface EquipmentEffectsModalProps {
     onClose: () => void;

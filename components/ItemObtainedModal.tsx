@@ -4,7 +4,7 @@ import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import { InventoryItem, ItemGrade, ItemOption, CoreStat, SpecialStat, MythicStat } from '../types.js';
 import { audioService } from '../services/audioService.js';
-import { GRADE_LEVEL_REQUIREMENTS } from '../constants.js';
+import { GRADE_LEVEL_REQUIREMENTS } from '../constants';
 
 interface ItemObtainedModalProps {
     item: InventoryItem;

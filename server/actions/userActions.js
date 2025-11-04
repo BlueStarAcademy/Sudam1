@@ -1,7 +1,7 @@
 import * as db from '../db.js';
 // FIX: Import the full namespace to access enums like CoreStat.
 import * as types from '../../types.js';
-import { AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES } from '../../constants.js';
+import { AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES } from '../../constants';
 import { containsProfanity } from '../../profanity.js';
 import { UserStatus } from '../../types/enums.js';
 export const handleUserAction = async (volatileState, action, user) => {

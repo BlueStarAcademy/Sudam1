@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { UserWithStatus, ServerAction, UserStatus, GameMode, Negotiation } from '../../types.js';
 import Avatar from '../Avatar.js';
-import { AVATAR_POOL, BORDER_POOL } from '../../constants.js';
+import { AVATAR_POOL, BORDER_POOL } from '../../constants';
 import Button from '../Button.js';
 import ChallengeSelectionModal from '../ChallengeSelectionModal';
 import GameRejectionSettingsModal from '../GameRejectionSettingsModal.tsx';
@@ -19,12 +19,13 @@ interface PlayerListProps {
     users: UserWithStatus[];
     onAction: (a: ServerAction) => void;
     currentUser: UserWithStatus;
-    mode: GameMode;
+    mode: GameMode | 'strategic' | 'playful';
     negotiations: Negotiation[];
     onViewUser: (userId: string) => void;
+    lobbyType: 'strategic' | 'playful';
 }
 
-const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, mode, negotiations, onViewUser }) => {
+const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, mode, negotiations, onViewUser, lobbyType }) => {
     const [isChallengeSelectionModalOpen, setIsChallengeSelectionModalOpen] = useState(false);
     const [challengeTargetUser, setChallengeTargetUser] = useState<UserWithStatus | null>(null);
     const [isRejectionSettingsModalOpen, setIsRejectionSettingsModalOpen] = useState(false);
@@ -150,10 +151,13 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
             )}
             {isChallengeSelectionModalOpen && challengeTargetUser && (
                 <ChallengeSelectionModal
-                    opponentUser={challengeTargetUser}
-                    currentMode={mode}
+                    opponent={challengeTargetUser}
                     onClose={() => setIsChallengeSelectionModalOpen(false)}
-                    onChallenge={(opponentId, gameMode) => onAction({ type: 'CHALLENGE_USER', payload: { opponentId, mode: gameMode } })}
+                    onChallenge={(gameMode) => {
+                        onAction({ type: 'CHALLENGE_USER', payload: { opponentId: challengeTargetUser.id, mode: gameMode } });
+                        setIsChallengeSelectionModalOpen(false);
+                    }}
+                    lobbyType={lobbyType}
                 />
             )}
         </div>

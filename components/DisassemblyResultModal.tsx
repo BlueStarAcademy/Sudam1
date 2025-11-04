@@ -2,7 +2,7 @@ import React from 'react';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import { InventoryItem } from '../types.js';
-import { MATERIAL_ITEMS } from '../constants.js';
+import { MATERIAL_ITEMS } from '../constants';
 
 interface DisassemblyResultModalProps {
     isOpen: boolean;

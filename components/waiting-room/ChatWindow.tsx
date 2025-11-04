@@ -1,7 +1,7 @@
 
 import React, { useRef, useEffect, useState } from 'react';
 import { ChatMessage, ServerAction, GameMode, UserWithStatus } from '../../types.js';
-import { GAME_CHAT_MESSAGES, GAME_CHAT_EMOJIS } from '../../constants.js';
+import { GAME_CHAT_MESSAGES, GAME_CHAT_EMOJIS } from '../../constants';
 import { containsProfanity } from '../../profanity.js';
 import Button from '../Button.js';
 import { useAppContext } from '../../hooks/useAppContext.js';

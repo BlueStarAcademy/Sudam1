@@ -2,7 +2,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserWithStatus, InventoryItem, ServerAction, ItemGrade, ItemOption } from '../../types.js';
 import Button from '../Button.js';
-import { ENHANCEMENT_SUCCESS_RATES, ENHANCEMENT_COSTS, MATERIAL_ITEMS, ENHANCEMENT_FAIL_BONUS_RATES, GRADE_LEVEL_REQUIREMENTS } from '../../constants.js';
+import { ENHANCEMENT_SUCCESS_RATES, ENHANCEMENT_COSTS, MATERIAL_ITEMS, ENHANCEMENT_FAIL_BONUS_RATES, GRADE_LEVEL_REQUIREMENTS } from '../../constants';
 import { useAppContext } from '../../hooks/useAppContext.js';
 
 const gradeStyles: Record<ItemGrade, { name: string; color: string; background: string; }> = {

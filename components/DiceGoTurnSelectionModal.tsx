@@ -4,7 +4,7 @@ import Button from './Button.js';
 import DraggableWindow from './DraggableWindow.js';
 import Avatar from './Avatar.js';
 import Dice from './Dice.js';
-import { AVATAR_POOL, BORDER_POOL, DICE_GO_TURN_ROLL_TIME, DICE_GO_TURN_CHOICE_TIME } from '../constants.js';
+import { AVATAR_POOL, BORDER_POOL, DICE_GO_TURN_ROLL_TIME, DICE_GO_TURN_CHOICE_TIME } from '../constants';
 
 interface DiceGoTurnSelectionModalProps {
     session: LiveGameSession;

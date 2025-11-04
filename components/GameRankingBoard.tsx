@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../hooks/useAppContext.js';
 import { User, InventoryItem, ItemOptions, ItemOption } from '../types.js';
 import Avatar from './Avatar.js';
-import { AVATAR_POOL, BORDER_POOL } from '../constants.js';
+import { AVATAR_POOL, BORDER_POOL } from '../constants';
 
 interface GameRankingBoardProps {
     isTopmost?: boolean;

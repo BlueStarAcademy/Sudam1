@@ -1,7 +1,7 @@
 
 import React, { useMemo } from 'react';
 import { UserWithStatus, GameMode, ServerAction } from '../types.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 
