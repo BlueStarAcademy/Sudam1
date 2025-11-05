@@ -3,9 +3,9 @@ import { calculateTotalStats } from './statService.js';
 import { randomUUID } from 'crypto';
 import { TOURNAMENT_DEFINITIONS } from '../constants';
 
-const EARLY_GAME_DURATION = 40;
-const MID_GAME_DURATION = 60;
-const END_GAME_DURATION = 40;
+const EARLY_GAME_DURATION = 15;
+const MID_GAME_DURATION = 20;
+const END_GAME_DURATION = 15;
 const TOTAL_GAME_DURATION = EARLY_GAME_DURATION + MID_GAME_DURATION + END_GAME_DURATION;
 
 const STAT_WEIGHTS: Record<'early' | 'mid' | 'end', Partial<Record<CoreStat, number>>> = {
@@ -41,7 +41,17 @@ const COMMENTARY_POOLS = {
         "돌들이 얽히며 복잡한 형세가 만들어지고 있습니다.",
         "상대의 허점을 노리며 강하게 파고듭니다.",
         "집중력이 흔들리면 단번에 무너질 수 있는 상황입니다.",
-        "치열한 실랑이 끝에 국면의 균형이 살짝 기울고 있습니다."
+        "치열한 실랑이 끝에 국면의 균형이 살짝 기울고 있습니다.",
+        "지금 이 수가 오늘 경기의 분수령이 될 수 있습니다!",
+        "한 치의 수읽기 실수도 허용되지 않는 순간입니다.",
+        "단 한 번의 판단이 승패를 좌우할 수 있는 형세입니다.",
+        "집중력이 절정에 달하며 숨막히는 분위기가 이어집니다.",
+        "방심은 금물! 작은 실수가 곧바로 대참사로 이어질 수 있습니다.",
+        "조금씩 우세를 굳혀가며 안정적인 운영을 보여주고 있습니다.",
+        "상대의 압박에 흔들리며 주도권을 잃어가고 있습니다.",
+        "전투력에서 앞서는 듯하지만, 계산력에서 다소 뒤처지고 있습니다.",
+        "양측의 형세가 팽팽하게 맞서며 누구도 쉽게 물러서지 않습니다.",
+        "불리한 상황에서도 끝까지 흔들리지 않는 집중력이 돋보입니다."
     ],
     end: [
         "마지막 승부수를 던지며 역전을 노리고 있습니다!",
@@ -174,7 +184,7 @@ const prepareNextRound = (state: TournamentState, user: User) => {
                         winner: null, isFinished: false, commentary: [],
                         isUserMatch: (losers[0]?.id === user.id || losers[1]?.id === user.id),
                         finalScore: null,
-                        sgfFileIndex: Math.floor(Math.random() * 20) + 1,
+                        sgfFileIndex: Math.floor(Math.random() * 18) + 1,
                     };
                     state.rounds.push({ id: state.rounds.length + 1, name: "3,4위전", matches: [thirdPlaceMatch] });
                 }
@@ -462,11 +472,44 @@ export const forfeitTournament = (state: TournamentState, userId: string) => {
     state.status = 'eliminated';
 };
 
+export const forfeitCurrentMatch = (state: TournamentState, user: User) => {
+    if (state.status !== 'round_in_progress' || !state.currentSimulatingMatch) return;
+
+    const { roundIndex, matchIndex } = state.currentSimulatingMatch;
+    
+    if (roundIndex >= state.rounds.length || matchIndex >= state.rounds[roundIndex].matches.length) {
+        return;
+    }
+
+    const match = state.rounds[roundIndex].matches[matchIndex];
+    
+    if (!match.isFinished && match.players.some(p => p?.id === user.id)) {
+        match.isFinished = true;
+        match.winner = match.players.find(p => p && p.id !== user.id) || null;
+        
+        // 현재 매치를 완료 처리하고 다음 단계로 진행
+        processMatchCompletion(state, user, match, roundIndex);
+    }
+};
+
 export const advanceSimulation = (state: TournamentState, user: User) => {
     if (state.status !== 'round_in_progress' || !state.currentSimulatingMatch) return;
 
     const { roundIndex, matchIndex } = state.currentSimulatingMatch;
-    const match = state.rounds[roundIndex].matches[matchIndex];
+    
+    // Validate round and match indices
+    if (!state.rounds || roundIndex >= state.rounds.length || !state.rounds[roundIndex]) {
+        console.error(`[advanceSimulation] Invalid roundIndex: ${roundIndex}, total rounds: ${state.rounds?.length || 0}`);
+        return;
+    }
+    
+    const round = state.rounds[roundIndex];
+    if (!round.matches || matchIndex >= round.matches.length || !round.matches[matchIndex]) {
+        console.error(`[advanceSimulation] Invalid matchIndex: ${matchIndex}, total matches: ${round.matches?.length || 0}`);
+        return;
+    }
+    
+    const match = round.matches[matchIndex];
 
     if (!match.players[0] || !match.players[1]) {
         match.winner = match.players[0] || null;
@@ -481,8 +524,13 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
 
     state.timeElapsed++;
     
-    const p1 = state.players.find(p => p.id === match.players[0]!.id)!;
-    const p2 = state.players.find(p => p.id === match.players[1]!.id)!;
+    const p1 = state.players.find(p => p.id === match.players[0]!.id);
+    const p2 = state.players.find(p => p.id === match.players[1]!.id);
+    
+    if (!p1 || !p2) {
+        console.error(`[advanceSimulation] Player not found: p1=${!!p1}, p2=${!!p2}, match.players[0]=${match.players[0]?.id}, match.players[1]=${match.players[1]?.id}`);
+        return;
+    }
 
     if (state.timeElapsed === 1) {
         if (p1.originalStats) p1.stats = JSON.parse(JSON.stringify(p1.originalStats));
@@ -502,15 +550,18 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
         const statToFluctuate = allStats[Math.floor(Math.random() * allStats.length)];
 
         const condition = player.condition || 100;
-        const positiveChangeProbability = (condition - 20) / 100;
+        // 양수값이 나올 기본확률 -30% + 컨디션%
+        // 예: 컨디션 50 = -30% + 50% = 20% 양수 확률
+        // 예: 컨디션 100 = -30% + 100% = 70% 양수 확률
+        const positiveChangeProbability = (condition - 30) / 100;
         
         let fluctuation: number;
         if (Math.random() < positiveChangeProbability) {
-            // Positive fluctuation: 1 or 2
-            fluctuation = Math.floor(Math.random() * 2) + 1;
+            // Positive fluctuation: 1, 2, or 3
+            fluctuation = Math.floor(Math.random() * 3) + 1;
         } else {
-            // Negative fluctuation: -1 or -2
-            fluctuation = Math.floor(Math.random() * 2) - 2;
+            // Negative fluctuation: -1, -2, or -3
+            fluctuation = Math.floor(Math.random() * 3) - 3;
         }
         player.stats[statToFluctuate] = (player.stats[statToFluctuate] || 0) + fluctuation;
     }
@@ -526,9 +577,11 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
     const totalCumulative = p1Cumulative + p2Cumulative;
     const p1ScorePercent = totalCumulative > 0 ? (p1Cumulative / totalCumulative) * 100 : 50;
 
+    // Commentary system: 1 second interval
     if (state.timeElapsed === 1) {
         state.currentMatchCommentary.push({ text: COMMENTARY_POOLS.start.replace('{p1}', p1.nickname).replace('{p2}', p2.nickname), phase, isRandomEvent: false });
-    } else if (state.timeElapsed % 20 === 0 && state.timeElapsed > 0 && state.timeElapsed < TOTAL_GAME_DURATION) {
+    } else if (state.timeElapsed % 10 === 0 && state.timeElapsed > 0 && state.timeElapsed < TOTAL_GAME_DURATION) {
+        // Intermediate score every 10 seconds
         const leadPercent = Math.abs(p1ScorePercent - 50) * 2;
         const scoreDiff = (leadPercent / 2);
         const roundedDiff = Math.round(scoreDiff);
@@ -537,7 +590,8 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
         if (finalDiff > 0.5) {
             state.currentMatchCommentary.push({ text: `[중간 스코어] ${leader} 선수 ${finalDiff.toFixed(1)}집 우세.`, phase, isRandomEvent: false });
         }
-    } else if (state.timeElapsed % 3 === 0 && state.timeElapsed < TOTAL_GAME_DURATION) {
+    } else if (state.timeElapsed > 1 && state.timeElapsed < TOTAL_GAME_DURATION) {
+        // Commentary every second (except at 10s intervals and random events)
         const pool = COMMENTARY_POOLS[phase];
         
         // Get the text of the last few comments to avoid repetition.
@@ -551,7 +605,7 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
                 candidateText = pool[Math.floor(Math.random() * pool.length)];
                 candidateText = candidateText.replace('{p1}', p1.nickname).replace('{p2}', p2.nickname);
                 attempts++;
-            } while (recentComments.includes(candidateText) && attempts < 10); // Try up to 10 times to find a unique comment
+            } while (recentComments.includes(candidateText) && attempts < 10);
             newCommentText = candidateText;
         } else {
             newCommentText = pool[0].replace('{p1}', p1.nickname).replace('{p2}', p2.nickname);
@@ -560,6 +614,7 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
         state.currentMatchCommentary.push({ text: newCommentText, phase, isRandomEvent: false });
     }
 
+    // Random events every 5 seconds
     if (state.timeElapsed > 1 && state.timeElapsed < TOTAL_GAME_DURATION && state.timeElapsed % 5 === 0) {
         const events = [
             { type: CoreStat.Concentration, isPositive: false, text: "{player}님이 조급한 마음에 실수가 나왔습니다." },
@@ -568,34 +623,78 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
             { type: CoreStat.Stability, isPositive: true, text: "{player}님이 차분하게 받아치며 불리한 싸움을 버팁니다." },
         ];
         
-        if (Math.random() < 0.20) { // Base 20% chance for any event
-            const event = events[Math.floor(Math.random() * events.length)];
+        // Check each event individually with stat-based probability
+        const eventResults: Array<{ event: typeof events[0]; player: PlayerForTournament; probability: number }> = [];
+        
+        for (const event of events) {
             const p1Stat = p1.stats[event.type] || 100;
             const p2Stat = p2.stats[event.type] || 100;
             
             let highStatPlayer: PlayerForTournament, lowStatPlayer: PlayerForTournament;
             if (p1Stat > p2Stat) {
                 highStatPlayer = p1; lowStatPlayer = p2;
-            } else {
+            } else if (p2Stat > p1Stat) {
                 highStatPlayer = p2; lowStatPlayer = p1;
+            } else {
+                // Equal stats, use default 20% chance
+                eventResults.push({ event, player: p1, probability: 0.20 });
+                continue;
             }
 
             const playerForEvent = event.isPositive ? highStatPlayer : lowStatPlayer;
             const otherPlayer = playerForEvent.id === p1.id ? p2 : p1;
-
-            const statDiff = Math.abs(p1Stat - p2Stat);
-            const N = Math.min(50, statDiff * 0.5); // Bonus chance capped at 50%
-            const eventChance = 0.20 + (N / 100);
-
-            if (Math.random() < eventChance) {
+            
+            // Calculate stat difference percentage (as bar graph percentage)
+            const totalStat = p1Stat + p2Stat;
+            const statDiffPercent = totalStat > 0 ? (Math.abs(p1Stat - p2Stat) / totalStat) * 100 : 0;
+            
+            // Base 20% chance, plus stat difference percentage
+            let eventChance = 0.20;
+            if (event.isPositive) {
+                // Positive events: higher stat player gets bonus
+                const highStatPercent = totalStat > 0 ? (highStatPlayer.stats[event.type]! / totalStat) * 100 : 50;
+                eventChance += (highStatPercent - 50) / 100; // Convert to 0-50% range
+            } else {
+                // Negative events (mistake): lower stat player gets penalty
+                const lowStatPercent = totalStat > 0 ? (lowStatPlayer.stats[event.type]! / totalStat) * 100 : 50;
+                eventChance += (50 - lowStatPercent) / 100; // Invert so lower stat = higher chance
+            }
+            
+            eventChance = Math.min(0.95, Math.max(0.05, eventChance)); // Cap between 5% and 95%
+            eventResults.push({ event, player: playerForEvent, probability: eventChance });
+        }
+        
+        // Only one event can trigger per 5-second interval
+        // First check if base 20% chance triggers
+        if (Math.random() < 0.20) {
+            // Select one event based on weighted probability
+            const totalProb = eventResults.reduce((sum, r) => sum + r.probability, 0);
+            let random = Math.random() * totalProb;
+            let selectedEventResult = eventResults[0];
+            
+            for (const result of eventResults) {
+                if (random <= result.probability) {
+                    selectedEventResult = result;
+                    break;
+                }
+                random -= result.probability;
+            }
+            
+            const { event, player: playerForEvent, probability } = selectedEventResult;
+            
+            // Check if this specific event triggers based on its probability
+            if (Math.random() < probability) {
                 let triggeredMessage = event.text.replace('{player}', playerForEvent.nickname);
                 const isMistake = !event.isPositive;
 
                 const randomPercent = Math.random() * 8 + 2; // 2% to 10%
-                const points = Math.round(randomPercent / 2);
-                const scoreChange = (p1Cumulative + p2Cumulative) * (randomPercent / 100);
+                const points = Math.round(randomPercent / 2); // 2% per point, rounded
                 
-                triggeredMessage += ` (${isMistake ? '-' : '+'}${points}집)`;
+                // Calculate score change as percentage of current total
+                const currentTotal = (state.currentMatchScores?.player1 || 0) + (state.currentMatchScores?.player2 || 0);
+                const scoreChange = currentTotal * (randomPercent / 100);
+                
+                triggeredMessage += ` (${isMistake ? '-' : '+'}${points}집 : ${randomPercent.toFixed(1)}%발동시)`;
                 
                 if (state.currentMatchScores) {
                     if (playerForEvent.id === p1.id) {

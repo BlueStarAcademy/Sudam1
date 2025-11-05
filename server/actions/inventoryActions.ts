@@ -228,11 +228,11 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             const newItem = generateNewItem(outcomeGrade, outcomeSlot);
 
             // 5. Add to inventory
-            const { success, finalItemsToAdd } = addItemsToInventoryUtil(inventoryAfterRemoval, user.inventorySlots, [newItem]);
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventoryUtil(inventoryAfterRemoval, user.inventorySlots, [newItem]);
             if (!success) {
                 return { error: '새 아이템을 받기에 인벤토리 공간이 부족합니다.' };
             }
-            user.inventory = [...inventoryAfterRemoval, ...finalItemsToAdd];
+            user.inventory = updatedInventory;
 
             // 6. Add blacksmith XP
             const xpGainRange = BLACKSMITH_COMBINATION_XP_GAIN[grade];
@@ -246,9 +246,15 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             await db.updateUser(user);
 
+            const updatedUser = { 
+                ...user, 
+                inventory: user.inventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            };
+
             return { 
                 clientResponse: { 
-                    updatedUser: user,
+                    updatedUser,
                     combinationResult: { 
                         item: newItem, 
                         xpGained: xpGained, 
@@ -259,59 +265,106 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
         }
 
         case 'USE_ITEM': {
-            const { itemId } = payload;
+            const { itemId, quantity = 1 } = payload;
             const itemIndex = user.inventory.findIndex(i => i.id === itemId);
             if (itemIndex === -1) return { error: '아이템을 찾을 수 없습니다.' };
 
             const item = user.inventory[itemIndex];
             if (item.type !== 'consumable') return { error: '사용할 수 없는 아이템입니다.' };
 
+            const availableQuantity = item.quantity || 1;
+            const useQuantity = Math.min(quantity, availableQuantity);
+            if (useQuantity <= 0) return { error: '사용할 수량이 없습니다.' };
+
             const bundleInfo = currencyBundles[item.name];
             if (bundleInfo) {
-                const amount = getRandomInt(bundleInfo.min, bundleInfo.max);
-                let obtainedItem: Partial<InventoryItem>;
+                const individualAmounts: number[] = [];
+                let totalGoldGained = 0;
+                let totalDiamondsGained = 0;
 
+                // 여러 개를 사용하는 경우 - 각각의 랜덤 수치를 저장
+                for (let i = 0; i < useQuantity; i++) {
+                    const amount = getRandomInt(bundleInfo.min, bundleInfo.max);
+                    individualAmounts.push(amount);
+                    if (bundleInfo.type === 'gold') {
+                        totalGoldGained += amount;
+                    } else { // diamonds
+                        totalDiamondsGained += amount;
+                    }
+                }
+
+                // 골드/다이아 추가
                 if (bundleInfo.type === 'gold') {
-                    user.gold += amount;
-                    obtainedItem = { name: '골드', quantity: amount, image: '/images/icon/Gold.png', type: 'material', grade: 'uncommon' };
+                    user.gold += totalGoldGained;
                 } else { // diamonds
-                    user.diamonds += amount;
-                    obtainedItem = { name: '다이아', quantity: amount, image: '/images/icon/Zem.png', type: 'material', grade: 'rare' };
+                    user.diamonds += totalDiamondsGained;
                 }
 
-                if (item.quantity && item.quantity > 1) {
-                    item.quantity--;
-                } else {
-                    user.inventory.splice(itemIndex, 1);
+                // 여러 슬롯에 걸쳐 있을 경우 모든 슬롯에서 정확히 수량만큼 소모
+                let remainingToRemove = useQuantity;
+                for (let i = user.inventory.length - 1; i >= 0 && remainingToRemove > 0; i--) {
+                    const invItem = user.inventory[i];
+                    if (invItem.id === itemId || (invItem.name === item.name && invItem.type === 'consumable')) {
+                        const itemQuantity = invItem.quantity || 1;
+                        if (itemQuantity <= remainingToRemove) {
+                            remainingToRemove -= itemQuantity;
+                            user.inventory.splice(i, 1);
+                        } else {
+                            invItem.quantity = itemQuantity - remainingToRemove;
+                            remainingToRemove = 0;
+                        }
+                    }
                 }
+
                 await db.updateUser(user);
-                return { clientResponse: { obtainedItemsBulk: [obtainedItem], updatedUser: user } };
+                
+                // 각각의 획득 수치를 별도의 아이템으로 반환 (표시용)
+                const obtainedItems: Partial<InventoryItem>[] = individualAmounts.map(amount => ({
+                    name: bundleInfo.type === 'gold' ? '골드' : '다이아',
+                    quantity: amount,
+                    image: bundleInfo.type === 'gold' ? '/images/icon/Gold.png' : '/images/icon/Zem.png',
+                    type: 'material' as const,
+                    grade: bundleInfo.type === 'gold' ? 'uncommon' as const : 'rare' as const
+                }));
+
+                const updatedUser = { 
+                    ...user, 
+                    inventory: user.inventory.map(item => ({ ...item })),
+                    equipment: { ...user.equipment }
+                };
+                return { clientResponse: { obtainedItemsBulk: obtainedItems, updatedUser } };
             }
             
             const shopItemKey = Object.keys(SHOP_ITEMS).find(key => SHOP_ITEMS[key as keyof typeof SHOP_ITEMS].name === item.name);
             if (!shopItemKey) return { error: '알 수 없는 아이템입니다.' };
             
             const shopItem = SHOP_ITEMS[shopItemKey as keyof typeof SHOP_ITEMS];
-            const obtainedItems = shopItem.onPurchase();
-            const itemsArray = Array.isArray(obtainedItems) ? obtainedItems : [obtainedItems];
+            const allObtainedItems: InventoryItem[] = [];
             
-            const tempInventory = user.inventory.filter(i => i.id !== itemId);
-            if (item.quantity && item.quantity > 1) {
-                tempInventory.push({ ...item, quantity: item.quantity - 1 });
+            // 여러 개를 사용하는 경우
+            for (let i = 0; i < useQuantity; i++) {
+                const obtainedItems = shopItem.onPurchase();
+                const itemsArray = Array.isArray(obtainedItems) ? obtainedItems : [obtainedItems];
+                allObtainedItems.push(...itemsArray);
             }
 
             const tempInventoryAfterUse = user.inventory.filter(i => i.id !== itemId);
-            if (item.quantity && item.quantity > 1) {
-                tempInventoryAfterUse.push({ ...item, quantity: item.quantity - 1 });
+            if (item.quantity && item.quantity > useQuantity) {
+                tempInventoryAfterUse.push({ ...item, quantity: item.quantity - useQuantity });
             }
 
-            const { success, finalItemsToAdd } = addItemsToInventoryUtil(tempInventoryAfterUse, user.inventorySlots, itemsArray);
+            const { success, finalItemsToAdd } = addItemsToInventoryUtil(tempInventoryAfterUse, user.inventorySlots, allObtainedItems);
             if (!success) return { error: '인벤토리 공간이 부족합니다.' };
             
             user.inventory = [...tempInventoryAfterUse, ...finalItemsToAdd];
             
             await db.updateUser(user);
-            return { clientResponse: { obtainedItemsBulk: itemsArray, updatedUser: user } };
+            const updatedUser = { 
+                ...user, 
+                inventory: user.inventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            };
+            return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser } };
         }
         
         case 'USE_ALL_ITEMS_OF_TYPE': {
@@ -346,13 +399,13 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             // Then, check for inventory space
             const inventoryAfterRemoval = user.inventory.filter(i => i.name !== itemName);
-            const { success: hasSpace, finalItemsToAdd } = addItemsToInventoryUtil(inventoryAfterRemoval, user.inventorySlots, allObtainedItems);
+            const { success: hasSpace, finalItemsToAdd, updatedInventory } = addItemsToInventoryUtil(inventoryAfterRemoval, user.inventorySlots, allObtainedItems);
             if (!hasSpace) {
                 return { error: '모든 아이템을 받기에 가방 공간이 부족합니다.' };
             }
 
             // If space is sufficient, apply all changes
-            user.inventory = [...inventoryAfterRemoval, ...finalItemsToAdd];
+            user.inventory = updatedInventory;
             user.gold += totalGoldGained;
             user.diamonds += totalDiamondsGained;
 
@@ -363,7 +416,13 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             if (totalGoldGained > 0) clientResponseItems.push({ name: '골드', quantity: totalGoldGained, image: '/images/icon/Gold.png', type: 'material', grade: 'uncommon' } as any);
             if (totalDiamondsGained > 0) clientResponseItems.push({ name: '다이아', quantity: totalDiamondsGained, image: '/images/icon/Zem.png', type: 'material', grade: 'rare' } as any);
 
-            return { clientResponse: { obtainedItemsBulk: clientResponseItems, updatedUser: user } };
+            const updatedUser = { 
+                ...user, 
+                inventory: updatedInventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            };
+
+            return { clientResponse: { obtainedItemsBulk: clientResponseItems, updatedUser } };
         }
 
         case 'TOGGLE_EQUIP_ITEM': {
@@ -400,16 +459,24 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             user.actionPoints.current = Math.min(user.actionPoints.current, user.actionPoints.max);
             
             await db.updateUser(user);
-            return {};
+            
+            const updatedUser = { 
+                ...user, 
+                inventory: user.inventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            };
+            
+            return { clientResponse: { updatedUser } };
         }
 
         case 'SELL_ITEM': {
-            const { itemId } = payload;
+            const { itemId, quantity } = payload as { itemId: string; quantity?: number };
             const itemIndex = user.inventory.findIndex(i => i.id === itemId);
             if (itemIndex === -1) return { error: '아이템을 찾을 수 없습니다.' };
 
             const item = user.inventory[itemIndex];
             let sellPrice = 0;
+            let sellQuantity = quantity || 1;
 
             if (item.type === 'equipment') {
                 if (item.isEquipped) {
@@ -418,18 +485,51 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                 const basePrice = ITEM_SELL_PRICES[item.grade] || 0;
                 const enhancementMultiplier = Math.pow(1.2, item.stars);
                 sellPrice = Math.floor(basePrice * enhancementMultiplier);
+                // 장비는 전체 판매
+                user.inventory.splice(itemIndex, 1);
             } else if (item.type === 'material') {
-                const pricePerUnit = MATERIAL_SELL_PRICES[item.name] || 1; 
-                sellPrice = pricePerUnit * (item.quantity || 1);
+                const pricePerUnit = MATERIAL_SELL_PRICES[item.name] || 1;
+                const currentQuantity = item.quantity || 1;
+                
+                if (sellQuantity > currentQuantity) {
+                    sellQuantity = currentQuantity;
+                }
+                
+                sellPrice = pricePerUnit * sellQuantity;
+                
+                // 재료는 수량만큼만 제거
+                if (sellQuantity >= currentQuantity) {
+                    // 전체 판매
+                    user.inventory.splice(itemIndex, 1);
+                } else {
+                    // 부분 판매
+                    item.quantity = currentQuantity - sellQuantity;
+                }
             } else {
                 return { error: '판매할 수 없는 아이템입니다. (소모품 판매 불가)' };
             }
 
             user.gold += sellPrice;
-            user.inventory.splice(itemIndex, 1);
 
             await db.updateUser(user);
-            return {};
+            
+            // 깊은 복사로 updatedUser 생성
+            const updatedUser = JSON.parse(JSON.stringify({
+                ...user,
+                inventory: user.inventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            }));
+            
+            return { 
+                clientResponse: { 
+                    updatedUser,
+                    sellResult: {
+                        itemName: item.name,
+                        sellPrice,
+                        sellQuantity
+                    }
+                } 
+            };
         }
 
         case 'ENHANCE_ITEM': {
@@ -555,9 +655,16 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             
             await db.updateUser(user);
             const itemBeforeEnhancement = JSON.parse(JSON.stringify(originalItemState));
+            
+            const updatedUser = { 
+                ...user, 
+                inventory: user.inventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            };
+            
             return { 
                 clientResponse: { 
-                    updatedUser: user,
+                    updatedUser,
                     enhancementOutcome: { 
                         message: resultMessage, 
                         success: isSuccess, 
@@ -618,11 +725,11 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                 ...MATERIAL_ITEMS[name], id: `item-${randomUUID()}`, quantity, createdAt: Date.now(), isEquipped: false, level: 1, stars: 0
             }));
             
-            user.inventory = user.inventory.filter(item => !itemsToRemove.includes(item.id));
-            const { success, finalItemsToAdd } = addItemsToInventoryUtil(user.inventory, user.inventorySlots, itemsToAdd);
+            const inventoryAfterRemoval = user.inventory.filter(item => !itemsToRemove.includes(item.id));
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventoryUtil(inventoryAfterRemoval, user.inventorySlots, itemsToAdd);
             if (!success) return { error: '재료를 받기에 인벤토리 공간이 부족합니다.' };
 
-            user.inventory.push(...finalItemsToAdd);
+            user.inventory = updatedInventory;
 
             // Update blacksmith XP
             user.blacksmithXp = (user.blacksmithXp || 0) + totalXpGained;
@@ -633,9 +740,15 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             await db.updateUser(user);
 
+            const updatedUser = { 
+                ...user, 
+                inventory: user.inventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            };
+
             return { 
                 clientResponse: { 
-                    updatedUser: user,
+                    updatedUser,
                     disassemblyResult: { 
                         gained: Object.entries(gainedMaterials).map(([name, amount]) => ({ name, amount })), 
                         jackpot: isJackpot 
@@ -676,19 +789,26 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                 ...toAddTemplate, id: `item-${randomUUID()}`, quantity: toYield, createdAt: 0, isEquipped: false, level: 1, stars: 0
             }];
         
-            const { success, finalItemsToAdd } = addItemsToInventoryUtil(tempUser.inventory, tempUser.inventorySlots, itemsToAdd);
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventoryUtil(tempUser.inventory, tempUser.inventorySlots, itemsToAdd);
             if (!success) {
                 return { error: '인벤토리에 공간이 부족합니다.' };
             }
-        
+            
             // All checks passed, apply changes to the real user object
-            user.inventory = [...tempUser.inventory, ...finalItemsToAdd];
+            user.inventory = updatedInventory;
             
             updateQuestProgress(user, 'craft_attempt');
             await db.updateUser(user);
+            
+            const updatedUser = { 
+                ...user, 
+                inventory: user.inventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            };
         
             return {
                 clientResponse: {
+                    updatedUser,
                     craftResult: {
                         gained: [{ name: toMaterialName, amount: toYield }],
                         used: [{ name: fromMaterialName, amount: fromCost }],
@@ -723,7 +843,14 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             user.inventorySlots[category] += EXPANSION_AMOUNT;
 
             await db.updateUser(user);
-            return {};
+            
+            const updatedUser = { 
+                ...user, 
+                inventory: user.inventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            };
+            
+            return { clientResponse: { updatedUser } };
         }
 
         default:

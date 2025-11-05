@@ -121,7 +121,9 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const desktopContainerRef = useRef<HTMLDivElement>(null);
 
-  const chatMessages = waitingRoomChats['global'] || [];
+  // 전략바둑과 놀이바둑 대기실은 각각의 채널 사용
+  const chatChannel = mode === 'strategic' ? 'strategic' : mode === 'playful' ? 'playful' : 'global';
+  const chatMessages = waitingRoomChats[chatChannel] || [];
   const prevChatLength = usePrevious(chatMessages.length);
 
   // 대기실 입장 시 자동으로 ENTER_WAITING_ROOM 액션 전송
@@ -157,18 +159,31 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   
   if (!currentUserWithStatus) return null;
 
-  const ongoingGames = (Object.values(liveGames) as LiveGameSession[]).filter(g => g.mode === mode);
+  // 전략/놀이바둑 대기실에서는 해당 카테고리의 게임만 표시
+  const ongoingGames = useMemo(() => {
+    const allGames = Object.values(liveGames) as LiveGameSession[];
+    if (mode === 'strategic') {
+      // 전략바둑 대기실: 전략바둑 게임만 표시
+      return allGames.filter(g => SPECIAL_GAME_MODES.some(m => m.mode === g.mode));
+    } else if (mode === 'playful') {
+      // 놀이바둑 대기실: 놀이바둑 게임만 표시
+      return allGames.filter(g => PLAYFUL_GAME_MODES.some(m => m.mode === g.mode));
+    } else {
+      // 단일 게임 모드 대기실: 해당 모드 게임만 표시
+      return allGames.filter(g => g.mode === mode);
+    }
+  }, [liveGames, mode]);
   
   const usersInThisRoom = useMemo(() => {
         const isStrategicLobby = mode === 'strategic';
         const isPlayfulLobby = mode === 'playful';
 
-        // 전략/놀이바둑 대기실의 경우: status가 'waiting'이거나 'resting'인 모든 유저 포함
+        // 전략/놀이바둑 대기실의 경우: mode가 정확히 일치하는 유저만 포함 (완전 분리)
         // 단일 게임 모드 대기실의 경우: mode가 정확히 일치하는 유저만 포함
         const all = onlineUsers.filter(u => {
             if (isStrategicLobby || isPlayfulLobby) {
-                // 전략/놀이바둑 대기실: waiting 또는 resting 상태인 모든 유저 포함
-                return u.status === 'waiting' || u.status === 'resting';
+                // 전략/놀이바둑 대기실: mode가 정확히 일치하고 waiting 또는 resting 상태인 유저만 포함
+                return (u.mode === mode) && (u.status === 'waiting' || u.status === 'resting');
             }
             // 단일 게임 모드 대기실: mode가 정확히 일치하는 유저만 포함
             return u.mode === mode;
@@ -196,14 +211,15 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
     if (mode === 'playful') return false;
     return SPECIAL_GAME_MODES.some(m => m.mode === mode);
   }, [mode]);
-  const lobbyType = isStrategic ? '전략' : '놀이';
-  const locationPrefix = `[${lobbyType}:${mode}]`;
+  const locationPrefix = mode === 'strategic' ? '[전략바둑]' : mode === 'playful' ? '[놀이바둑]' : `[${mode}]`;
     
   return (
     <div className="bg-primary text-primary flex flex-col h-full max-w-full">
       <header className="flex justify-between items-center mb-4 flex-shrink-0 px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4 lg:pt-6">
         <div className="flex-1">
-          <Button onClick={onBackToLobby} colorScheme="gray"> &larr; 로비로</Button>
+          <button onClick={onBackToLobby} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
+            <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+          </button>
         </div>
         <div className='flex-1 text-center flex items-center justify-center'>
           <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{mode === 'strategic' ? '전략바둑 대기실' : mode === 'playful' ? '놀이바둑 대기실' : `${mode} 대기실`}</h1>
@@ -226,13 +242,11 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
             <div className="flex flex-col h-full gap-2">
                 <div className="flex-shrink-0">{mode !== 'strategic' && mode !== 'playful' && <AnnouncementBoard mode={mode} />}</div>
                 <div className="flex-shrink-0">{mode !== 'strategic' && mode !== 'playful' && <AiChallengePanel mode={mode} />}</div>
-                <div className="flex-1 flex flex-row gap-2 items-stretch min-h-0">
-                    <div className="flex-1 min-w-0">
-                        <GameList games={ongoingGames} onAction={handlers.handleAction} currentUser={currentUserWithStatus} />
-                    </div>
+                <div className="h-[350px] min-h-0">
+                    <GameList games={ongoingGames} onAction={handlers.handleAction} currentUser={currentUserWithStatus} />
                 </div>
-                 <div className="flex-1 min-h-0 bg-panel border border-color rounded-lg shadow-lg flex flex-col">
-                    <ChatWindow messages={chatMessages} mode={'global'} onAction={handlers.handleAction} locationPrefix={locationPrefix} onViewUser={handlers.openViewingUser} />
+                <div className="flex-1 min-h-0 bg-panel border border-color rounded-lg shadow-lg flex flex-col">
+                    <PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={isStrategic ? 'strategic' : 'playful'} />
                 </div>
             </div>
 
@@ -248,13 +262,24 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
                     </span>
                 </button>
             </div>
-            <div className={`fixed top-0 right-0 h-full w-[280px] bg-primary shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-                <button onClick={() => setIsMobileSidebarOpen(false)} className="self-end text-2xl p-2 text-tertiary hover:text-primary">×</button>
-                <div className="flex-shrink-0 p-2 border-b border-color">
-                    <QuickAccessSidebar mobile={true} />
+            <div className={`fixed top-0 right-0 h-full w-[360px] bg-primary shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col`}>
+                <div className="flex justify-between items-center p-2 border-b border-color flex-shrink-0">
+                    <h3 className="text-lg font-bold">메뉴</h3>
+                    <button onClick={() => setIsMobileSidebarOpen(false)} className="text-2xl font-bold text-tertiary hover:text-primary">×</button>
                 </div>
-                                      <div className="flex-1 min-h-0"><PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={isStrategic ? 'strategic' : 'playful'} /></div>
-                <div className="flex-1 min-h-0 border-t border-color"><RankingList mode={mode} onShowTierInfo={() => setIsTierInfoModalOpen(true)} currentUser={currentUserWithStatus} onViewUser={handlers.openViewingUser} onShowPastRankings={(info) => handlers.openPastRankings(info)} lobbyType={isStrategic ? 'strategic' : 'playful'} /></div>
+                <div className="flex flex-col gap-2 p-2 flex-grow min-h-0 overflow-y-auto">
+                    <div className="flex-shrink-0 p-1 bg-panel rounded-lg border border-color">
+                        <QuickAccessSidebar mobile={true} />
+                    </div>
+                    <div className="flex-shrink-0 border-b border-color pb-2">
+                        <div className="bg-panel border border-color rounded-lg">
+                            <RankingList mode={mode} onShowTierInfo={() => setIsTierInfoModalOpen(true)} currentUser={currentUserWithStatus} onViewUser={handlers.openViewingUser} onShowPastRankings={(info) => handlers.openPastRankings(info)} lobbyType={isStrategic ? 'strategic' : 'playful'} />
+                        </div>
+                    </div>
+                    <div className="flex-1 min-h-0 bg-panel border border-color rounded-lg shadow-lg flex flex-col">
+                        <ChatWindow messages={chatMessages} mode={chatChannel} onAction={handlers.handleAction} locationPrefix={locationPrefix} onViewUser={handlers.openViewingUser} />
+                    </div>
+                </div>
             </div>
             {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}
           </>
@@ -273,7 +298,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
                           <GameList games={ongoingGames} onAction={handlers.handleAction} currentUser={currentUserWithStatus} />
                       </div>
                       <div className="flex-1 flex flex-col bg-panel border border-color rounded-lg shadow-lg min-h-0">
-                          <ChatWindow messages={chatMessages} mode={'global'} onAction={handlers.handleAction} locationPrefix={locationPrefix} onViewUser={handlers.openViewingUser} />
+                          <ChatWindow messages={chatMessages} mode={chatChannel} onAction={handlers.handleAction} locationPrefix={locationPrefix} onViewUser={handlers.openViewingUser} />
                       </div>
                   </div>
               

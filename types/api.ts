@@ -195,6 +195,7 @@ export type ServerAction =
     | { type: 'CLEAR_TOURNAMENT_SESSION', payload: { type?: TournamentType } }
     | { type: 'SAVE_TOURNAMENT_PROGRESS', payload: { type: TournamentType } }
     | { type: 'FORFEIT_TOURNAMENT', payload: { type: TournamentType } }
+    | { type: 'FORFEIT_CURRENT_MATCH', payload: { type: TournamentType } }
     | { type: 'SKIP_TOURNAMENT_END', payload: { type: TournamentType } }
     | { type: 'CLAIM_TOURNAMENT_REWARD', payload: { tournamentType: TournamentType } }
     | { type: 'ENTER_TOURNAMENT_VIEW', payload?: never }

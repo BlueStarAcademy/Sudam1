@@ -3,29 +3,19 @@ import { UserWithStatus, InventoryItem, ServerAction, ItemGrade } from '../../ty
 import { useAppContext } from '../../hooks/useAppContext.js';
 import Button from '../Button.js';
 import DraggableWindow from '../DraggableWindow.js';
-import { ENHANCEMENT_COSTS, MATERIAL_ITEMS, ITEM_SELL_PRICES } from '../../constants';
-
-const calculateSellPrice = (item: InventoryItem): number => {
-    if (item.type === 'equipment') {
-        const basePrice = ITEM_SELL_PRICES[item.grade] || 0;
-        const enhancementMultiplier = Math.pow(1.2, item.stars);
-        return Math.floor(basePrice * enhancementMultiplier);
-    }
-    return 0;
-};
+import { ENHANCEMENT_COSTS, MATERIAL_ITEMS } from '../../constants';
+import { BLACKSMITH_DISASSEMBLY_JACKPOT_RATES } from '../../constants/rules';
 
 const DisassemblyPreviewPanel: React.FC<{
     selectedIds: Set<string>;
     inventory: InventoryItem[];
-}> = ({ selectedIds, inventory }) => {
-    const { totalMaterials, totalSellPrice, itemCount } = useMemo(() => {
+    blacksmithLevel: number;
+}> = ({ selectedIds, inventory, blacksmithLevel }) => {
+    const { totalMaterials, itemCount } = useMemo(() => {
         const selectedItems = inventory.filter(item => selectedIds.has(item.id));
         const materials: Record<string, number> = {};
-        let price = 0;
 
         for (const item of selectedItems) {
-            price += calculateSellPrice(item);
-
             const enhancementIndex = Math.min(item.stars, 9);
             const costsForNextLevel = ENHANCEMENT_COSTS[item.grade]?.[enhancementIndex];
             if (costsForNextLevel) {
@@ -40,7 +30,6 @@ const DisassemblyPreviewPanel: React.FC<{
         
         return {
             totalMaterials: Object.entries(materials).map(([name, amount]) => ({ name, amount })),
-            totalSellPrice: price,
             itemCount: selectedItems.length
         };
     }, [selectedIds, inventory]);
@@ -67,10 +56,7 @@ const DisassemblyPreviewPanel: React.FC<{
                 ) : (
                     <p className="text-sm text-tertiary pt-4">획득할 재료가 없습니다.</p>
                 )}
-                 <p className="text-xs text-cyan-300 text-center pt-4">분해 시 30% 확률로 '대박'이 발생하여 모든 재료 획득량이 2배가 됩니다!</p>
-            </div>
-            <div className="mt-4 text-sm text-tertiary">
-                <p>선택 아이템 판매 시: <span className="font-bold text-yellow-300">{totalSellPrice.toLocaleString()} 골드</span></p>
+                 <p className="text-xs text-cyan-300 text-center pt-4">분해 시 {BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[blacksmithLevel - 1]}% 확률로 '대박'이 발생하여 모든 재료 획득량이 2배가 됩니다!</p>
             </div>
         </div>
     );
@@ -185,7 +171,11 @@ const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction, selectedFor
                 />
             )}
             <div className="flex-grow">
-                <DisassemblyPreviewPanel selectedIds={selectedForDisassembly} inventory={inventory} />
+                <DisassemblyPreviewPanel 
+                    selectedIds={selectedForDisassembly} 
+                    inventory={inventory} 
+                    blacksmithLevel={currentUserWithStatus.blacksmithLevel ?? 1}
+                />
             </div>
             <div className="flex-shrink-0 border-t border-color py-3 px-2 my-2 flex flex-wrap justify-center items-center gap-2">
                 <Button onClick={() => setIsAutoSelectOpen(true)} colorScheme="blue">자동 선택</Button>

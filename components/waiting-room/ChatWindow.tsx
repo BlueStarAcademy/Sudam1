@@ -9,7 +9,7 @@ import { useAppContext } from '../../hooks/useAppContext.js';
 interface ChatWindowProps {
     messages: ChatMessage[];
     onAction: (a: ServerAction) => void;
-    mode: GameMode | 'global';
+    mode: GameMode | 'global' | 'strategic' | 'playful';
     onViewUser?: (userId: string) => void; // Optional for profile view
     locationPrefix?: string;
 }
@@ -49,7 +49,9 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onAction, mode, onVie
 
     const handleSend = (message: { text?: string, emoji?: string }) => {
         if (cooldown > 0) return;
-        const payload = { channel: 'global', ...message, location: locationPrefix };
+        // mode가 'strategic' 또는 'playful'이면 해당 채널 사용, 그 외에는 'global'
+        const channel = (mode === 'strategic' || mode === 'playful') ? mode : 'global';
+        const payload = { channel, ...message, location: locationPrefix };
         onAction({ type: 'SEND_CHAT_MESSAGE', payload });
         setShowQuickChat(false);
         setChatInput('');

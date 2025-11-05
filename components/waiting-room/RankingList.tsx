@@ -149,10 +149,12 @@ const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser
         );
     }, [lobbyType, currentUser.id, getTierForUser, onViewUser]);
 
+    const rankingTitle = lobbyType === 'strategic' ? '전략바둑 랭킹' : lobbyType === 'playful' ? '놀이바둑 랭킹' : `${mode} 랭킹`;
+
     return (
         <div className="p-4 flex flex-col text-on-panel">
             <div className="flex justify-between items-center mb-3 border-b border-color pb-2 flex-shrink-0 flex-wrap gap-2">
-                <h2 className="text-xl font-semibold">{mode} 랭킹 ({getCurrentSeasonName()})</h2>
+                <h2 className="text-xl font-semibold">{rankingTitle} ({getCurrentSeasonName()})</h2>
                 <div className="flex items-center gap-2">
                     <Button 
                         onClick={() => onShowPastRankings({ user: currentUser, mode })}

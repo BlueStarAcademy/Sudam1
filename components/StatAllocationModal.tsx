@@ -43,7 +43,8 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
 
     const levelPoints = (currentUser.strategyLevel - 1) * 2 + (currentUser.playfulLevel - 1) * 2;
     const masteryBonus = currentUser.mannerMasteryApplied ? 20 : 0;
-    const totalBonusPoints = levelPoints + masteryBonus;
+    const bonusPoints = currentUser.bonusStatPoints || 0;
+    const totalBonusPoints = levelPoints + masteryBonus + bonusPoints;
 
     const spentPoints = useMemo(() => {
         return Object.values(tempPoints).reduce((sum, points) => sum + points, 0);

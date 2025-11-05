@@ -17,7 +17,7 @@ const DisassemblyResultModal: React.FC<DisassemblyResultModalProps> = ({ isOpen,
     if (!isOpen || !result) return null;
 
     return (
-        <DraggableWindow title="분해 결과" onClose={onClose} windowId="disassemblyResult" isTopmost>
+        <DraggableWindow title="분해 결과" onClose={onClose} windowId="disassemblyResult" isTopmost zIndex={60}>
             <div className="p-4 text-on-panel flex flex-col items-center">
                 <h3 className="text-xl font-bold mb-4">장비 분해 완료!</h3>
 

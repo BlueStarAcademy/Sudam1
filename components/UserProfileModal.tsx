@@ -118,14 +118,12 @@ const StatsTab: React.FC<{ user: UserWithStatus, type: 'strategic' | 'playful' }
                 <span className="font-bold">총 전적: {totalWins}승 {totalLosses}패 ({winRate}%)</span>
             </div>
             {gameStats.map(stat => {
-                 if (stat.wins === 0 && stat.losses === 0) return null;
                  const gameTotal = stat.wins + stat.losses;
                  const gameWinRate = gameTotal > 0 ? Math.round((stat.wins / gameTotal) * 100) : 0;
                 return (
                     <div key={stat.mode} className="flex justify-between items-center p-2 bg-gray-900/30 rounded">
-                        <span className="font-semibold w-28">{stat.mode}</span>
-                        <span className="w-24 text-center">{stat.wins}승 {stat.losses}패 ({gameWinRate}%)</span>
-                        <span className="w-16 text-right font-mono text-yellow-300">{stat.rankingScore}점</span>
+                        <span className="font-semibold flex-1">{stat.mode}</span>
+                        <span className="text-center">{stat.wins}승 {stat.losses}패 ({gameWinRate}%)</span>
                     </div>
                 )
             })}
@@ -134,7 +132,7 @@ const StatsTab: React.FC<{ user: UserWithStatus, type: 'strategic' | 'playful' }
 }
 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onViewItem, isTopmost }) => {
-    const { inventory, stats, nickname, avatarId, borderId } = user;
+    const { inventory, stats, nickname, avatarId, borderId, equipment } = user;
     const [activeTab, setActiveTab] = useState<'strategic' | 'playful'>('strategic');
     const [showMbtiHelp, setShowMbtiHelp] = useState(false);
     
@@ -142,12 +140,30 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onVi
     const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === borderId)?.url, [borderId]);
     const leagueData = useMemo(() => LEAGUE_DATA.find(l => l.tier === user.league), [user.league]);
 
+    // equipment 필드와 inventory를 매칭하여 장착된 아이템 찾기
     const equippedItems = useMemo(() => {
-        return (inventory || []).filter(item => item.isEquipped);
-    }, [inventory]);
+        const items: InventoryItem[] = [];
+        const equipmentObj = equipment || {};
+        const inventoryList = inventory || [];
+        
+        // equipment 필드의 각 슬롯에 대해 아이템 찾기
+        for (const [slot, itemId] of Object.entries(equipmentObj)) {
+            const item = inventoryList.find(i => i.id === itemId && i.slot === slot);
+            if (item) {
+                items.push(item);
+            }
+        }
+        
+        return items;
+    }, [inventory, equipment]);
 
     const getItemForSlot = (slot: EquipmentSlot) => {
-        return equippedItems.find(item => item.slot === slot);
+        // equipment 필드에서 해당 슬롯의 아이템 ID 찾기
+        const itemId = equipment?.[slot];
+        if (!itemId) return undefined;
+        
+        // inventory에서 해당 아이템 찾기
+        return (inventory || []).find(item => item.id === itemId && item.slot === slot);
     };
 
     const totalMannerScore = getMannerScore(user);
@@ -182,10 +198,6 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onVi
                         <div className="w-full bg-gray-700 rounded-full h-2.5 mt-2 border border-gray-900">
                             <div className={`${mannerStyle.colorClass} h-full rounded-full`} style={{ width: `${mannerStyle.percentage}%` }}></div>
                         </div>
-                    </div>
-                    <div className="bg-gray-800/50 rounded-lg p-4 space-y-3">
-                         <XpBar level={user.strategyLevel} currentXp={user.strategyXp} label="전략" colorClass="bg-gradient-to-r from-blue-500 to-cyan-400" />
-                         <XpBar level={user.playfulLevel} currentXp={user.playfulXp} label="놀이" colorClass="bg-gradient-to-r from-yellow-500 to-orange-400" />
                     </div>
                     {leagueData && (
                         <div className="bg-gray-800/50 rounded-lg p-4 flex flex-col items-center text-center">

@@ -93,7 +93,22 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
     useEffect(() => {
 
-        const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
+        const checkIsMobile = () => {
+            const newIsMobile = window.innerWidth < 768;
+            setIsMobile(newIsMobile);
+            if (newIsMobile) {
+                // 모바일일 때 position을 { x: 0, y: 0 }으로 설정
+                setPosition({ x: 0, y: 0 });
+                // 모바일일 때 저장된 위치 정보 삭제
+                try {
+                    const savedPositions = JSON.parse(localStorage.getItem('draggableWindowPositions') || '{}');
+                    delete savedPositions[windowId];
+                    localStorage.setItem('draggableWindowPositions', JSON.stringify(savedPositions));
+                } catch (e) {
+                    console.error("Failed to clear mobile position", e);
+                }
+            }
+        };
 
         window.addEventListener('resize', checkIsMobile);
 
@@ -101,7 +116,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
         return () => window.removeEventListener('resize', checkIsMobile);
 
-    }, []);
+    }, [windowId]);
 
 
 
@@ -161,7 +176,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
 
 
-            if (shouldRemember) {
+            if (shouldRemember && !isMobile) {
 
                 const savedPositions = JSON.parse(localStorage.getItem('draggableWindowPositions') || '{}');
 
@@ -191,7 +206,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
         setIsInitialized(true);
 
-    }, [windowId]);
+    }, [windowId, isMobile]);
 
 
 
@@ -343,7 +358,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
             setIsDragging(false);
 
-            if (rememberPosition) {
+            if (rememberPosition && !isMobile) {
 
                 try {
 
@@ -363,7 +378,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
         }
 
-    }, [isDragging, windowId, rememberPosition]);
+    }, [isDragging, windowId, rememberPosition, isMobile]);
 
 
 
@@ -467,15 +482,15 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
                                 style={{
 
-                                    width: isMobile ? '90vw' : undefined,
+                                    width: isMobile ? '95vw' : undefined,
 
-                                    minWidth: isMobile ? '90vw' : `${initialWidth}px`,
+                                    minWidth: isMobile ? '95vw' : `${initialWidth}px`,
 
-                                    maxWidth: isMobile ? '90vw' : 'calc(100vw - 40px)', // Re-enable maxWidth
+                                    maxWidth: isMobile ? '95vw' : 'calc(100vw - 40px)', // Re-enable maxWidth
 
                                     height: initialHeight ? `${initialHeight}px` : undefined, // Use initialHeight
 
-                                    maxHeight: '90vh',
+                                    maxHeight: isMobile ? '85vh' : '90vh',
 
                                     transform: transformStyle,
 
@@ -495,7 +510,8 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
                 <div
 
-                    className={`bg-secondary p-3 rounded-t-xl flex justify-between items-center ${headerCursor} touch-none`}
+                    className={`bg-secondary p-3 rounded-t-xl flex justify-between items-center ${headerCursor}`}
+                    style={{ touchAction: 'none' }}
 
                     onMouseDown={handleMouseDown}
 

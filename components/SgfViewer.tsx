@@ -78,7 +78,7 @@ const SgfViewer: React.FC<SgfViewerProps> = ({ timeElapsed = 0, fileIndex, showL
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     
-    const totalDuration = 140;
+    const totalDuration = 50;
 
     useEffect(() => {
         const fetchSgf = async () => {

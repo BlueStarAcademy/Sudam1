@@ -293,6 +293,7 @@ export type User = {
   blacksmithLevel: number;
   blacksmithXp: number;
   cumulativeRankingScore?: Record<string, number>;
+  cumulativeTournamentScore?: number; // 누적 챔피언십 점수 (홈 화면 랭킹용)
   inventorySlotsMigrated?: boolean;
 };
 
@@ -698,6 +699,7 @@ export type Negotiation = {
   turnCount?: number;
   deadline: number;
   rematchOfGameId?: string;
+  previousSettings?: GameSettings;
 };
 
 export type SanctionLogData = {

@@ -44,11 +44,11 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
         
         if (activeTab === 'championship') {
             const result = allUsers
-                .filter(user => user && user.id && typeof user.tournamentScore === 'number')
-                .map(user => ({ user, value: user.tournamentScore || 0 }))
+                .filter(user => user && user.id && typeof user.cumulativeTournamentScore === 'number')
+                .map(user => ({ user, value: user.cumulativeTournamentScore || 0 }))
                 .sort((a, b) => b.value - a.value)
                 .slice(0, 100);
-            console.log('[BadukRankingBoard] Championship rankings:', result.length, 'users');
+            console.log('[BadukRankingBoard] Championship rankings (cumulative):', result.length, 'users');
             return result;
         } else {
             const mode = activeTab === 'strategic' ? 'standard' : 'playful';
@@ -66,7 +66,7 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
         if (!currentUserWithStatus) return null;
         let value;
         if (activeTab === 'championship') {
-            value = currentUserWithStatus.tournamentScore;
+            value = currentUserWithStatus.cumulativeTournamentScore || 0;
         } else {
             const mode = activeTab === 'strategic' ? 'standard' : 'playful';
             value = currentUserWithStatus.cumulativeRankingScore?.[mode] || 0;
@@ -86,13 +86,13 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
                     onClick={() => setActiveTab('strategic')}
                     className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'strategic' ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}
                 >
-                    전략 바둑
+                    전략바둑
                 </button>
                 <button 
                     onClick={() => setActiveTab('playful')}
                     className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'playful' ? 'bg-yellow-600' : 'text-gray-400 hover:bg-gray-700/50'}`}
                 >
-                    놀이 바둑
+                    놀이바둑
                 </button>
                 <button 
                     onClick={() => setActiveTab('championship')}

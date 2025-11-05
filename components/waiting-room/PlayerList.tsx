@@ -1,10 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { UserWithStatus, ServerAction, UserStatus, GameMode, Negotiation } from '../../types.js';
 import Avatar from '../Avatar.js';
 import { AVATAR_POOL, BORDER_POOL } from '../../constants';
 import Button from '../Button.js';
 import ChallengeSelectionModal from '../ChallengeSelectionModal';
 import GameRejectionSettingsModal from '../GameRejectionSettingsModal.tsx';
+import { useAppContext } from '../../hooks/useAppContext.js';
 
 const statusDisplay: Record<UserStatus, { text: string; color: string; }> = {
   'online': { text: '온라인', color: 'text-green-500' },
@@ -154,9 +155,63 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
                 <ChallengeSelectionModal
                     opponent={challengeTargetUser}
                     onClose={() => setIsChallengeSelectionModalOpen(false)}
-                    onChallenge={(gameMode, settings) => {
-                        onAction({ type: 'CHALLENGE_USER', payload: { opponentId: challengeTargetUser.id, mode: gameMode, settings } });
-                        setIsChallengeSelectionModalOpen(false);
+                    negotiations={negotiations}
+                    currentUser={currentUser}
+                    onChallenge={async (gameMode, settings) => {
+                        // 모달을 닫지 않고 유지하여 응답을 기다림
+                        
+                        // CHALLENGE_USER로 draft negotiation 생성
+                        const createChallengeAction = { 
+                            type: 'CHALLENGE_USER', 
+                            payload: { opponentId: challengeTargetUser.id, mode: gameMode, settings } 
+                        };
+                        
+                        // handleAction을 직접 호출하여 응답을 받음
+                        try {
+                            const response = await fetch('/api/action', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    ...createChallengeAction,
+                                    userId: currentUser.id
+                                })
+                            });
+                            
+                            const result = await response.json();
+                            if (result.error) {
+                                alert(result.error);
+                                return;
+                            }
+                            
+                            // 응답에서 negotiationId를 받아서 즉시 SEND_CHALLENGE 호출
+                            const negotiationId = result.negotiationId || result.clientResponse?.negotiationId;
+                            if (negotiationId) {
+                                onAction({ 
+                                    type: 'SEND_CHALLENGE', 
+                                    payload: { negotiationId, settings } 
+                                });
+                            } else {
+                                // negotiationId가 없으면 WebSocket 업데이트를 기다림
+                                setTimeout(() => {
+                                    const negotiationsArray = Object.values(negotiations || {});
+                                    const draftNegotiation = negotiationsArray.find(n => 
+                                        n.challenger.id === currentUser.id && 
+                                        n.opponent.id === challengeTargetUser.id && 
+                                        n.status === 'draft'
+                                    );
+                                    
+                                    if (draftNegotiation) {
+                                        onAction({ 
+                                            type: 'SEND_CHALLENGE', 
+                                            payload: { negotiationId: draftNegotiation.id, settings } 
+                                        });
+                                    }
+                                }, 300);
+                            }
+                        } catch (error) {
+                            console.error('Failed to send challenge:', error);
+                            alert('대국 신청 전송에 실패했습니다.');
+                        }
                     }}
                     lobbyType={lobbyType}
                 />

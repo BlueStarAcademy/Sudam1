@@ -22,7 +22,11 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             } else {
                 return { error: 'Invalid avatar ID.' };
             }
-            return {};
+            const updatedUser = { 
+                ...user, 
+                avatarId: user.avatarId
+            };
+            return { clientResponse: { updatedUser } };
         }
         case 'UPDATE_BORDER': {
             const { borderId } = payload;
@@ -32,7 +36,11 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             } else {
                 return { error: 'Invalid border ID.' };
             }
-            return {};
+            const updatedUser = { 
+                ...user, 
+                borderId: user.borderId
+            };
+            return { clientResponse: { updatedUser } };
         }
         case 'CHANGE_NICKNAME': {
             const { newNickname } = payload;
@@ -53,14 +61,50 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             return { clientResponse: { updatedUser: user } };
         }
         case 'UPDATE_MBTI': {
-            const { mbti, isMbtiPublic } = payload;
+            const { mbti, isMbtiPublic, isFirstTime } = payload as { mbti: string; isMbtiPublic: boolean; isFirstTime?: boolean };
             if (mbti && (typeof mbti !== 'string' || !/^[IE][NS][TF][JP]$/.test(mbti))) {
                 return { error: '유효하지 않은 MBTI 형식입니다.' };
             }
+            
+            const wasFirstTime = isFirstTime || !user.mbti;
+            
             user.mbti = mbti || null;
-            user.isMbtiPublic = !!isMbtiPublic;
+            user.isMbtiPublic = true; // 무조건 공개
+            
+            // 첫 설정 시 다이아 100개 보상
+            if (wasFirstTime && !user.isAdmin) {
+                user.diamonds = (user.diamonds || 0) + 100;
+            }
+            
             await db.updateUser(user);
-            return {};
+            
+            const updatedUser = { 
+                ...user, 
+                mbti: user.mbti,
+                isMbtiPublic: user.isMbtiPublic,
+                diamonds: user.diamonds
+            };
+            
+            // 첫 설정 시 다이아 100개 획득 아이템 생성
+            const mbtiRewardItem = wasFirstTime ? {
+                id: `mbti-reward-${Date.now()}`,
+                name: '다이아',
+                type: 'consumable' as const,
+                grade: 'normal' as const,
+                image: '/images/icon/Zem.png',
+                quantity: 100,
+                createdAt: Date.now(),
+                isEquipped: false,
+                level: 1,
+                stars: 0,
+            } : null;
+            
+            return { 
+                clientResponse: { 
+                    updatedUser,
+                    ...(mbtiRewardItem ? { obtainedItemsBulk: [mbtiRewardItem] } : {})
+                } 
+            };
         }
         case 'RESET_STAT_POINTS': {
             const cost = 500;
@@ -80,7 +124,8 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
 
             const levelPoints = (user.strategyLevel - 1) * 2 + (user.playfulLevel - 1) * 2;
             const masteryBonus = user.mannerMasteryApplied ? 20 : 0;
-            const totalAvailablePoints = levelPoints + masteryBonus;
+            const bonusPoints = user.bonusStatPoints || 0;
+            const totalAvailablePoints = levelPoints + masteryBonus + bonusPoints;
 
             const totalSpent = Object.values(newStatPoints).reduce((sum, points) => sum + points, 0);
 
@@ -117,14 +162,23 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             return {};
         }
         case 'APPLY_PRESET': {
-            const { presetName } = payload as { presetName: string };
-            const presetToApply = user.equipmentPresets?.find(p => p.name === presetName);
-
-            if (!presetToApply) {
-                return { error: '프리셋을 찾을 수 없습니다.' };
+            const { presetName, equipment } = payload as { presetName: string, equipment?: types.Equipment };
+            
+            // equipment가 직접 전달된 경우 (빈 프리셋 처리용)
+            let presetToApply: types.EquipmentPreset | null = null;
+            if (equipment !== undefined) {
+                presetToApply = { name: presetName, equipment };
+            } else {
+                // 기존 방식: 프리셋 이름으로 찾기
+                presetToApply = user.equipmentPresets?.find(p => p.name === presetName) || null;
             }
 
-            user.equipment = presetToApply.equipment;
+            if (!presetToApply) {
+                // 빈 프리셋인 경우 빈 장비 세트로 설정
+                user.equipment = {};
+            } else {
+                user.equipment = { ...presetToApply.equipment };
+            }
 
             // Unequip items that are no longer in the preset
             user.inventory.forEach(item => {
@@ -143,7 +197,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             }
 
             await db.updateUser(user);
-            return {};
+            const updatedUser = { 
+                ...user, 
+                inventory: user.inventory.map(item => ({ ...item })),
+                equipment: { ...user.equipment }
+            };
+            return { clientResponse: { updatedUser } };
         }
         default:
             return { error: 'Unknown user action.' };

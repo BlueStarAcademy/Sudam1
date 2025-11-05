@@ -194,9 +194,10 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
             <DraggableWindow 
                 title="대장간" 
                 onClose={onClose} 
-                isTopmost={isTopmost && !modals.isBlacksmithHelpOpen}
+                isTopmost={isTopmost && !modals.isBlacksmithHelpOpen && !modals.disassemblyResult}
                 initialWidth={950} 
                 windowId="blacksmith"
+                zIndex={50}
             >
                 <div className="flex h-[700px]">
                     {/* Left Panel */}
@@ -221,14 +222,14 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                         </div>
                         <div className="w-full text-left">
                             <h3 className="font-bold mb-2 text-center">대장간 효과</h3>
-                            <div className="flex justify-between text-xs font-bold text-gray-400 px-2 pb-1 border-b border-gray-600 mb-1">
+                            <div className="flex justify-between text-sm font-bold text-gray-400 px-2 pb-1 border-b border-gray-600 mb-1">
                                 <span>효과</span>
                                 <span>
                                     Lv.{currentLevel}
                                     {!isMaxLevel && <span className="text-yellow-400"> → Lv.{currentLevel + 1}</span>}
                                 </span>
                             </div>
-                            <div className="text-xs text-secondary space-y-2">
+                            <div className="text-sm text-secondary space-y-2">
                                 <div className="bg-black/20 p-2 rounded-md">
                                     <div className="flex justify-between">
                                         <span>합성 가능 등급</span>

@@ -241,6 +241,36 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             return {};
         }
 
+        case 'FORFEIT_CURRENT_MATCH': {
+            const { type } = payload as { type: TournamentType };
+            let stateKey: keyof User;
+            switch (type) {
+                case 'neighborhood': stateKey = 'lastNeighborhoodTournament'; break;
+                case 'national': stateKey = 'lastNationalTournament'; break;
+                case 'world': stateKey = 'lastWorldTournament'; break;
+                default: return { error: 'Invalid tournament type.' };
+            }
+            let tournamentState: types.TournamentState | null | undefined = volatileState.activeTournaments?.[user.id];
+
+            if (!tournamentState) {
+                tournamentState = (user as any)[stateKey] as types.TournamentState | null;
+                if (!tournamentState) return { error: '토너먼트 정보를 찾을 수 없습니다.' };
+            }
+            
+            if (tournamentState) {
+                tournamentService.forfeitCurrentMatch(tournamentState, user);
+            
+                (user as any)[stateKey] = tournamentState;
+                await db.updateUser(user);
+
+                if (volatileState.activeTournaments) {
+                    volatileState.activeTournaments[user.id] = tournamentState;
+                }
+            }
+            
+            return { clientResponse: { updatedUser: user } };
+        }
+
         case 'SAVE_TOURNAMENT_PROGRESS': {
             const { type } = payload as { type: TournamentType };
             const tournamentState = volatileState.activeTournaments?.[user.id];
@@ -291,6 +321,82 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
 
         case 'CLAIM_TOURNAMENT_REWARD': {
             return handleRewardAction(volatileState, action, user);
+        }
+
+        case 'USE_CONDITION_POTION': {
+            const { tournamentType } = payload as { tournamentType: TournamentType };
+            let stateKey: keyof User;
+            switch (tournamentType) {
+                case 'neighborhood': stateKey = 'lastNeighborhoodTournament'; break;
+                case 'national': stateKey = 'lastNationalTournament'; break;
+                case 'world': stateKey = 'lastWorldTournament'; break;
+                default: return { error: 'Invalid tournament type.' };
+            }
+
+            // Check if user has condition potion in inventory
+            const conditionPotion = user.inventory.find(item => item.name === '컨디션 물약' && item.type === 'consumable');
+            if (!conditionPotion) {
+                return { error: '컨디션 물약이 없습니다.' };
+            }
+
+            // Get tournament state
+            const tournamentState = (user as any)[stateKey] as TournamentState | null;
+            if (!tournamentState) {
+                return { error: '토너먼트 정보를 찾을 수 없습니다.' };
+            }
+
+            // Only allow using condition potion before match starts (not during round_in_progress)
+            if (tournamentState.status === 'round_in_progress') {
+                return { error: '경기가 진행 중에는 컨디션 물약을 사용할 수 없습니다.' };
+            }
+
+            // Check if user has an upcoming match
+            const hasUpcomingUserMatch = tournamentState.rounds.some(round => 
+                round.matches.some(match => match.isUserMatch && !match.isFinished)
+            );
+
+            if (!hasUpcomingUserMatch) {
+                return { error: '다음 경기가 없습니다.' };
+            }
+
+            // Find user player in tournament
+            const userPlayer = tournamentState.players.find(p => p.id === user.id);
+            if (!userPlayer) {
+                return { error: '선수를 찾을 수 없습니다.' };
+            }
+
+            // Check if condition is already 100
+            if (userPlayer.condition === 100) {
+                return { error: '컨디션이 이미 최대입니다.' };
+            }
+
+            // Use condition potion
+            if (conditionPotion.quantity && conditionPotion.quantity > 1) {
+                conditionPotion.quantity--;
+            } else {
+                const itemIndex = user.inventory.findIndex(i => i.id === conditionPotion.id);
+                if (itemIndex !== -1) {
+                    user.inventory.splice(itemIndex, 1);
+                }
+            }
+
+            // Restore condition to 100
+            userPlayer.condition = 100;
+
+            // Save tournament state and user
+            await db.updateUser(user);
+
+            const updatedUser = { 
+                ...user, 
+                inventory: user.inventory.map(item => ({ ...item }))
+            };
+
+            return { 
+                clientResponse: { 
+                    updatedUser,
+                    redirectToTournament: tournamentType
+                } 
+            };
         }
 
         default:

@@ -330,7 +330,7 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
                             {/* 골드 비용 표시 */}
                             <div className="flex justify-between items-center">
                                 <span className="flex items-center gap-2">
-                                    <span className="text-yellow-400 text-lg">💰</span>
+                                    <img src="/images/icon/Gold.png" alt="골드" className="w-6 h-6" />
                                     골드
                                 </span>
                                 <span className={`font-mono ${hasEnoughGold ? 'text-green-400' : 'text-red-400'}`}>

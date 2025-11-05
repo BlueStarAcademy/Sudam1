@@ -62,6 +62,12 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             mail.attachmentsClaimed = true;
             await db.updateUser(user);
             
+            const updatedUser = { 
+                ...user, 
+                inventory: finalItemsToAdd.map(item => ({ ...item })),
+                mail: user.mail.map(m => ({ ...m }))
+            };
+            
             return {
                 clientResponse: {
                     rewardSummary: {
@@ -69,7 +75,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                         items: itemsToCreate,
                         title: '우편 보상'
                     },
-                    updatedUser: user
+                    updatedUser
                 }
             };
         }
@@ -92,7 +98,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 }
             }
 
-            const { success, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, allItemsToCreate);
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory([...user.inventory], user.inventorySlots, allItemsToCreate);
             if (!success) {
                 return { error: '모든 아이템을 받기에 가방 공간이 부족합니다.' };
             }
@@ -100,11 +106,17 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             user.gold += totalGold;
             user.diamonds += totalDiamonds;
             user.actionPoints.current += totalActionPoints;
-            user.inventory = finalItemsToAdd; // <--- Update user.inventory here
+            user.inventory = updatedInventory;
 
             for (const mail of mailsToClaim) mail.attachmentsClaimed = true;
 
             await db.updateUser(user);
+            
+            const updatedUser = { 
+                ...user, 
+                inventory: updatedInventory.map(item => ({ ...item })),
+                mail: user.mail.map(m => ({ ...m }))
+            };
             
             const reward: QuestReward = {
                 gold: totalGold,
@@ -121,7 +133,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                             diamonds: totalDiamonds,
                             actionPoints: totalActionPoints
                         },
-                        updatedUser: user
+                        updatedUser
                     }
                 };
             }
@@ -133,7 +145,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                         items: allItemsToCreate,
                         title: '우편 일괄 수령'
                     },
-                    updatedUser: user
+                    updatedUser
                 }
             };
         }
@@ -165,7 +177,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 itemsToCreate.push(...createdItems);
             }
 
-            const { success, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
             if (!success) {
                 return { error: '보상을 받기에 인벤토리 공간이 부족합니다.' };
             }
@@ -175,13 +187,28 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             if (reward.gold) user.gold += reward.gold;
             if (reward.diamonds) user.diamonds += reward.diamonds;
             if (reward.actionPoints) user.actionPoints.current += reward.actionPoints;
-            user.inventory = finalItemsToAdd; // <--- Update user.inventory here
+            user.inventory = updatedInventory;
             
             if (activityPoints > 0 && user.quests[questType!]) {
                 user.quests[questType!]!.activityProgress += activityPoints;
             }
 
             await db.updateUser(user);
+            
+            const updatedQuests = {
+                ...user.quests,
+                [questType!]: {
+                    ...user.quests[questType!]!,
+                    quests: user.quests[questType!]!.quests.map(q => ({ ...q })),
+                    activityProgress: user.quests[questType!]!.activityProgress
+                }
+            };
+            
+            const updatedUser = { 
+                ...user, 
+                inventory: updatedInventory.map(item => ({ ...item })),
+                quests: updatedQuests
+            };
             return { 
                 clientResponse: { 
                     rewardSummary: {
@@ -189,7 +216,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                         items: itemsToCreate,
                         title: `${questType === 'daily' ? '일일' : questType === 'weekly' ? '주간' : '월간'} 퀘스트 보상`
                     },
-                    updatedUser: user
+                    updatedUser
                 } 
             };
         }
@@ -221,13 +248,13 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                  itemsToCreate.push(...createdItems);
             }
 
-            const { success, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
             if (!success) return { error: '보상을 받기에 인벤토리 공간이 부족합니다.' };
             
             user.gold += reward.gold || 0;
             user.diamonds += reward.diamonds || 0;
             user.actionPoints.current += reward.actionPoints || 0;
-            user.inventory = finalItemsToAdd; // <--- Update user.inventory here
+            user.inventory = updatedInventory;
             
             data.claimedMilestones[milestoneIndex] = true;
 
@@ -240,6 +267,19 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             }
 
             await db.updateUser(user);
+            
+            const updatedUser = { 
+                ...user, 
+                inventory: updatedInventory.map(item => ({ ...item })),
+                quests: {
+                    ...user.quests,
+                    [questType!]: {
+                        ...user.quests[questType!]!,
+                        claimedMilestones: [...data.claimedMilestones]
+                    }
+                }
+            };
+            
             return { 
                 clientResponse: { 
                     rewardSummary: {
@@ -247,7 +287,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                         items: itemsToCreate,
                         title: `${questType === 'daily' ? '일일' : questType === 'weekly' ? '주간' : '월간'} 활약도 보상`
                     },
-                    updatedUser: user
+                    updatedUser
                 } 
             };
         }
@@ -341,7 +381,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
 
             const itemsToCreate = itemReward.items ? createItemInstancesFromReward(itemReward.items as {itemId: string, quantity: number}[]) : [];
             
-            const { success, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
             if (!success) {
                 return { error: '보상을 받기에 가방 공간이 부족합니다. 가방을 비우고 다시 시도해주세요.' };
             }
@@ -352,17 +392,22 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             
             user.gold += itemReward.gold || 0;
             user.diamonds += itemReward.diamonds || 0;
-            user.inventory = finalItemsToAdd; // <--- Update user.inventory here
+            user.inventory = updatedInventory;
             
             updateQuestProgress(user, 'tournament_complete');
 
             await db.updateUser(user);
+            
+            const updatedUser = { 
+                ...user, 
+                inventory: updatedInventory.map(item => ({ ...item }))
+            };
 
             const allObtainedItems = [...itemsToCreate];
             if (itemReward.gold) allObtainedItems.unshift({ name: `${itemReward.gold} 골드`, image: '/images/icon/Gold.png' } as InventoryItem);
             if (itemReward.diamonds) allObtainedItems.unshift({ name: `${itemReward.diamonds} 다이아`, image: '/images/icon/Zem.png' } as InventoryItem);
 
-            return { clientResponse: { obtainedItemsBulk: allObtainedItems }};
+            return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser }};
         }
         default:
             return { error: 'Unknown reward action.' };

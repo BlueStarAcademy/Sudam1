@@ -74,6 +74,7 @@ const migrations: { [version: number]: string } = {
     32: 'ALTER TABLE users ADD COLUMN blacksmithXp INTEGER;',
     33: 'ALTER TABLE users ADD COLUMN monthlyGoldBuffExpiresAt INTEGER;',
     34: 'ALTER TABLE users ADD COLUMN inventorySlotsMigrated BOOLEAN;',
+    54: 'ALTER TABLE users ADD COLUMN cumulativeTournamentScore INTEGER;',
 };
 
 export const initializeAndGetDb = async (): Promise<Database> => {
@@ -156,7 +157,8 @@ export const initializeAndGetDb = async (): Promise<Database> => {
             bonusStatPoints INTEGER,
             inventorySlotsMigrated BOOLEAN,
             blacksmithLevel INTEGER,
-            blacksmithXp INTEGER
+            blacksmithXp INTEGER,
+            cumulativeTournamentScore INTEGER
         );
 
         CREATE TABLE IF NOT EXISTS user_credentials ( 
@@ -378,6 +380,11 @@ export const initializeAndGetDb = async (): Promise<Database> => {
         if (!usersColumns.some(col => col.name === 'inventorySlotsMigrated')) {
             console.log('[DB] Verification: inventorySlotsMigrated column is missing. Adding it now.');
             await db.exec('ALTER TABLE users ADD COLUMN inventorySlotsMigrated BOOLEAN;');
+        }
+
+        if (!usersColumns.some(col => col.name === 'cumulativeTournamentScore')) {
+            console.log('[DB] Verification: cumulativeTournamentScore column is missing. Adding it now.');
+            await db.exec('ALTER TABLE users ADD COLUMN cumulativeTournamentScore INTEGER;');
         }
 
         console.log('[DB] Manual verification: Verifying live_games table columns...');

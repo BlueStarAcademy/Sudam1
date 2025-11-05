@@ -3,6 +3,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { UserWithStatus, ServerAction, AvatarInfo, BorderInfo } from '../types.js';
 import { AVATAR_POOL, BORDER_POOL, RANKING_TIERS, SHOP_BORDER_ITEMS } from '../constants';
+import { MBTI_QUESTIONS } from '../constants/mbtiQuestions.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import Avatar from './Avatar.js';
@@ -46,7 +47,13 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
     const [selectedAvatarId, setSelectedAvatarId] = useState(currentUser.avatarId);
     const [selectedBorderId, setSelectedBorderId] = useState(currentUser.borderId);
     const [newNickname, setNewNickname] = useState(currentUser.nickname);
-    const [isMbtiPublic, setIsMbtiPublic] = useState(currentUser.isMbtiPublic || false);
+
+    // currentUser 변경 시 로컬 상태 동기화
+    React.useEffect(() => {
+        setSelectedAvatarId(currentUser.avatarId);
+        setSelectedBorderId(currentUser.borderId);
+        setNewNickname(currentUser.nickname);
+    }, [currentUser.avatarId, currentUser.borderId, currentUser.nickname]);
     
     const parseMbti = (mbtiString: string | null | undefined): MbtiState => {
         if (mbtiString && mbtiString.length === 4) {
@@ -61,6 +68,24 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
     };
 
     const [mbti, setMbti] = useState<MbtiState>(parseMbti(currentUser.mbti));
+    const [isMbtiQuestionMode, setIsMbtiQuestionMode] = useState(false);
+    const [mbtiQuestionIndex, setMbtiQuestionIndex] = useState(0);
+    const [mbtiAnswers, setMbtiAnswers] = useState<Record<string, string>>({});
+    const hasMbti = !!currentUser.mbti;
+
+    // 탭 변경 시 질문 모드 초기화
+    React.useEffect(() => {
+        if (activeTab !== 'mbti') {
+            setIsMbtiQuestionMode(false);
+            setMbtiQuestionIndex(0);
+            setMbtiAnswers({});
+        }
+    }, [activeTab]);
+
+    // currentUser.mbti 변경 시 mbti state 업데이트
+    React.useEffect(() => {
+        setMbti(parseMbti(currentUser.mbti));
+    }, [currentUser.mbti]);
     
     const nicknameChangeCost = 150;
     const canAffordNicknameChange = currentUser.diamonds >= nicknameChangeCost;
@@ -91,14 +116,47 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                 }
                 break;
             case 'mbti':
-                const newMbtiString = `${mbti.ei}${mbti.sn}${mbti.tf}${mbti.jp}`;
-                onAction({
-                    type: 'UPDATE_MBTI',
-                    payload: { mbti: newMbtiString, isMbtiPublic: true }
-                });
+                if (isMbtiQuestionMode) {
+                    // 질문 모드에서는 모든 답변을 완료한 후에만 저장
+                    if (mbtiQuestionIndex < MBTI_QUESTIONS.length - 1) {
+                        // 다음 질문으로
+                        setMbtiQuestionIndex(prev => prev + 1);
+                        return;
+                    } else {
+                        // 모든 질문 완료 - MBTI 계산 및 저장
+                        const calculatedMbti = calculateMbtiFromAnswers();
+                        if (calculatedMbti) {
+                            const isFirstTime = !hasMbti;
+                            onAction({
+                                type: 'UPDATE_MBTI',
+                                payload: { mbti: calculatedMbti, isMbtiPublic: true, isFirstTime }
+                            });
+                            setIsMbtiQuestionMode(false);
+                            setMbtiQuestionIndex(0);
+                            setMbtiAnswers({});
+                        }
+                    }
+                } else {
+                    // 기존 방식: 직접 선택하여 변경
+                    const newMbtiString = `${mbti.ei}${mbti.sn}${mbti.tf}${mbti.jp}`;
+                    onAction({
+                        type: 'UPDATE_MBTI',
+                        payload: { mbti: newMbtiString, isMbtiPublic: true, isFirstTime: false }
+                    });
+                }
                 break;
         }
     };
+
+    const calculateMbtiFromAnswers = useCallback((): string | null => {
+        let mbtiResult = '';
+        for (const question of MBTI_QUESTIONS) {
+            const answer = mbtiAnswers[question.id];
+            if (!answer) return null;
+            mbtiResult += answer;
+        }
+        return mbtiResult;
+    }, [mbtiAnswers]);
 
     const isSaveDisabled = useMemo(() => {
         switch (activeTab) {
@@ -106,12 +164,19 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
             case 'border': return selectedBorderId === currentUser.borderId;
             case 'nickname': return newNickname === currentUser.nickname || !canAffordNicknameChange || newNickname.trim().length < 2 || newNickname.trim().length > 12;
             case 'mbti': {
-                const newMbtiString = `${mbti.ei}${mbti.sn}${mbti.tf}${mbti.jp}`;
-                return newMbtiString === (currentUser.mbti || '');
+                if (isMbtiQuestionMode) {
+                    // 질문 모드에서는 현재 질문에 답변했는지 확인
+                    const currentQuestion = MBTI_QUESTIONS[mbtiQuestionIndex];
+                    return !mbtiAnswers[currentQuestion.id];
+                } else {
+                    // 직접 선택 모드
+                    const newMbtiString = `${mbti.ei}${mbti.sn}${mbti.tf}${mbti.jp}`;
+                    return newMbtiString === (currentUser.mbti || '');
+                }
             }
             default: return true;
         }
-    }, [activeTab, selectedAvatarId, selectedBorderId, newNickname, currentUser, canAffordNicknameChange, mbti]);
+    }, [activeTab, selectedAvatarId, selectedBorderId, newNickname, currentUser, canAffordNicknameChange, mbti, isMbtiQuestionMode, mbtiQuestionIndex, mbtiAnswers]);
 
     const categorizedBorders = useMemo(() => {
         const isShopItem = (b: BorderInfo) => SHOP_BORDER_ITEMS.some(sb => sb.id === b.id);
@@ -283,6 +348,91 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                     </div>
                 );
             case 'mbti': {
+                // MBTI 미설정 시: 설명 및 설정 버튼 표시
+                if (!hasMbti && !isMbtiQuestionMode) {
+                    return (
+                        <div className="space-y-4">
+                            <div className="p-4 bg-gray-900/50 rounded-lg">
+                                <h3 className="text-xl font-bold text-yellow-300 mb-3">MBTI란 무엇인가요?</h3>
+                                <p className="text-sm text-gray-300 mb-4">
+                                    MBTI(Myers-Briggs Type Indicator)는 개인의 선호도를 바탕으로 성격 유형을 이해하는 도구입니다.
+                                    자신을 더 잘 이해하고 다른 사람들과의 관계를 개선하는 데 도움을 줄 수 있습니다.
+                                </p>
+                                <h4 className="text-lg font-bold text-cyan-300 mb-2 mt-4">바둑 MBTI란 무엇인가요?</h4>
+                                <p className="text-sm text-gray-300 mb-4">
+                                    바둑 MBTI는 당신의 바둑 스타일을 MBTI 개념으로 분석한 것입니다. 
+                                    각 MBTI 유형마다 고유한 바둑 플레이 스타일이 있어, 자신의 성향에 맞는 바둑을 둘 수 있습니다.
+                                </p>
+                                <div className="mt-6 p-4 bg-yellow-900/30 border-2 border-yellow-500 rounded-lg text-center">
+                                    <div className="flex items-center justify-center gap-2 mb-3">
+                                        <img src="/images/icon/Zem.png" alt="다이아" className="w-6 h-6" />
+                                        <span className="text-2xl font-bold text-yellow-300">100</span>
+                                    </div>
+                                    <p className="text-sm text-gray-300 mb-4">MBTI를 설정하면 다이아 100개를 받을 수 있습니다!</p>
+                                    <Button 
+                                        onClick={() => {
+                                            setIsMbtiQuestionMode(true);
+                                            setMbtiQuestionIndex(0);
+                                            setMbtiAnswers({});
+                                        }}
+                                        colorScheme="blue"
+                                        className="w-full"
+                                    >
+                                        MBTI 설정하기
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // 질문 모드
+                if (isMbtiQuestionMode) {
+                    const currentQuestion = MBTI_QUESTIONS[mbtiQuestionIndex];
+                    const progress = ((mbtiQuestionIndex + 1) / MBTI_QUESTIONS.length) * 100;
+
+                    return (
+                        <div className="space-y-4">
+                            <div className="bg-gray-900/50 p-4 rounded-lg">
+                                <div className="flex justify-between items-center mb-2">
+                                    <span className="text-sm text-gray-400">질문 {mbtiQuestionIndex + 1} / {MBTI_QUESTIONS.length}</span>
+                                    <span className="text-sm text-gray-400">{Math.round(progress)}%</span>
+                                </div>
+                                <div className="w-full bg-gray-700 rounded-full h-2">
+                                    <div 
+                                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                                        style={{ width: `${progress}%` }}
+                                    ></div>
+                                </div>
+                            </div>
+                            <div className="bg-gray-900/50 p-4 rounded-lg">
+                                <h3 className="text-xl font-bold text-white mb-4">{currentQuestion.question}</h3>
+                                <div className="space-y-3">
+                                    {currentQuestion.options.map(option => (
+                                        <button
+                                            key={option.value}
+                                            onClick={() => setMbtiAnswers(prev => ({ ...prev, [currentQuestion.id]: option.value }))}
+                                            className={`w-full text-left p-4 rounded-lg transition-all duration-200 ${
+                                                mbtiAnswers[currentQuestion.id] === option.value
+                                                    ? 'bg-blue-600 text-white border-2 border-blue-400'
+                                                    : 'bg-gray-800 hover:bg-gray-700 text-gray-200 border-2 border-transparent'
+                                            }`}
+                                        >
+                                            <div className="font-semibold text-base mb-2">{option.text}</div>
+                                            {option.goStyle && (
+                                                <div className="text-sm opacity-90 mt-2 pt-2 border-t border-white/20">
+                                                    <span className="font-semibold">바둑 스타일:</span> {option.goStyle}
+                                                </div>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    );
+                }
+
+                // 이미 설정된 경우: 변경 가능 (직접 선택 방식)
                 const DichotomySelector: React.FC<{
                     title: string;
                     options: ('E' | 'I' | 'S' | 'N' | 'T' | 'F' | 'J' | 'P')[];
@@ -310,10 +460,9 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                 const finalMbti = `${mbti.ei}${mbti.sn}${mbti.tf}${mbti.jp}`;
 
                 return (
-                     <div className="space-y-4">
-                        <div className="p-3 bg-gray-900/50 rounded-lg text-center">
-                            <h3 className="text-lg font-bold text-yellow-300">MBTI란?</h3>
-                            <p className="text-sm text-gray-300 mt-1">MBTI는 4가지 선호 지표를 조합하여 16가지 성격 유형으로 분류하는 자기보고식 성격 유형 검사입니다. 자신의 성향을 선택하고 다른 사람들과 공유해보세요!</p>
+                    <div className="space-y-4">
+                        <div className="p-3 bg-blue-900/30 rounded-lg text-center">
+                            <p className="text-sm text-gray-300">MBTI는 무조건 공개됩니다.</p>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <DichotomySelector title="에너지 방향" options={['E', 'I']} selected={mbti.ei} onSelect={v => setMbti(p => ({ ...p, ei: v as 'E' | 'I' }))} />
@@ -321,16 +470,22 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                             <DichotomySelector title="판단 기능" options={['T', 'F']} selected={mbti.tf} onSelect={v => setMbti(p => ({ ...p, tf: v as 'T' | 'F' }))} />
                             <DichotomySelector title="생활 양식" options={['J', 'P']} selected={mbti.jp} onSelect={v => setMbti(p => ({ ...p, jp: v as 'J' | 'P' }))} />
                         </div>
-                        <div className="p-3 bg-gray-900/50 rounded-lg flex flex-col sm:flex-row items-center justify-between gap-4">
-                             <div className="flex items-center gap-2">
-                                <span className="font-semibold text-lg">나의 MBTI:</span>
-                                <span className="font-bold text-2xl text-green-400">{finalMbti}</span>
-                            </div>
-                            <ToggleSwitch
-                                label="내 MBTI 프로필에 공개하기"
-                                checked={isMbtiPublic}
-                                onChange={setIsMbtiPublic}
-                            />
+                        <div className="p-3 bg-gray-900/50 rounded-lg flex items-center justify-center gap-4">
+                            <span className="font-semibold text-lg">나의 MBTI:</span>
+                            <span className="font-bold text-2xl text-green-400">{finalMbti}</span>
+                        </div>
+                        <div className="p-3 bg-gray-900/50 rounded-lg">
+                            <Button 
+                                onClick={() => {
+                                    setIsMbtiQuestionMode(true);
+                                    setMbtiQuestionIndex(0);
+                                    setMbtiAnswers({});
+                                }}
+                                colorScheme="purple"
+                                className="w-full"
+                            >
+                                질문으로 다시 설정하기
+                            </Button>
                         </div>
                     </div>
                 );
@@ -366,7 +521,10 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                 <div className="flex justify-end gap-4 mt-4 pt-4 border-t border-gray-700 flex-shrink-0">
                     <Button onClick={onClose} colorScheme="gray">취소</Button>
                     <Button onClick={handleSave} colorScheme="green" disabled={isSaveDisabled}>
-                        {activeTab === 'nickname' && !canAffordNicknameChange ? '다이아 부족' : '저장'}
+                        {activeTab === 'nickname' && !canAffordNicknameChange ? '다이아 부족' : 
+                         activeTab === 'mbti' && isMbtiQuestionMode ? 
+                            (mbtiQuestionIndex < MBTI_QUESTIONS.length - 1 ? '다음' : '완료') : 
+                         '저장'}
                     </Button>
                 </div>
             </div>

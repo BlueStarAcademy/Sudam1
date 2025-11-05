@@ -7,6 +7,9 @@ import { emptySlotImages, GRADE_LEVEL_REQUIREMENTS, ITEM_SELL_PRICES, MATERIAL_S
 import { calculateUserEffects } from '../services/effectService.js';
 import { useAppContext } from '../hooks/useAppContext.js';
 import PurchaseQuantityModal from './PurchaseQuantityModal.js';
+import SellItemConfirmModal from './SellItemConfirmModal.js';
+import SellMaterialBulkModal from './SellMaterialBulkModal.js';
+import UseQuantityModal from './UseQuantityModal.js';
 
 interface InventoryModalProps {
     currentUser: UserWithStatus;
@@ -283,13 +286,14 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
     const [newPresetName, setNewPresetName] = useState('');
     const [showUseQuantityModal, setShowUseQuantityModal] = useState(false);
     const [itemToUseBulk, setItemToUseBulk] = useState<InventoryItem | null>(null);
+    const [itemToSell, setItemToSell] = useState<InventoryItem | null>(null);
+    const [itemToSellBulk, setItemToSellBulk] = useState<InventoryItem | null>(null);
 
     const handlePresetChange = (presetIndex: number) => {
         setSelectedPreset(presetIndex);
         const preset = presets[presetIndex];
-        if (preset) {
-            handlers.applyPreset(preset);
-        }
+        // 프리셋이 있으면 적용하고, 없으면(빈 프리셋) 빈 장비 세트를 적용
+        handlers.applyPreset(preset || { name: presets[presetIndex]?.name || `프리셋 ${presetIndex + 1}`, equipment: {} });
     };
 
     const selectedItem = useMemo(() => {
@@ -540,7 +544,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                                     >
                                         {selectedItem.stars >= 10 ? '최대 강화' : '강화'}
                                     </Button>
-                                    <Button onClick={() => onAction({ type: 'SELL_ITEM', payload: { itemId: selectedItem.id, quantity: 1 } })} colorScheme="red" className="w-full !text-xs !py-1">
+                                    <Button onClick={() => setItemToSell(selectedItem)} colorScheme="red" className="w-full !text-xs !py-1">
                                         판매
                                     </Button>
                                 </div>
@@ -602,9 +606,21 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                                                     )}
                                                 </>
                                             )}
-                                            <Button onClick={() => onAction({ type: 'SELL_ITEM', payload: { itemId: selectedItem.id } })} colorScheme="red" className="w-full !text-xs !py-1">
-                                                판매
-                                            </Button>
+                                            {selectedItem.type === 'material' && (
+                                                <>
+                                                    <Button onClick={() => setItemToSell(selectedItem)} colorScheme="red" className="w-full !text-xs !py-1">
+                                                        판매
+                                                    </Button>
+                                                    <Button onClick={() => setItemToSellBulk(selectedItem)} colorScheme="orange" className="w-full !text-xs !py-1">
+                                                        일괄 판매
+                                                    </Button>
+                                                </>
+                                            )}
+                                            {selectedItem.type !== 'material' && (
+                                                <Button onClick={() => setItemToSell(selectedItem)} colorScheme="red" className="w-full !text-xs !py-1">
+                                                    판매
+                                                </Button>
+                                            )}
                                         </div>
                                     </>
                                 ) : ( // Should not happen with current item types
@@ -641,7 +657,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                         </div>
                     </div>
                     <div className="overflow-y-auto pr-2" style={{ height: '116px' }}>
-                        <div className="grid grid-cols-5 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10 gap-2">
+                        <div className="grid grid-cols-10 gap-2">
                         {Array.from({ length: currentSlots }).map((_, index) => {
                             const item = filteredAndSortedInventory[index];
                             if (item) {
@@ -680,16 +696,64 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
 
             {/* Modals */}
             {showUseQuantityModal && itemToUseBulk && (
-                <PurchaseQuantityModal
-                    onClose={() => setShowUseQuantityModal(false)}
-                    onConfirm={(quantity) => {
-                        onAction({ type: 'USE_ITEM', payload: { itemId: itemToUseBulk.id, quantity } });
+                <UseQuantityModal
+                    item={itemToUseBulk}
+                    currentUser={currentUser}
+                    onClose={() => {
                         setShowUseQuantityModal(false);
                         setItemToUseBulk(null);
                     }}
-                    maxQuantity={itemToUseBulk.quantity || 1}
-                    itemName={itemToUseBulk.name}
-                    initialQuantity={1}
+                    onConfirm={(itemId, quantity) => {
+                        onAction({ type: 'USE_ITEM', payload: { itemId, quantity } });
+                    }}
+                    isTopmost={isTopmost && !isRenameModalOpen && !itemToSell && !itemToSellBulk}
+                />
+            )}
+
+            {itemToSell && (
+                <SellItemConfirmModal
+                    item={itemToSell}
+                    onClose={() => setItemToSell(null)}
+                    onConfirm={async () => {
+                        if (itemToSell.type === 'material') {
+                            // 재료는 선택된 슬롯의 수량만 판매 (1개 판매)
+                            await onAction({ type: 'SELL_ITEM', payload: { itemId: itemToSell.id, quantity: 1 } });
+                        } else {
+                            // 장비는 전체 판매
+                            await onAction({ type: 'SELL_ITEM', payload: { itemId: itemToSell.id } });
+                        }
+                        setItemToSell(null);
+                        setSelectedItemId(null);
+                    }}
+                    isTopmost={isTopmost && !isRenameModalOpen && !showUseQuantityModal && !itemToSellBulk}
+                />
+            )}
+
+            {itemToSellBulk && (
+                <SellMaterialBulkModal
+                    item={itemToSellBulk}
+                    currentUser={currentUser}
+                    onClose={() => setItemToSellBulk(null)}
+                    onConfirm={async (quantity) => {
+                        // 같은 이름의 재료를 모두 찾아서 순차적으로 판매
+                        const materialsToSell = currentUser.inventory
+                            .filter(i => i.type === 'material' && i.name === itemToSellBulk.name)
+                            .sort((a, b) => (a.quantity || 0) - (b.quantity || 0)); // 수량이 적은 것부터 정렬
+                        
+                        let remainingQuantity = quantity;
+                        
+                        // 순차적으로 처리하여 인벤토리 상태가 올바르게 업데이트되도록 함
+                        for (const material of materialsToSell) {
+                            if (remainingQuantity <= 0) break;
+                            const sellQty = Math.min(remainingQuantity, material.quantity || 0);
+                            await onAction({ type: 'SELL_ITEM', payload: { itemId: material.id, quantity: sellQty } });
+                            remainingQuantity -= sellQty;
+                        }
+                        
+                        setItemToSellBulk(null);
+                        setSelectedItemId(null);
+                    }}
+                    isTopmost={isTopmost && !isRenameModalOpen && !showUseQuantityModal && !itemToSell}
                 />
             )}
 
@@ -745,6 +809,11 @@ const InventoryItemCard: React.FC<{
             {!isEquipped && isPresetEquipped && (
                 <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-blue-500 text-white text-xs flex items-center justify-center rounded-full border-2 border-gray-800">
                     P
+                </div>
+            )}
+            {(item.type === 'consumable' || item.type === 'material') && item.quantity && item.quantity > 1 && (
+                <div className="absolute bottom-0.5 right-0.5 bg-black/70 text-white text-[10px] font-bold px-1 py-0.5 rounded border border-white/30">
+                    {item.quantity}
                 </div>
             )}
             <div className="absolute bottom-0 left-0 right-0 text-center text-xs font-bold text-white bg-black/50 py-0.5">

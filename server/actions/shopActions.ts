@@ -20,42 +20,82 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
 
     switch (type) {
         case 'BUY_SHOP_ITEM': {
-            const { itemId, quantity } = payload;
-            const shopItem = SHOP_ITEMS[itemId as keyof typeof SHOP_ITEMS];
-            if (!shopItem || shopItem.type !== 'equipment') {
-                return { error: '유효하지 않은 장비 상자입니다.' };
-            }
-
-            const cost = shopItem.cost;
-            const totalGoldCost = (cost.gold || 0) * quantity;
-            const totalDiamondCost = (cost.diamonds || 0) * quantity;
-
-            if (!user.isAdmin) {
-                if (user.gold < totalGoldCost || user.diamonds < totalDiamondCost) {
-                    return { error: '재화가 부족합니다.' };
+            try {
+                const { itemId, quantity } = payload;
+                
+                if (!itemId || typeof quantity !== 'number' || quantity <= 0) {
+                    return { error: '유효하지 않은 요청입니다.' };
                 }
-            }
+                
+                const shopItem = SHOP_ITEMS[itemId as keyof typeof SHOP_ITEMS];
+                if (!shopItem || shopItem.type !== 'equipment') {
+                    return { error: '유효하지 않은 장비 상자입니다.' };
+                }
 
-            const obtainedItems: InventoryItem[] = [];
-            for (let i = 0; i < quantity; i++) {
-                const result = shopItem.onPurchase();
-                obtainedItems.push(...(Array.isArray(result) ? result : [result]));
-            }
+                const cost = shopItem.cost;
+                const totalGoldCost = (cost.gold || 0) * quantity;
+                const totalDiamondCost = (cost.diamonds || 0) * quantity;
 
-            const { success, finalItemsToAdd } = addItemsToInventory(user.inventory, user.inventorySlots, obtainedItems);
-            if (!success) {
-                return { error: '인벤토리 공간이 부족합니다.' };
-            }
-            
-            if (!user.isAdmin) {
-                user.gold -= totalGoldCost;
-                user.diamonds -= totalDiamondCost;
-            }
+                if (!user.isAdmin) {
+                    if (user.gold < totalGoldCost || user.diamonds < totalDiamondCost) {
+                        return { error: '재화가 부족합니다.' };
+                    }
+                }
 
-            user.inventory.push(...finalItemsToAdd);
-            await db.updateUser(user);
+                const obtainedItems: InventoryItem[] = [];
+                for (let i = 0; i < quantity; i++) {
+                    try {
+                        const result = shopItem.onPurchase();
+                        obtainedItems.push(...(Array.isArray(result) ? result : [result]));
+                    } catch (error: any) {
+                        console.error(`[BUY_SHOP_ITEM] Error in onPurchase for item ${itemId}:`, error);
+                        return { error: '아이템 생성 중 오류가 발생했습니다.' };
+                    }
+                }
 
-            return { clientResponse: { obtainedItemsBulk: obtainedItems, updatedUser: user } };
+                if (!user.inventory) {
+                    user.inventory = [];
+                }
+                if (!user.inventorySlots) {
+                    user.inventorySlots = { equipment: 30, consumable: 30, material: 30 };
+                }
+
+                const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory(user.inventory, user.inventorySlots, obtainedItems);
+                if (!success || !updatedInventory) {
+                    return { error: '인벤토리 공간이 부족합니다.' };
+                }
+                
+                if (!user.isAdmin) {
+                    user.gold -= totalGoldCost;
+                    user.diamonds -= totalDiamondCost;
+                }
+
+                user.inventory = updatedInventory;
+                
+                try {
+                    await db.updateUser(user);
+                } catch (error: any) {
+                    console.error(`[BUY_SHOP_ITEM] Error updating user ${user.id}:`, error);
+                    return { error: '데이터 저장 중 오류가 발생했습니다.' };
+                }
+
+                // 깊은 복사로 updatedUser 생성
+                // updatedInventory가 배열인지 확인하고, 각 아이템도 깊은 복사
+                const safeInventory = Array.isArray(updatedInventory) 
+                    ? updatedInventory.map(item => JSON.parse(JSON.stringify(item)))
+                    : [];
+                
+                const updatedUser = JSON.parse(JSON.stringify({
+                    ...user,
+                    inventory: safeInventory
+                }));
+
+                return { clientResponse: { obtainedItemsBulk: obtainedItems, updatedUser } };
+            } catch (error: any) {
+                console.error(`[BUY_SHOP_ITEM] Unexpected error:`, error);
+                console.error(`[BUY_SHOP_ITEM] Error stack:`, error.stack);
+                return { error: '구매 처리 중 오류가 발생했습니다.' };
+            }
         }
         case 'BUY_MATERIAL_BOX': {
             const { itemId, quantity } = payload;
@@ -107,8 +147,15 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 allObtainedItems.push(...itemsFromBox);
             }
             
-            const { success, finalItemsToAdd } = addItemsToInventory(user.inventory, user.inventorySlots, allObtainedItems);
-            if (!success) {
+            if (!user.inventory) {
+                user.inventory = [];
+            }
+            if (!user.inventorySlots) {
+                user.inventorySlots = { equipment: 30, consumable: 30, material: 30 };
+            }
+            
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory(user.inventory, user.inventorySlots, allObtainedItems);
+            if (!success || !updatedInventory) {
                 return { error: '모든 아이템을 받기에 가방 공간이 부족합니다.' };
             }
 
@@ -125,7 +172,7 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 user.diamonds -= totalCost.diamonds;
             }
             
-            user.inventory.push(...finalItemsToAdd);
+            user.inventory = updatedInventory;
             
             if (!user.isAdmin) {
                 if (resetPurchaseRecord || !user.dailyShopPurchases[itemId]) {
@@ -136,6 +183,16 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             }
             
             await db.updateUser(user);
+            
+            // 깊은 복사로 updatedUser 생성
+            const safeInventory = Array.isArray(updatedInventory) 
+                ? updatedInventory.map(item => JSON.parse(JSON.stringify(item)))
+                : [];
+            
+            const updatedUser = JSON.parse(JSON.stringify({
+                ...user,
+                inventory: safeInventory
+            }));
 
             const aggregated: Record<string, number> = {};
             allObtainedItems.forEach(item => {
@@ -143,7 +200,7 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             });
             const itemsToAdd = Object.keys(aggregated).map(name => ({ ...allObtainedItems.find(i => i.name === name)!, quantity: aggregated[name] }));
 
-            return { clientResponse: { obtainedItemsBulk: itemsToAdd, updatedUser: user } };
+            return { clientResponse: { obtainedItemsBulk: itemsToAdd, updatedUser } };
         }
         case 'PURCHASE_ACTION_POINTS': {
             const now = Date.now();

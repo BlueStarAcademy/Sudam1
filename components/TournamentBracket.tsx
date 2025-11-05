@@ -52,7 +52,11 @@ const PlayerProfilePanel: React.FC<{
     currentUserId: string, 
     onViewUser: (userId: string) => void,
     highlightPhase: 'early' | 'mid' | 'end' | 'none';
-}> = ({ player, initialPlayer, allUsers, currentUserId, onViewUser, highlightPhase }) => {
+    isUserMatch?: boolean;
+    onUseConditionPotion?: () => void;
+    timeElapsed?: number;
+    tournamentStatus?: string;
+}> = ({ player, initialPlayer, allUsers, currentUserId, onViewUser, highlightPhase, isUserMatch, onUseConditionPotion, timeElapsed = 0, tournamentStatus }) => {
     
     if (!player) return <div className="p-2 text-center text-gray-500 flex items-center justify-center h-full bg-gray-900/50 rounded-lg">선수 대기 중...</div>;
 
@@ -72,6 +76,37 @@ const PlayerProfilePanel: React.FC<{
     const isClickable = !player.id.startsWith('bot-') && player.id !== currentUserId;
     const avatarUrl = AVATAR_POOL.find(a => a.id === player.avatarId)?.url;
     const borderUrl = BORDER_POOL.find(b => b.id === player.borderId)?.url;
+    const isCurrentUser = player.id === currentUserId;
+    
+    // Track stat changes for animation
+    const [statChanges, setStatChanges] = useState<Record<CoreStat, number>>({} as Record<CoreStat, number>);
+    const prevStatsRef = useRef<Record<CoreStat, number>>({} as Record<CoreStat, number>);
+    
+    useEffect(() => {
+        if (!player || timeElapsed === 0) {
+            prevStatsRef.current = { ...player.stats } as Record<CoreStat, number>;
+            return;
+        }
+        
+        const changes: Record<CoreStat, number> = {} as Record<CoreStat, number>;
+        Object.values(CoreStat).forEach(stat => {
+            const prev = prevStatsRef.current[stat] ?? player.stats[stat];
+            const curr = player.stats[stat];
+            if (prev !== curr) {
+                changes[stat] = curr - prev;
+            }
+        });
+        
+        if (Object.keys(changes).length > 0) {
+            setStatChanges(changes);
+            // Clear changes after 2 seconds
+            setTimeout(() => {
+                setStatChanges({} as Record<CoreStat, number>);
+            }, 2000);
+        }
+        
+        prevStatsRef.current = { ...player.stats } as Record<CoreStat, number>;
+    }, [player?.stats, timeElapsed]);
 
     const isStatHighlighted = (stat: CoreStat) => {
         if (highlightPhase === 'none') return false;
@@ -87,8 +122,20 @@ const PlayerProfilePanel: React.FC<{
                     <p className="text-xs text-gray-400">({cumulativeStats.wins}승 {cumulativeStats.losses}패)</p>
                  </div>
             </div>
-            <div className="font-bold text-sm mt-1 relative">
+            <div className="font-bold text-sm mt-1 relative flex items-center gap-2">
                 컨디션: <span className="text-yellow-300">{player.condition === 1000 ? '-' : player.condition}</span>
+                {isCurrentUser && isUserMatch && player.condition !== 1000 && player.condition < 100 && onUseConditionPotion && tournamentStatus !== 'round_in_progress' && (
+                    <button 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onUseConditionPotion();
+                        }}
+                        className="w-6 h-6 bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center text-xs font-bold"
+                        title="컨디션 물약 사용 (경기 시작 전에만 사용 가능)"
+                    >
+                        +
+                    </button>
+                )}
             </div>
             <div className="w-full grid grid-cols-2 gap-x-1 sm:gap-x-3 gap-y-0.5 text-xs mt-2 border-t border-gray-600 pt-2">
                 {Object.values(CoreStat).map(stat => {
@@ -106,6 +153,17 @@ const PlayerProfilePanel: React.FC<{
                                         ({change > 0 ? '+' : ''}{change})
                                      </span>
                                 )}
+                                {statChanges[stat] !== undefined && statChanges[stat] !== 0 && (
+                                    <span 
+                                        className={`ml-1 font-bold text-sm ${statChanges[stat] > 0 ? 'text-green-300' : 'text-red-300'}`}
+                                        style={{ 
+                                            animation: 'statChangeFade 2s ease-out forwards',
+                                            opacity: 1
+                                        }}
+                                    >
+                                        {statChanges[stat] > 0 ? '+' : ''}{statChanges[stat]}
+                                    </span>
+                                )}
                             </div>
                         </React.Fragment>
                     );
@@ -117,9 +175,10 @@ const PlayerProfilePanel: React.FC<{
 
 const SimulationProgressBar: React.FC<{ timeElapsed: number; totalDuration: number }> = ({ timeElapsed, totalDuration }) => {
     const progress = (timeElapsed / totalDuration) * 100;
-    const earlyStage = Math.min(progress, (40 / 140) * 100);
-    const midStage = Math.min(Math.max(0, progress - (40 / 140) * 100), (60 / 140) * 100);
-    const endStage = Math.min(Math.max(0, progress - (100 / 140) * 100), (40 / 140) * 100);
+    // 초반 15초, 중반 20초, 종반 15초 (총 50초)
+    const earlyStage = Math.min(progress, (15 / 50) * 100);
+    const midStage = Math.min(Math.max(0, progress - (15 / 50) * 100), (20 / 50) * 100);
+    const endStage = Math.min(Math.max(0, progress - (35 / 50) * 100), (15 / 50) * 100);
 
     return (
         <div>
@@ -129,9 +188,9 @@ const SimulationProgressBar: React.FC<{ timeElapsed: number; totalDuration: numb
                 <div className="bg-red-500 h-full rounded-r-full" style={{ width: `${endStage}%` }} title="끝내기"></div>
             </div>
             <div className="flex text-xs text-gray-400 mt-1">
-                <div style={{ width: `${(40/140)*100}%` }}>초반</div>
-                <div style={{ width: `${(60/140)*100}%` }} className="text-center">중반</div>
-                <div style={{ width: `${(40/140)*100}%` }} className="text-right">종반</div>
+                <div style={{ width: `${(15/50)*100}%` }}>초반</div>
+                <div style={{ width: `${(20/50)*100}%` }} className="text-center">중반</div>
+                <div style={{ width: `${(15/50)*100}%` }} className="text-right">종반</div>
             </div>
         </div>
     );
@@ -150,6 +209,10 @@ const ScoreGraph: React.FC<{ p1Percent: number; p2Percent: number; p1Nickname?: 
                 <div className="bg-black transition-all duration-500 ease-in-out" style={{ width: `${p1Percent}%` }}></div>
                 <div className="bg-white transition-all duration-500 ease-in-out" style={{ width: `${p2Percent}%` }}></div>
                 <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-gray-400/50" title="중앙"></div>
+            </div>
+            <div className="flex justify-between text-xs px-1 mt-1 font-bold">
+                <span className="text-gray-300">{p1Percent.toFixed(1)}%</span>
+                <span className="text-gray-300">{p2Percent.toFixed(1)}%</span>
             </div>
         </div>
     );
@@ -581,6 +644,7 @@ const TournamentRoundViewer: React.FC<{ rounds: Round[]; currentUser: UserWithSt
 
 export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     const { tournament, currentUser, onBack, allUsersForRanking, onViewUser, onAction, onStartNextRound, onReset, onSkip, isMobile } = props;
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [lastUserMatchSgfIndex, setLastUserMatchSgfIndex] = useState<number | null>(null);
     const [initialMatchPlayers, setInitialMatchPlayers] = useState<{ p1: PlayerForTournament | null, p2: PlayerForTournament | null }>({ p1: null, p2: null });
     const prevStatusRef = useRef(tournament.status);
@@ -628,8 +692,8 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     
     const handleBackClick = useCallback(() => {
         if (tournament.status === 'round_in_progress') {
-            if (window.confirm('경기가 진행중입니다. 경기를 포기하시겠습니까? 남은 모든 경기는 패배 처리됩니다.')) {
-                onAction({ type: 'FORFEIT_TOURNAMENT', payload: { type: tournament.type } });
+            if (window.confirm('경기가 진행 중입니다. 현재 경기를 기권하시겠습니까? 현재 경기는 패배 처리됩니다.')) {
+                onAction({ type: 'FORFEIT_CURRENT_MATCH', payload: { type: tournament.type } });
             }
         } else {
             onBack();
@@ -758,9 +822,9 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     const currentPhase = useMemo((): 'early' | 'mid' | 'end' | 'none' => {
         if (tournament.status !== 'round_in_progress') return 'none';
         const time = tournament.timeElapsed;
-        if (time <= 40) return 'early';
-        if (time <= 100) return 'mid';
-        if (time <= 140) return 'end';
+        if (time <= 15) return 'early';
+        if (time <= 35) return 'mid';
+        if (time <= 50) return 'end';
         return 'none';
     }, [tournament.timeElapsed, tournament.status]);
 
@@ -817,27 +881,44 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         );
     };
 
+    const sidebarContent = (
+        <aside className="w-full lg:w-[35%] xl:w-[25%] flex-shrink-0 flex flex-col gap-2">
+            <div className="flex-1 bg-gray-800/50 rounded-lg p-2 min-h-0">
+                {tournament.type === 'neighborhood' ? (
+                    <RoundRobinDisplay tournamentState={tournament} currentUser={currentUser} />
+                ) : (
+                    <TournamentRoundViewer rounds={safeRounds} currentUser={currentUser} tournamentType={tournament.type} />
+                )}
+            </div>
+            <div className="h-48 flex-shrink-0 bg-gray-800/50 rounded-lg p-3 text-center flex flex-col items-center justify-center">
+                <img src="/images/championship/Ranking.png" alt="Trophy" className="w-20 h-20 mb-2" />
+                <h4 className="font-bold text-gray-400">우승자</h4>
+                {winner ? <p className="text-xl font-semibold text-yellow-300">{winner.nickname}</p> : <p className="text-sm text-gray-500">진행 중...</p>}
+            </div>
+        </aside>
+    );
+
     const mainContent = (
         <main className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
-            <aside className="w-full lg:w-[35%] xl:w-[25%] flex-shrink-0 flex flex-col gap-2">
-                <div className="flex-1 bg-gray-800/50 rounded-lg p-2 min-h-0">
-                    {tournament.type === 'neighborhood' ? (
-                        <RoundRobinDisplay tournamentState={tournament} currentUser={currentUser} />
-                    ) : (
-                        <TournamentRoundViewer rounds={safeRounds} currentUser={currentUser} tournamentType={tournament.type} />
-                    )}
-                </div>
-                <div className="h-48 flex-shrink-0 bg-gray-800/50 rounded-lg p-3 text-center flex flex-col items-center justify-center">
-                    <img src="/images/Ranking.png" alt="Trophy" className="w-20 h-20 mb-2" />
-                    <h4 className="font-bold text-gray-400">우승자</h4>
-                    {winner ? <p className="text-xl font-semibold text-yellow-300">{winner.nickname}</p> : <p className="text-sm text-gray-500">진행 중...</p>}
-                </div>
-            </aside>
+            {!isMobile && sidebarContent}
 
             <div className="flex-grow flex flex-col gap-2 min-h-0 min-w-0">
                 <section className="flex flex-row gap-1 md:gap-2 items-stretch p-2 bg-gray-800/50 rounded-lg">
                     <div className="flex-1 min-w-0">
-                        <PlayerProfilePanel player={p1} initialPlayer={initialMatchPlayers.p1} allUsers={allUsersForRanking} currentUserId={currentUser.id} onViewUser={onViewUser} highlightPhase={currentPhase} />
+                        <PlayerProfilePanel 
+                            player={p1} 
+                            initialPlayer={initialMatchPlayers.p1} 
+                            allUsers={allUsersForRanking} 
+                            currentUserId={currentUser.id} 
+                            onViewUser={onViewUser} 
+                            highlightPhase={currentPhase}
+                            isUserMatch={currentSimMatch?.isUserMatch || false}
+                            onUseConditionPotion={() => {
+                                onAction({ type: 'USE_CONDITION_POTION', payload: { tournamentType: tournament.type } });
+                            }}
+                            timeElapsed={tournament.timeElapsed}
+                            tournamentStatus={tournament.status}
+                        />
                     </div>
                     <div className="flex-shrink-0 w-44 sm:w-52 flex flex-col items-center justify-center min-w-0">
                         <RadarChart datasets={radarDatasets} maxStatValue={maxStatValue} size={isMobile ? 140 : undefined} />
@@ -847,7 +928,20 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                         </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                        <PlayerProfilePanel player={p2} initialPlayer={initialMatchPlayers.p2} allUsers={allUsersForRanking} currentUserId={currentUser.id} onViewUser={onViewUser} highlightPhase={currentPhase} />
+                        <PlayerProfilePanel 
+                            player={p2} 
+                            initialPlayer={initialMatchPlayers.p2} 
+                            allUsers={allUsersForRanking} 
+                            currentUserId={currentUser.id} 
+                            onViewUser={onViewUser} 
+                            highlightPhase={currentPhase}
+                            isUserMatch={currentSimMatch?.isUserMatch || false}
+                            onUseConditionPotion={() => {
+                                onAction({ type: 'USE_CONDITION_POTION', payload: { tournamentType: tournament.type } });
+                            }}
+                            timeElapsed={tournament.timeElapsed}
+                            tournamentStatus={tournament.status}
+                        />
                     </div>
                 </section>
                 
@@ -863,7 +957,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                     <div className="w-full lg:w-3/5 flex-1 flex flex-col gap-2 min-h-0">
                         <section className="flex-shrink-0 bg-gray-800/50 rounded-lg p-3">
                             <ScoreGraph p1Percent={p1Percent} p2Percent={p2Percent} p1Nickname={p1?.nickname} p2Nickname={p2?.nickname}/>
-                            <div className="mt-2"><SimulationProgressBar timeElapsed={tournament.timeElapsed} totalDuration={140} /></div>
+                            <div className="mt-2"><SimulationProgressBar timeElapsed={tournament.timeElapsed} totalDuration={50} /></div>
                         </section>
                         <div className="h-64 lg:h-auto lg:flex-1 min-h-0 bg-gray-800/50 rounded-lg p-2 flex flex-col">
                             <CommentaryPanel commentary={tournament.currentMatchCommentary} isSimulating={tournament.status === 'round_in_progress'} />
@@ -893,22 +987,35 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     );
 
     return (
-        <div className="w-full p-2 flex flex-col gap-2 bg-gray-900 text-white min-h-full">
-            <header className="flex items-center justify-between flex-shrink-0">
-                <button onClick={handleBackClick} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
-                    <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
-                </button>
-                <h1 className="text-xl md:text-2xl font-bold">{tournament.title}</h1>
-                <div className="w-28" />
-            </header>
-
+        <div className="w-full p-2 flex flex-col gap-2 bg-gray-900 text-white min-h-full relative">
             {isMobile ? (
-                <div className="flex-1 flex flex-col gap-4 min-h-0">
-                    <div className="flex-1 min-h-0 overflow-y-auto">
-                        {mainContent}
+                <>
+                    <div className="flex-1 flex flex-col gap-4 min-h-0 relative">
+                        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-20">
+                            <button 
+                                onClick={() => setIsMobileSidebarOpen(true)} 
+                                className="w-8 h-12 bg-gray-800/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-white shadow-lg hover:bg-gray-700/80"
+                                aria-label="메뉴 열기"
+                            >
+                                <span className="relative font-bold text-lg">{'<<'}</span>
+                            </button>
+                        </div>
+                        <div className="flex-1 min-h-0 overflow-y-auto">
+                            {mainContent}
+                        </div>
+                        {renderFooter()}
                     </div>
-                    {renderFooter()}
-                </div>
+                    <div className={`fixed top-0 right-0 h-full w-[320px] bg-gray-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col`}>
+                        <div className="flex justify-between items-center p-2 border-b border-gray-600 flex-shrink-0">
+                            <h3 className="text-lg font-bold">대진표 / 우승자</h3>
+                            <button onClick={() => setIsMobileSidebarOpen(false)} className="text-2xl font-bold text-gray-300 hover:text-white">×</button>
+                        </div>
+                        <div className="flex-1 min-h-0 overflow-y-auto p-2">
+                            {sidebarContent}
+                        </div>
+                    </div>
+                    {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}
+                </>
             ) : (
                 <>
                     {mainContent}

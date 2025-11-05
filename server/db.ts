@@ -14,14 +14,57 @@ const seedInitialData = async (db: Database) => {
     const credentialsToCreate = initialState.userCredentials;
 
     for (const user of usersToCreate) {
-        await userRepository.createUser(db, user);
+        // 이미 존재하는 사용자인지 확인
+        const existingUser = await userRepository.getUser(db, user.id);
+        if (existingUser) {
+            console.log(`[DB] User ${user.username} (${user.id}) already exists, skipping creation.`);
+            continue;
+        }
+        
+        // username으로도 확인 (다른 ID로 같은 username이 있을 수 있음)
+        const existingUserByUsername = await userRepository.getUserByNickname(db, user.username);
+        if (existingUserByUsername) {
+            console.log(`[DB] User with username ${user.username} already exists, skipping creation.`);
+            continue;
+        }
+        
+        try {
+            await userRepository.createUser(db, user);
+            console.log(`[DB] Created initial user: ${user.username}`);
+        } catch (error: any) {
+            // UNIQUE 제약조건 위반 등은 무시 (이미 존재하는 경우)
+            if (error.message && error.message.includes('UNIQUE constraint')) {
+                console.log(`[DB] User ${user.username} already exists (detected by constraint), skipping creation.`);
+            } else {
+                console.error(`[DB] Error creating user ${user.username}:`, error);
+                throw error;
+            }
+        }
     }
     
     for (const username of Object.keys(credentialsToCreate)) {
         const cred = credentialsToCreate[username];
         const originalUser = usersToCreate.find(u => u.username === username);
         if (originalUser) {
-            await credentialsRepository.createUserCredentials(db, originalUser.username, cred.passwordHash, cred.userId);
+            // 이미 존재하는 credentials인지 확인
+            const existingCreds = await credentialsRepository.getUserCredentials(db, username);
+            if (existingCreds) {
+                console.log(`[DB] Credentials for ${username} already exist, skipping creation.`);
+                continue;
+            }
+            
+            try {
+                await credentialsRepository.createUserCredentials(db, originalUser.username, cred.passwordHash, cred.userId);
+                console.log(`[DB] Created credentials for: ${username}`);
+            } catch (error: any) {
+                // UNIQUE 제약조건 위반 등은 무시 (이미 존재하는 경우)
+                if (error.message && error.message.includes('UNIQUE constraint')) {
+                    console.log(`[DB] Credentials for ${username} already exist (detected by constraint), skipping creation.`);
+                } else {
+                    console.error(`[DB] Error creating credentials for ${username}:`, error);
+                    throw error;
+                }
+            }
         }
     }
     console.log('[DB] Initial data seeding complete.');
@@ -135,8 +178,37 @@ export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCreden
     const gameModeAvailability = await kvRepository.getKV<Record<GameMode, boolean>>(db, 'gameModeAvailability') || {};
     const announcementInterval = await kvRepository.getKV<number>(db, 'announcementInterval') || 3;
     
+    // 사용자 데이터 최적화: 공개 정보만 포함 (인벤토리, 메일, 퀘스트 등은 제외)
+    const optimizedUsers: Record<string, any> = {};
+    for (const user of users) {
+        // 전투력 계산을 위해 inventory와 equipment는 포함해야 함
+        // 다만 메일, 퀘스트 등은 개인 정보이므로 제외
+        optimizedUsers[user.id] = {
+            id: user.id,
+            username: user.username,
+            nickname: user.nickname,
+            isAdmin: user.isAdmin,
+            strategyLevel: user.strategyLevel,
+            strategyXp: user.strategyXp,
+            playfulLevel: user.playfulLevel,
+            playfulXp: user.playfulXp,
+            gold: user.gold,
+            diamonds: user.diamonds,
+            stats: user.stats,
+            mannerScore: user.mannerScore,
+            avatarId: user.avatarId,
+            borderId: user.borderId,
+            tournamentScore: user.tournamentScore,
+            league: user.league,
+            mbti: user.mbti,
+            isMbtiPublic: user.isMbtiPublic,
+            inventory: user.inventory, // 전투력 계산을 위해 포함
+            equipment: user.equipment, // 전투력 계산을 위해 포함
+        };
+    }
+    
     return {
-        users: users.reduce((acc: Record<string, User>, user: User) => { acc[user.id] = user; return acc; }, {}),
+        users: optimizedUsers,
         userCredentials: {}, // Never send credentials to client
         liveGames: liveGames.reduce((acc: Record<string, LiveGameSession>, game: LiveGameSession) => { acc[game.id] = game; return acc; }, {}),
         adminLogs,

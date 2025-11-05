@@ -1,2 +1,5 @@
 database.sqlite
+database_backup_*.sqlite
 node_modules
+katago/
+gnugo/

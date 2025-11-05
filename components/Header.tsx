@@ -8,9 +8,9 @@ import { AVATAR_POOL, BORDER_POOL } from '../constants';
 import { useAppContext } from '../hooks/useAppContext.js';
 
 const ResourceDisplay: React.FC<{ icon: React.ReactNode; value: string; className?: string }> = ({ icon, value, className }) => (
-    <div className={`flex items-center gap-1 sm:gap-2 bg-tertiary/50 rounded-full py-1 pl-1 pr-2 sm:pr-3 shadow-inner ${className}`}>
+    <div className={`flex items-center gap-1 sm:gap-2 bg-tertiary/50 rounded-full py-1 pl-1 pr-2 sm:pr-3 shadow-inner flex-shrink-0 ${className}`}>
         <div className="bg-primary w-7 h-7 flex items-center justify-center rounded-full text-lg flex-shrink-0">{icon}</div>
-        <span className="font-bold text-xs sm:text-sm text-primary">{value}</span>
+        <span className="font-bold text-[9px] sm:text-sm text-primary whitespace-nowrap">{value}</span>
     </div>
 );
 
@@ -42,7 +42,7 @@ const ActionPointTimer: React.FC<{ user: UserWithStatus }> = ({ user }) => {
 
     if (!timeLeft) return null;
 
-    return <span className="text-xs text-tertiary font-mono text-center">({timeLeft})</span>;
+    return <span className="text-[8px] sm:text-xs text-tertiary font-mono text-center whitespace-nowrap">({timeLeft})</span>;
 };
 
 
@@ -59,30 +59,30 @@ const Header: React.FC = () => {
 
     return (
         <header className="flex-shrink-0 bg-primary/80 backdrop-blur-sm shadow-lg">
-            <div className="p-2 flex justify-between items-center gap-2 h-[60px]">
-                <div className="flex items-center gap-2 sm:gap-3 flex-shrink min-w-0 cursor-pointer relative" onClick={openProfileEditModal}>
+            <div className="p-2 flex justify-between items-center gap-2 h-[60px] flex-nowrap overflow-x-auto">
+                <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0 cursor-pointer relative" onClick={openProfileEditModal}>
                      <Avatar userId={currentUserWithStatus.id} userName={currentUserWithStatus.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={40} />
                      <div className="hidden sm:block min-w-0">
-                        <h1 className="font-bold text-primary truncate">{currentUserWithStatus.nickname}</h1>
-                        <p className="text-xs text-tertiary truncate">전략 Lv.{currentUserWithStatus.strategyLevel} / 놀이 Lv.{currentUserWithStatus.playfulLevel}</p>
+                        <h1 className="font-bold text-primary truncate whitespace-nowrap">{currentUserWithStatus.nickname}</h1>
+                        <p className="text-xs text-tertiary truncate whitespace-nowrap">전략 Lv.{currentUserWithStatus.strategyLevel} / 놀이 Lv.{currentUserWithStatus.playfulLevel}</p>
                      </div>
                      {!mbti && (
                         <span className="absolute top-0 right-0 w-2 h-2 bg-red-500 rounded-full"></span>
                      )}
                 </div>
 
-                <div className="flex items-center justify-end flex-wrap gap-1 sm:gap-2">
-                    <div className="flex items-center">
-                        <ResourceDisplay icon="⚡" value={`${actionPoints.current}/${actionPoints.max}`} />
+                <div className="flex items-center justify-end flex-nowrap gap-1 sm:gap-2 flex-shrink-0">
+                    <div className="flex items-center flex-shrink-0">
+                        <ResourceDisplay icon="⚡" value={`${actionPoints.current}/${actionPoints.max}`} className="flex-shrink-0" />
                         <ActionPointTimer user={currentUserWithStatus} />
                         <button onClick={openShop} className="ml-1 w-6 h-6 flex-shrink-0 rounded-full bg-green-600 hover:bg-green-500 text-white font-bold flex items-center justify-center text-lg shadow-md transition-transform hover:scale-110 active:scale-95" title="행동력 구매">+</button>
                     </div>
-                    <ResourceDisplay icon={<img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 object-contain" />} value={gold.toLocaleString()} />
-                    <ResourceDisplay icon={<img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 object-contain" />} value={diamonds.toLocaleString()} />
+                    <ResourceDisplay icon={<img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 object-contain" />} value={gold.toLocaleString()} className="flex-shrink-0" />
+                    <ResourceDisplay icon={<img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 object-contain" />} value={diamonds.toLocaleString()} className="flex-shrink-0" />
                     
-                    <div className="h-9 w-px bg-border-color mx-1 sm:mx-2"></div>
+                    <div className="h-9 w-px bg-border-color mx-1 sm:mx-2 flex-shrink-0"></div>
                     
-                    {isAdmin && <Button onClick={() => window.location.hash = '#/admin'} colorScheme="purple" className="text-xs sm:text-sm">관리자</Button>}
+                    {isAdmin && <Button onClick={() => window.location.hash = '#/admin'} colorScheme="purple" className="text-[9px] sm:text-sm flex-shrink-0 whitespace-nowrap">관리자</Button>}
                     <button
                         onClick={openMailbox}
                         className="relative p-2 rounded-lg text-xl hover:bg-secondary transition-colors"

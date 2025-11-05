@@ -7,6 +7,7 @@ import { randomUUID } from 'crypto';
 import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST } from '../utils/timeUtils.js';
 
 let lastSeasonProcessed: SeasonInfo | null = null;
+let lastWeeklyResetTimestamp: number | null = null;
 
 const processRewardsForSeason = async (season: SeasonInfo) => {
     console.log(`[Scheduler] Processing rewards for ${season.name}...`);
@@ -99,11 +100,25 @@ const processRewardsForSeason = async (season: SeasonInfo) => {
             }
         }
         
-        // 3. Reset all game mode stats for the new season
+        // 3. Reset game mode stats for the new season
+        // 놀이바둑만 1200점으로 초기화, 전략바둑은 점수 유지
         if (user.stats) {
+            const playfulModes = PLAYFUL_GAME_MODES.map(m => m.mode);
+            const strategicModes = SPECIAL_GAME_MODES.map(m => m.mode);
+            
             for (const mode of allGameModes) {
                 if (user.stats[mode]) {
-                    user.stats[mode] = { wins: 0, losses: 0, rankingScore: 1200 };
+                    if (playfulModes.includes(mode)) {
+                        // 놀이바둑: 매 시즌 1200점으로 초기화
+                        user.stats[mode] = { wins: 0, losses: 0, rankingScore: 1200 };
+                    } else if (strategicModes.includes(mode)) {
+                        // 전략바둑: 점수 유지, 승패만 초기화
+                        const currentScore = user.stats[mode].rankingScore || 1200;
+                        user.stats[mode] = { wins: 0, losses: 0, rankingScore: currentScore };
+                    } else {
+                        // 기타 모드: 1200점으로 초기화 (기본 동작)
+                        user.stats[mode] = { wins: 0, losses: 0, rankingScore: 1200 };
+                    }
                 }
             }
         }
@@ -155,6 +170,42 @@ export const processRankingRewards = async (volatileState: types.VolatileState):
     }
 };
 
+export async function processWeeklyTournamentReset(): Promise<void> {
+    const now = Date.now();
+    const kstNow = getKSTDate(now);
+    const isMondayMidnight = kstNow.getUTCDay() === 1 && kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
+    
+    // Check if we've already processed this Monday
+    if (lastWeeklyResetTimestamp !== null) {
+        const lastResetKst = getKSTDate(lastWeeklyResetTimestamp);
+        const lastResetMonday = lastResetKst.getUTCDay() === 1 ? 
+            new Date(lastResetKst.getUTCFullYear(), lastResetKst.getUTCMonth(), lastResetKst.getUTCDate()) :
+            null;
+        const currentMonday = new Date(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
+        
+        if (lastResetMonday && lastResetMonday.getTime() === currentMonday.getTime()) {
+            return; // Already processed this Monday
+        }
+    }
+    
+    if (isMondayMidnight) {
+        console.log(`[WeeklyReset] Processing weekly tournament score reset at Monday 0:00 KST`);
+        const allUsers = await db.getAllUsers();
+        
+        for (const user of allUsers) {
+            const weeklyScore = user.tournamentScore || 0;
+            // Add weekly score to cumulative
+            user.cumulativeTournamentScore = (user.cumulativeTournamentScore || 0) + weeklyScore;
+            // Reset weekly score to 0
+            user.tournamentScore = 0;
+            await db.updateUser(user);
+        }
+        
+        lastWeeklyResetTimestamp = now;
+        console.log(`[WeeklyReset] Reset all tournament scores and updated cumulative scores`);
+    }
+}
+
 export async function processWeeklyLeagueUpdates(user: types.User): Promise<types.User> {
     if (!isDifferentWeekKST(user.lastLeagueUpdate, Date.now())) {
         return user; // Not a new week, no update needed
@@ -169,17 +220,6 @@ export async function processWeeklyLeagueUpdates(user: types.User): Promise<type
     }
     
     const allUsers = await db.getAllUsers();
-
-    // Reset tournament scores for all users at the start of a new week
-    /*
-    for (const u of allUsers) {
-        if (u.tournamentScore !== 0) {
-            u.tournamentScore = 0;
-            await db.updateUser(u);
-        }
-    }
-    */
-
     const competitorMap = new Map(allUsers.map(u => [u.id, u]));
 
     const finalRankings = user.weeklyCompetitors.map(c => {

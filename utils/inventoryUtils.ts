@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { InventoryItem, InventoryItemType } from '../types.js';
 import { CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../constants';
 
-export const addItemsToInventory = (currentInventory: InventoryItem[], inventorySlots: { equipment: number; consumable: number; material: number; }, itemsToAdd: InventoryItem[]): { success: boolean, finalItemsToAdd: InventoryItem[] } => {
+export const addItemsToInventory = (currentInventory: InventoryItem[], inventorySlots: { equipment: number; consumable: number; material: number; }, itemsToAdd: InventoryItem[]): { success: boolean, finalItemsToAdd: InventoryItem[], updatedInventory: InventoryItem[] } => {
     const tempInventory = JSON.parse(JSON.stringify(currentInventory));
     const finalItemsToAdd: InventoryItem[] = [];
 
@@ -15,7 +15,7 @@ export const addItemsToInventory = (currentInventory: InventoryItem[], inventory
     // First, check space for non-stackable items (equipment)
     const currentEquipmentCount = tempInventory.filter((item: InventoryItem) => item.type === 'equipment').length;
     if (itemsByType.equipment.length > (inventorySlots.equipment - currentEquipmentCount)) {
-        return { success: false, finalItemsToAdd: [] };
+        return { success: false, finalItemsToAdd: [], updatedInventory: currentInventory };
     }
     finalItemsToAdd.push(...itemsByType.equipment);
 
@@ -54,35 +54,69 @@ export const addItemsToInventory = (currentInventory: InventoryItem[], inventory
         }
 
         if ((currentCategorySlotsUsed + neededNewSlots) > inventorySlots[category]) {
-            return { success: false, finalItemsToAdd: [] };
+            return { success: false, finalItemsToAdd: [], updatedInventory: currentInventory };
         }
 
-        // If successful, add stackable items to finalItemsToAdd, handling new stacks
-        for (const item of items) {
-            let quantityLeft = item.quantity || 1;
-            // Try to stack into items already in finalItemsToAdd (from this batch)
-            for (const finalItem of finalItemsToAdd) {
+        // If successful, add remaining items that couldn't be stacked to finalItemsToAdd
+        // We already stacked into existing items in tempInventory, so we only need to add the remaining quantities
+        for (const name in stackableToAdd) {
+            let quantityLeft = stackableToAdd[name];
+            
+            // Subtract what was already stacked into existing items
+            for (const existingItem of currentCategoryItems) {
                 if (quantityLeft <= 0) break;
-                if (finalItem.name === item.name && (finalItem.quantity || 0) < 100) {
-                    const space = 100 - (finalItem.quantity || 0);
-                    const toAdd = Math.min(quantityLeft, space);
-                    finalItem.quantity = (finalItem.quantity || 0) + toAdd;
-                    quantityLeft -= toAdd;
+                if (existingItem.name === name) {
+                    // Calculate how much was added to this item
+                    const originalQuantity = (currentInventory.find(i => i.id === existingItem.id)?.quantity || 0);
+                    const addedQuantity = (existingItem.quantity || 0) - originalQuantity;
+                    quantityLeft -= addedQuantity;
                 }
             }
-            // If still quantity left, add as new items
-            while (quantityLeft > 0) {
-                const toAdd = Math.min(quantityLeft, 100);
-                const template = [...Object.values(CONSUMABLE_ITEMS), ...Object.values(MATERIAL_ITEMS)].find(t => t.name === item.name) as Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'>;
-                if (template) {
-                     finalItemsToAdd.push({ ...template, id: `item-${randomUUID()}`, quantity: toAdd, createdAt: Date.now(), isEquipped: false, stars: 0, level: 1 });
+            
+            // Any remaining quantity needs new slots
+            if (quantityLeft > 0) {
+                // Try to stack into items already in finalItemsToAdd (from this batch)
+                for (const finalItem of finalItemsToAdd) {
+                    if (quantityLeft <= 0) break;
+                    if (finalItem.name === name && (finalItem.quantity || 0) < 100) {
+                        const space = 100 - (finalItem.quantity || 0);
+                        const toAdd = Math.min(quantityLeft, space);
+                        finalItem.quantity = (finalItem.quantity || 0) + toAdd;
+                        quantityLeft -= toAdd;
+                    }
                 }
-                quantityLeft -= toAdd;
+                
+                // If still quantity left, add as new items
+                while (quantityLeft > 0) {
+                    const toAdd = Math.min(quantityLeft, 100);
+                    const template = [...Object.values(CONSUMABLE_ITEMS), ...Object.values(MATERIAL_ITEMS)].find(t => t.name === name) as Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'>;
+                    if (template) {
+                        finalItemsToAdd.push({ ...template, id: `item-${randomUUID()}`, quantity: toAdd, createdAt: Date.now(), isEquipped: false, stars: 0, level: 1 });
+                    }
+                    quantityLeft -= toAdd;
+                }
             }
         }
     }
 
-    return { success: true, finalItemsToAdd };
+    // Create updated inventory
+    // tempInventory already has stacking applied to existing items (quantities increased)
+    // finalItemsToAdd contains only new items that couldn't be stacked
+    // So we need to combine tempInventory (with updated quantities) and finalItemsToAdd
+    // But we need to be careful: tempInventory contains ALL existing items, and finalItemsToAdd contains only new items
+    
+    // The updated inventory should be:
+    // 1. All items from tempInventory (existing items with updated quantities from stacking)
+    // 2. Plus all items from finalItemsToAdd (new items that need new slots)
+    const updatedInventory: InventoryItem[] = [];
+    
+    // Add all items from tempInventory (these include the stacked items with updated quantities)
+    updatedInventory.push(...tempInventory);
+    
+    // Add new items from finalItemsToAdd (these are items that couldn't be stacked and need new slots)
+    updatedInventory.push(...finalItemsToAdd);
+
+    return { success: true, finalItemsToAdd, updatedInventory };
 };
 
 export const createItemInstancesFromReward = (itemRefs: (InventoryItem | { itemId: string; quantity: number })[]): InventoryItem[] => {

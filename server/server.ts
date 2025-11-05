@@ -3,7 +3,7 @@ import cors from 'cors';
 import { randomUUID } from 'crypto';
 import process from 'process';
 import http from 'http';
-import { createWebSocketServer } from './socket.js';
+import { createWebSocketServer, broadcast } from './socket.js';
 import { handleAction, resetAndGenerateQuests, updateQuestProgress } from './gameActions.js';
 import { regenerateActionPoints } from './effectService.js';
 import { updateGameStates } from './gameModes.js';
@@ -14,7 +14,7 @@ import * as types from '../types.js';
 import { processGameSummary, endGame } from './summaryService.js';
 // FIX: Correctly import from the placeholder module.
 import * as aiPlayer from './aiPlayer.js';
-import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded } from './scheduledTasks.js';
+import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset } from './scheduledTasks.js';
 import * as tournamentService from './tournamentService.js';
 import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS } from '../constants';
 import { calculateTotalStats } from './statService.js';
@@ -136,6 +136,9 @@ const startServer = async () => {
             const activeGames = await db.getAllActiveGames();
             const originalGamesJson = activeGames.map(g => JSON.stringify(g));
             
+            // Handle weekly tournament reset (Monday 0:00 KST)
+            await processWeeklyTournamentReset();
+            
             // Handle ranking rewards
             await processRankingRewards(volatileState);
 
@@ -187,10 +190,12 @@ const startServer = async () => {
             for (const negId of Object.keys(volatileState.negotiations)) {
                  const neg = volatileState.negotiations[negId];
                  if (now > neg.deadline) {
-                    // Only the challenger's status is 'negotiating', so only they need a status reset.
                     const challengerId = neg.challenger.id;
+                    const opponentId = neg.opponent.id;
                     const challengerStatus = volatileState.userStatuses[challengerId];
+                    const opponentStatus = volatileState.userStatuses[opponentId];
 
+                    // Challenger 상태 업데이트
                     if (challengerStatus?.status === 'negotiating') {
                         // Check if they are part of another negotiation before setting to waiting
                         const hasOtherNegotiations = Object.values(volatileState.negotiations).some(
@@ -198,6 +203,17 @@ const startServer = async () => {
                         );
                         if (!hasOtherNegotiations) {
                              volatileState.userStatuses[challengerId].status = types.UserStatus.Waiting;
+                        }
+                    }
+
+                    // Opponent 상태 업데이트 (상대방이 응답하지 않아서 자동 거절)
+                    if (opponentStatus?.status === 'negotiating') {
+                        // Check if they are part of another negotiation before setting to waiting
+                        const hasOtherNegotiations = Object.values(volatileState.negotiations).some(
+                            otherNeg => otherNeg.id !== negId && (otherNeg.challenger.id === opponentId || otherNeg.opponent.id === opponentId)
+                        );
+                        if (!hasOtherNegotiations) {
+                             volatileState.userStatuses[opponentId].status = types.UserStatus.Waiting;
                         }
                     }
 
@@ -209,6 +225,12 @@ const startServer = async () => {
                          }
                      }
                      delete volatileState.negotiations[negId];
+                     
+                     // 만료된 negotiation 삭제 후 브로드캐스트하여 양쪽 클라이언트에 알림
+                     broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
+                     
+                     // USER_STATUS_UPDATE도 브로드캐스트하여 상태 변경을 확실히 전달
+                     broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
                  }
             }
 
@@ -415,22 +437,35 @@ const startServer = async () => {
             const userLevelSum = updatedUser.strategyLevel + updatedUser.playfulLevel;
             let itemsUnequipped = false;
             const validEquipped: types.Equipment = {};
-            for(const slot in updatedUser.equipment) {
-                const itemId = updatedUser.equipment[slot as types.EquipmentSlot];
-                const item = updatedUser.inventory.find(i => i.id === itemId);
-                if (item) {
-                    const requiredLevel = GRADE_LEVEL_REQUIREMENTS[item.grade];
-                    if (userLevelSum >= requiredLevel) {
-                        validEquipped[slot as types.EquipmentSlot] = itemId;
-                    } else {
-                        const invItem = updatedUser.inventory.find(i => i.id === itemId);
-                        if(invItem) invItem.isEquipped = false;
-                        itemsUnequipped = true;
+            
+            // equipment와 inventory가 모두 존재하는지 확인
+            if (updatedUser.equipment && typeof updatedUser.equipment === 'object' && Object.keys(updatedUser.equipment).length > 0) {
+                if (!updatedUser.inventory || !Array.isArray(updatedUser.inventory) || updatedUser.inventory.length === 0) {
+                    console.warn(`[/api/auth/login] User ${updatedUser.id} has equipment but empty inventory! Keeping equipment.`);
+                    // inventory가 비어있어도 equipment는 유지 (나중에 복구 가능하도록)
+                } else {
+                    for(const slot in updatedUser.equipment) {
+                        const itemId = updatedUser.equipment[slot as types.EquipmentSlot];
+                        const item = updatedUser.inventory.find(i => i.id === itemId);
+                        if (item) {
+                            const requiredLevel = GRADE_LEVEL_REQUIREMENTS[item.grade];
+                            if (userLevelSum >= requiredLevel) {
+                                validEquipped[slot as types.EquipmentSlot] = itemId;
+                            } else {
+                                const invItem = updatedUser.inventory.find(i => i.id === itemId);
+                                if(invItem) invItem.isEquipped = false;
+                                itemsUnequipped = true;
+                            }
+                        } else {
+                            // inventory에 아이템이 없지만, equipment는 유지 (데이터 불일치 방지)
+                            console.warn(`[/api/auth/login] User ${updatedUser.id} has equipment ${itemId} in slot ${slot} but item not found in inventory. Keeping equipment.`);
+                            validEquipped[slot as types.EquipmentSlot] = itemId;
+                        }
+                    }
+                    if (itemsUnequipped && Object.keys(validEquipped).length < Object.keys(updatedUser.equipment).length) {
+                        updatedUser.equipment = validEquipped;
                     }
                 }
-            }
-            if (itemsUnequipped) {
-                updatedUser.equipment = validEquipped;
             }
 
             const allGameModesList = [...SPECIAL_GAME_MODES, ...PLAYFUL_GAME_MODES].map(m => m.mode);
@@ -458,6 +493,26 @@ const startServer = async () => {
                 presetsMigrated = true;
             }
             // --- End Equipment Presets Migration Logic ---
+
+            // equipment와 inventory의 isEquipped 플래그 동기화 (전투력 계산을 위해 필수)
+            if (updatedUser.equipment && typeof updatedUser.equipment === 'object' && Object.keys(updatedUser.equipment).length > 0) {
+                if (updatedUser.inventory && Array.isArray(updatedUser.inventory)) {
+                    // 먼저 모든 장비 아이템의 isEquipped를 false로 설정
+                    updatedUser.inventory.forEach(item => {
+                        if (item.type === 'equipment') {
+                            item.isEquipped = false;
+                        }
+                    });
+                    
+                    // equipment에 있는 아이템 ID들을 inventory에서 찾아서 isEquipped = true로 설정
+                    for (const [slot, itemId] of Object.entries(updatedUser.equipment)) {
+                        const item = updatedUser.inventory.find(i => i.id === itemId);
+                        if (item && item.type === 'equipment') {
+                            item.isEquipped = true;
+                        }
+                    }
+                }
+            }
 
             if (userBeforeUpdate !== JSON.stringify(updatedUser) || statsMigrated || itemsUnequipped || presetsMigrated) {
                 await db.updateUser(updatedUser);
@@ -609,9 +664,30 @@ const startServer = async () => {
             }
             // --- End Equipment Presets Migration Logic ---
 
+            // equipment와 inventory의 isEquipped 플래그 동기화 (전투력 계산을 위해 필수)
+            if (updatedUser.equipment && typeof updatedUser.equipment === 'object' && Object.keys(updatedUser.equipment).length > 0) {
+                if (updatedUser.inventory && Array.isArray(updatedUser.inventory)) {
+                    // 먼저 모든 장비 아이템의 isEquipped를 false로 설정
+                    updatedUser.inventory.forEach(item => {
+                        if (item.type === 'equipment') {
+                            item.isEquipped = false;
+                        }
+                    });
+                    
+                    // equipment에 있는 아이템 ID들을 inventory에서 찾아서 isEquipped = true로 설정
+                    for (const [slot, itemId] of Object.entries(updatedUser.equipment)) {
+                        const item = updatedUser.inventory.find(i => i.id === itemId);
+                        if (item && item.type === 'equipment') {
+                            item.isEquipped = true;
+                        }
+                    }
+                }
+            }
+
             if (userBeforeUpdate !== JSON.stringify(updatedUser) || statsMigrated || inventorySlotsUpdated || presetsMigrated) {
                 console.log(`[API/State] User ${user.nickname}: Updating user in DB.`);
                 await db.updateUser(updatedUser);
+                user = updatedUser; // updatedUser를 반환하기 위해 user에 할당
             }
             
             console.log('[/api/state] Getting all DB data');
@@ -636,8 +712,9 @@ const startServer = async () => {
                 }
             }
             
+            // 현재 사용자의 전체 데이터를 포함 (다른 사용자는 최적화된 공개 정보만)
             if (dbState.users[userId]) {
-                dbState.users[userId] = updatedUser;
+                dbState.users[userId] = updatedUser; // 전체 사용자 데이터
             }
 
             // Combine persisted state with in-memory volatile state
@@ -723,8 +800,19 @@ const startServer = async () => {
             
             res.status(200).json({ success: true, ...result.clientResponse });
         } catch (e: any) {
-            console.error(`Action error for ${req.body?.type}:`, e);
-            res.status(500).json({ message: '요청 처리 중 오류가 발생했습니다.'});
+            console.error(`[API] Action error for ${req.body?.type}:`, e);
+            console.error(`[API] Error stack:`, e.stack);
+            console.error(`[API] Error details:`, {
+                message: e.message,
+                name: e.name,
+                code: e.code,
+                userId: req.body?.userId,
+                payload: req.body?.payload
+            });
+            res.status(500).json({ 
+                message: '요청 처리 중 오류가 발생했습니다.',
+                error: process.env.NODE_ENV === 'development' ? e.message : undefined
+            });
         }
     });
 

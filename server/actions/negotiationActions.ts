@@ -109,7 +109,13 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
         
             volatileState.negotiations[negotiationId] = newNegotiation;
             volatileState.userStatuses[user.id].status = UserStatus.Negotiating;
-            return {};
+            // Draft negotiation이 생성되었으므로 브로드캐스트 (challenger가 설정을 조정할 수 있도록)
+            broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
+            return {
+                clientResponse: {
+                    negotiationId: negotiationId
+                }
+            };
         }
         case 'SEND_CHALLENGE': {
             const { negotiationId, settings } = payload;
@@ -136,11 +142,19 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
                 return { error: '상대방이 다른 대국 신청을 먼저 받았습니다. 잠시 후 다시 시도해주세요.' };
             }
 
+            negotiation.previousSettings = undefined; // 초기 신청이므로 이전 설정 없음
             negotiation.settings = settings;
             negotiation.status = 'pending';
             negotiation.proposerId = negotiation.opponent.id;
-            negotiation.turnCount = 1;
+            negotiation.turnCount = 0; // 초기 신청은 turnCount 0
             negotiation.deadline = now + 60000;
+            
+            // 상대방의 상태를 Negotiating으로 업데이트 (대국 신청을 받았으므로)
+            if (volatileState.userStatuses[opponent.id]) {
+                volatileState.userStatuses[opponent.id].status = UserStatus.Negotiating;
+            }
+            
+            broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
             return {};
         }
         case 'UPDATE_NEGOTIATION': {
@@ -150,6 +164,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
                 return { error: 'Cannot update this negotiation now.' };
             }
 
+            negotiation.previousSettings = { ...negotiation.settings }; // 이전 설정 저장
             negotiation.settings = settings;
             negotiation.proposerId = negotiation.challenger.id === user.id ? negotiation.opponent.id : negotiation.challenger.id;
             negotiation.turnCount = (negotiation.turnCount || 0) + 1;
@@ -157,9 +172,13 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
 
             if (negotiation.turnCount >= 10) {
                 volatileState.userStatuses[negotiation.challenger.id].status = UserStatus.Waiting;
+                volatileState.userStatuses[negotiation.opponent.id].status = UserStatus.Waiting;
                 delete volatileState.negotiations[negotiationId];
+                broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
                 return { error: 'Negotiation failed after too many turns.' };
             }
+            
+            broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
             return {};
         }
         case 'ACCEPT_NEGOTIATION': {
@@ -219,7 +238,16 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             });
 
             delete volatileState.negotiations[negotiationId];
-            return {};
+            
+            // 게임 생성 후 사용자 상태와 게임 정보 브로드캐스트
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
+            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            
+            return {
+                clientResponse: {
+                    gameId: game.id
+                }
+            };
         }
         case 'DECLINE_NEGOTIATION': {
             const { negotiationId } = payload;
@@ -253,8 +281,32 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
                 }
             }
         
+            // 거절한 사람이 opponent인 경우 challenger에게 거절 메시지 전달
+            const isOpponentDeclining = negotiation.opponent.id === user.id;
+            const declinedMessage = isOpponentDeclining ? {
+                declinedBy: opponent.nickname,
+                message: `${opponent.nickname}님이 대국 신청을 거절했습니다.`
+            } : undefined;
+        
             delete volatileState.negotiations[negotiationId];
-            return {};
+            
+            // 발신자(challenger)에게 거절 메시지 전달
+            if (isOpponentDeclining && declinedMessage) {
+                broadcast({ 
+                    type: 'CHALLENGE_DECLINED', 
+                    payload: { 
+                        negotiationId,
+                        declinedMessage,
+                        challengerId: challenger.id
+                    } 
+                });
+            }
+            
+            broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
+            
+            return {
+                clientResponse: declinedMessage ? { declinedMessage } : {}
+            };
         }
         case 'START_AI_GAME': {
             const { mode, settings } = payload;

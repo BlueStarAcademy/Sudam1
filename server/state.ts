@@ -4,7 +4,7 @@ export const volatileState: VolatileState = {
     userConnections: {},
     userStatuses: {},
     negotiations: {},
-    waitingRoomChats: { global: [] },
+    waitingRoomChats: { global: [], strategic: [], playful: [] },
     gameChats: {},
     userLastChatMessage: {},
     userConsecutiveChatMessages: {},

@@ -14,7 +14,7 @@ export function parseHash(hash: string): AppRoute {
         case 'lobby': return { view: 'lobby', params: { type: rest[0] || 'strategic' } };
         case 'waiting': return { view: 'waiting', params: { mode: rest[0] ? decodeURIComponent(rest[0]) as GameMode : null } };
         case 'game': return { view: 'game', params: { id: rest[0] } };
-        case 'tournament': return { view: 'tournament', params: {} };
+        case 'tournament': return { view: 'tournament', params: { type: rest[0] || null } };
         case 'singleplayer': return { view: 'singleplayer', params: {} };
         case 'admin': return { view: 'admin', params: {} };
         case 'register': return { view: 'register', params: {} };

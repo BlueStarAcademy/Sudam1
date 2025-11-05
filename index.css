@@ -655,6 +655,17 @@ input[type="range"]::-moz-range-thumb {
   }
 }
 
+@keyframes statChangeFade {
+    0% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+}
+
 @keyframes glow-secondary {
   from {
     text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #00ffff;

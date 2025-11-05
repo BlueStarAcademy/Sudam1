@@ -4,6 +4,7 @@ import { AppProvider } from './contexts/AppContext.js';
 import { useAppContext } from './hooks/useAppContext.js';
 import Router from './components/Router.js';
 import NegotiationModal from './components/NegotiationModal.js';
+import ChallengeReceivedModal from './components/ChallengeReceivedModal.js';
 import InventoryModal from './components/InventoryModal.js';
 import MailboxModal from './components/MailboxModal.js';
 import QuestsModal from './components/QuestsModal.js';
@@ -116,7 +117,7 @@ const AppContent: React.FC = () => {
         if (modals.rewardSummary) ids.push('rewardSummary');
         if (modals.isClaimAllSummaryOpen) ids.push('claimAllSummary');
         if (modals.isShopOpen) ids.push('shop');
-        if (modals.lastUsedItemResult) ids.push('itemObtained');
+        // itemObtained은 나중에 추가하여 항상 최상단에 위치
         if (modals.disassemblyResult) ids.push('disassemblyResult');
         if (modals.craftResult) ids.push('craftResult');
         if (modals.viewingUser) ids.push('viewingUser');
@@ -130,6 +131,9 @@ const AppContent: React.FC = () => {
         if (modals.enhancingItem) ids.push('enhancingItem');
         if (modals.isBlacksmithModalOpen) ids.push('blacksmith');
         if (modals.combinationResult) ids.push('combinationResult');
+        if (modals.isMbtiInfoModalOpen) ids.push('mbtiInfo');
+        // itemObtained은 항상 마지막에 추가하여 최상단에 표시
+        if (modals.lastUsedItemResult) ids.push('itemObtained');
         return ids;
     }, [modals, activeNegotiation]);
 
@@ -224,7 +228,73 @@ const AppContent: React.FC = () => {
                     {modals.pastRankingsInfo && <PastRankingsModal info={modals.pastRankingsInfo} onClose={handlers.closePastRankings} isTopmost={topmostModalId === 'pastRankings'} />}
                     {modals.moderatingUser && <AdminModerationModal user={modals.moderatingUser} currentUser={currentUserWithStatus} onClose={handlers.closeModerationModal} onAction={handlers.handleAction} isTopmost={topmostModalId === 'moderatingUser'} />}
                     {modals.viewingItem && <ItemDetailModal item={modals.viewingItem.item} isOwnedByCurrentUser={modals.viewingItem.isOwnedByCurrentUser} onClose={handlers.closeViewingItem} onStartEnhance={handlers.openEnhancementFromDetail} isTopmost={topmostModalId === 'viewingItem'} />}
-                    {activeNegotiation && <NegotiationModal negotiation={activeNegotiation} currentUser={currentUserWithStatus} onAction={handlers.handleAction} onlineUsers={onlineUsers} isTopmost={topmostModalId === 'negotiation'} />}
+                    {activeNegotiation && (() => {
+                        // Check if this is a received challenge (current user is opponent, and it's the initial turn)
+                        // 단, 이미 수정 제안이 시작된 경우(turnCount > 0)는 NegotiationModal 사용
+                        // 수신자가 받은 초기 신청서 또는 수정 제안 후 발신자가 받은 신청서
+                        const isReceivedChallenge = activeNegotiation.status === 'pending' && 
+                                                     ((activeNegotiation.opponent.id === currentUserWithStatus.id && 
+                                                       activeNegotiation.proposerId === activeNegotiation.opponent.id) ||
+                                                      (activeNegotiation.challenger.id === currentUserWithStatus.id && 
+                                                       activeNegotiation.proposerId === activeNegotiation.challenger.id &&
+                                                       activeNegotiation.turnCount > 0));
+                        
+                        // 발신자가 보는 초기 negotiation은 ChallengeSelectionModal에서 처리하므로 제외
+                        const isChallengerWaiting = activeNegotiation.challenger.id === currentUserWithStatus.id && 
+                                                    activeNegotiation.status === 'pending' && 
+                                                    activeNegotiation.proposerId === activeNegotiation.opponent.id &&
+                                                    activeNegotiation.turnCount === 0;
+                        
+                        if (isChallengerWaiting) {
+                            // 발신자는 ChallengeSelectionModal에서 응답을 기다리므로 NegotiationModal 표시하지 않음
+                            return null;
+                        }
+                        
+                        if (isReceivedChallenge) {
+                            return (
+                                <ChallengeReceivedModal
+                                    negotiation={activeNegotiation}
+                                    currentUser={currentUserWithStatus}
+                                    onAccept={(settings) => {
+                                        handlers.handleAction({ 
+                                            type: 'ACCEPT_NEGOTIATION', 
+                                            payload: { negotiationId: activeNegotiation.id, settings } 
+                                        });
+                                    }}
+                                    onDecline={() => {
+                                        handlers.handleAction({ 
+                                            type: 'DECLINE_NEGOTIATION', 
+                                            payload: { negotiationId: activeNegotiation.id } 
+                                        });
+                                    }}
+                                    onProposeModification={(settings) => {
+                                        // To switch to NegotiationModal for modification, call UPDATE_NEGOTIATION
+                                        handlers.handleAction({ 
+                                            type: 'UPDATE_NEGOTIATION', 
+                                            payload: { negotiationId: activeNegotiation.id, settings } 
+                                        });
+                                    }}
+                                    onClose={() => {
+                                        handlers.handleAction({ 
+                                            type: 'DECLINE_NEGOTIATION', 
+                                            payload: { negotiationId: activeNegotiation.id } 
+                                        });
+                                    }}
+                                    onAction={handlers.handleAction}
+                                />
+                            );
+                        }
+                        // 수정 제안이 시작된 경우(turnCount > 0)만 NegotiationModal 사용
+                        return (
+                            <NegotiationModal 
+                                negotiation={activeNegotiation} 
+                                currentUser={currentUserWithStatus} 
+                                onAction={handlers.handleAction} 
+                                onlineUsers={onlineUsers} 
+                                isTopmost={topmostModalId === 'negotiation'} 
+                            />
+                        );
+                    })()}
                     {modals.isMbtiInfoModalOpen && <MbtiInfoModal onClose={handlers.closeMbtiInfoModal} isTopmost={topmostModalId === 'mbtiInfo'} />}
                     {modals.isBlacksmithModalOpen && <BlacksmithModal 
                         onClose={handlers.closeBlacksmithModal} 

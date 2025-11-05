@@ -112,6 +112,7 @@ export const rowToUser = (row: any): types.User | null => {
             singlePlayerMissions: safeParse(row.singlePlayerMissions, {}, row.id, 'singlePlayerMissions'),
             blacksmithLevel: row.blacksmithLevel ?? 1,
             blacksmithXp: row.blacksmithXp ?? 0,
+            cumulativeTournamentScore: row.cumulativeTournamentScore ?? 0,
         };
         return user;
     } catch (e) {

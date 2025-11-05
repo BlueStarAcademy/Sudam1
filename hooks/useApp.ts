@@ -194,9 +194,18 @@ export const useApp = () => {
     const activeGame = useMemo(() => {
         if (!currentUserWithStatus) return null;
         const gameId = currentUserWithStatus.gameId || currentUserWithStatus.spectatingGameId;
-        if (gameId && (currentUserWithStatus.status === 'in-game' || currentUserWithStatus.status === 'spectating' || currentUserWithStatus.status === 'negotiating')) {
-             const game = liveGames[gameId];
-             if (game) return game;
+        if (gameId) {
+            // status가 'in-game'이거나 'spectating'이면 게임으로 라우팅
+            // 'negotiating' 상태는 제거 (대국 신청 중에는 게임이 아님)
+            if (currentUserWithStatus.status === 'in-game' || currentUserWithStatus.status === 'spectating') {
+                const game = liveGames[gameId];
+                if (game) {
+                    console.log('[useApp] activeGame calculated:', gameId, 'status:', currentUserWithStatus.status);
+                    return game;
+                } else {
+                    console.log('[useApp] activeGame: gameId exists but game not in liveGames yet:', gameId);
+                }
+            }
         }
         return null;
     }, [currentUserWithStatus, liveGames]);
@@ -259,6 +268,12 @@ export const useApp = () => {
     useEffect(() => {
         if (currentUser) {
             sessionStorage.setItem('currentUser', JSON.stringify(currentUser));
+            console.log('[useApp] currentUser updated:', {
+                id: currentUser.id,
+                inventoryLength: currentUser.inventory?.length,
+                gold: currentUser.gold,
+                diamonds: currentUser.diamonds
+            });
         } else {
             sessionStorage.removeItem('currentUser');
         }
@@ -277,35 +292,9 @@ export const useApp = () => {
                 };
             });
         }
-        if (action.type === 'TOGGLE_EQUIP_ITEM') {
-            setCurrentUser(prevUser => {
-                if (!prevUser) return null;
-                const { itemId } = action.payload;
-                const itemToToggle = prevUser.inventory.find(i => i.id === itemId);
-    
-                if (!itemToToggle || itemToToggle.type !== 'equipment' || !itemToToggle.slot) {
-                    return prevUser;
-                }
-    
-                const slotToUpdate = itemToToggle.slot;
-                const isEquipping = !itemToToggle.isEquipped;
-                
-                const newEquipment = { ...prevUser.equipment };
-                if (isEquipping) {
-                    newEquipment[slotToUpdate] = itemToToggle.id;
-                } else {
-                    delete newEquipment[slotToUpdate];
-                }
-    
-                const newInventory = prevUser.inventory.map(item => {
-                    if (item.id === itemId) return { ...item, isEquipped: isEquipping };
-                    if (isEquipping && item.slot === slotToUpdate && item.id !== itemId) return { ...item, isEquipped: false };
-                    return item;
-                });
-                
-                return { ...prevUser, inventory: newInventory, equipment: newEquipment };
-            });
-        } else if (action.type === 'SAVE_PRESET') {
+        // Optimistic update는 제거 - 서버 응답에만 의존
+        // TOGGLE_EQUIP_ITEM의 optimistic update는 서버 응답과 충돌할 수 있으므로 제거
+        if (action.type === 'SAVE_PRESET') {
             setCurrentUser(prevUser => {
                 if (!prevUser) return null;
                 const { preset, index } = action.payload;
@@ -324,15 +313,53 @@ export const useApp = () => {
             });
 
             if (!res.ok) {
-                const errorData = await res.json();
-                showError(errorData.message || 'An unknown error occurred.');
-                 if (action.type === 'TOGGLE_EQUIP_ITEM' || action.type === 'USE_ITEM') {
+                let errorMessage = 'An unknown error occurred.';
+                try {
+                    const errorData = await res.json();
+                    errorMessage = errorData.message || errorData.error || errorMessage;
+                    console.error(`[handleAction] ${action.type} - HTTP ${res.status} error:`, errorData);
+                } catch (parseError) {
+                    console.error(`[handleAction] ${action.type} - Failed to parse error response:`, parseError);
+                    errorMessage = `서버 오류 (${res.status})`;
+                }
+                showError(errorMessage);
+                if (action.type === 'TOGGLE_EQUIP_ITEM' || action.type === 'USE_ITEM') {
                     setCurrentUser(prevUser => prevUser ? { ...prevUser } : null);
-                 }
+                }
             } else {
                 const result = await res.json();
+                if (result.error) {
+                    console.error(`[handleAction] ${action.type} - Server returned error:`, result.error);
+                    showError(result.message || '서버 오류가 발생했습니다.');
+                    return;
+                }
+                console.log(`[handleAction] ${action.type} - Response received:`, {
+                    hasUpdatedUser: !!result.updatedUser,
+                    hasObtainedItemsBulk: !!result.obtainedItemsBulk,
+                    hasRewardSummary: !!result.rewardSummary,
+                    hasDisassemblyResult: !!result.disassemblyResult,
+                    hasCombinationResult: !!result.combinationResult,
+                    hasEnhancementOutcome: !!result.enhancementOutcome,
+                    hasCraftResult: !!result.craftResult,
+                    resultKeys: Object.keys(result)
+                });
+                
                 if (result.updatedUser) {
-                    setCurrentUser(result.updatedUser);
+                    // 깊은 복사를 수행하여 React가 변경을 감지하도록 함
+                    const updatedUser = JSON.parse(JSON.stringify(result.updatedUser));
+                    console.log(`[handleAction] ${action.type} - Setting updatedUser:`, {
+                        inventoryLength: updatedUser.inventory?.length,
+                        gold: updatedUser.gold,
+                        diamonds: updatedUser.diamonds,
+                        beforeInventoryLength: currentUser?.inventory?.length
+                    });
+                    // 상태 업데이트를 강제로 트리거하기 위해 함수형 업데이트 사용
+                    setCurrentUser(() => {
+                        // 매번 새로운 객체를 반환하여 React가 변경을 확실히 감지하도록 함
+                        return JSON.parse(JSON.stringify(updatedUser));
+                    });
+                } else {
+                    console.warn(`[handleAction] ${action.type} - No updatedUser in response!`);
                 }
                  if (result.obtainedItemsBulk) setLastUsedItemResult(result.obtainedItemsBulk);
                  if (result.rewardSummary) setRewardSummary(result.rewardSummary);
@@ -369,9 +396,78 @@ export const useApp = () => {
                 if (result.redirectToTournament) {
                     window.location.hash = `#/tournament/${result.redirectToTournament}`;
                 }
+                // 거절 메시지 표시
+                if (result.declinedMessage) {
+                    showError(result.declinedMessage.message);
+                }
+                
+                // ACCEPT_NEGOTIATION 후 게임이 생성되었을 때 라우팅 처리
+                if (result.clientResponse?.gameId && action.type === 'ACCEPT_NEGOTIATION') {
+                    const gameId = result.clientResponse.gameId;
+                    console.log('[handleAction] ACCEPT_NEGOTIATION - gameId received:', gameId);
+                    
+                    // WebSocket 업데이트를 기다리면서 여러 번 시도
+                    let attempts = 0;
+                    const maxAttempts = 20;
+                    const tryRoute = () => {
+                        attempts++;
+                        console.log(`[handleAction] Attempt ${attempts}/${maxAttempts} to route to game ${gameId}`);
+                        
+                        // liveGames와 onlineUsers 상태를 직접 확인
+                        setLiveGames(currentGames => {
+                            const hasGame = currentGames[gameId] !== undefined;
+                            
+                            setOnlineUsers(prevOnlineUsers => {
+                                const currentUserStatus = prevOnlineUsers.find(u => u.id === currentUser?.id);
+                                const hasStatus = currentUserStatus?.gameId === gameId;
+                                const isInGame = currentUserStatus?.status === 'in-game';
+                                
+                                console.log('[handleAction] Route check:', {
+                                    hasGame,
+                                    hasStatus,
+                                    isInGame,
+                                    gameId,
+                                    userGameId: currentUserStatus?.gameId,
+                                    userStatus: currentUserStatus?.status
+                                });
+                                
+                                // 조건을 만족하면 즉시 라우팅
+                                if (hasGame && hasStatus && isInGame) {
+                                    console.log('[handleAction] All conditions met, routing to game:', gameId);
+                                    setTimeout(() => {
+                                        window.location.hash = `#/game/${gameId}`;
+                                    }, 100);
+                                    return prevOnlineUsers;
+                                }
+                                
+                                // 게임이 있으면 상태 업데이트를 기다리며 계속 시도
+                                if (hasGame && attempts < maxAttempts) {
+                                    setTimeout(tryRoute, 200);
+                                } else if (!hasGame && attempts < maxAttempts) {
+                                    // 게임이 아직 없으면 더 기다림
+                                    setTimeout(tryRoute, 300);
+                                } else {
+                                    // 최대 시도 횟수에 도달했어도 라우팅 시도
+                                    console.warn('[handleAction] Max attempts reached, routing anyway:', gameId);
+                                    setTimeout(() => {
+                                        window.location.hash = `#/game/${gameId}`;
+                                    }, 100);
+                                }
+                                return prevOnlineUsers;
+                            });
+                            
+                            return currentGames;
+                        });
+                    };
+                    
+                    // 첫 시도는 300ms 후에 (WebSocket 메시지를 받을 시간을 줌)
+                    setTimeout(tryRoute, 300);
+                }
             }
         } catch (err: any) {
-            showError(err.message);
+            console.error(`[handleAction] ${action.type} - Exception:`, err);
+            console.error(`[handleAction] Error stack:`, err.stack);
+            showError(err.message || '요청 처리 중 오류가 발생했습니다.');
         }
     }, [currentUser?.id]);
 
@@ -399,49 +495,282 @@ export const useApp = () => {
         let reconnectTimeout: NodeJS.Timeout | null = null;
         let isIntentionalClose = false;
         let shouldReconnect = true;
+        let isConnecting = false; // 중복 연결 방지 플래그
+
+        const getCloseCodeMeaning = (code: number): string => {
+            switch (code) {
+                case 1000: return 'Normal Closure';
+                case 1001: return 'Going Away';
+                case 1002: return 'Protocol Error';
+                case 1003: return 'Unsupported Data';
+                case 1006: return 'Abnormal Closure (no close frame)';
+                case 1007: return 'Invalid Data';
+                case 1008: return 'Policy Violation';
+                case 1009: return 'Message Too Big';
+                case 1010: return 'Missing Extension';
+                case 1011: return 'Internal Error';
+                case 1012: return 'Service Restart';
+                case 1013: return 'Try Again Later';
+                case 1014: return 'Bad Gateway';
+                case 1015: return 'TLS Handshake';
+                default: return `Unknown (${code})`;
+            }
+        };
+
+        // 초기 상태 처리 헬퍼 함수
+        const processInitialState = (users: Record<string, any>, otherData: {
+            onlineUsers?: any[];
+            liveGames?: Record<string, any>;
+            negotiations?: Record<string, any>;
+            waitingRoomChats?: Record<string, any>;
+            gameChats?: Record<string, any>;
+            adminLogs?: any[];
+            announcements?: any[];
+            globalOverrideAnnouncement?: any;
+            gameModeAvailability?: Record<string, boolean>;
+            announcementInterval?: number;
+        }) => {
+            console.log('[WebSocket] Processing initial state - users:', users ? Object.keys(users).length : 0, 'users');
+            if (users && typeof users === 'object' && !Array.isArray(users)) {
+                setUsersMap(users);
+                console.log('[WebSocket] usersMap updated with', Object.keys(users).length, 'users');
+                
+                // 현재 사용자의 데이터가 초기 상태에 포함되어 있으면 업데이트
+                if (currentUser && users[currentUser.id]) {
+                    const initialUserData = users[currentUser.id];
+                    if (initialUserData) {
+                        setCurrentUser(prev => prev ? {
+                            ...prev,
+                            ...initialUserData,
+                            // inventory와 equipment는 서버에서 받은 최신 값으로 업데이트 (전투력 계산 및 장비 표시를 위해)
+                            inventory: initialUserData.inventory || prev.inventory,
+                            equipment: initialUserData.equipment || prev.equipment,
+                            // mail과 quests는 개인 정보이므로 이전 값 유지 (서버에서 전송하지 않음)
+                            mail: prev.mail,
+                            quests: prev.quests
+                        } : null);
+                    }
+                }
+            } else {
+                console.warn('[WebSocket] Invalid users data:', users);
+                setUsersMap({});
+            }
+            if (otherData) {
+                if (otherData.onlineUsers !== undefined) setOnlineUsers(otherData.onlineUsers || []);
+                if (otherData.liveGames !== undefined) setLiveGames(otherData.liveGames || {});
+                if (otherData.negotiations !== undefined) setNegotiations(otherData.negotiations || {});
+                if (otherData.waitingRoomChats !== undefined) setWaitingRoomChats(otherData.waitingRoomChats || {});
+                if (otherData.gameChats !== undefined) setGameChats(otherData.gameChats || {});
+                if (otherData.adminLogs !== undefined) setAdminLogs(otherData.adminLogs || []);
+                if (otherData.announcements !== undefined) setAnnouncements(otherData.announcements || []);
+                if (otherData.globalOverrideAnnouncement !== undefined) setGlobalOverrideAnnouncement(otherData.globalOverrideAnnouncement || null);
+                if (otherData.gameModeAvailability !== undefined) setGameModeAvailability(otherData.gameModeAvailability || {});
+                if (otherData.announcementInterval !== undefined) setAnnouncementInterval(otherData.announcementInterval || 3);
+            }
+        };
 
         const connectWebSocket = () => {
             if (!shouldReconnect || !currentUser) return;
             
+            // 이미 연결 중이면 중복 연결 방지
+            if (isConnecting) {
+                console.log('[WebSocket] Connection already in progress, skipping...');
+                return;
+            }
+            
+            // 이미 열려있는 연결이 있으면 재연결하지 않음
+            if (ws && ws.readyState === WebSocket.OPEN) {
+                console.log('[WebSocket] Connection already open, skipping...');
+                return;
+            }
+            
+            // 기존 타임아웃 정리
+            if (reconnectTimeout) {
+                clearTimeout(reconnectTimeout);
+                reconnectTimeout = null;
+            }
+            
+            isConnecting = true;
+            
             try {
                 // Close existing connection if any
                 if (ws && ws.readyState !== WebSocket.CLOSED) {
+                    console.log('[WebSocket] Closing existing connection before reconnecting');
+                    isIntentionalClose = true;
                     ws.close();
+                    ws = null;
                 }
                 
-                ws = new WebSocket(`ws://${window.location.hostname}:4000`);
+                // WebSocket 연결 URL 결정
+                // Vite 개발 서버를 사용하는 경우 프록시를 통해 연결
+                let wsUrl: string;
+                
+                // Vite 개발 서버를 사용하는 경우 (포트가 5173이거나 hostname이 localhost/127.0.0.1인 경우)
+                const isViteDevServer = window.location.port === '5173' || 
+                                       window.location.hostname === 'localhost' || 
+                                       window.location.hostname === '127.0.0.1' ||
+                                       window.location.hostname.includes('192.168.');
+                
+                if (isViteDevServer) {
+                    // 개발 환경: Vite 프록시를 통해 연결 (/ws로 프록시됨)
+                    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    wsUrl = `${wsProtocol}//${window.location.host}/ws`;
+                } else {
+                    // 프로덕션 환경: 직접 포트 4000으로 연결
+                    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                    wsUrl = `${wsProtocol}//${window.location.hostname}:4000`;
+                }
+                
+                console.log('[WebSocket] Connecting to:', wsUrl);
+                console.log('[WebSocket] Current location:', {
+                    protocol: window.location.protocol,
+                    hostname: window.location.hostname,
+                    port: window.location.port,
+                    href: window.location.href
+                });
+                
+                try {
+                    ws = new WebSocket(wsUrl);
+                } catch (error) {
+                    console.error('[WebSocket] Failed to create WebSocket:', error);
+                    isConnecting = false;
+                    // 재연결 시도
+                    if (!isIntentionalClose && shouldReconnect && currentUser) {
+                        reconnectTimeout = setTimeout(() => {
+                            if (shouldReconnect && currentUser && !isConnecting) {
+                                console.log('[WebSocket] Retrying connection after creation error...');
+                                isIntentionalClose = false;
+                                connectWebSocket();
+                            }
+                        }, 3000);
+                    }
+                    return;
+                }
+                
+                // 연결 타임아웃 설정 (30초)
+                let connectionTimeout: NodeJS.Timeout | null = setTimeout(() => {
+                    if (ws && ws.readyState === WebSocket.CONNECTING) {
+                        console.warn('[WebSocket] Connection timeout, closing...');
+                        ws.close();
+                    }
+                    connectionTimeout = null;
+                }, 30000);
 
                 ws.onopen = () => {
-                    console.log('[WebSocket] Connected');
+                    console.log('[WebSocket] Connected successfully');
                     isIntentionalClose = false;
+                    isConnecting = false; // 연결 완료
+                    if (connectionTimeout) {
+                        clearTimeout(connectionTimeout);
+                        connectionTimeout = null;
+                    }
                 };
 
                 ws.onmessage = (event) => {
                     try {
                         const message = JSON.parse(event.data);
+                        
+                        // 연결 확인 메시지 처리
+                        if (message.type === 'CONNECTION_ESTABLISHED') {
+                            console.log('[WebSocket] Connection established, waiting for initial state...');
+                            return;
+                        }
 
                         switch (message.type) {
+                            case 'INITIAL_STATE_START':
+                                // 청크 전송 시작 - 첫 번째 청크
+                                console.log('[WebSocket] Receiving chunked initial state (start):', {
+                                    chunkIndex: message.payload.chunkIndex,
+                                    totalChunks: message.payload.totalChunks
+                                });
+                                // 버퍼 초기화 및 첫 청크 데이터 병합
+                                if (!(window as any).__chunkedStateBuffer) {
+                                    (window as any).__chunkedStateBuffer = {
+                                        users: {},
+                                        receivedChunks: 0,
+                                        totalChunks: message.payload.totalChunks,
+                                        otherData: null
+                                    };
+                                }
+                                const startBuffer = (window as any).__chunkedStateBuffer;
+                                // 첫 번째 청크의 사용자 데이터 병합
+                                Object.assign(startBuffer.users, message.payload.users);
+                                // 다른 데이터는 첫 번째 청크에서 가져옴
+                                startBuffer.otherData = {
+                                    onlineUsers: message.payload.onlineUsers,
+                                    liveGames: message.payload.liveGames,
+                                    negotiations: message.payload.negotiations,
+                                    waitingRoomChats: message.payload.waitingRoomChats,
+                                    gameChats: message.payload.gameChats,
+                                    adminLogs: message.payload.adminLogs,
+                                    announcements: message.payload.announcements,
+                                    globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
+                                    gameModeAvailability: message.payload.gameModeAvailability,
+                                    announcementInterval: message.payload.announcementInterval
+                                };
+                                startBuffer.receivedChunks++;
+                                
+                                // 마지막 청크인 경우 (청크가 1개뿐)
+                                if (message.payload.isLast) {
+                                    processInitialState(startBuffer.users, startBuffer.otherData);
+                                    (window as any).__chunkedStateBuffer = null;
+                                }
+                                break;
+                            case 'INITIAL_STATE_CHUNK':
+                                // 추가 청크 수집
+                                if (!(window as any).__chunkedStateBuffer) {
+                                    console.warn('[WebSocket] Received chunk without INITIAL_STATE_START, initializing buffer...');
+                                    (window as any).__chunkedStateBuffer = {
+                                        users: {},
+                                        receivedChunks: 0,
+                                        totalChunks: message.payload.totalChunks || 0,
+                                        otherData: null
+                                    };
+                                }
+                                const chunkBuffer = (window as any).__chunkedStateBuffer;
+                                // 사용자 데이터 병합
+                                Object.assign(chunkBuffer.users, message.payload.users);
+                                chunkBuffer.receivedChunks++;
+                                console.log(`[WebSocket] Received chunk ${chunkBuffer.receivedChunks}/${chunkBuffer.totalChunks || '?'} (index ${message.payload.chunkIndex})`);
+                                
+                                if (message.payload.isLast) {
+                                    // 모든 청크를 받았으므로 처리
+                                    console.log('[WebSocket] All chunks received, processing...');
+                                    if (!chunkBuffer.otherData) {
+                                        // otherData가 없으면 현재 청크에서 가져옴
+                                        chunkBuffer.otherData = {
+                                            onlineUsers: message.payload.onlineUsers,
+                                            liveGames: message.payload.liveGames,
+                                            negotiations: message.payload.negotiations,
+                                            waitingRoomChats: message.payload.waitingRoomChats,
+                                            gameChats: message.payload.gameChats,
+                                            adminLogs: message.payload.adminLogs,
+                                            announcements: message.payload.announcements,
+                                            globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
+                                            gameModeAvailability: message.payload.gameModeAvailability,
+                                            announcementInterval: message.payload.announcementInterval
+                                        };
+                                    }
+                                    processInitialState(chunkBuffer.users, chunkBuffer.otherData);
+                                    (window as any).__chunkedStateBuffer = null;
+                                    console.log('[WebSocket] Chunked initial state processed successfully');
+                                }
+                                break;
                             case 'INITIAL_STATE':
                                 console.log('INITIAL_STATE payload:', message.payload);
                                 const { users, onlineUsers, liveGames, negotiations, waitingRoomChats, gameChats, adminLogs, announcements, globalOverrideAnnouncement, gameModeAvailability, announcementInterval } = message.payload;
-                                console.log('[WebSocket] Received users:', users ? Object.keys(users).length : 0, 'users');
-                                if (users && typeof users === 'object' && !Array.isArray(users)) {
-                                    setUsersMap(users);
-                                    console.log('[WebSocket] usersMap updated with', Object.keys(users).length, 'users');
-                                } else {
-                                    console.warn('[WebSocket] Invalid users data:', users);
-                                    setUsersMap({});
-                                }
-                                setOnlineUsers(onlineUsers || []);
-                                setLiveGames(liveGames || {});
-                                setNegotiations(negotiations || {});
-                                setWaitingRoomChats(waitingRoomChats || {});
-                                setGameChats(gameChats || {});
-                                setAdminLogs(adminLogs || []);
-                                setAnnouncements(announcements || []);
-                                setGlobalOverrideAnnouncement(globalOverrideAnnouncement || null);
-                                setGameModeAvailability(gameModeAvailability || {});
-                                setAnnouncementInterval(announcementInterval || 3);
+                                processInitialState(users, {
+                                    onlineUsers,
+                                    liveGames,
+                                    negotiations,
+                                    waitingRoomChats,
+                                    gameChats,
+                                    adminLogs,
+                                    announcements,
+                                    globalOverrideAnnouncement,
+                                    gameModeAvailability,
+                                    announcementInterval
+                                });
                                 break;
                             case 'USER_STATUS_UPDATE':
                                 setUsersMap(currentUsersMap => {
@@ -467,8 +796,119 @@ export const useApp = () => {
                                     }).filter(Boolean) as UserWithStatus[];
                                     // 온라인 유저 목록을 즉시 업데이트
                                     setOnlineUsers(onlineStatuses);
+                                    
+                                    // 현재 사용자의 상태가 업데이트되었는지 확인하고 라우팅
+                                    if (currentUser) {
+                                        const currentUserStatus = onlineStatuses.find(u => u.id === currentUser.id);
+                                        if (currentUserStatus?.gameId && currentUserStatus.status === 'in-game') {
+                                            const gameId = currentUserStatus.gameId;
+                                            console.log('[WebSocket] Current user status updated to in-game:', gameId);
+                                            
+                                            // liveGames 상태를 확인하고 라우팅
+                                            setLiveGames(currentGames => {
+                                                if (currentGames[gameId]) {
+                                                    console.log('[WebSocket] Game found in liveGames, routing immediately');
+                                                    setTimeout(() => {
+                                                        window.location.hash = `#/game/${gameId}`;
+                                                    }, 50);
+                                                } else {
+                                                    console.log('[WebSocket] Game not in liveGames yet, will wait for GAME_UPDATE');
+                                                    // GAME_UPDATE를 기다리기 위해 짧은 지연 후 재시도
+                                                    setTimeout(() => {
+                                                        setLiveGames(games => {
+                                                            if (games[gameId]) {
+                                                                console.log('[WebSocket] Game received in delayed check, routing');
+                                                                window.location.hash = `#/game/${gameId}`;
+                                                            }
+                                                            return games;
+                                                        });
+                                                    }, 500);
+                                                }
+                                                return currentGames;
+                                            });
+                                        }
+                                    }
+                                    
                                     return updatedUsersMap;
                                 });
+                                break;
+                            case 'WAITING_ROOM_CHAT_UPDATE':
+                                setWaitingRoomChats(currentChats => {
+                                    const updatedChats = { ...currentChats };
+                                    // payload에 있는 각 채널의 메시지 목록을 업데이트
+                                    Object.entries(message.payload || {}).forEach(([channel, messages]: [string, any]) => {
+                                        updatedChats[channel] = messages;
+                                    });
+                                    return updatedChats;
+                                });
+                                break;
+                            case 'GAME_CHAT_UPDATE':
+                                setGameChats(currentChats => {
+                                    const updatedChats = { ...currentChats };
+                                    // payload에 있는 각 게임 채널의 메시지 목록을 업데이트
+                                    Object.entries(message.payload || {}).forEach(([gameId, messages]: [string, any]) => {
+                                        updatedChats[gameId] = messages;
+                                    });
+                                    return updatedChats;
+                                });
+                                break;
+                            case 'GAME_UPDATE':
+                                // 게임 업데이트 처리
+                                setLiveGames(currentGames => {
+                                    const updatedGames = { ...currentGames };
+                                    Object.entries(message.payload || {}).forEach(([gameId, game]: [string, any]) => {
+                                        updatedGames[gameId] = game;
+                                        console.log('[WebSocket] Game updated:', gameId, game.mode);
+                                    });
+                                    
+                                    // 현재 사용자가 이 게임에 참여하는지 확인하고 라우팅
+                                    if (currentUser) {
+                                        // onlineUsers 상태를 직접 확인
+                                        setOnlineUsers(prevOnlineUsers => {
+                                            const currentUserStatus = prevOnlineUsers.find(u => u.id === currentUser.id);
+                                            if (currentUserStatus?.gameId && updatedGames[currentUserStatus.gameId] && currentUserStatus.status === 'in-game') {
+                                                const gameId = currentUserStatus.gameId;
+                                                console.log('[WebSocket] Game updated, current user is in game, routing:', gameId);
+                                                // 즉시 라우팅
+                                                setTimeout(() => {
+                                                    window.location.hash = `#/game/${gameId}`;
+                                                }, 50);
+                                            } else if (currentUserStatus?.gameId && updatedGames[currentUserStatus.gameId]) {
+                                                console.log('[WebSocket] Game updated but user status is not in-game:', currentUserStatus.status);
+                                            }
+                                            return prevOnlineUsers;
+                                        });
+                                    }
+                                    
+                                    return updatedGames;
+                                });
+                                break;
+                            case 'CHALLENGE_DECLINED':
+                                // 대국 신청 거절 메시지 처리 (발신자에게만 표시)
+                                if (message.payload?.challengerId === currentUser?.id && message.payload?.declinedMessage) {
+                                    showError(message.payload.declinedMessage.message);
+                                }
+                                break;
+                            case 'NEGOTIATION_UPDATE':
+                                // 대국 신청서 업데이트 처리
+                                if (message.payload?.negotiations) {
+                                    // Deep copy를 수행하여 React가 변경을 감지하도록 함
+                                    const updatedNegotiations = JSON.parse(JSON.stringify(message.payload.negotiations));
+                                    setNegotiations(updatedNegotiations);
+                                }
+                                // 사용자 상태도 업데이트
+                                if (message.payload?.userStatuses) {
+                                    setOnlineUsers(prevOnlineUsers => {
+                                        const updatedStatuses = message.payload.userStatuses;
+                                        return prevOnlineUsers.map(user => {
+                                            const statusInfo = updatedStatuses[user.id];
+                                            if (statusInfo) {
+                                                return { ...user, ...statusInfo };
+                                            }
+                                            return user;
+                                        });
+                                    });
+                                }
                                 break;
                         }
                     } catch (error) {
@@ -476,27 +916,125 @@ export const useApp = () => {
                     }
                 };
 
-                ws.onerror = (error) => {
-                    console.error('[WebSocket] Error:', error);
-                };
-
-                ws.onclose = (event) => {
-                    console.log('[WebSocket] Disconnected', event.code, event.reason);
+                ws.onerror = (error: Event) => {
+                    console.error('[WebSocket] Error event received:', error);
+                    
+                    // 가능한 모든 정보 수집
+                    const errorInfo: any = {
+                        type: error.type,
+                        timeStamp: error.timeStamp,
+                        isTrusted: error.isTrusted,
+                        bubbles: error.bubbles,
+                        cancelable: error.cancelable,
+                        eventPhase: error.eventPhase,
+                        defaultPrevented: error.defaultPrevented,
+                    };
+                    
+                    // WebSocket 객체의 상태 확인
+                    if (ws) {
+                        errorInfo.websocketState = {
+                            readyState: ws.readyState,
+                            readyStateText: ws.readyState === WebSocket.CONNECTING ? 'CONNECTING' :
+                                           ws.readyState === WebSocket.OPEN ? 'OPEN' :
+                                           ws.readyState === WebSocket.CLOSING ? 'CLOSING' :
+                                           ws.readyState === WebSocket.CLOSED ? 'CLOSED' : 'UNKNOWN',
+                            url: ws.url,
+                            protocol: ws.protocol,
+                            extensions: ws.extensions,
+                            binaryType: ws.binaryType,
+                        };
+                    }
+                    
+                    // 에러 메시지 추출 시도
+                    if (error.target && (error.target as any).error) {
+                        errorInfo.targetError = (error.target as any).error;
+                    }
+                    
+                    // 개발 환경에서만 상세 로그 출력
+                    const isDevelopment = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+                    if (isDevelopment) {
+                        console.warn('[WebSocket] Error details:', errorInfo);
+                        console.warn('[WebSocket] Full error object:', JSON.stringify(errorInfo, null, 2));
+                    } else {
+                        // 프로덕션에서는 간단한 로그만
+                        console.warn('[WebSocket] Connection error occurred, will attempt to reconnect...');
+                    }
+                    
+                    // 에러 발생 시 연결 종료 처리
+                    isConnecting = false;
+                    if (connectionTimeout) {
+                        clearTimeout(connectionTimeout);
+                        connectionTimeout = null;
+                    }
+                    
+                    // 연결 실패가 명확한 경우 (CONNECTING 상태에서 에러 발생)
+                    if (ws && ws.readyState === WebSocket.CONNECTING) {
+                        console.warn('[WebSocket] Connection failed during CONNECTING state');
+                        // 연결을 명시적으로 닫음
+                        try {
+                            ws.close();
+                        } catch (closeError) {
+                            console.error('[WebSocket] Error closing failed connection:', closeError);
+                        }
+                    }
+                    
+                    // 에러 발생 시 재연결 시도 (의도적 종료가 아닌 경우)
                     if (!isIntentionalClose && shouldReconnect && currentUser) {
-                        // Reconnect after 3 seconds if not intentional close
+                        console.log('[WebSocket] Error occurred, will attempt to reconnect in 3 seconds...');
+                        if (reconnectTimeout) {
+                            clearTimeout(reconnectTimeout);
+                        }
                         reconnectTimeout = setTimeout(() => {
-                            if (shouldReconnect && currentUser) {
-                                console.log('[WebSocket] Attempting to reconnect...');
+                            if (shouldReconnect && currentUser && !isConnecting) {
+                                console.log('[WebSocket] Attempting to reconnect after error...');
+                                isIntentionalClose = false;
                                 connectWebSocket();
                             }
                         }, 3000);
                     }
                 };
+
+                ws.onclose = (event) => {
+                    isConnecting = false; // 연결 종료됨
+                    if (connectionTimeout) {
+                        clearTimeout(connectionTimeout);
+                        connectionTimeout = null;
+                    }
+                    console.log('[WebSocket] Disconnected', {
+                        code: event.code,
+                        reason: event.reason,
+                        wasClean: event.wasClean,
+                        codeMeaning: getCloseCodeMeaning(event.code),
+                        wasIntentional: isIntentionalClose
+                    });
+                    
+                    // 1001 (Going Away)는 브라우저가 페이지를 떠날 때 발생할 수 있으므로
+                    // 의도적인 종료가 아닌 경우에만 재연결
+                    if (!isIntentionalClose && shouldReconnect && currentUser) {
+                        // Reconnect after 3 seconds if not intentional close
+                        console.log('[WebSocket] Will attempt to reconnect in 3 seconds...');
+                        reconnectTimeout = setTimeout(() => {
+                            if (shouldReconnect && currentUser && !isConnecting) {
+                                console.log('[WebSocket] Attempting to reconnect...');
+                                isIntentionalClose = false; // 재연결 시도는 의도적이지 않음
+                                connectWebSocket();
+                            }
+                        }, 3000);
+                    } else {
+                        console.log('[WebSocket] Not reconnecting:', {
+                            isIntentionalClose,
+                            shouldReconnect,
+                            hasCurrentUser: !!currentUser,
+                            isConnecting
+                        });
+                    }
+                };
             } catch (error) {
+                isConnecting = false; // 연결 실패
                 console.error('[WebSocket] Failed to create connection:', error);
                 if (shouldReconnect && currentUser) {
                     reconnectTimeout = setTimeout(() => {
-                        if (shouldReconnect && currentUser) {
+                        if (shouldReconnect && currentUser && !isConnecting) {
                             connectWebSocket();
                         }
                     }, 3000);
@@ -574,6 +1112,7 @@ export const useApp = () => {
         const isGamePage = currentHash.startsWith('#/game/');
 
         if (activeGame && !isGamePage) {
+            console.log('[useApp] Routing to game:', activeGame.id);
             window.location.hash = `#/game/${activeGame.id}`;
         } else if (!activeGame && isGamePage) {
             let targetHash = '#/profile';
@@ -628,9 +1167,18 @@ export const useApp = () => {
     const closeModerationModal = useCallback(() => setModeratingUser(null), []);
 
     const setCurrentUserAndRoute = useCallback((user: User) => {
-        setCurrentUser(user);
+        // 깊은 복사를 수행하여 React가 변경을 감지하도록 함
+        const userCopy = JSON.parse(JSON.stringify(user));
+        setCurrentUser(userCopy);
         // usersMap에 현재 유저 추가 (실시간 업데이트를 위해)
-        setUsersMap(prev => ({ ...prev, [user.id]: user }));
+        setUsersMap(prev => ({ ...prev, [user.id]: userCopy }));
+        console.log('[setCurrentUserAndRoute] User set:', {
+            id: userCopy.id,
+            inventoryLength: userCopy.inventory?.length,
+            equipmentSlots: Object.keys(userCopy.equipment || {}).length,
+            hasInventory: !!userCopy.inventory,
+            hasEquipment: !!userCopy.equipment
+        });
         window.location.hash = '#/profile';
     }, []);
     
@@ -682,7 +1230,7 @@ export const useApp = () => {
     }, []);
 
     const applyPreset = useCallback((preset: EquipmentPreset) => {
-        handleAction({ type: 'APPLY_PRESET', payload: { presetName: preset.name } });
+        handleAction({ type: 'APPLY_PRESET', payload: { presetName: preset.name, equipment: preset.equipment } });
     }, [handleAction]);
 
     const presets = useMemo(() => currentUser?.equipmentPresets || [], [currentUser?.equipmentPresets]);

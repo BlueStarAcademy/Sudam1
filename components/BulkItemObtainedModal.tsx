@@ -48,7 +48,7 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
     }, [items]);
 
     return (
-        <DraggableWindow title="상자 열기 결과" onClose={onClose} windowId="bulk-item-obtained" initialWidth={600} closeOnOutsideClick={false} isTopmost={isTopmost}>
+        <DraggableWindow title="상자 열기 결과" onClose={onClose} windowId="bulk-item-obtained" initialWidth={600} closeOnOutsideClick={false} isTopmost={isTopmost} zIndex={70}>
             <div className="text-center">
                 <h2 className="text-xl font-bold mb-4">아이템 {totalItems}개를 획득했습니다!</h2>
                 <div className="grid grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto p-2 bg-gray-900/50 rounded-lg">
