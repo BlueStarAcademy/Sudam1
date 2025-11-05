@@ -22,10 +22,7 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             } else {
                 return { error: 'Invalid avatar ID.' };
             }
-            const updatedUser = { 
-                ...user, 
-                avatarId: user.avatarId
-            };
+            const updatedUser = JSON.parse(JSON.stringify(user));
             return { clientResponse: { updatedUser } };
         }
         case 'UPDATE_BORDER': {
@@ -36,10 +33,7 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             } else {
                 return { error: 'Invalid border ID.' };
             }
-            const updatedUser = { 
-                ...user, 
-                borderId: user.borderId
-            };
+            const updatedUser = JSON.parse(JSON.stringify(user));
             return { clientResponse: { updatedUser } };
         }
         case 'CHANGE_NICKNAME': {
@@ -57,8 +51,10 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             if (!user.isAdmin) {
                 user.diamonds -= cost;
             }
+            user.nickname = newNickname;
             await db.updateUser(user);
-            return { clientResponse: { updatedUser: user } };
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            return { clientResponse: { updatedUser } };
         }
         case 'UPDATE_MBTI': {
             const { mbti, isMbtiPublic, isFirstTime } = payload as { mbti: string; isMbtiPublic: boolean; isFirstTime?: boolean };
@@ -78,12 +74,7 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             
             await db.updateUser(user);
             
-            const updatedUser = { 
-                ...user, 
-                mbti: user.mbti,
-                isMbtiPublic: user.isMbtiPublic,
-                diamonds: user.diamonds
-            };
+            const updatedUser = JSON.parse(JSON.stringify(user));
             
             // 첫 설정 시 다이아 100개 획득 아이템 생성
             const mbtiRewardItem = wasFirstTime ? {
@@ -117,7 +108,8 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
                 user.spentStatPoints[key] = 0;
             }
             await db.updateUser(user);
-            return {};
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            return { clientResponse: { updatedUser } };
         }
         case 'CONFIRM_STAT_ALLOCATION': {
             const { newStatPoints } = payload as { newStatPoints: Record<types.CoreStat, number> };
@@ -135,7 +127,8 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
 
             user.spentStatPoints = newStatPoints;
             await db.updateUser(user);
-            return {};
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            return { clientResponse: { updatedUser } };
         }
         case 'UPDATE_REJECTION_SETTINGS': {
             const { rejectedGameModes } = payload as { rejectedGameModes: types.GameMode[] };
@@ -150,7 +143,8 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
                 }
             }
             await db.updateUser(user);
-            return { clientResponse: { updatedUser: user } };
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            return { clientResponse: { updatedUser } };
         }
         case 'SAVE_PRESET': {
             const { preset, index } = payload as { preset: types.EquipmentPreset, index: number };
@@ -159,7 +153,8 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             }
             user.equipmentPresets[index] = preset;
             await db.updateUser(user);
-            return {};
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            return { clientResponse: { updatedUser } };
         }
         case 'APPLY_PRESET': {
             const { presetName, equipment } = payload as { presetName: string, equipment?: types.Equipment };
@@ -197,11 +192,7 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             }
 
             await db.updateUser(user);
-            const updatedUser = { 
-                ...user, 
-                inventory: user.inventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            };
+            const updatedUser = JSON.parse(JSON.stringify(user));
             return { clientResponse: { updatedUser } };
         }
         default:

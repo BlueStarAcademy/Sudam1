@@ -75,6 +75,7 @@ const migrations: { [version: number]: string } = {
     33: 'ALTER TABLE users ADD COLUMN monthlyGoldBuffExpiresAt INTEGER;',
     34: 'ALTER TABLE users ADD COLUMN inventorySlotsMigrated BOOLEAN;',
     54: 'ALTER TABLE users ADD COLUMN cumulativeTournamentScore INTEGER;',
+    55: 'ALTER TABLE users ADD COLUMN singlePlayerMissions TEXT;',
 };
 
 export const initializeAndGetDb = async (): Promise<Database> => {
@@ -158,7 +159,8 @@ export const initializeAndGetDb = async (): Promise<Database> => {
             inventorySlotsMigrated BOOLEAN,
             blacksmithLevel INTEGER,
             blacksmithXp INTEGER,
-            cumulativeTournamentScore INTEGER
+            cumulativeTournamentScore INTEGER,
+            singlePlayerMissions TEXT
         );
 
         CREATE TABLE IF NOT EXISTS user_credentials ( 

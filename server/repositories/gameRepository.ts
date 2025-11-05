@@ -23,6 +23,9 @@ export const saveGame = async (db: Database, game: LiveGameSession): Promise<voi
         'isSinglePlayer', 'stageId', 'blackPatternStones', 'whitePatternStones', 'singlePlayerPlacementRefreshesUsed'
     ];
     
+    // 문자열 타입 필드 목록 (JSON.stringify하지 않음)
+    const stringFields = ['turnSelectionTiebreaker', 'turnOrderRollResult', 'gameStatus', 'mode', 'winReason', 'description', 'blackPlayerId', 'whitePlayerId', 'turnChooserId', 'thiefPlayerId', 'policePlayerId', 'roleChoiceWinnerId', 'hammerPlayerId', 'lastTimeoutPlayerId', 'stageId'];
+    
     const values: { [key: string]: any } = {};
     for (const col of columns) {
         const key = col as keyof types.LiveGameSession;
@@ -31,6 +34,9 @@ export const saveGame = async (db: Database, game: LiveGameSession): Promise<voi
 
         if (value === undefined) {
             values[paramName] = null;
+        } else if (stringFields.includes(col)) {
+            // 문자열 타입 필드는 그대로 저장
+            values[paramName] = value;
         } else {
             values[paramName] = typeof value === 'object' && value !== null ? JSON.stringify(value) : value;
         }

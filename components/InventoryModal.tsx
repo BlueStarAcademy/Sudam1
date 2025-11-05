@@ -53,7 +53,7 @@ const getStarDisplayInfo = (stars: number) => {
     return { text: "", colorClass: "text-white" };
 };
 
-const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem; }> = ({ slot, item }) => {
+const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem; scaleFactor?: number }> = ({ slot, item, scaleFactor = 1 }) => {
     const renderStarDisplay = (stars: number) => {
         if (stars === 0) return null;
 
@@ -83,19 +83,21 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem
     };
 
     if (item) {
+        const padding = Math.max(4, Math.round(6 * scaleFactor));
         return (
             <div
-                className={`relative w-full aspect-square rounded-lg border-2 border-color/50 bg-tertiary/50`}
+                className={`relative aspect-square rounded-lg border-2 border-color/50 bg-tertiary/50`}
                 title={item.name}
+                style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0, maxWidth: '100%', maxHeight: '100%' }}
             >
-                <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-md" />
-                {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1.5"/>}
+                <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 object-cover rounded-md" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />
+                {item.image && <img src={item.image} alt={item.name} className="relative object-contain" style={{ width: '100%', height: '100%', padding: `${padding}px`, maxWidth: '100%', maxHeight: '100%' }}/>}
                 {renderStarDisplay(item.stars)}
             </div>
         );
     } else {
          return (
-             <img src={emptySlotImages[slot]} alt={`${slot} empty slot`} className="w-full aspect-square rounded-lg bg-tertiary/50 border-2 border-color/50" />
+             <img src={emptySlotImages[slot]} alt={`${slot} empty slot`} className="aspect-square rounded-lg bg-tertiary/50 border-2 border-color/50" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
         );
     }
 };
@@ -288,6 +290,29 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
     const [itemToUseBulk, setItemToUseBulk] = useState<InventoryItem | null>(null);
     const [itemToSell, setItemToSell] = useState<InventoryItem | null>(null);
     const [itemToSellBulk, setItemToSellBulk] = useState<InventoryItem | null>(null);
+    
+    // 브라우저 크기 감지
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+    
+    useEffect(() => {
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+            setWindowHeight(window.innerHeight);
+        };
+        
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    
+    // 뷰포트 크기에 비례한 창 크기 계산 (85% 너비, 최소 700px, 최대 950px)
+    const calculatedWidth = Math.max(700, Math.min(950, windowWidth * 0.85));
+    // 뷰포트 크기에 비례한 창 높이 계산 (75% 높이, 최소 650px, 최대 850px)
+    const calculatedHeight = Math.max(650, Math.min(850, windowHeight * 0.75));
+    
+    // 창 크기에 비례한 스케일 팩터 계산 (기준: 950px 너비)
+    const baseWidth = 950;
+    const scaleFactor = Math.max(0.7, Math.min(1.0, calculatedWidth / baseWidth));
 
     const handlePresetChange = (presetIndex: number) => {
         setSelectedPreset(presetIndex);
@@ -452,17 +477,19 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
     }, [selectedItem, currentUser.strategyLevel, currentUser.playfulLevel]);
 
     return (
-        <DraggableWindow title="가방" onClose={onClose} windowId="inventory" isTopmost={isTopmost}>
-            <div className="flex flex-col h-full w-full max-w-[900px]">
+        <DraggableWindow title="가방" onClose={onClose} windowId="inventory" isTopmost={isTopmost} initialWidth={calculatedWidth} initialHeight={calculatedHeight}>
+            <div 
+                className="flex flex-col h-full w-full overflow-hidden"
+            >
                 {/* Top section: Equipped items (left) and Selected item details (right) */}
-                <div className="h-96 bg-gray-800 p-4 mb-2 rounded-md shadow-inner flex">
+                <div className="bg-gray-800 p-4 mb-2 rounded-md shadow-inner flex flex-shrink-0" style={{ height: `${400 * scaleFactor}px` }}>
                     {/* Left panel: Equipped items */}
                     <div className="w-1/3 pr-4 border-r border-gray-700">
                         <h3 className="text-lg font-bold text-on-panel mb-2">장착 장비</h3>
                         <div className="grid grid-cols-3 gap-2">
                             {EQUIPMENT_SLOTS.map(slot => (
                                 <div key={slot} className="w-full">
-                                    <EquipmentSlotDisplay slot={slot} item={getItemForSlot(slot)} />
+                                    <EquipmentSlotDisplay slot={slot} item={getItemForSlot(slot)} scaleFactor={scaleFactor} />
                                 </div>
                             ))}
                         </div>
@@ -572,23 +599,24 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                                                     <p className="text-gray-300 text-xs mt-1">보유 수량: {selectedItem.quantity}</p>
                                                 </div>
                                             </div>
-                                                                                    {selectedItem.type === 'material' && (
-                                                                                        <div className="mt-2 p-2 bg-gray-800/50 rounded-lg flex-grow" style={{ maxHeight: '4em' }}> {/* Adjusted for 2 lines of text */}
-                                                                                            <p className="font-semibold text-secondary mb-1">강화 필요 정보:</p>
-                                                                                            {enhancementMaterialDetails.length > 0 ? (
-                                                                                                enhancementMaterialDetails.slice(0, 2).map((detail, index) => ( // Limit to 2 lines
-                                                                                                    <p key={index} className="text-gray-300 text-xs">
-                                                                                                        {detail}
-                                                                                                    </p>
-                                                                                                ))
-                                                                                            ) : (
-                                                                                                <p className="text-gray-300 text-xs">이 재료는 현재 어떤 장비 강화에도 사용되지 않습니다.</p>
-                                                                                            )}
-                                                                                            {enhancementMaterialDetails.length > 2 && (
-                                                                                                <p className="text-gray-400 text-xs mt-1">...</p> // Indicate more details
-                                                                                            )}
-                                                                                        </div>
-                                                                                    )}                                        </div>
+                                            {selectedItem.type === 'material' && (
+                                                <div className="mt-2 p-2 bg-gray-800/50 rounded-lg flex-grow" style={{ maxHeight: '4em' }}>
+                                                    <p className="font-semibold text-secondary mb-1">강화 필요 정보:</p>
+                                                    {enhancementMaterialDetails.length > 0 ? (
+                                                        enhancementMaterialDetails.slice(0, 2).map((detail, index) => (
+                                                            <p key={index} className="text-gray-300 text-xs">
+                                                                {detail}
+                                                            </p>
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-gray-300 text-xs">이 재료는 현재 어떤 장비 강화에도 사용되지 않습니다.</p>
+                                                    )}
+                                                    {enhancementMaterialDetails.length > 2 && (
+                                                        <p className="text-gray-400 text-xs mt-1">...</p>
+                                                    )}
+                                                </div>
+                                            )}
+                                        </div>
                                         <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2 px-4">
                                             {selectedItem.type === 'consumable' && (
                                                 <>
@@ -623,7 +651,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                                             )}
                                         </div>
                                     </>
-                                ) : ( // Should not happen with current item types
+                                ) : (
                                     <div className="h-full flex items-center justify-center text-tertiary text-sm">선택된 아이템 없음</div>
                                 )
                             ) : (
@@ -634,7 +662,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                 </div>
 
                 {/* Bottom section: Inventory grid */}
-                <div className="flex-grow flex-shrink-0 bg-gray-900 p-4 rounded-b-md overflow-y-auto">
+                <div className="flex-shrink-0 bg-gray-900 p-4 rounded-b-md overflow-hidden" style={{ height: `${200 * scaleFactor}px` }}>
                     <div className="flex-shrink-0 p-2 bg-gray-900/50 rounded-md mb-2">
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
@@ -656,25 +684,35 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-y-auto pr-2" style={{ height: '116px' }}>
-                        <div className="grid grid-cols-10 gap-2">
+                    <div className="overflow-y-auto pr-2 h-full" style={{ width: '100%', minWidth: 0 }}>
+                        <div 
+                            className="grid gap-2" 
+                            style={{ 
+                                gridTemplateColumns: `repeat(10, minmax(0, 1fr))`,
+                                gap: `${Math.max(4, Math.round(8 * scaleFactor))}px`,
+                                width: '100%',
+                                minWidth: 0
+                            }}
+                        >
                         {Array.from({ length: currentSlots }).map((_, index) => {
                             const item = filteredAndSortedInventory[index];
                             if (item) {
                                 return (
-                                    <InventoryItemCard
-                                        key={item.id}
-                                        item={item}
-                                        onClick={() => setSelectedItemId(item.id)}
-                                        isSelected={selectedItemId === item.id}
-                                        isEquipped={item.isEquipped || false}
-                                        enhancementStars={enhancementAnimationTarget?.itemId === item.id ? enhancementAnimationTarget.stars : undefined}
-                                        isPresetEquipped={isItemInAnyPreset(item.id)}
-                                    />
+                                    <div key={item.id} className="aspect-square" style={{ width: '100%', minWidth: 0, minHeight: 0, maxWidth: '100%' }}>
+                                        <InventoryItemCard
+                                            item={item}
+                                            onClick={() => setSelectedItemId(item.id)}
+                                            isSelected={selectedItemId === item.id}
+                                            isEquipped={item.isEquipped || false}
+                                            enhancementStars={enhancementAnimationTarget?.itemId === item.id ? enhancementAnimationTarget.stars : undefined}
+                                            isPresetEquipped={isItemInAnyPreset(item.id)}
+                                            scaleFactor={scaleFactor}
+                                        />
+                                    </div>
                                 );
                             } else {
                                 return (
-                                    <div key={`empty-${index}`} className="w-full aspect-square rounded-lg bg-gray-800/50 border-2 border-gray-700/50" />
+                                    <div key={`empty-${index}`} className="aspect-square rounded-lg bg-gray-800/50 border-2 border-gray-700/50" style={{ width: '100%', minWidth: 0, minHeight: 0, maxWidth: '100%' }} />
                                 );
                             }
                         })}
@@ -790,17 +828,19 @@ const InventoryItemCard: React.FC<{
     isEquipped: boolean;
     enhancementStars: number | undefined;
     isPresetEquipped?: boolean;
-}> = ({ item, onClick, isSelected, isEquipped, enhancementStars, isPresetEquipped }) => {
+    scaleFactor?: number;
+}> = ({ item, onClick, isSelected, isEquipped, enhancementStars, isPresetEquipped, scaleFactor = 1 }) => {
     const starInfo = getStarDisplayInfo(enhancementStars || item.stars || 0);
 
     return (
         <div
             onClick={onClick}
-            className={`relative w-full aspect-square rounded-lg cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent'} hover:ring-2 hover:ring-accent/70`}
+            className={`relative aspect-square rounded-lg cursor-pointer transition-all duration-200 ${isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent'} hover:ring-2 hover:ring-accent/70`}
             title={item.name}
+            style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0, maxWidth: '100%', maxHeight: '100%' }}
         >
-            <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-md" />
-            {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1.5" />}
+            <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 object-cover rounded-md" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />
+            {item.image && <img src={item.image} alt={item.name} className="relative object-contain p-1.5" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />}
             {isEquipped && (
                 <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-green-500 text-white text-xs flex items-center justify-center rounded-full border-2 border-gray-800">
                     E

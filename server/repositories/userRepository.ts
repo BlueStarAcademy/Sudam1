@@ -28,7 +28,7 @@ export const createUser = async (db: Database, user: User): Promise<void> => {
             lastWorldPlayedDate, dailyWorldWins, worldRewardClaimed, lastWorldTournament,
             baseStats, spentStatPoints, actionPointPurchasesToday, lastActionPointPurchaseDate, dailyShopPurchases,
             weeklyCompetitors, lastWeeklyCompetitorsUpdate, lastLeagueUpdate, ownedBorders,
-            mbti, isMbtiPublic, monthlyGoldBuffExpiresAt, singlePlayerProgress, bonusStatPoints, blacksmithLevel, blacksmithXp, cumulativeTournamentScore
+            mbti, isMbtiPublic, monthlyGoldBuffExpiresAt, singlePlayerProgress, bonusStatPoints, blacksmithLevel, blacksmithXp, cumulativeTournamentScore, singlePlayerMissions
         ) 
          VALUES ( 
             ?, ?, ?, ?, ?, ?, ?, ?, 
@@ -40,10 +40,10 @@ export const createUser = async (db: Database, user: User): Promise<void> => {
             ?, ?, ?, ?,
             ?, ?, ?, ?, ?,
             ?, ?, ?, ?,
-            ?, ?, ?, ?, ?, ?, ?, ?
+            ?, ?, ?, ?, ?, ?, ?, ?, ?
          )`,
         user.id, user.username, user.nickname, user.isAdmin, user.strategyLevel, user.strategyXp, user.playfulLevel, user.playfulXp,
-        user.gold, user.diamonds, JSON.stringify(user.inventory), user.inventorySlots, JSON.stringify(user.equipment), 
+        user.gold, user.diamonds, JSON.stringify(user.inventory), JSON.stringify(user.inventorySlots), JSON.stringify(user.equipment), 
         JSON.stringify(user.actionPoints), user.lastActionPointUpdate, user.mannerScore, JSON.stringify(user.mail), 
         JSON.stringify(user.quests), JSON.stringify(user.stats), user.chatBanUntil, user.connectionBanUntil, user.avatarId, user.borderId, user.previousSeasonTier,
         JSON.stringify(user.seasonHistory), user.tournamentScore, user.league, user.mannerMasteryApplied, user.pendingPenaltyNotification,
@@ -52,7 +52,7 @@ export const createUser = async (db: Database, user: User): Promise<void> => {
         user.lastWorldPlayedDate, user.dailyWorldWins, user.worldRewardClaimed, JSON.stringify(user.lastWorldTournament),
         JSON.stringify(user.baseStats), JSON.stringify(user.spentStatPoints), user.actionPointPurchasesToday, user.lastActionPointPurchaseDate, JSON.stringify(user.dailyShopPurchases),
         JSON.stringify(user.weeklyCompetitors), user.lastWeeklyCompetitorsUpdate, user.lastLeagueUpdate, JSON.stringify(user.ownedBorders),
-        user.mbti, user.isMbtiPublic, user.monthlyGoldBuffExpiresAt, user.singlePlayerProgress, user.bonusStatPoints, user.blacksmithLevel, user.blacksmithXp, user.cumulativeTournamentScore ?? 0
+        user.mbti, user.isMbtiPublic, user.monthlyGoldBuffExpiresAt, user.singlePlayerProgress, user.bonusStatPoints, user.blacksmithLevel, user.blacksmithXp, user.cumulativeTournamentScore ?? 0, JSON.stringify(user.singlePlayerMissions || {})
     );
 };
 export const updateUser = async (db: Database, user: User): Promise<void> => {
@@ -67,7 +67,7 @@ export const updateUser = async (db: Database, user: User): Promise<void> => {
         'baseStats', 'spentStatPoints', 'actionPointPurchasesToday', 'lastActionPointPurchaseDate', 'dailyShopPurchases',
         'weeklyCompetitors', 'lastWeeklyCompetitorsUpdate', 'lastLeagueUpdate', 'ownedBorders', 'equipmentPresets', 'monthlyGoldBuffExpiresAt',
         'mbti', 'isMbtiPublic', 'singlePlayerProgress', 'bonusStatPoints', 'cumulativeTournamentScore',
-        'blacksmithLevel', 'blacksmithXp', 'inventorySlotsMigrated' // Added blacksmith fields
+        'blacksmithLevel', 'blacksmithXp', 'inventorySlotsMigrated', 'singlePlayerMissions' // Added blacksmith fields and singlePlayerMissions
     ];
 
     const values: any[] = [];

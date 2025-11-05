@@ -3,8 +3,13 @@ import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-const DB_PATH = path.resolve('database.sqlite');
+// 프로젝트 루트에서 데이터베이스 파일 찾기
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = __dirname.includes('server') ? path.resolve(__dirname, '..') : process.cwd();
+const DB_PATH = path.resolve(projectRoot, 'database.sqlite');
 
 interface UserRow {
     id: string;

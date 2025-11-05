@@ -460,11 +460,7 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             
             await db.updateUser(user);
             
-            const updatedUser = { 
-                ...user, 
-                inventory: user.inventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            };
+            const updatedUser = JSON.parse(JSON.stringify(user));
             
             return { clientResponse: { updatedUser } };
         }

@@ -225,7 +225,8 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             user.actionPoints.current += ACTION_POINT_PURCHASE_REFILL_AMOUNT;
             
             await db.updateUser(user);
-            return { clientResponse: { updatedUser: user } };
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            return { clientResponse: { updatedUser } };
         }
         case 'EXPAND_INVENTORY': {
             const { category } = payload;
@@ -247,7 +248,8 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             user.inventorySlots[category] = Math.min(MAX_INVENTORY_SIZE, user.inventorySlots[category] + EXPANSION_AMOUNT);
             
             await db.updateUser(user);
-            return { clientResponse: { updatedUser: user } };
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            return { clientResponse: { updatedUser } };
         }
         case 'BUY_BORDER': {
             const { borderId } = payload;
@@ -268,7 +270,8 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
 
             user.ownedBorders.push(borderId);
             await db.updateUser(user);
-            return { clientResponse: { updatedUser: user } };
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            return { clientResponse: { updatedUser } };
         }
         default:
             return { error: 'Unknown shop action.' };

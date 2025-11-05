@@ -107,40 +107,51 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
   const [imgError, setImgError] = useState(false);
   
   // 30초 타임아웃 시각화
-  const [timeRemaining, setTimeRemaining] = useState<number>(30);
+  const [timeRemaining, setTimeRemaining] = useState<number>(60);
+  const [deadlineTime, setDeadlineTime] = useState<number | null>(null);
   
-  // negotiation.deadline이 변경되면 timeRemaining 업데이트
+  // negotiation.deadline이 변경되면 즉시 타이머 시작
   useEffect(() => {
     if (negotiation.deadline) {
-      const remaining = Math.max(0, Math.ceil((negotiation.deadline - Date.now()) / 1000));
-      const newTimeRemaining = Math.min(remaining, 30);
-      setTimeRemaining(newTimeRemaining);
+      // deadline을 받은 즉시 타이머 시작
+      const deadline = negotiation.deadline;
+      setDeadlineTime(deadline);
+      // 즉시 남은 시간 계산
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setTimeRemaining(Math.min(remaining, 60));
     } else {
-      // deadline이 없으면 30초로 초기화
-      setTimeRemaining(30);
+      // deadline이 없으면 60초로 초기화
+      setTimeRemaining(60);
+      setDeadlineTime(null);
     }
   }, [negotiation.deadline]);
   
-  // 타이머 업데이트
+  // 타이머 업데이트 (즉시 시작)
   useEffect(() => {
-    if (!negotiation.deadline) return;
+    if (!deadlineTime) return;
     
-    const interval = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((negotiation.deadline - Date.now()) / 1000));
-      const newTimeRemaining = Math.min(remaining, 30);
-      setTimeRemaining(newTimeRemaining);
+    // 첫 업데이트는 즉시 실행
+    const updateTime = () => {
+      const remaining = Math.max(0, Math.ceil((deadlineTime - Date.now()) / 1000));
+      setTimeRemaining(Math.min(remaining, 60));
       
       // 시간이 0초가 되면 자동으로 거절 처리
-      if (newTimeRemaining <= 0) {
+      if (remaining <= 0) {
         console.log('[ChallengeReceivedModal] Time expired, auto-declining');
         onDecline();
       }
-    }, 100);
+    };
+    
+    // 즉시 한 번 실행
+    updateTime();
+    
+    // 이후 100ms마다 업데이트
+    const interval = setInterval(updateTime, 100);
     
     return () => clearInterval(interval);
-  }, [negotiation.deadline, onDecline]);
+  }, [deadlineTime, onDecline]);
   
-  const progressPercentage = (timeRemaining / 30) * 100;
+  const progressPercentage = (timeRemaining / 60) * 100;
 
   return (
     <DraggableWindow title="대국 신청 받음" onClose={onClose} windowId="challenge-received" initialWidth={900}>
@@ -455,7 +466,7 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
                 수정 제안
               </Button>
               <Button 
-                onClick={() => onAccept(settings)} 
+                onClick={() => onAccept(negotiation.settings)} 
                 variant="primary" 
                 colorScheme="green" 
                 className="!text-sm !py-1.5 flex-1"

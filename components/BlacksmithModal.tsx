@@ -199,20 +199,20 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                 windowId="blacksmith"
                 zIndex={50}
             >
-                <div className="flex h-[700px]">
+                <div className="flex h-[600px]">
                     {/* Left Panel */}
                     <div className="w-1/3 bg-tertiary/30 p-4 flex flex-col items-center gap-4">
-                        <div className="w-full aspect-w-3 aspect-h-2 prism-border rounded-lg overflow-hidden relative">
+                        <div className="w-full h-48 prism-border rounded-lg overflow-hidden relative flex-shrink-0">
                             <img src="/images/equipments/moru.png" alt="Blacksmith" className="w-full h-full object-cover" />
                             <button onClick={handlers.openBlacksmithHelp} className="absolute top-2 right-2 text-lg font-bold text-yellow-400 hover:text-yellow-300 bg-black/50 rounded-full w-8 h-8 flex items-center justify-center">
                                 ?
                             </button>
                         </div>
-                        <div className="text-center">
-                            <h2 className="text-2xl font-bold">대장간 <span className="text-yellow-400">Lv.{(blacksmithLevel ?? 1)}</span></h2>
+                        <div className="text-center flex-shrink-0">
+                            <h2 className="text-xl font-bold">대장간 <span className="text-yellow-400">Lv.{(blacksmithLevel ?? 1)}</span></h2>
                         </div>
-                        <div className="w-full">
-                            <div className="flex justify-between text-xs mb-1">
+                        <div className="w-full flex-shrink-0">
+                            <div className="flex justify-between text-xs mb-1.5">
                                 <span>경험치</span>
                                 <span>{(blacksmithXp ?? 0)} / {BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)}</span>
                             </div>
@@ -220,16 +220,16 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                 <div className="bg-yellow-500 h-full rounded-full" style={{ width: `${((blacksmithXp ?? 0) / BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)) * 100}%` }}></div>
                             </div>
                         </div>
-                        <div className="w-full text-left">
-                            <h3 className="font-bold mb-2 text-center">대장간 효과</h3>
-                            <div className="flex justify-between text-sm font-bold text-gray-400 px-2 pb-1 border-b border-gray-600 mb-1">
+                        <div className="w-full text-left flex-1 overflow-y-auto min-h-0">
+                            <h3 className="font-bold mb-3 text-center text-sm">대장간 효과</h3>
+                            <div className="flex justify-between text-xs font-bold text-gray-400 px-2 pb-2 border-b border-gray-600 mb-3">
                                 <span>효과</span>
                                 <span>
                                     Lv.{currentLevel}
                                     {!isMaxLevel && <span className="text-yellow-400"> → Lv.{currentLevel + 1}</span>}
                                 </span>
                             </div>
-                            <div className="text-sm text-secondary space-y-2">
+                            <div className="text-xs text-secondary space-y-2">
                                 <div className="bg-black/20 p-2 rounded-md">
                                     <div className="flex justify-between">
                                         <span>합성 가능 등급</span>
@@ -253,13 +253,13 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                     </div>
                                 </div>
                                 <div className="bg-black/20 p-2 rounded-md">
-                                    <p className="font-semibold">합성 대성공 확률:</p>
+                                    <p className="font-semibold text-xs mb-1.5">합성 대성공 확률:</p>
                                     {GRADE_ORDER.map(grade => {
                                         const rate = BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[currentLevelIndex]?.[grade] ?? 0;
                                         const nextRate = BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[nextLevelIndex]?.[grade];
 
                                         return (
-                                            <div key={grade} className="flex justify-between pl-2">
+                                            <div key={grade} className="flex justify-between pl-2 text-xs py-0.5">
                                                 <span>{GRADE_NAMES_KO[grade]}</span>
                                                 <span>
                                                     {rate}%
@@ -276,8 +276,8 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                     </div>
 
                     {/* Right Panel */}
-                    <div className="w-2/3 bg-primary p-4 flex flex-col">
-                        <div className="flex border-b border-color mb-4">
+                    <div className="w-2/3 bg-primary p-3 flex flex-col">
+                        <div className="flex border-b border-color mb-3">
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
@@ -292,12 +292,12 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                 </button>
                             ))}
                         </div>
-                        <div className="p-4 bg-tertiary/20 rounded-lg flex-1">
+                        <div className="p-3 bg-tertiary/20 rounded-lg flex-1 min-h-0">
                             {renderContent()}
                         </div>
-                        <div className="mt-4">
-                            <h3 className="text-lg font-bold text-on-panel mb-2">{bagHeaderText}</h3>
-                            <div className="h-[140px] overflow-y-auto pr-1">
+                        <div className="mt-3 flex-shrink-0">
+                            <h3 className="text-base font-bold text-on-panel mb-2">{bagHeaderText}</h3>
+                            <div className="h-[120px] overflow-y-auto pr-1">
                                 <InventoryGrid 
                                     inventory={filteredInventory} 
                                     inventorySlots={inventorySlotsToDisplay} 

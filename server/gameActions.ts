@@ -25,6 +25,7 @@ import { handleSocialAction } from './actions/socialActions.js';
 import { handleTournamentAction } from './actions/tournamentActions.js';
 import { handleUserAction } from './actions/userActions.js';
 import { handleSinglePlayerAction } from './actions/singlePlayerActions.js';
+import { broadcast } from './socket.js';
 
 
 export type HandleActionResult = { 
@@ -174,6 +175,8 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
 
         if (result !== null && result !== undefined) {
             await db.saveGame(game);
+            // 게임 상태 변경 후 실시간 브로드캐스트
+            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
             return result;
         }
     }

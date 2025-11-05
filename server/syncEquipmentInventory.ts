@@ -3,8 +3,13 @@ import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-const DB_PATH = path.resolve('database.sqlite');
+// 프로젝트 루트에서 데이터베이스 파일 찾기
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = __dirname.includes('server') ? path.resolve(__dirname, '..') : process.cwd();
+const DB_PATH = path.resolve(projectRoot, 'database.sqlite');
 
 interface UserRow {
     id: string;
@@ -92,6 +97,7 @@ const syncEquipmentInventory = async () => {
                 });
                 
                 // equipment에 있는 아이템 ID들을 inventory에서 찾아서 isEquipped = true로 설정
+                // 데이터 손실 방지를 위해 equipment는 유지 (inventory에 없어도 제거하지 않음)
                 const cleanedEquipment: Record<string, string> = {};
                 let foundItems = 0;
                 let missingItems = 0;
@@ -108,13 +114,15 @@ const syncEquipmentInventory = async () => {
                             needsUpdate = true;
                             console.log(`  [Sync] ✓ Found item ${item.name} (${itemId}) in slot ${slot}`);
                         } else {
-                            // 슬롯이 맞지 않음
-                            console.warn(`  [Sync] ⚠ Item ${itemId} slot mismatch: expected ${slot}, got ${item.slot}`);
+                            // 슬롯이 맞지 않음 - 하지만 equipment는 유지 (데이터 보존)
+                            console.warn(`  [Sync] ⚠ Item ${itemId} slot mismatch: expected ${slot}, got ${item.slot}. Keeping in equipment.`);
+                            cleanedEquipment[slot] = itemId; // 데이터 보존
                             missingItems++;
                         }
                     } else {
-                        // 아이템이 인벤토리에 없음
-                        console.warn(`  [Sync] ✗ Item ${itemId} not found in inventory for slot ${slot}`);
+                        // 아이템이 인벤토리에 없음 - 하지만 equipment는 유지 (데이터 보존)
+                        console.warn(`  [Sync] ⚠ Item ${itemId} not found in inventory for slot ${slot}. Keeping in equipment for data preservation.`);
+                        cleanedEquipment[slot] = itemId; // 데이터 손실 방지
                         missingItems++;
                     }
                 }

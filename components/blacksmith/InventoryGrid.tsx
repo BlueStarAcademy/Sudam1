@@ -52,7 +52,15 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({ inventory, inventorySlots
     const inventoryDisplaySlots = Array.from({ length: inventorySlots }, (_, index) => inventory[index] || null);
 
     return (
-        <div className="grid grid-cols-10 gap-1 flex-grow pr-2 bg-tertiary/30 p-2 rounded-md">
+        <div 
+            className="grid flex-grow pr-2 bg-tertiary/30 p-2 rounded-md" 
+            style={{ 
+                gridTemplateColumns: 'repeat(10, minmax(0, 1fr))',
+                gap: '4px',
+                width: '100%',
+                minWidth: 0
+            }}
+        >
             {inventoryDisplaySlots.map((item, index) => {
                 const isDisabled = item ? disabledItemIds.includes(item.id) : false;
                 return (
@@ -67,12 +75,13 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({ inventory, inventorySlots
                             }
                         }}
                         className={`relative aspect-square rounded-md transition-all duration-200 ${item ? 'hover:scale-105' : 'bg-tertiary/50'} ${isDisabled ? 'filter grayscale opacity-50 pointer-events-none' : 'cursor-pointer'}`}
+                        style={{ width: '100%', minWidth: 0, minHeight: 0, maxWidth: '100%' }}
                     >
                         {item ? (
                             <>
                                 <div className={`absolute inset-0 rounded-md border-2 ${selectedItemId === item.id ? 'border-accent ring-2 ring-accent' : 'border-black/20'} ${selectedItemIdsForDisassembly?.has(item.id) ? 'bg-gray-700/70' : ''}`} />
-                                <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-sm" />
-                                {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1" />}
+                                <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 object-cover rounded-sm" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />
+                                {item.image && <img src={item.image} alt={item.name} className="relative object-contain p-1" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />}
                                 {renderStarDisplay(item.stars)}
                                 {item.isEquipped && <div className="absolute top-0.5 right-0.5 text-xs font-bold text-white bg-blue-600/80 px-1 rounded-bl-md">E</div>}
                                 {item.quantity && item.quantity > 1 && <span className="absolute bottom-0 right-0 text-xs font-bold text-white bg-black/60 px-1 rounded-tl-md">{item.quantity}</span>}

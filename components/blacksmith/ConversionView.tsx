@@ -142,8 +142,8 @@ const ConversionView: React.FC<ConversionViewProps> = ({ onAction }) => {
                 <CraftingDetailModal details={craftingDetails} inventory={inventory} onClose={() => setCraftingDetails(null)} onAction={onAction} />
             )}
 
-            <div className="flex-grow p-4 overflow-y-auto">
-                <div className="grid grid-cols-3 gap-4">
+            <div className="flex-grow p-2 overflow-y-auto">
+                <div className="grid grid-cols-3 gap-2">
                     {materialTiers.map((materialName, index) => {
                         const materialExists = materialCategories[materialName] && materialCategories[materialName].length > 0;
                         const quantity = materialCategories[materialName]
@@ -154,13 +154,13 @@ const ConversionView: React.FC<ConversionViewProps> = ({ onAction }) => {
                         const materialData = MATERIAL_ITEMS[materialName];
 
                         return (
-                            <div key={materialName} className="bg-panel-secondary rounded-lg p-4 flex flex-col items-center">
-                                <div className="flex flex-col items-center w-full mb-3">
-                                    <img src={materialData.image as string | undefined} alt={materialName} className="w-16 h-16 mb-2" />
-                                    <h4 className="font-bold text-secondary text-sm text-center whitespace-nowrap mb-1">{materialName}</h4>
+                            <div key={materialName} className="bg-panel-secondary rounded-lg p-2 flex flex-col items-center">
+                                <div className="flex flex-col items-center w-full mb-2">
+                                    <img src={materialData.image as string | undefined} alt={materialName} className="w-12 h-12 mb-1" />
+                                    <h4 className="font-bold text-secondary text-xs text-center whitespace-nowrap mb-0.5">{materialName}</h4>
                                     <p className="text-xs text-tertiary text-center">보유: {quantity.toLocaleString()}개</p>
                                 </div>
-                                <div className="flex flex-col space-y-2 w-full">
+                                <div className="flex flex-col space-y-1.5 w-full">
                                     {canUpgrade && (
                                         <Button
                                             onClick={() => setCraftingDetails({ materialName, craftType: 'upgrade' })}

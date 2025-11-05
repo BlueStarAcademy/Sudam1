@@ -143,18 +143,23 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             }
 
             negotiation.previousSettings = undefined; // 초기 신청이므로 이전 설정 없음
-            negotiation.settings = settings;
+            // settings를 깊은 복사로 저장하여 전달
+            negotiation.settings = JSON.parse(JSON.stringify(settings));
             negotiation.status = 'pending';
             negotiation.proposerId = negotiation.opponent.id;
             negotiation.turnCount = 0; // 초기 신청은 turnCount 0
-            negotiation.deadline = now + 60000;
+            // 브로드캐스트 직전에 deadline을 다시 계산하여 정확한 시간 설정
+            const broadcastTime = Date.now();
+            negotiation.deadline = broadcastTime + 60000;
             
             // 상대방의 상태를 Negotiating으로 업데이트 (대국 신청을 받았으므로)
             if (volatileState.userStatuses[opponent.id]) {
                 volatileState.userStatuses[opponent.id].status = UserStatus.Negotiating;
             }
             
-            broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
+            // negotiations를 깊은 복사하여 브로드캐스트
+            const negotiationsToBroadcast = JSON.parse(JSON.stringify(volatileState.negotiations));
+            broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: negotiationsToBroadcast, userStatuses: volatileState.userStatuses } });
             return {};
         }
         case 'UPDATE_NEGOTIATION': {
@@ -211,7 +216,8 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             await db.updateUser(challenger);
             await db.updateUser(opponent);
 
-            negotiation.settings = settings;
+            // 수락 시에는 원래 negotiation.settings를 사용 (발신자가 보낸 설정)
+            // settings 파라미터는 UPDATE_NEGOTIATION에서만 사용
             const game = await initializeGame(negotiation);
             await db.saveGame(game);
             
@@ -239,9 +245,11 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
 
             delete volatileState.negotiations[negotiationId];
             
-            // 게임 생성 후 사용자 상태와 게임 정보 브로드캐스트
-            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
+            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (클라이언트가 게임 데이터를 먼저 받을 수 있도록)
             broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 그 다음 사용자 상태 브로드캐스트
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
+            broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
             
             return {
                 clientResponse: {

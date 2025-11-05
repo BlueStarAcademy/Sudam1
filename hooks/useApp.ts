@@ -335,57 +335,82 @@ export const useApp = () => {
                 }
                 console.log(`[handleAction] ${action.type} - Response received:`, {
                     hasUpdatedUser: !!result.updatedUser,
+                    hasClientResponse: !!result.clientResponse,
+                    hasClientResponseUpdatedUser: !!result.clientResponse?.updatedUser,
                     hasObtainedItemsBulk: !!result.obtainedItemsBulk,
+                    hasClientResponseObtainedItemsBulk: !!result.clientResponse?.obtainedItemsBulk,
                     hasRewardSummary: !!result.rewardSummary,
                     hasDisassemblyResult: !!result.disassemblyResult,
                     hasCombinationResult: !!result.combinationResult,
                     hasEnhancementOutcome: !!result.enhancementOutcome,
                     hasCraftResult: !!result.craftResult,
-                    resultKeys: Object.keys(result)
+                    resultKeys: Object.keys(result),
+                    clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : []
                 });
                 
-                if (result.updatedUser) {
+                // clientResponse.updatedUser 또는 result.updatedUser 확인
+                const updatedUserFromResponse = result.clientResponse?.updatedUser || result.updatedUser;
+                
+                if (updatedUserFromResponse) {
                     // 깊은 복사를 수행하여 React가 변경을 감지하도록 함
-                    const updatedUser = JSON.parse(JSON.stringify(result.updatedUser));
+                    const updatedUser = JSON.parse(JSON.stringify(updatedUserFromResponse));
                     console.log(`[handleAction] ${action.type} - Setting updatedUser:`, {
                         inventoryLength: updatedUser.inventory?.length,
                         gold: updatedUser.gold,
                         diamonds: updatedUser.diamonds,
+                        equipment: updatedUser.equipment,
+                        avatarId: updatedUser.avatarId,
+                        borderId: updatedUser.borderId,
+                        nickname: updatedUser.nickname,
                         beforeInventoryLength: currentUser?.inventory?.length
                     });
                     // 상태 업데이트를 강제로 트리거하기 위해 함수형 업데이트 사용
-                    setCurrentUser(() => {
+                    setCurrentUser(prevUser => {
                         // 매번 새로운 객체를 반환하여 React가 변경을 확실히 감지하도록 함
-                        return JSON.parse(JSON.stringify(updatedUser));
+                        const newUser = JSON.parse(JSON.stringify(updatedUser));
+                        // 이전 상태와 비교하여 변경이 없어도 새 객체로 업데이트
+                        return newUser;
                     });
                 } else {
-                    console.warn(`[handleAction] ${action.type} - No updatedUser in response!`);
+                    console.warn(`[handleAction] ${action.type} - No updatedUser in response!`, {
+                        hasClientResponse: !!result.clientResponse,
+                        clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : []
+                    });
                 }
-                 if (result.obtainedItemsBulk) setLastUsedItemResult(result.obtainedItemsBulk);
+                 const obtainedItemsBulk = result.clientResponse?.obtainedItemsBulk || result.obtainedItemsBulk;
+                 if (obtainedItemsBulk) setLastUsedItemResult(obtainedItemsBulk);
                  if (result.rewardSummary) setRewardSummary(result.rewardSummary);
                 if (result.claimAllSummary) {
                     setClaimAllSummary(result.claimAllSummary);
                     setIsClaimAllSummaryOpen(true);
                 }
-                if (result.disassemblyResult) { 
-                    setDisassemblyResult(result.disassemblyResult);
-                    if (result.disassemblyResult.jackpot) audioService.disassemblyJackpot();
+                const disassemblyResult = result.clientResponse?.disassemblyResult || result.disassemblyResult;
+                if (disassemblyResult) { 
+                    setDisassemblyResult(disassemblyResult);
+                    if (disassemblyResult.jackpot) audioService.disassemblyJackpot();
                 }
-                if (result.craftResult) {
-                    setCraftResult(result.craftResult);
+                const craftResult = result.clientResponse?.craftResult || result.craftResult;
+                if (craftResult) {
+                    setCraftResult(craftResult);
                 }
-                if (result.combinationResult) {
-                    setCombinationResult(result.combinationResult);
-                    if (result.combinationResult.isGreatSuccess) {
+                const combinationResult = result.clientResponse?.combinationResult || result.combinationResult;
+                if (combinationResult) {
+                    setCombinationResult(combinationResult);
+                    if (combinationResult.isGreatSuccess) {
                         audioService.combinationGreatSuccess(); // Assuming this sound exists
                     } else {
                         audioService.combinationSuccess(); // Assuming this sound exists
                     }
                 }
-                if (result.enhancementOutcome) {
-                    const { message, success, itemBefore, itemAfter } = result.enhancementOutcome;
+                const enhancementOutcome = result.clientResponse?.enhancementOutcome || result.enhancementOutcome;
+                if (enhancementOutcome) {
+                    const { message, success, itemBefore, itemAfter } = enhancementOutcome;
                     setEnhancementResult({ message, success });
                     setEnhancementOutcome({ message, success, itemBefore, itemAfter });
+                    const enhancementAnimationTarget = result.clientResponse?.enhancementAnimationTarget || result.enhancementAnimationTarget;
+                    if (enhancementAnimationTarget) {
+                        setEnhancementAnimationTarget(enhancementAnimationTarget);
+                    }
                     if (success) {
                         audioService.enhancementSuccess();
                     } else {
@@ -408,7 +433,7 @@ export const useApp = () => {
                     
                     // WebSocket 업데이트를 기다리면서 여러 번 시도
                     let attempts = 0;
-                    const maxAttempts = 20;
+                    const maxAttempts = 30;
                     const tryRoute = () => {
                         attempts++;
                         console.log(`[handleAction] Attempt ${attempts}/${maxAttempts} to route to game ${gameId}`);
@@ -442,12 +467,12 @@ export const useApp = () => {
                                 
                                 // 게임이 있으면 상태 업데이트를 기다리며 계속 시도
                                 if (hasGame && attempts < maxAttempts) {
-                                    setTimeout(tryRoute, 200);
+                                    setTimeout(tryRoute, 150);
                                 } else if (!hasGame && attempts < maxAttempts) {
                                     // 게임이 아직 없으면 더 기다림
-                                    setTimeout(tryRoute, 300);
+                                    setTimeout(tryRoute, 200);
                                 } else {
-                                    // 최대 시도 횟수에 도달했어도 라우팅 시도
+                                    // 최대 시도 횟수에 도달했어도 라우팅 시도 (게임이 생성되었으므로)
                                     console.warn('[handleAction] Max attempts reached, routing anyway:', gameId);
                                     setTimeout(() => {
                                         window.location.hash = `#/game/${gameId}`;
@@ -460,8 +485,8 @@ export const useApp = () => {
                         });
                     };
                     
-                    // 첫 시도는 300ms 후에 (WebSocket 메시지를 받을 시간을 줌)
-                    setTimeout(tryRoute, 300);
+                    // 첫 시도는 200ms 후에 (WebSocket 메시지를 받을 시간을 줌)
+                    setTimeout(tryRoute, 200);
                 }
             }
         } catch (err: any) {
@@ -810,19 +835,27 @@ export const useApp = () => {
                                                     console.log('[WebSocket] Game found in liveGames, routing immediately');
                                                     setTimeout(() => {
                                                         window.location.hash = `#/game/${gameId}`;
-                                                    }, 50);
+                                                    }, 100);
                                                 } else {
                                                     console.log('[WebSocket] Game not in liveGames yet, will wait for GAME_UPDATE');
                                                     // GAME_UPDATE를 기다리기 위해 짧은 지연 후 재시도
-                                                    setTimeout(() => {
+                                                    let attempts = 0;
+                                                    const maxAttempts = 20;
+                                                    const checkGame = () => {
+                                                        attempts++;
                                                         setLiveGames(games => {
                                                             if (games[gameId]) {
                                                                 console.log('[WebSocket] Game received in delayed check, routing');
-                                                                window.location.hash = `#/game/${gameId}`;
+                                                                setTimeout(() => {
+                                                                    window.location.hash = `#/game/${gameId}`;
+                                                                }, 100);
+                                                            } else if (attempts < maxAttempts) {
+                                                                setTimeout(checkGame, 200);
                                                             }
                                                             return games;
                                                         });
-                                                    }, 500);
+                                                    };
+                                                    setTimeout(checkGame, 200);
                                                 }
                                                 return currentGames;
                                             });
@@ -859,26 +892,21 @@ export const useApp = () => {
                                     Object.entries(message.payload || {}).forEach(([gameId, game]: [string, any]) => {
                                         updatedGames[gameId] = game;
                                         console.log('[WebSocket] Game updated:', gameId, game.mode);
-                                    });
-                                    
-                                    // 현재 사용자가 이 게임에 참여하는지 확인하고 라우팅
-                                    if (currentUser) {
-                                        // onlineUsers 상태를 직접 확인
-                                        setOnlineUsers(prevOnlineUsers => {
-                                            const currentUserStatus = prevOnlineUsers.find(u => u.id === currentUser.id);
-                                            if (currentUserStatus?.gameId && updatedGames[currentUserStatus.gameId] && currentUserStatus.status === 'in-game') {
-                                                const gameId = currentUserStatus.gameId;
-                                                console.log('[WebSocket] Game updated, current user is in game, routing:', gameId);
-                                                // 즉시 라우팅
+                                        
+                                        // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
+                                        if (currentUser && game.player1 && game.player2) {
+                                            const isPlayer1 = game.player1.id === currentUser.id;
+                                            const isPlayer2 = game.player2.id === currentUser.id;
+                                            
+                                            if (isPlayer1 || isPlayer2) {
+                                                console.log('[WebSocket] Current user is a player in this game, routing:', gameId);
+                                                // 즉시 라우팅 (USER_STATUS_UPDATE와 관계없이)
                                                 setTimeout(() => {
                                                     window.location.hash = `#/game/${gameId}`;
-                                                }, 50);
-                                            } else if (currentUserStatus?.gameId && updatedGames[currentUserStatus.gameId]) {
-                                                console.log('[WebSocket] Game updated but user status is not in-game:', currentUserStatus.status);
+                                                }, 100);
                                             }
-                                            return prevOnlineUsers;
-                                        });
-                                    }
+                                        }
+                                    });
                                     
                                     return updatedGames;
                                 });

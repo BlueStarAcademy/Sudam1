@@ -3,11 +3,13 @@ import { GameMode, UserWithStatus, GameSettings, Negotiation } from '../types';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, DEFAULT_GAME_SETTINGS } from '../constants';
 import { 
   BOARD_SIZES, TIME_LIMITS, BYOYOMI_COUNTS, BYOYOMI_TIMES, CAPTURE_BOARD_SIZES, 
-  CAPTURE_TARGETS, SPEED_BOARD_SIZES, SPEED_TIME_LIMITS, BASE_STONE_COUNTS,
+  CAPTURE_TARGETS, TTAMOK_CAPTURE_TARGETS, SPEED_BOARD_SIZES, SPEED_TIME_LIMITS, BASE_STONE_COUNTS,
   HIDDEN_STONE_COUNTS, SCAN_COUNTS, MISSILE_BOARD_SIZES, MISSILE_COUNTS,
-  ALKKAGI_STONE_COUNTS, ALKKAGI_ROUNDS, CURLING_STONE_COUNTS, CURLING_ROUNDS,
-  OMOK_BOARD_SIZES, HIDDEN_BOARD_SIZES
+  ALKKAGI_STONE_COUNTS, ALKKAGI_ROUNDS, ALKKAGI_GAUGE_SPEEDS, ALKKAGI_ITEM_COUNTS,
+  CURLING_STONE_COUNTS, CURLING_ROUNDS, CURLING_GAUGE_SPEEDS, CURLING_ITEM_COUNTS,
+  OMOK_BOARD_SIZES, HIDDEN_BOARD_SIZES, DICE_GO_ITEM_COUNTS
 } from '../constants/gameSettings';
+import { AlkkagiPlacementType, AlkkagiLayoutType } from '../types';
 import Button from './Button';
 import DraggableWindow from './DraggableWindow';
 import Avatar from './Avatar';
@@ -28,26 +30,41 @@ const GameCard: React.FC<{
     image: string, 
     onSelect: (mode: GameMode) => void,
     isSelected: boolean,
-    isRejected: boolean
-}> = ({ mode, image, onSelect, isSelected, isRejected }) => {
+    isRejected: boolean,
+    scaleFactor?: number
+}> = ({ mode, image, onSelect, isSelected, isRejected, scaleFactor = 1 }) => {
     const [imgError, setImgError] = useState(false);
+    
+    // 스케일에 따른 크기 계산 (더 컴팩트하게)
+    const padding = Math.max(3, Math.round(6 * scaleFactor));
+    const imageHeight = Math.max(70, Math.round(100 * scaleFactor));
+    const fontSize = Math.max(8, Math.round(10 * scaleFactor));
+    const titleFontSize = Math.max(9, Math.round(11 * scaleFactor));
 
     return (
         <div
-            className={`bg-panel text-on-panel rounded-lg p-2 lg:p-4 flex flex-col items-center text-center gap-2 lg:gap-2 transition-all transform ${
+            className={`bg-panel text-on-panel rounded-lg flex flex-col items-center text-center transition-all transform ${
                 isRejected 
                     ? 'opacity-50 cursor-not-allowed grayscale pointer-events-none' 
                     : isSelected
                     ? 'ring-2 ring-primary hover:-translate-y-1 shadow-lg cursor-pointer'
                     : 'hover:-translate-y-1 shadow-lg cursor-pointer'
             }`}
+            style={{ padding: `${padding}px`, gap: `${Math.max(4, Math.round(8 * scaleFactor))}px` }}
             onClick={() => {
                 if (!isRejected) {
                     onSelect(mode);
                 }
             }}
         >
-            <div className="w-full h-[120px] lg:h-[150px] flex-shrink-0 lg:mx-auto bg-tertiary rounded-md lg:mb-2 flex items-center justify-center text-tertiary overflow-hidden shadow-inner relative p-2 lg:p-3">
+            <div 
+                className="w-full flex-shrink-0 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden shadow-inner relative"
+                style={{ 
+                    height: `${imageHeight}px`,
+                    marginBottom: `${Math.max(4, Math.round(8 * scaleFactor))}px`,
+                    padding: `${Math.max(4, Math.round(8 * scaleFactor))}px`
+                }}
+            >
                 {!imgError ? (
                     <>
                         <img 
@@ -58,16 +75,26 @@ const GameCard: React.FC<{
                         />
                         {isRejected && (
                             <div className="absolute inset-0 bg-black/70 flex items-center justify-center">
-                                <span className="text-white font-bold text-[9px] lg:text-xs text-center">거부중</span>
+                                <span 
+                                    className="text-white font-bold text-center"
+                                    style={{ fontSize: `${fontSize}px` }}
+                                >
+                                    거부중
+                                </span>
                             </div>
                         )}
                     </>
                 ) : (
-                    <span className="text-[9px] lg:text-xs">{mode}</span>
+                    <span style={{ fontSize: `${fontSize}px` }}>{mode}</span>
                 )}
             </div>
             <div className="flex-grow flex flex-col w-full">
-                <h3 className={`text-[10px] lg:text-sm font-bold lg:mb-1 leading-tight ${isRejected ? 'text-gray-400' : 'text-primary'}`}>{mode}</h3>
+                <h3 
+                    className={`font-bold leading-tight ${isRejected ? 'text-gray-400' : 'text-primary'}`}
+                    style={{ fontSize: `${titleFontSize}px`, marginBottom: `${Math.max(2, Math.round(4 * scaleFactor))}px` }}
+                >
+                    {mode}
+                </h3>
             </div>
         </div>
     );
@@ -78,6 +105,33 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
   const currentUser = propCurrentUser || contextCurrentUser;
   const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
   const [settings, setSettings] = useState<GameSettings>(DEFAULT_GAME_SETTINGS);
+  const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+  const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+  
+  // 브라우저 크기에 따라 창 크기 계산
+  useEffect(() => {
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
+      setWindowHeight(window.innerHeight);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+  
+  // 뷰포트 크기에 비례한 창 크기 계산 (80% 너비, 최소 550px, 최대 950px)
+  const calculatedWidth = Math.max(550, Math.min(950, windowWidth * 0.8));
+  // 뷰포트 크기에 비례한 창 높이 계산 (70% 높이, 최소 450px, 최대 700px)
+  const calculatedHeight = Math.max(450, Math.min(700, windowHeight * 0.7));
+  
+  // 창 크기에 비례한 스케일 팩터 계산 (기준: 900px 너비)
+  const baseWidth = 900;
+  const scaleFactor = Math.max(0.7, Math.min(1.2, calculatedWidth / baseWidth));
+  
+  // 스케일 팩터를 CSS 변수로 전달
+  const containerStyle = {
+    '--scale-factor': scaleFactor,
+  } as React.CSSProperties;
   
   // 현재 negotiation 상태 확인
   const currentNegotiation = useMemo(() => {
@@ -267,7 +321,14 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
   const renderGameSettings = () => {
     if (!selectedMode) {
       return (
-        <div className="text-center text-gray-400 py-8">
+        <div 
+          className="text-center text-gray-400"
+          style={{ 
+            paddingTop: `${Math.max(32, Math.round(32 * scaleFactor))}px`,
+            paddingBottom: `${Math.max(32, Math.round(32 * scaleFactor))}px`,
+            fontSize: `${Math.max(11, Math.round(14 * scaleFactor))}px`
+          }}
+        >
           좌측에서 게임 종류를 선택하세요
         </div>
       );
@@ -277,21 +338,52 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
     const showKomi = ![GameMode.Capture, GameMode.Omok, GameMode.Ttamok, GameMode.Alkkagi, GameMode.Curling, GameMode.Dice, GameMode.Thief, GameMode.Base].includes(selectedMode);
     const showTimeControls = ![GameMode.Alkkagi, GameMode.Curling, GameMode.Dice, GameMode.Thief].includes(selectedMode);
     const showCaptureTarget = selectedMode === GameMode.Capture;
+    const showTtamokCaptureTarget = selectedMode === GameMode.Ttamok;
+    const showOmokRules = selectedMode === GameMode.Omok || selectedMode === GameMode.Ttamok;
     const showBaseStones = selectedMode === GameMode.Base;
     const showHiddenStones = selectedMode === GameMode.Hidden;
     const showMissileCount = selectedMode === GameMode.Missile;
+    const showDiceGoSettings = selectedMode === GameMode.Dice;
     const showAlkkagiSettings = selectedMode === GameMode.Alkkagi;
     const showCurlingSettings = selectedMode === GameMode.Curling;
+    
+    // 반응형 스타일 헬퍼 (더 컴팩트하게)
+    const settingRowStyle = {
+      gap: `${Math.max(3, Math.round(6 * scaleFactor))}px`,
+      marginBottom: `${Math.max(4, Math.round(6 * scaleFactor))}px`
+    };
+    const labelStyle = {
+      fontSize: `${Math.max(9, Math.round(11 * scaleFactor))}px`
+    };
+    const inputStyle = {
+      fontSize: `${Math.max(9, Math.round(11 * scaleFactor))}px`,
+      padding: `${Math.max(4, Math.round(6 * scaleFactor))}px`
+    };
 
     return (
-      <div className="space-y-2 lg:space-y-3 max-h-[400px] overflow-y-auto pr-2">
+      <div 
+        className="h-full"
+        style={{ 
+          gap: `${Math.max(4, Math.round(6 * scaleFactor))}px`,
+          paddingRight: `${Math.max(4, Math.round(6 * scaleFactor))}px`
+        }}
+      >
         {showBoardSize && (
-          <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
-            <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">판 크기</label>
+          <div 
+            className="flex flex-row lg:grid lg:grid-cols-2 items-center"
+            style={settingRowStyle}
+          >
+            <label 
+              className="font-semibold text-gray-300 flex-shrink-0"
+              style={labelStyle}
+            >
+              판 크기
+            </label>
             <select 
               value={settings.boardSize} 
               onChange={e => handleSettingChange('boardSize', parseInt(e.target.value, 10) as GameSettings['boardSize'])}
-              className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-blue-500 focus:border-blue-500"
+              style={inputStyle}
             >
               {(selectedMode === GameMode.Omok || selectedMode === GameMode.Ttamok ? OMOK_BOARD_SIZES : 
                 selectedMode === GameMode.Capture ? CAPTURE_BOARD_SIZES : 
@@ -307,17 +399,31 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
         )}
 
         {showKomi && (
-          <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
-            <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">덤 (백)</label>
-            <div className="flex items-center gap-2">
+          <div 
+            className="flex flex-row lg:grid lg:grid-cols-2 items-center"
+            style={settingRowStyle}
+          >
+            <label 
+              className="font-semibold text-gray-300 flex-shrink-0"
+              style={labelStyle}
+            >
+              덤 (백)
+            </label>
+            <div className="flex items-center" style={{ gap: `${Math.max(8, Math.round(8 * scaleFactor))}px` }}>
               <input 
                 type="number" 
                 step="1" 
                 value={Math.floor(settings.komi)} 
                 onChange={e => handleSettingChange('komi', parseInt(e.target.value, 10) + 0.5)} 
-                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2" 
+                className="w-full bg-gray-700 border border-gray-600 text-white rounded-lg focus:ring-blue-500 focus:border-blue-500" 
+                style={inputStyle}
               />
-              <span className="font-bold text-sm text-gray-300 whitespace-nowrap">.5 집</span>
+              <span 
+                className="font-bold text-gray-300 whitespace-nowrap"
+                style={labelStyle}
+              >
+                .5 집
+              </span>
             </div>
           </div>
         )}
@@ -445,12 +551,158 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
           </>
         )}
 
+        {showDiceGoSettings && (
+          <>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">라운드 설정</label>
+              <select 
+                value={settings.diceGoRounds ?? 3} 
+                onChange={e => handleSettingChange('diceGoRounds', parseInt(e.target.value, 10) as 1 | 2 | 3)}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {[1, 2, 3].map(r => <option key={r} value={r}>{r}라운드</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">홀수 주사위</label>
+              <select 
+                value={settings.oddDiceCount ?? 1} 
+                onChange={e => handleSettingChange('oddDiceCount', parseInt(e.target.value, 10))}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {DICE_GO_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">짝수 주사위</label>
+              <select 
+                value={settings.evenDiceCount ?? 1} 
+                onChange={e => handleSettingChange('evenDiceCount', parseInt(e.target.value, 10))}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {DICE_GO_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+              </select>
+            </div>
+          </>
+        )}
+
+        {showTtamokCaptureTarget && (
+          <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+            <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">따내기 목표</label>
+            <select 
+              value={settings.captureTarget ?? 20} 
+              onChange={e => handleSettingChange('captureTarget', parseInt(e.target.value))}
+              className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+            >
+              {TTAMOK_CAPTURE_TARGETS.map(t => <option key={t} value={t}>{t}개</option>)}
+            </select>
+          </div>
+        )}
+
+        {showOmokRules && (
+          <>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">쌍삼 금지</label>
+              <input 
+                type="checkbox" 
+                checked={settings.has33Forbidden ?? true} 
+                onChange={e => handleSettingChange('has33Forbidden', e.target.checked)} 
+                className="w-5 h-5"
+              />
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">장목 금지</label>
+              <input 
+                type="checkbox" 
+                checked={settings.hasOverlineForbidden ?? true} 
+                onChange={e => handleSettingChange('hasOverlineForbidden', e.target.checked)} 
+                className="w-5 h-5"
+              />
+            </div>
+          </>
+        )}
+
+        {showAlkkagiSettings && (
+          <>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">돌 개수</label>
+              <select 
+                value={settings.alkkagiStoneCount ?? 5} 
+                onChange={e => handleSettingChange('alkkagiStoneCount', parseInt(e.target.value))}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {ALKKAGI_STONE_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">라운드</label>
+              <select 
+                value={settings.alkkagiRounds ?? 1} 
+                onChange={e => handleSettingChange('alkkagiRounds', parseInt(e.target.value) as 1 | 2 | 3)}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {ALKKAGI_ROUNDS.map(r => <option key={r} value={r}>{r}라운드</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">배치 방식</label>
+              <select 
+                value={settings.alkkagiPlacementType ?? AlkkagiPlacementType.TurnByTurn} 
+                onChange={e => handleSettingChange('alkkagiPlacementType', e.target.value as AlkkagiPlacementType)}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {Object.values(AlkkagiPlacementType).map(type => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">배치 전장</label>
+              <select 
+                value={settings.alkkagiLayout ?? AlkkagiLayoutType.Normal} 
+                onChange={e => handleSettingChange('alkkagiLayout', e.target.value as AlkkagiLayoutType)}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {Object.values(AlkkagiLayoutType).map(type => <option key={type} value={type}>{type}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">게이지 속도</label>
+              <select 
+                value={settings.alkkagiGaugeSpeed ?? 700} 
+                onChange={e => handleSettingChange('alkkagiGaugeSpeed', parseInt(e.target.value))}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {ALKKAGI_GAUGE_SPEEDS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">슬로우 아이템</label>
+              <select 
+                value={settings.alkkagiSlowItemCount ?? 2} 
+                onChange={e => handleSettingChange('alkkagiSlowItemCount', parseInt(e.target.value))}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {ALKKAGI_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">조준선 아이템</label>
+              <select 
+                value={settings.alkkagiAimingLineItemCount ?? 2} 
+                onChange={e => handleSettingChange('alkkagiAimingLineItemCount', parseInt(e.target.value))}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {ALKKAGI_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+              </select>
+            </div>
+          </>
+        )}
+
         {showCurlingSettings && (
           <>
             <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
               <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">돌 개수</label>
               <select 
-                value={settings.curlingStoneCount} 
+                value={settings.curlingStoneCount ?? 5} 
                 onChange={e => handleSettingChange('curlingStoneCount', parseInt(e.target.value))}
                 className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
               >
@@ -460,11 +712,41 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
             <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
               <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">라운드</label>
               <select 
-                value={settings.curlingRounds} 
+                value={settings.curlingRounds ?? 3} 
                 onChange={e => handleSettingChange('curlingRounds', parseInt(e.target.value) as 1 | 2 | 3)}
                 className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
               >
                 {CURLING_ROUNDS.map(r => <option key={r} value={r}>{r}라운드</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">게이지 속도</label>
+              <select 
+                value={settings.curlingGaugeSpeed ?? 700} 
+                onChange={e => handleSettingChange('curlingGaugeSpeed', parseInt(e.target.value))}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {CURLING_GAUGE_SPEEDS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">슬로우 아이템</label>
+              <select 
+                value={settings.curlingSlowItemCount ?? 2} 
+                onChange={e => handleSettingChange('curlingSlowItemCount', parseInt(e.target.value))}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {CURLING_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+              </select>
+            </div>
+            <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+              <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">조준선 아이템</label>
+              <select 
+                value={settings.curlingAimingLineItemCount ?? 2} 
+                onChange={e => handleSettingChange('curlingAimingLineItemCount', parseInt(e.target.value))}
+                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+              >
+                {CURLING_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
               </select>
             </div>
           </>
@@ -474,12 +756,25 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
   };
 
   return (
-    <DraggableWindow title="대국 신청" windowId="challenge-selection" onClose={onClose} initialWidth={900}>
-      <div onMouseDown={(e) => e.stopPropagation()} className="text-sm">
-        <div className="flex flex-row gap-2 lg:gap-4 h-[500px] lg:h-[600px] min-h-[500px] lg:min-h-[600px]">
+    <DraggableWindow title="대국 신청" windowId="challenge-selection" onClose={onClose} initialWidth={calculatedWidth} initialHeight={calculatedHeight}>
+      <div 
+        onMouseDown={(e) => e.stopPropagation()} 
+        className="h-full flex flex-col overflow-hidden"
+        style={containerStyle}
+      >
+        <div className="flex flex-row flex-1 min-h-0 overflow-hidden" style={{ gap: `${Math.max(8, Math.round(16 * scaleFactor))}px` }}>
           {/* 좌측 패널: 게임 종류 선택 또는 게임 정보 */}
-          <div className="w-1/3 lg:w-1/2 border-r border-gray-700 pr-2 lg:pr-4 flex flex-col">
-            <p className="text-center text-yellow-300 mb-2 lg:mb-4 text-xs flex-shrink-0">
+          <div 
+            className="w-1/3 lg:w-1/2 border-r border-gray-700 flex flex-col min-h-0 overflow-hidden"
+            style={{ paddingRight: `${Math.max(8, Math.round(16 * scaleFactor))}px` }}
+          >
+            <p 
+              className="text-center text-yellow-300 flex-shrink-0"
+              style={{ 
+                marginBottom: `${Math.max(6, Math.round(10 * scaleFactor))}px`,
+                fontSize: `${Math.max(9, Math.round(11 * scaleFactor))}px`
+              }}
+            >
               {isWaitingForResponse 
                 ? `${opponent.nickname}님의 응답을 기다리는 중...` 
                 : `${opponent.nickname}님에게 대국을 신청합니다.`}
@@ -489,15 +784,23 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
               <>
                 {/* 타임아웃 카운트다운 */}
                 {negotiationDeadline && (
-                  <div className="mb-3 flex-shrink-0">
-                    <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs text-gray-400">응답 남은 시간</span>
-                        <span className={`text-lg font-bold ${timeRemaining <= 5 ? 'text-red-400' : timeRemaining <= 10 ? 'text-yellow-400' : 'text-green-400'}`}>
+                  <div className="flex-shrink-0" style={{ marginBottom: `${Math.max(8, Math.round(10 * scaleFactor))}px` }}>
+                    <div 
+                      className="bg-gray-800/50 rounded-lg border border-gray-700"
+                      style={{ padding: `${Math.max(8, Math.round(10 * scaleFactor))}px` }}
+                    >
+                      <div className="flex items-center justify-between" style={{ marginBottom: `${Math.max(6, Math.round(6 * scaleFactor))}px` }}>
+                        <span className="text-gray-400" style={{ fontSize: `${Math.max(9, Math.round(11 * scaleFactor))}px` }}>
+                          응답 남은 시간
+                        </span>
+                        <span 
+                          className={`font-bold ${timeRemaining <= 5 ? 'text-red-400' : timeRemaining <= 10 ? 'text-yellow-400' : 'text-green-400'}`}
+                          style={{ fontSize: `${Math.max(12, Math.round(16 * scaleFactor))}px` }}
+                        >
                           {timeRemaining}초
                         </span>
                       </div>
-                      <div className="w-full bg-gray-700 rounded-full h-3 overflow-hidden">
+                      <div className="w-full bg-gray-700 rounded-full overflow-hidden" style={{ height: `${Math.max(8, Math.round(12 * scaleFactor))}px` }}>
                         <div 
                           className={`h-full transition-all duration-100 ${timeRemaining <= 5 ? 'bg-red-500' : timeRemaining <= 10 ? 'bg-yellow-500' : 'bg-green-500'}`}
                           style={{ width: `${progressPercentage}%` }}
@@ -508,27 +811,52 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
                 )}
                 
                 {/* 게임 이미지 */}
-                <div className="mb-4 flex-shrink-0">
-                  <div className="w-full h-[200px] lg:h-[250px] bg-tertiary rounded-lg flex items-center justify-center overflow-hidden shadow-inner relative">
+                <div className="flex-shrink-0" style={{ marginBottom: `${Math.max(10, Math.round(14 * scaleFactor))}px` }}>
+                  <div 
+                    className="w-full bg-tertiary rounded-lg flex items-center justify-center overflow-hidden shadow-inner relative"
+                    style={{ height: `${Math.max(120, Math.round(160 * scaleFactor))}px` }}
+                  >
                     <img 
                       src={selectedGameDefinition.image} 
                       alt={selectedMode} 
                       className="w-full h-full object-contain"
                     />
                   </div>
-                  <h3 className="text-center text-lg font-bold text-primary mt-2">{selectedMode}</h3>
+                  <h3 
+                    className="text-center font-bold text-primary mt-2"
+                    style={{ fontSize: `${Math.max(14, Math.round(18 * scaleFactor))}px` }}
+                  >
+                    {selectedMode}
+                  </h3>
                 </div>
                 
                 {/* 게임 설명 */}
-                <div className="flex-grow overflow-y-auto pr-1">
-                  <h4 className="font-semibold text-gray-300 mb-2 lg:mb-3 text-sm">게임 설명</h4>
-                  <p className="text-xs text-tertiary leading-relaxed">
+                <div className="flex-grow overflow-y-auto" style={{ paddingRight: `${Math.max(4, Math.round(8 * scaleFactor))}px` }}>
+                  <h4 
+                    className="font-semibold text-gray-300"
+                    style={{ 
+                      marginBottom: `${Math.max(8, Math.round(12 * scaleFactor))}px`,
+                      fontSize: `${Math.max(11, Math.round(14 * scaleFactor))}px`
+                    }}
+                  >
+                    게임 설명
+                  </h4>
+                  <p 
+                    className="text-tertiary leading-relaxed"
+                    style={{ fontSize: `${Math.max(10, Math.round(12 * scaleFactor))}px` }}
+                  >
                     {selectedGameDefinition.description || '선택된 게임에 대한 설명이 없습니다.'}
                   </p>
                 </div>
               </>
             ) : (
-              <div className="flex-1 grid grid-cols-2 lg:grid-cols-2 gap-1.5 lg:gap-3 overflow-y-auto max-h-[500px] lg:max-h-[550px] pr-1 lg:pr-2">
+              <div 
+                className="flex-1 grid grid-cols-2 overflow-y-auto min-h-0"
+                style={{ 
+                  gap: `${Math.max(6, Math.round(12 * scaleFactor))}px`,
+                  paddingRight: `${Math.max(4, Math.round(8 * scaleFactor))}px`
+                }}
+              >
                 {availableGames.map((game) => {
                   const isRejected = opponent.rejectedGameModes?.includes(game.mode) || false;
                   return (
@@ -539,6 +867,7 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
                       onSelect={handleGameSelect}
                       isSelected={selectedMode === game.mode}
                       isRejected={isRejected}
+                      scaleFactor={scaleFactor}
                     />
                   );
                 })}
@@ -547,29 +876,69 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
           </div>
 
           {/* 우측 패널: 프로필 + 전적 + 협상 설정 */}
-          <div className="w-2/3 lg:w-1/2 pl-2 lg:pl-4 flex flex-col">
+          <div 
+            className="w-2/3 lg:w-1/2 flex flex-col min-h-0 overflow-hidden"
+            style={{ paddingLeft: `${Math.max(8, Math.round(16 * scaleFactor))}px` }}
+          >
             {/* 상대방 프로필 */}
-            <div className="bg-gray-900/50 p-3 rounded-lg border border-gray-700 mb-4">
-              <div className="flex items-center gap-3 mb-3">
+            <div 
+              className="bg-gray-900/50 rounded-lg border border-gray-700 flex-shrink-0"
+              style={{ 
+                padding: `${Math.max(8, Math.round(12 * scaleFactor))}px`,
+                marginBottom: `${Math.max(8, Math.round(12 * scaleFactor))}px`
+              }}
+            >
+              <div 
+                className="flex items-center"
+                style={{ 
+                  gap: `${Math.max(8, Math.round(12 * scaleFactor))}px`,
+                  marginBottom: `${Math.max(8, Math.round(12 * scaleFactor))}px`
+                }}
+              >
                 <Avatar 
                   userId={opponent.id} 
                   userName={opponent.nickname} 
                   avatarUrl={opponentAvatarUrl} 
                   borderUrl={opponentBorderUrl} 
-                  size={48} 
+                  size={Math.max(32, Math.round(40 * scaleFactor))} 
                 />
                 <div className="flex-grow">
-                  <h3 className="text-lg font-bold">{opponent.nickname}</h3>
-                  <p className="text-xs text-gray-400">
+                  <h3 
+                    className="font-bold"
+                    style={{ fontSize: `${Math.max(14, Math.round(18 * scaleFactor))}px` }}
+                  >
+                    {opponent.nickname}
+                  </h3>
+                  <p 
+                    className="text-gray-400"
+                    style={{ fontSize: `${Math.max(10, Math.round(12 * scaleFactor))}px` }}
+                  >
                     {lobbyType === 'strategic' ? '전략' : '놀이'} Lv.{opponentLevel}
                   </p>
                 </div>
               </div>
               {/* 선택한 게임 전적 */}
               {selectedMode && selectedGameStats && (
-                <div className="border-t border-gray-700 pt-3 mt-3">
-                  <p className="text-xs font-semibold text-gray-300 mb-2">{selectedMode} 전적</p>
-                  <div className="flex justify-between items-center text-xs">
+                <div 
+                  className="border-t border-gray-700"
+                  style={{ 
+                    paddingTop: `${Math.max(12, Math.round(16 * scaleFactor))}px`,
+                    marginTop: `${Math.max(12, Math.round(16 * scaleFactor))}px`
+                  }}
+                >
+                  <p 
+                    className="font-semibold text-gray-300"
+                    style={{ 
+                      marginBottom: `${Math.max(8, Math.round(8 * scaleFactor))}px`,
+                      fontSize: `${Math.max(10, Math.round(12 * scaleFactor))}px`
+                    }}
+                  >
+                    {selectedMode} 전적
+                  </p>
+                  <div 
+                    className="flex justify-between items-center"
+                    style={{ fontSize: `${Math.max(10, Math.round(12 * scaleFactor))}px` }}
+                  >
                     <span className="text-gray-400">승률</span>
                     <span className="font-bold">
                       {selectedGameStats.wins}승 {selectedGameStats.losses}패 
@@ -578,7 +947,13 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
                         : 0}%)
                     </span>
                   </div>
-                  <div className="flex justify-between items-center text-xs mt-1">
+                  <div 
+                    className="flex justify-between items-center"
+                    style={{ 
+                      marginTop: `${Math.max(4, Math.round(4 * scaleFactor))}px`,
+                      fontSize: `${Math.max(10, Math.round(12 * scaleFactor))}px`
+                    }}
+                  >
                     <span className="text-gray-400">랭킹 점수</span>
                     <span className="font-mono text-yellow-300">{selectedGameStats.rankingScore}점</span>
                   </div>
@@ -587,10 +962,24 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
             </div>
 
             {/* 협상 설정 */}
-            <div className="flex-grow overflow-y-auto">
-              <h4 className="font-semibold text-gray-300 mb-3 text-sm">대국 설정</h4>
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <h4 
+                className="font-semibold text-gray-300 flex-shrink-0"
+                style={{ 
+                  marginBottom: `${Math.max(6, Math.round(8 * scaleFactor))}px`,
+                  fontSize: `${Math.max(10, Math.round(12 * scaleFactor))}px`
+                }}
+              >
+                대국 설정
+              </h4>
               {isWaitingForResponse ? (
-                <div className="space-y-2 lg:space-y-3 max-h-[400px] overflow-y-auto pr-2">
+                <div 
+                  className="overflow-y-auto"
+                  style={{ 
+                    gap: `${Math.max(8, Math.round(12 * scaleFactor))}px`,
+                    paddingRight: `${Math.max(8, Math.round(8 * scaleFactor))}px`
+                  }}
+                >
                   {renderGameSettings()}
                 </div>
               ) : (
@@ -599,13 +988,32 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
             </div>
 
             {/* 하단 버튼 */}
-            <div className="mt-4 border-t border-gray-700 pt-4 flex justify-end gap-3">
-              <Button onClick={onClose} variant="secondary" className="!text-sm !py-1.5">취소</Button>
+            <div 
+              className="border-t border-gray-700 flex justify-end flex-shrink-0"
+              style={{ 
+                marginTop: `${Math.max(6, Math.round(8 * scaleFactor))}px`,
+                paddingTop: `${Math.max(6, Math.round(8 * scaleFactor))}px`,
+                gap: `${Math.max(8, Math.round(12 * scaleFactor))}px`
+              }}
+            >
+              <Button 
+                onClick={onClose} 
+                variant="secondary" 
+                style={{ 
+                  fontSize: `${Math.max(11, Math.round(14 * scaleFactor))}px`,
+                  padding: `${Math.max(6, Math.round(8 * scaleFactor))}px ${Math.max(12, Math.round(16 * scaleFactor))}px`
+                }}
+              >
+                취소
+              </Button>
               {isWaitingForResponse ? (
                 <Button 
                   variant="primary" 
-                  className="!text-sm !py-1.5"
                   disabled
+                  style={{ 
+                    fontSize: `${Math.max(11, Math.round(14 * scaleFactor))}px`,
+                    padding: `${Math.max(6, Math.round(8 * scaleFactor))}px ${Math.max(12, Math.round(16 * scaleFactor))}px`
+                  }}
                 >
                   응답 대기 중...
                 </Button>
@@ -613,8 +1021,11 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
                 <Button 
                   onClick={handleChallenge} 
                   variant="primary" 
-                  className="!text-sm !py-1.5"
                   disabled={!selectedMode}
+                  style={{ 
+                    fontSize: `${Math.max(11, Math.round(14 * scaleFactor))}px`,
+                    padding: `${Math.max(6, Math.round(8 * scaleFactor))}px ${Math.max(12, Math.round(16 * scaleFactor))}px`
+                  }}
                 >
                   대국 신청
                 </Button>
