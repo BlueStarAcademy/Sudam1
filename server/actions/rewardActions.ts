@@ -323,9 +323,22 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             return {};
         }
         case 'MARK_MAIL_AS_READ': {
-            const { mailId } = payload;
+            if (!payload || typeof payload !== 'object') {
+                return { error: 'Invalid payload for MARK_MAIL_AS_READ.' };
+            }
+            const { mailId } = payload as { mailId?: string };
+            if (!mailId || typeof mailId !== 'string') {
+                return { error: 'mailId is required and must be a string.' };
+            }
+            
+            if (!user.mail || !Array.isArray(user.mail)) {
+                return { error: 'User mail array not found.' };
+            }
+            
             const mail = user.mail.find(m => m.id === mailId);
-            if (!mail) return { error: 'Mail not found.' };
+            if (!mail) {
+                return { error: 'Mail not found.' };
+            }
             
             mail.isRead = true;
             await db.updateUser(user);
@@ -335,7 +348,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             const { broadcast } = await import('../socket.js');
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUserCopy } });
             
-            return {};
+            return { clientResponse: { updatedUser: updatedUserCopy } };
         }
         case 'CLAIM_TOURNAMENT_REWARD': {
             const { tournamentType } = payload as { tournamentType: TournamentType };

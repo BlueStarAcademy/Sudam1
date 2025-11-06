@@ -184,7 +184,7 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     // Non-Game actions
     if (type.startsWith('ADMIN_')) return handleAdminAction(volatileState, action, user);
     if (type.includes('NEGOTIATION') || type === 'START_AI_GAME' || type === 'REQUEST_REMATCH' || type === 'CHALLENGE_USER' || type === 'SEND_CHALLENGE') return handleNegotiationAction(volatileState, action, user);
-    if (type.startsWith('CLAIM_') || type.startsWith('DELETE_MAIL')) return handleRewardAction(volatileState, action, user);
+    if (type.startsWith('CLAIM_') || type.startsWith('DELETE_MAIL') || type === 'MARK_MAIL_AS_READ') return handleRewardAction(volatileState, action, user);
     if (type.startsWith('BUY_') || type === 'PURCHASE_ACTION_POINTS' || type === 'EXPAND_INVENTORY') return handleShopAction(volatileState, action, user);
     if (type.startsWith('TOURNAMENT') || type.startsWith('START_TOURNAMENT') || type.startsWith('SKIP_TOURNAMENT') || type.startsWith('FORFEIT_TOURNAMENT') || type.startsWith('FORFEIT_CURRENT_MATCH') || type.startsWith('SAVE_TOURNAMENT') || type.startsWith('CLEAR_TOURNAMENT') || type === 'USE_CONDITION_POTION' || type === 'START_TOURNAMENT_MATCH') return handleTournamentAction(volatileState, action, user);
     if (['TOGGLE_EQUIP_ITEM', 'SELL_ITEM', 'ENHANCE_ITEM', 'DISASSEMBLE_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'CRAFT_MATERIAL', 'COMBINE_ITEMS'].includes(type)) return handleInventoryAction(volatileState, action, user);

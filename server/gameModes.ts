@@ -98,17 +98,16 @@ export const getGameResult = (game: LiveGameSession): LiveGameSession => {
             
             await endGame(freshGame, winner, 'score');
         })
-        .catch(error => {
+        .catch(async (error) => {
             console.error(`[AI Analysis] scoring failed for game ${game.id}.`, error);
-            db.getLiveGame(game.id).then(async (failedGame: types.LiveGameSession | null) => {
-                if (failedGame) {
-                    failedGame.isAnalyzing = false;
-                    // Decide a winner randomly as a fallback
-                    const winner = Math.random() < 0.5 ? types.Player.Black : types.Player.White;
-                    // End the game properly to process summaries and rewards
-                    await endGame(failedGame, winner, 'score'); // Re-use 'score' reason, as it's a scoring failure
-                }
-            });
+            const failedGame = await db.getLiveGame(game.id);
+            if (failedGame && failedGame.gameStatus === 'scoring') {
+                failedGame.isAnalyzing = false;
+                // Decide a winner randomly as a fallback
+                const winner = Math.random() < 0.5 ? types.Player.Black : types.Player.White;
+                // End the game properly to process summaries and rewards
+                await endGame(failedGame, winner, 'score'); // Re-use 'score' reason, as it's a scoring failure
+            }
         });
     return game;
 };
