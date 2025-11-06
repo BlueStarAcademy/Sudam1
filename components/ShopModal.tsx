@@ -12,6 +12,7 @@ interface ShopModalProps {
     onClose: () => void;
     onAction: (action: ServerAction) => void;
     isTopmost?: boolean;
+    initialTab?: ShopTab;
 }
 
 type ShopTab = 'equipment' | 'materials' | 'misc' | 'consumables';

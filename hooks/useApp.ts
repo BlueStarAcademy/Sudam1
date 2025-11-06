@@ -90,7 +90,7 @@ export const useApp = () => {
     const [shopInitialTab, setShopInitialTab] = useState<'equipment' | 'materials' | 'consumables' | 'misc' | undefined>(undefined);
     const [lastUsedItemResult, setLastUsedItemResult] = useState<InventoryItem[] | null>(null);
     const [disassemblyResult, setDisassemblyResult] = useState<{ gained: { name: string, amount: number }[], jackpot: boolean } | null>(null);
-    const [craftResult, setCraftResult] = useState<{ gained: { name: string; amount: number }[]; used: { name: string; amount: number }[]; craftType: 'upgrade' | 'downgrade'; } | null>(null);
+    const [craftResult, setCraftResult] = useState<{ gained: { name: string; amount: number }[]; used: { name: string; amount: number }[]; craftType: 'upgrade' | 'downgrade'; jackpot?: boolean } | null>(null);
     const [rewardSummary, setRewardSummary] = useState<{ reward: QuestReward; items: InventoryItem[]; title: string } | null>(null);
     const [isClaimAllSummaryOpen, setIsClaimAllSummaryOpen] = useState(false);
     const [claimAllSummary, setClaimAllSummary] = useState<{ gold: number; diamonds: number; actionPoints: number } | null>(null);
@@ -355,6 +355,8 @@ export const useApp = () => {
                     hasUpdatedUser: !!result.updatedUser,
                     hasClientResponse: !!result.clientResponse,
                     hasClientResponseUpdatedUser: !!result.clientResponse?.updatedUser,
+                    hasRedirectToTournament: !!result.clientResponse?.redirectToTournament,
+                    redirectToTournament: result.clientResponse?.redirectToTournament || result.redirectToTournament,
                     hasObtainedItemsBulk: !!result.obtainedItemsBulk,
                     hasClientResponseObtainedItemsBulk: !!result.clientResponse?.obtainedItemsBulk,
                     hasRewardSummary: !!result.rewardSummary,
@@ -363,11 +365,13 @@ export const useApp = () => {
                     hasEnhancementOutcome: !!result.enhancementOutcome,
                     hasCraftResult: !!result.craftResult,
                     resultKeys: Object.keys(result),
-                    clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : []
+                    clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
+                    fullResult: result
                 });
                 
-                // clientResponse.updatedUser 또는 result.updatedUser 확인
-                const updatedUserFromResponse = result.clientResponse?.updatedUser || result.updatedUser;
+                // 서버 응답 구조: { success: true, ...result.clientResponse }
+                // 따라서 result.updatedUser 또는 result.clientResponse?.updatedUser 확인
+                const updatedUserFromResponse = result.updatedUser || result.clientResponse?.updatedUser;
                 
                 if (updatedUserFromResponse) {
                     // 깊은 복사를 수행하여 React가 변경을 감지하도록 함
@@ -385,9 +389,11 @@ export const useApp = () => {
                         beforeInventoryLength: currentUser?.inventory?.length,
                         hasInventoryChanged: JSON.stringify(currentUser?.inventory) !== JSON.stringify(updatedUser.inventory),
                         hasEquipmentChanged: JSON.stringify(currentUser?.equipment) !== JSON.stringify(updatedUser.equipment),
-                        hasProfileChanged: currentUser?.avatarId !== updatedUser.avatarId || currentUser?.borderId !== updatedUser.borderId || currentUser?.nickname !== updatedUser.nickname
+                        hasProfileChanged: currentUser?.avatarId !== updatedUser.avatarId || currentUser?.borderId !== updatedUser.borderId || currentUser?.nickname !== updatedUser.nickname,
+                        hasBlacksmithChanged: currentUser?.blacksmithLevel !== updatedUser.blacksmithLevel || currentUser?.blacksmithXp !== updatedUser.blacksmithXp
                     });
-                    // 최근 액션 처리 시간 기록 (WebSocket 업데이트 무시를 위해 - 5초로 연장)
+                    // 최근 액션 처리 시간 기록 (WebSocket 업데이트 무시를 위해)
+                    // HTTP 응답의 updatedUser가 항상 최신이므로, 이를 기록하여 WebSocket이 오래된 데이터를 덮어쓰지 않도록 함
                     lastActionProcessedTime.current = Date.now();
                     lastActionType.current = action.type;
                     // 상태 업데이트를 즉시 동기적으로 처리하여 React가 변경을 확실히 감지하도록 함
@@ -400,6 +406,8 @@ export const useApp = () => {
                         // 강제 리렌더링 트리거
                         setUpdateTrigger(prev => prev + 1);
                     });
+                    // HTTP 응답에서 받은 updatedUser가 최신이므로, WebSocket 업데이트가 이를 덮어쓰지 않도록 보장
+                    // (이미 위의 shouldIgnoreWebSocketUpdate 로직과 추가 체크로 처리됨)
                 } else {
                     console.warn(`[handleAction] ${action.type} - No updatedUser in response!`, {
                         hasClientResponse: !!result.clientResponse,
@@ -421,7 +429,31 @@ export const useApp = () => {
                 }
                 const craftResult = result.clientResponse?.craftResult || result.craftResult;
                 if (craftResult) {
-                    setCraftResult(craftResult);
+                    console.log(`[handleAction] ${action.type} - Setting craftResult:`, {
+                        craftResult,
+                        hasCraftResult: !!craftResult,
+                        gained: craftResult.gained,
+                        used: craftResult.used,
+                        craftType: craftResult.craftType,
+                        jackpot: craftResult.jackpot
+                    });
+                    // 상태 업데이트를 즉시 동기적으로 처리하여 결과 모달이 확실히 표시되도록 함
+                    flushSync(() => {
+                        setCraftResult(craftResult);
+                    });
+                    // 대박 발생 시 사운드 재생
+                    if (craftResult.jackpot) {
+                        audioService.disassemblyJackpot();
+                    }
+                    // 추가 디버깅: 상태가 설정되었는지 확인
+                    console.log(`[handleAction] ${action.type} - craftResult state set, should trigger modal`);
+                } else {
+                    console.warn(`[handleAction] ${action.type} - No craftResult in response!`, {
+                        hasClientResponse: !!result.clientResponse,
+                        hasCraftResult: !!result.craftResult,
+                        clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
+                        resultKeys: Object.keys(result)
+                    });
                 }
                 const combinationResult = result.clientResponse?.combinationResult || result.combinationResult;
                 if (combinationResult) {
@@ -449,8 +481,24 @@ export const useApp = () => {
                     }
                 }
                 if (result.enhancementAnimationTarget) setEnhancementAnimationTarget(result.enhancementAnimationTarget);
-                if (result.redirectToTournament) {
-                    window.location.hash = `#/tournament/${result.redirectToTournament}`;
+                const redirectToTournament = result.clientResponse?.redirectToTournament || result.redirectToTournament;
+                if (redirectToTournament) {
+                    console.log(`[handleAction] ${action.type} - Redirecting to tournament:`, redirectToTournament);
+                    // 상태 업데이트가 완료된 후 리다이렉트
+                    // 같은 해시일 경우에도 강제로 리렌더링되도록 해시를 임시로 변경한 후 다시 설정
+                    setTimeout(() => {
+                        const newHash = `#/tournament/${redirectToTournament}`;
+                        const currentHash = window.location.hash;
+                        if (currentHash === newHash) {
+                            // 같은 해시인 경우 임시로 다른 해시로 변경한 후 다시 설정하여 강제 리렌더링
+                            window.location.hash = '#/tournament';
+                            setTimeout(() => {
+                                window.location.hash = newHash;
+                            }, 50);
+                        } else {
+                            window.location.hash = newHash;
+                        }
+                    }, 200);
                 }
                 // 거절 메시지 표시
                 if (result.declinedMessage) {
@@ -830,10 +878,11 @@ export const useApp = () => {
                                 break;
                             case 'USER_UPDATE':
                                 // 사용자 데이터 업데이트 (인벤토리, 장비, 프로필 등)
-                                // 최근 액션 처리로부터 10초 이내라면 WebSocket 업데이트를 무시 (HTTP 응답이 우선)
+                                // HTTP 응답이 최근 3초 이내에 처리되었다면 WebSocket 업데이트를 무시 (HTTP 응답이 더 최신)
+                                // 그 외의 경우에는 WebSocket 업데이트를 처리 (다른 사용자의 액션이거나, HTTP 응답이 없는 경우)
                                 const now = Date.now();
                                 const timeSinceLastAction = now - lastActionProcessedTime.current;
-                                const shouldIgnoreWebSocketUpdate = timeSinceLastAction < 10000 && lastActionType.current !== null;
+                                const shouldIgnoreForCurrentUser = timeSinceLastAction < 3000 && lastActionType.current !== null;
                                 
                                 setUsersMap(currentUsersMap => {
                                     const updatedUsersMap = { ...currentUsersMap };
@@ -842,27 +891,36 @@ export const useApp = () => {
                                     });
                                     
                                     // 현재 사용자의 데이터가 업데이트되었으면 currentUser도 업데이트
-                                    // 단, 최근 액션 처리로부터 10초 이내라면 무시 (HTTP 응답이 이미 처리했을 가능성)
+                                    // 단, HTTP 응답이 최근 3초 이내에 처리되었다면 무시 (HTTP 응답이 더 최신)
                                     if (currentUser && message.payload[currentUser.id]) {
-                                        if (!shouldIgnoreWebSocketUpdate) {
-                                            // 최근 액션 처리로부터 충분한 시간이 지났거나, 다른 사용자의 업데이트인 경우
+                                        if (!shouldIgnoreForCurrentUser) {
+                                            // HTTP 응답이 없거나 충분한 시간이 지난 경우, WebSocket 업데이트 처리
                                             const updatedCurrentUser = message.payload[currentUser.id];
                                             flushSync(() => {
                                                 setCurrentUser(prevUser => {
                                                     if (!prevUser || prevUser.id !== updatedCurrentUser.id) return prevUser;
+                                                    
                                                     // 깊은 복사로 업데이트하여 React가 변경을 감지하도록 함
                                                     const newUser = JSON.parse(JSON.stringify(updatedCurrentUser));
                                                     console.log(`[WebSocket] Updating currentUser from WebSocket:`, {
                                                         inventoryLength: newUser.inventory?.length,
                                                         gold: newUser.gold,
-                                                        diamonds: newUser.diamonds
+                                                        diamonds: newUser.diamonds,
+                                                        equipment: newUser.equipment,
+                                                        avatarId: newUser.avatarId,
+                                                        borderId: newUser.borderId,
+                                                        nickname: newUser.nickname,
+                                                        blacksmithLevel: newUser.blacksmithLevel,
+                                                        blacksmithXp: newUser.blacksmithXp,
+                                                        timeSinceLastAction,
+                                                        lastActionType: lastActionType.current
                                                     });
                                                     return newUser;
                                                 });
                                                 setUpdateTrigger(prev => prev + 1);
                                             });
                                         } else {
-                                            console.log(`[WebSocket] Ignoring USER_UPDATE for ${currentUser.id} - recent action (${lastActionType.current}) processed ${timeSinceLastAction}ms ago`);
+                                            console.log(`[WebSocket] Ignoring USER_UPDATE for ${currentUser.id} - HTTP response was processed ${timeSinceLastAction}ms ago (more recent)`);
                                         }
                                     }
                                     

@@ -67,7 +67,7 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
     }
 
     return (
-        <div className="p-4 sm:p-6 lg:p-8 w-full flex flex-col h-[calc(100vh-5rem)] relative">
+        <div className="p-4 sm:p-6 lg:p-8 w-full flex flex-col h-[calc(100vh-5rem)] relative overflow-hidden">
             <header className="flex justify-between items-center mb-6 flex-shrink-0">
                 <button onClick={() => {
                     if (tournamentState.status === 'round_in_progress') {
@@ -84,7 +84,7 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
                 <div className="w-10"></div>
             </header>
             
-            <main className="flex-1 flex flex-col items-center justify-center min-h-0 w-full">
+            <main className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
                 <TournamentBracket 
                     tournament={tournamentState}
                     currentUser={currentUserWithStatus}

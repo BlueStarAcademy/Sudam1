@@ -50,7 +50,7 @@ export const createWebSocketServer = (server: Server) => {
                 };
                 
                 if (!checkConnection()) {
-                    console.log('[WebSocket] Connection already closed, skipping initial state');
+                    // 연결이 이미 끊어진 경우 조용히 반환
                     return;
                 }
                 
@@ -62,7 +62,7 @@ export const createWebSocketServer = (server: Server) => {
                 
                 // 데이터 로드 후 연결 상태 재확인
                 if (!checkConnection()) {
-                    console.log('[WebSocket] Connection closed during data fetch');
+                    // 연결이 끊어진 것은 정상적인 재연결 흐름의 일부이므로 조용히 처리
                     return;
                 }
                 
@@ -74,7 +74,7 @@ export const createWebSocketServer = (server: Server) => {
                 
                 // 전송 전 최종 연결 상태 확인
                 if (!checkConnection()) {
-                    console.log('[WebSocket] Connection closed before sending initial state');
+                    // 연결이 끊어진 경우 조용히 반환
                     return;
                 }
                 

@@ -312,15 +312,34 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             return {};
         }
         case 'DELETE_ALL_CLAIMED_MAIL': {
-            user.mail = user.mail.filter(m => !(m.attachments && m.attachmentsClaimed));
+            // user.mail이 없거나 배열이 아닌 경우 초기화
+            if (!user.mail || !Array.isArray(user.mail)) {
+                user.mail = [];
+            }
+            
+            // 수령 완료된 메일만 삭제 (attachments가 있고 attachmentsClaimed가 true인 것)
+            const beforeCount = user.mail.length;
+            user.mail = user.mail.filter(m => {
+                // attachments가 없거나 attachmentsClaimed가 false인 것만 남김
+                return !(m && m.attachments && m.attachmentsClaimed);
+            });
+            const deletedCount = beforeCount - user.mail.length;
+            
             await db.updateUser(user);
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            const updatedUserCopy = JSON.parse(JSON.stringify(user));
-            const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUserCopy } });
+            // 깊은 복사로 updatedUser 생성
+            const updatedUser = JSON.parse(JSON.stringify(user));
             
-            return {};
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            
+            return { 
+                clientResponse: { 
+                    updatedUser,
+                    deletedCount 
+                } 
+            };
         }
         case 'MARK_MAIL_AS_READ': {
             if (!payload || typeof payload !== 'object') {

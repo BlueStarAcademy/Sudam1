@@ -5,6 +5,7 @@ import Button from './Button.js';
 import { emptySlotImages, GRADE_LEVEL_REQUIREMENTS, ITEM_SELL_PRICES, MATERIAL_SELL_PRICES, gradeBackgrounds, gradeStyles, BASE_SLOTS_PER_CATEGORY, EXPANSION_AMOUNT, MAX_EQUIPMENT_SLOTS, MAX_CONSUMABLE_SLOTS, MAX_MATERIAL_SLOTS, ENHANCEMENT_COSTS } from '../constants/items';
 
 import { calculateUserEffects } from '../services/effectService.js';
+import { calculateTotalStats } from '../services/statService.js';
 import { useAppContext } from '../hooks/useAppContext.js';
 import PurchaseQuantityModal from './PurchaseQuantityModal.js';
 import SellItemConfirmModal from './SellItemConfirmModal.js';
@@ -573,6 +574,50 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
         return userLevelSum >= requiredLevel;
     }, [selectedItem, currentUser.strategyLevel, currentUser.playfulLevel]);
 
+    // 바둑능력 변화 계산 (선택한 장비를 장착했을 때의 바둑능력 변화 - 6가지 능력치 합계)
+    const combatPowerChange = useMemo(() => {
+        if (!selectedItem || selectedItem.type !== 'equipment' || !selectedItem.slot) return null;
+        
+        // 현재 바둑능력 계산 (현재 장착된 장비 기준) - 6가지 능력치 합계
+        const currentStats = calculateTotalStats(currentUser);
+        const currentBadukPower = Object.values(currentStats).reduce((acc, val) => acc + val, 0);
+        
+        // 현재 해당 슬롯에 장착된 아이템 ID 찾기
+        const currentEquippedItemId = currentUser.equipment[selectedItem.slot];
+        
+        // 선택한 장비를 장착한 상태로 가정한 User 생성
+        const hypotheticalEquipment = { ...currentUser.equipment };
+        hypotheticalEquipment[selectedItem.slot] = selectedItem.id;
+        
+        // 인벤토리에서 아이템의 isEquipped 상태 업데이트
+        const hypotheticalInventory = currentUser.inventory.map(item => {
+            // 선택한 아이템은 장착
+            if (item.id === selectedItem.id) {
+                return { ...item, isEquipped: true };
+            }
+            // 현재 해당 슬롯에 장착된 아이템은 해제
+            if (currentEquippedItemId && item.id === currentEquippedItemId) {
+                return { ...item, isEquipped: false };
+            }
+            // 나머지는 그대로 유지
+            return item;
+        });
+        
+        const hypotheticalUser = {
+            ...currentUser,
+            equipment: hypotheticalEquipment,
+            inventory: hypotheticalInventory
+        };
+        
+        // 선택한 장비를 장착했을 때의 바둑능력 계산 - 6가지 능력치 합계
+        const newStats = calculateTotalStats(hypotheticalUser);
+        const newBadukPower = Object.values(newStats).reduce((acc, val) => acc + val, 0);
+        
+        // 차이 계산 (선택한 장비 장착 시 - 현재 장착 장비 기준)
+        const change = newBadukPower - currentBadukPower;
+        return change;
+    }, [selectedItem, currentUser]);
+
     return (
         <DraggableWindow title="가방" onClose={onClose} windowId="inventory" isTopmost={isTopmost} initialWidth={calculatedWidth} initialHeight={calculatedHeight}>
             <div 
@@ -580,7 +625,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                 style={{ margin: 0, padding: 0 }}
             >
                 {/* Top section: Equipped items (left) and Selected item details (right) */}
-                <div className="bg-gray-800 mb-2 rounded-md shadow-inner flex flex-shrink-0" style={{ height: `${400 * scaleFactor}px`, padding: `${Math.max(12, Math.round(16 * scaleFactor))}px` }}>
+                <div className="bg-gray-800 mb-2 rounded-md shadow-inner flex flex-shrink-0 overflow-auto" style={{ maxHeight: `${Math.min(400 * scaleFactor, windowHeight * 0.5)}px`, padding: `${Math.max(12, Math.round(16 * scaleFactor))}px` }}>
                     {/* Left panel: Equipped items */}
                     <div className="w-1/3 border-r border-gray-700" style={{ paddingRight: `${Math.max(12, Math.round(16 * scaleFactor))}px` }}>
                         <h3 className="font-bold text-on-panel" style={{ fontSize: `${Math.max(14, Math.round(18 * scaleFactor))}px`, marginBottom: `${Math.max(6, Math.round(8 * scaleFactor))}px` }}>장착 장비</h3>
@@ -646,7 +691,14 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
 
                             {/* Right panel: Selected equipment item */}
                             <div className="flex flex-col w-1/3 h-full bg-panel-secondary rounded-lg p-3 relative overflow-hidden ml-4">
-                                <h3 className="text-lg font-bold text-on-panel mb-2">선택 장비</h3>
+                                <div className="flex items-center gap-2 mb-2">
+                                    <h3 className="text-lg font-bold text-on-panel">선택 장비</h3>
+                                    {combatPowerChange !== null && combatPowerChange !== 0 && (
+                                        <span className={`text-sm font-bold ${combatPowerChange > 0 ? 'text-green-400' : 'text-red-400'}`}>
+                                            바둑능력{combatPowerChange > 0 ? '+' : ''}{combatPowerChange}
+                                        </span>
+                                    )}
+                                </div>
                                 <LocalItemDetailDisplay item={selectedItem} title="선택된 아이템 없음" comparisonItem={correspondingEquippedItem} scaleFactor={scaleFactor} />
                                 <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2 px-4">
                                     {selectedItem.id === correspondingEquippedItem?.id ? (
@@ -772,7 +824,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                 </div>
 
                 {/* Bottom section: Inventory grid */}
-                <div className="flex-shrink-0 bg-gray-900 overflow-hidden flex flex-col" style={{ flex: '1 1 auto', minHeight: `${200 * scaleFactor}px`, padding: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingTop: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingBottom: `${Math.max(12, Math.round(16 * scaleFactor))}px`, marginBottom: 0 }}>
+                <div className="bg-gray-900 overflow-hidden flex flex-col" style={{ flex: '1 1 0', minHeight: `${Math.max(200 * scaleFactor, windowHeight * 0.25)}px`, padding: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingTop: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingBottom: `${Math.max(12, Math.round(16 * scaleFactor))}px`, marginBottom: 0 }}>
                     <div className="flex-shrink-0 bg-gray-900/50 rounded-md mb-2" style={{ padding: `${Math.max(6, Math.round(8 * scaleFactor))}px`, marginBottom: `${Math.max(6, Math.round(8 * scaleFactor))}px` }}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
@@ -794,7 +846,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-y-auto h-full" style={{ width: '100%', minWidth: 0, paddingRight: `${Math.max(6, Math.round(8 * scaleFactor))}px` }}>
+                    <div className="overflow-y-auto flex-1" style={{ width: '100%', minWidth: 0, minHeight: 0, paddingRight: `${Math.max(6, Math.round(8 * scaleFactor))}px` }}>
                         <div 
                             className="grid gap-2" 
                             style={{ 

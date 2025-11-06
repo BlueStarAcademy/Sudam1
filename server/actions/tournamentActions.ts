@@ -403,7 +403,24 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             
             // Update volatile state as well for immediate consistency
             if (!volatileState.activeTournaments) volatileState.activeTournaments = {};
-            return { clientResponse: { redirectToTournament: type } };
+            volatileState.activeTournaments[user.id] = tournamentState;
+            
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(freshUser));
+            
+            console.log(`[START_TOURNAMENT_ROUND] Returning response:`, {
+                hasUpdatedUser: !!updatedUser,
+                updatedUserKeys: updatedUser ? Object.keys(updatedUser).slice(0, 10) : [],
+                hasTournamentState: !!updatedUser?.[stateKey],
+                tournamentStatus: updatedUser?.[stateKey]?.status,
+                currentRound: updatedUser?.[stateKey]?.currentRoundRobinRound,
+                redirectToTournament: type
+            });
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUser } });
+            
+            return { clientResponse: { redirectToTournament: type, updatedUser } };
         }
 
         case 'SKIP_TOURNAMENT_END': {

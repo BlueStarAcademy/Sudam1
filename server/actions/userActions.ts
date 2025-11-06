@@ -215,13 +215,24 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             });
 
             // Equip items that are in the preset but not currently equipped
+            // Also remove equipment slots for items that don't exist in inventory
             for (const slot in user.equipment) {
                 const itemId = user.equipment[slot as types.EquipmentSlot];
                 const itemInInventory = user.inventory.find(item => item.id === itemId);
-                if (itemInInventory && !itemInInventory.isEquipped) {
-                    itemInInventory.isEquipped = true;
+                if (itemInInventory) {
+                    if (!itemInInventory.isEquipped) {
+                        itemInInventory.isEquipped = true;
+                    }
+                } else {
+                    // 장비가 인벤토리에 없으면 equipment에서 제거
+                    console.warn(`[APPLY_PRESET] Equipment item ${itemId} in slot ${slot} not found in inventory for user ${user.id}, removing from equipment`);
+                    delete user.equipment[slot as types.EquipmentSlot];
                 }
             }
+
+            // 장비 일관성 검증 및 수정
+            const { validateAndFixEquipmentConsistency } = await import('./inventoryActions.js');
+            validateAndFixEquipmentConsistency(user);
 
             await db.updateUser(user);
             const updatedUser = JSON.parse(JSON.stringify(user));

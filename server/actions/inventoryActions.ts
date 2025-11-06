@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, InventoryItem, ItemOption, ItemGrade, EquipmentSlot, CoreStat, SpecialStat, MythicStat, type ItemOptionType, type BorderInfo } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, InventoryItem, ItemOption, ItemGrade, EquipmentSlot, CoreStat, SpecialStat, MythicStat, type ItemOptionType, type BorderInfo, type ChatMessage } from '../../types.js';
 import { broadcast } from '../socket.js';
 import {
     EQUIPMENT_POOL,
@@ -150,6 +150,34 @@ export const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot): Inventor
     };
 
     return newItem;
+};
+
+// 장비 일관성 검증 및 수정 헬퍼 함수
+export const validateAndFixEquipmentConsistency = (user: User): void => {
+    // user.equipment에 있는 모든 장비가 인벤토리에 존재하는지 확인
+    for (const slot in user.equipment) {
+        const itemId = user.equipment[slot as EquipmentSlot];
+        const itemInInventory = user.inventory.find(item => item.id === itemId);
+        if (!itemInInventory) {
+            console.warn(`[Equipment Consistency] Equipment item ${itemId} in slot ${slot} not found in inventory for user ${user.id}, removing from equipment`);
+            delete user.equipment[slot as EquipmentSlot];
+        } else if (!itemInInventory.isEquipped) {
+            // 인벤토리에 있지만 isEquipped가 false인 경우 수정
+            console.warn(`[Equipment Consistency] Equipment item ${itemId} in slot ${slot} exists in inventory but isEquipped is false for user ${user.id}, fixing`);
+            itemInInventory.isEquipped = true;
+        }
+    }
+    
+    // 인벤토리에 있는 장착된 장비가 user.equipment에 있는지 확인
+    user.inventory.forEach(item => {
+        if (item.type === 'equipment' && item.isEquipped && item.slot) {
+            const equipmentItemId = user.equipment[item.slot];
+            if (equipmentItemId !== item.id) {
+                console.warn(`[Equipment Consistency] Equipment item ${item.id} in slot ${item.slot} is marked as equipped but user.equipment[${item.slot}] is ${equipmentItemId} for user ${user.id}, fixing`);
+                user.equipment[item.slot] = item.id;
+            }
+        }
+    });
 };
 
 const removeUserItems = (user: User, itemsToRemove: { name: string; amount: number }[]): boolean => {
@@ -457,6 +485,9 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                 user.equipment[itemToToggle.slot] = itemToToggle.id;
             }
 
+            // 장비 일관성 검증 및 수정
+            validateAndFixEquipmentConsistency(user);
+
             const effects = effectService.calculateUserEffects(user);
             user.actionPoints.max = effects.maxActionPoints;
             user.actionPoints.current = Math.min(user.actionPoints.current, user.actionPoints.max);
@@ -581,6 +612,37 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                 item.enhancementFails = 0;
                 resultMessage = `강화 성공! +${item.stars} ${item.name}이(가) 되었습니다.`;
                 
+                // 7강화, 10강화 성공 시 전체 채팅창에 시스템 메시지 전송
+                if (item.stars === 7 || item.stars === 10) {
+                    const systemMessage: ChatMessage = {
+                        id: `system-${randomUUID()}`,
+                        user: { id: 'system', nickname: '시스템' },
+                        text: `${user.nickname}님이 ${item.name}의 ${item.stars}강화에 성공했습니다.`,
+                        system: true,
+                        timestamp: Date.now(),
+                        itemLink: {
+                            itemId: item.id,
+                            userId: user.id,
+                            itemName: item.name
+                        }
+                    };
+                    
+                    // global 채팅에 추가
+                    if (!volatileState.waitingRoomChats['global']) {
+                        volatileState.waitingRoomChats['global'] = [];
+                    }
+                    volatileState.waitingRoomChats['global'].push(systemMessage);
+                    if (volatileState.waitingRoomChats['global'].length > 100) {
+                        volatileState.waitingRoomChats['global'].shift();
+                    }
+                    
+                    // 채팅 업데이트 브로드캐스트
+                    broadcast({ 
+                        type: 'WAITING_ROOM_CHAT_UPDATE', 
+                        payload: { global: volatileState.waitingRoomChats['global'] } 
+                    });
+                }
+                
                 const main = item.options.main;
                 if(main.baseValue) {
                     let increaseMultiplier = 1;
@@ -643,9 +705,10 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             }
 
             // Add blacksmith XP
+            let xpGained = 0;
             const xpGainRange = BLACKSMITH_ENHANCEMENT_XP_GAIN[item.grade];
             if (xpGainRange) {
-                const xpGained = getRandomInt(xpGainRange[0], xpGainRange[1]);
+                xpGained = getRandomInt(xpGainRange[0], xpGainRange[1]);
                 user.blacksmithXp = (user.blacksmithXp || 0) + xpGained;
 
                 while (user.blacksmithLevel < BLACKSMITH_MAX_LEVEL && user.blacksmithXp >= BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(user.blacksmithLevel)) {
@@ -659,7 +722,7 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             
             // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
             const updatedUser = JSON.parse(JSON.stringify(user));
-            
+
             // WebSocket으로 사용자 업데이트 브로드캐스트
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
             
@@ -670,7 +733,8 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                         message: resultMessage, 
                         success: isSuccess, 
                         itemBefore: itemBeforeEnhancement, 
-                        itemAfter: item 
+                        itemAfter: item,
+                        xpGained: xpGained
                     },
                     enhancementAnimationTarget: { itemId: item.id, stars: item.stars } 
                 } 
@@ -752,7 +816,8 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                     updatedUser,
                     disassemblyResult: { 
                         gained: Object.entries(gainedMaterials).map(([name, amount]) => ({ name, amount })), 
-                        jackpot: isJackpot 
+                        jackpot: isJackpot,
+                        xpGained: totalXpGained
                     }
                 }
             };
@@ -765,18 +830,33 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
         
             let fromMaterialName: string, toMaterialName: string, fromCost: number, toYield: number;
         
+            // 대장간 레벨에 따른 대박 확률 적용 (장비 분해와 동일)
+            const blacksmithLevel = user.blacksmithLevel ?? 1;
+            const jackpotRate = BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[blacksmithLevel - 1] ?? 0;
+            const isJackpot = Math.random() * 100 < jackpotRate;
+            
             if (craftType === 'upgrade') {
                 if (tierIndex >= materialTiers.length - 1) return { error: '더 이상 제작할 수 없습니다.' };
                 fromMaterialName = materialTiers[tierIndex];
                 toMaterialName = materialTiers[tierIndex + 1];
                 fromCost = 10 * quantity;
                 toYield = 1 * quantity;
+                // 대박 발생 시 재료를 2배로 획득
+                if (isJackpot) {
+                    toYield *= 2;
+                }
             } else { // downgrade
                 if (tierIndex === 0) return { error: '더 이상 분해할 수 없습니다.' };
                 fromMaterialName = materialTiers[tierIndex];
                 toMaterialName = materialTiers[tierIndex - 1];
                 fromCost = 1 * quantity;
-                toYield = 5 * quantity;
+                // 분해 시 기본 분해 개수를 3~7개로 랜덤 분해
+                const baseYieldPerItem = getRandomInt(3, 7);
+                toYield = baseYieldPerItem * quantity;
+                // 대박 발생 시 재료를 2배로 획득
+                if (isJackpot) {
+                    toYield *= 2;
+                }
             }
         
             const tempUser = JSON.parse(JSON.stringify(user));
@@ -813,7 +893,8 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                     craftResult: {
                         gained: [{ name: toMaterialName, amount: toYield }],
                         used: [{ name: fromMaterialName, amount: fromCost }],
-                        craftType
+                        craftType,
+                        jackpot: isJackpot
                     }
                 }
             };

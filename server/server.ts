@@ -899,6 +899,16 @@ const startServer = async () => {
                 return res.status(400).json({ message: result.error });
             }
             
+            // 디버깅: START_TOURNAMENT_ROUND 응답 확인
+            if (req.body.type === 'START_TOURNAMENT_ROUND') {
+                console.log(`[API] START_TOURNAMENT_ROUND response:`, {
+                    hasClientResponse: !!result.clientResponse,
+                    clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
+                    hasUpdatedUser: !!result.clientResponse?.updatedUser,
+                    hasRedirectToTournament: !!result.clientResponse?.redirectToTournament
+                });
+            }
+            
             res.status(200).json({ success: true, ...result.clientResponse });
         } catch (e: any) {
             console.error(`[API] Action error for ${req.body?.type}:`, e);

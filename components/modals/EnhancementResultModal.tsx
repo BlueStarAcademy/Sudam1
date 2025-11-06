@@ -10,6 +10,7 @@ interface EnhancementResultModalProps {
         success: boolean;
         itemBefore: InventoryItem;
         itemAfter: InventoryItem;
+        xpGained?: number;
     };
     onClose: () => void;
     isTopmost?: boolean;
@@ -42,7 +43,7 @@ const ItemDisplay: React.FC<{ item: InventoryItem }> = ({ item }) => (
 );
 
 const EnhancementResultModal: React.FC<EnhancementResultModalProps> = ({ result, onClose, isTopmost }) => {
-    const { success, message, itemBefore, itemAfter } = result;
+    const { success, message, itemBefore, itemAfter, xpGained } = result;
     
     const changedSubOption = useMemo(() => {
         if (!success || !itemBefore.options || !itemAfter.options) return null;
@@ -111,6 +112,17 @@ const EnhancementResultModal: React.FC<EnhancementResultModalProps> = ({ result,
                                 <span className="truncate ml-2">{changedSubOption.before.display} → {changedSubOption.after.display}</span>
                             </div>
                         )}
+                    </div>
+                )}
+                {xpGained !== undefined && xpGained > 0 && (
+                    <div className="bg-gray-800/50 p-3 rounded-lg mb-4 text-center">
+                        <div className="flex justify-between items-center">
+                            <span className="flex items-center gap-1">
+                                <img src="/images/equipments/moru.png" alt="대장간 경험치" className="w-5 h-5" />
+                                대장간 경험치:
+                            </span>
+                            <span className="font-bold text-orange-400">+{xpGained.toLocaleString()}</span>
+                        </div>
                     </div>
                 )}
                 <Button

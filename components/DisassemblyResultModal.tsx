@@ -10,6 +10,7 @@ interface DisassemblyResultModalProps {
     result: {
         gained: { name: string; amount: number }[];
         jackpot: boolean;
+        xpGained?: number;
     } | null;
 }
 
@@ -47,6 +48,18 @@ const DisassemblyResultModal: React.FC<DisassemblyResultModalProps> = ({ isOpen,
                         <p className="text-sm text-tertiary">획득한 재료가 없습니다.</p>
                     )}
                 </div>
+
+                {result.xpGained !== undefined && result.xpGained > 0 && (
+                    <div className="w-full max-w-xs bg-gray-800/50 p-3 rounded-lg mb-4 text-center">
+                        <div className="flex justify-between items-center">
+                            <span className="flex items-center gap-1">
+                                <img src="/images/equipments/moru.png" alt="대장간 경험치" className="w-5 h-5" />
+                                대장간 경험치:
+                            </span>
+                            <span className="font-bold text-orange-400">+{result.xpGained.toLocaleString()}</span>
+                        </div>
+                    </div>
+                )}
 
                 <Button onClick={onClose} colorScheme="blue" className="w-full max-w-xs">
                     확인

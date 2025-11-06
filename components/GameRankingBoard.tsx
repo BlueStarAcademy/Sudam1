@@ -92,7 +92,7 @@ const GameRankingBoard: React.FC<GameRankingBoardProps> = ({ isTopmost }) => {
                     onClick={() => setActiveTab('combat')}
                     className={`flex-1 py-1.5 text-xs font-semibold rounded-md transition-all ${activeTab === 'combat' ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}
                 >
-                    전투력
+                    바둑능력
                 </button>
                 <button 
                     onClick={() => setActiveTab('manner')}

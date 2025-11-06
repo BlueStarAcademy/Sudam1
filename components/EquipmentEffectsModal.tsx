@@ -120,8 +120,10 @@ const EquipmentEffectsModal: React.FC<EquipmentEffectsModalProps> = ({
                         {Object.entries(specialStatBonuses).map(([stat, bonus]) => {
                             if (bonus.flat === 0 && bonus.percent === 0) return null;
                             const statEnum = stat as SpecialStat;
-                            const name = SPECIAL_STATS_DATA[statEnum].name;
-                            const abbr = specialStatAbbreviations[statEnum];
+                            const statData = SPECIAL_STATS_DATA[statEnum];
+                            if (!statData) return null; // 유효하지 않은 stat인 경우 무시
+                            const name = statData.name;
+                            const abbr = specialStatAbbreviations[statEnum] || stat;
                             return (
                                 <div key={stat} className="flex justify-between items-baseline" title={name}>
                                     <span className="text-gray-300 truncate">{abbr}</span>

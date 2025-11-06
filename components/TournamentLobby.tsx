@@ -1,8 +1,5 @@
-
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
-import { UserWithStatus, TournamentState, TournamentType, User, ChatMessage, LeagueTier } from '../types.js';
-import { TournamentBracket } from './TournamentBracket.js';
-import Button from './Button.js';
+import { UserWithStatus, TournamentState, TournamentType, User, LeagueTier } from '../types.js';
 import { TOURNAMENT_DEFINITIONS, AVATAR_POOL, LEAGUE_DATA, BORDER_POOL } from '../constants';
 import Avatar from './Avatar.js';
 import { isSameDayKST } from '../utils/timeUtils.js';
@@ -10,7 +7,7 @@ import { useAppContext } from '../hooks/useAppContext.js';
 import LeagueTierInfoModal from './LeagueTierInfoModal.js';
 import QuickAccessSidebar from './QuickAccessSidebar.js';
 import ChatWindow from './waiting-room/ChatWindow.js';
-import { stableStringify } from '../utils/appUtils.js';
+import PointsInfoPanel from './PointsInfoPanel.js';
 
 const stringToSeed = (str: string): number => {
     let hash = 0;
@@ -429,8 +426,6 @@ const PlaceholderCard: React.FC<{ title: string; description: string; imageUrl: 
     );
 };
 
-import PointsInfoPanel from './PointsInfoPanel.js';
-
 const filterInProgress = (state: TournamentState | null | undefined): TournamentState | null => {
     if (!state) return null;
     // Keep completed/eliminated states to show "Result" button
@@ -445,6 +440,12 @@ const TournamentLobby: React.FC = () => {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [hasRankChanged, setHasRankChanged] = useState(false);
     const [enrollingIn, setEnrollingIn] = useState<TournamentType | null>(null);
+
+    useEffect(() => {
+        const checkIsMobile = () => setIsMobile(window.innerWidth < 1024);
+        window.addEventListener('resize', checkIsMobile);
+        return () => window.removeEventListener('resize', checkIsMobile);
+    }, []);
 
     if (!currentUserWithStatus) {
         return (
@@ -468,54 +469,89 @@ const TournamentLobby: React.FC = () => {
         window.location.hash = `#/tournament/${type}`;
     }, [handlers]);
 
-    // This effect handles the transition into the bracket view after a user enrolls.
-
     return (
-        <div className="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto flex flex-col h-[calc(100vh-5rem)] relative">
-            {/* ... (mobile sidebar) */}
-
+        <div className="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto flex flex-col h-[calc(100vh-5rem)] relative overflow-hidden">
             <header className="flex justify-between items-center mb-6 flex-shrink-0">
                 <button onClick={() => window.location.hash = '#/profile'} className="transition-transform active:scale-90 filter hover:drop-shadow-lg">
                     <img src="/images/button/back.png" alt="Back" className="w-10 h-10" />
                 </button>
                 <h1 className="text-3xl lg:text-4xl font-bold">챔피언십</h1>
-                <div className="w-10"></div> {/* Spacer to balance the back button */}
+                {isMobile ? (
+                    <button 
+                        onClick={() => setIsMobileSidebarOpen(true)}
+                        className="w-10 h-10 flex items-center justify-center bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-gray-700/80 transition-colors"
+                        aria-label="메뉴 열기"
+                    >
+                        <span className="text-2xl font-bold text-white">{'<'}</span>
+                    </button>
+                ) : (
+                    <div className="w-10"></div>
+                )}
             </header>
             
-            <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
-                <main className="flex-grow grid grid-cols-12 gap-6 min-h-0">
-                    <div className="col-span-12 grid grid-cols-3 gap-4 flex-shrink-0">
+            <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0 overflow-hidden">
+                <main className="flex-grow flex flex-col gap-6 min-h-0 overflow-hidden">
+                    <div className="grid grid-cols-3 gap-4 flex-shrink-0">
                         <TournamentCard type="neighborhood" onClick={() => handleEnterArena('neighborhood')} onContinue={() => handleContinueTournament('neighborhood')} inProgress={neighborhoodState || null} currentUser={currentUserWithStatus} />
                         <TournamentCard type="national" onClick={() => handleEnterArena('national')} onContinue={() => handleContinueTournament('national')} inProgress={nationalState || null} currentUser={currentUserWithStatus} />
                         <TournamentCard type="world" onClick={() => handleEnterArena('world')} onContinue={() => handleContinueTournament('world')} inProgress={worldState || null} currentUser={currentUserWithStatus} />
                     </div>
-                    <div className="col-span-8 bg-gray-800/50 rounded-lg shadow-lg min-h-0">
-                        <ChatWindow
-                            messages={waitingRoomChats.global || []}
-                            mode="global"
-                            onAction={handlers.handleAction}
-                            onViewUser={handlers.openViewingUser}
-                            locationPrefix="[챔피언십]"
-                        />
-                    </div>
-                    <div className="col-span-4">
-                        <PointsInfoPanel />
+                    <div className="flex-1 grid grid-cols-12 gap-6 min-h-0 overflow-hidden">
+                        <div className="col-span-8 bg-gray-800/50 rounded-lg shadow-lg min-h-0 flex flex-col overflow-hidden">
+                            <ChatWindow
+                                messages={waitingRoomChats.global || []}
+                                mode="global"
+                                onAction={handlers.handleAction}
+                                onViewUser={handlers.openViewingUser}
+                                locationPrefix="[챔피언십]"
+                            />
+                        </div>
+                        <div className="col-span-4 flex flex-col min-h-0 overflow-hidden">
+                            <PointsInfoPanel />
+                        </div>
                     </div>
                 </main>
-                 <aside className="hidden lg:flex flex-col lg:w-[480px] flex-shrink-0 gap-6">
-                    <div className="flex-1 flex flex-row gap-4 items-stretch min-h-0">
-                        <div className="flex-1 min-w-0">
+                 <aside className="hidden lg:flex flex-col lg:w-[480px] flex-shrink-0 gap-6 min-h-0 overflow-hidden">
+                    <div className="flex-1 flex flex-row gap-4 items-stretch min-h-0 overflow-hidden">
+                        <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
                             <WeeklyCompetitorsPanel setHasRankChanged={setHasRankChanged}/>
                         </div>
                         <div className="w-24 flex-shrink-0">
                             <QuickAccessSidebar fillHeight={true} />
                         </div>
                     </div>
-                    <div className="flex-1 min-h-0">
+                    <div className="flex-1 min-h-0 overflow-hidden">
                         <ChampionshipRankingPanel />
                     </div>
                 </aside>
             </div>
+
+            {/* Mobile Sidebar */}
+            {isMobile && (
+                <>
+                    <div className={`fixed top-0 left-0 h-full w-[360px] bg-gray-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}>
+                        <div className="flex justify-between items-center p-2 border-b border-gray-600 flex-shrink-0">
+                            <h3 className="text-lg font-bold">메뉴</h3>
+                            <button onClick={() => setIsMobileSidebarOpen(false)} className="text-2xl font-bold text-gray-300 hover:text-white">×</button>
+                        </div>
+                        <div className="flex flex-col gap-2 p-2 flex-grow min-h-0 overflow-y-auto">
+                            {/* Quick Access Sidebar - Horizontal */}
+                            <div className="flex-shrink-0 p-2 bg-gray-900/50 rounded-lg border border-gray-700">
+                                <QuickAccessSidebar mobile={true} />
+                            </div>
+                            {/* Weekly Competitors Panel */}
+                            <div className="h-[300px] min-h-[300px] bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+                                <WeeklyCompetitorsPanel setHasRankChanged={setHasRankChanged}/>
+                            </div>
+                            {/* Championship Ranking Panel */}
+                            <div className="flex-1 min-h-[300px] bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+                                <ChampionshipRankingPanel />
+                            </div>
+                        </div>
+                    </div>
+                    {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}
+                </>
+            )}
         </div>
     );
 };

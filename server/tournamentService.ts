@@ -379,10 +379,20 @@ export const startNextRound = (state: TournamentState, user: User) => {
         }
         
         // 다음 회차로 넘어갈 때 컨디션을 새롭게 부여 (40~100 사이 랜덤)
+        // 유저의 능력치를 DB에서 다시 불러와서 업데이트 (장비 변경 등이 반영되도록)
+        const userPlayer = state.players.find(p => p.id === user.id);
+        if (userPlayer) {
+            // 유저의 최신 능력치를 계산하여 originalStats와 stats 업데이트
+            const latestStats = calculateTotalStats(user);
+            userPlayer.originalStats = JSON.parse(JSON.stringify(latestStats));
+            userPlayer.stats = JSON.parse(JSON.stringify(latestStats));
+        }
+        
+        // 모든 플레이어의 컨디션을 새롭게 부여 (40~100 사이 랜덤)
         state.players.forEach(p => {
             p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-            // 능력치도 초기값으로 리셋
-            if (p.originalStats) {
+            // 유저가 아닌 플레이어의 능력치는 originalStats로 리셋
+            if (p.id !== user.id && p.originalStats) {
                 p.stats = JSON.parse(JSON.stringify(p.originalStats));
             }
         });

@@ -39,12 +39,22 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
         }
     }, [selectedItemForEnhancement, onSetActiveTab]);
 
-    // 강화 성공 시 selectedItem을 업데이트된 아이템으로 갱신
+    // 강화 성공/실패 시 selectedItem을 업데이트된 아이템으로 갱신 (실패 보너스 반영을 위해)
     useEffect(() => {
-        if (enhancementOutcome?.success && selectedItem && enhancementOutcome.itemAfter.id === selectedItem.id) {
+        if (enhancementOutcome && selectedItem && enhancementOutcome.itemAfter.id === selectedItem.id) {
             setSelectedItem(enhancementOutcome.itemAfter);
         }
     }, [enhancementOutcome, selectedItem]);
+
+    // 인벤토리가 업데이트되면 선택된 아이템도 동기화 (강화 실패 시 enhancementFails 업데이트 반영)
+    useEffect(() => {
+        if (selectedItem && activeTab === 'enhance') {
+            const updatedItem = currentUserWithStatus.inventory.find(item => item.id === selectedItem.id);
+            if (updatedItem) {
+                setSelectedItem(updatedItem);
+            }
+        }
+    }, [currentUserWithStatus.inventory, selectedItem, activeTab]);
 
     useEffect(() => {
         setCombinationItems([null, null, null]);
@@ -250,7 +260,18 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                 </div>
                                 <div className="bg-black/20 p-2 rounded-md">
                                     <div className="flex justify-between">
-                                        <span>분해 대박 확률</span>
+                                        <span>장비 분해 대박 확률</span>
+                                        <span>
+                                            {BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[currentLevelIndex]}%
+                                            {!isMaxLevel && 
+                                                <span className="text-yellow-400"> → {BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[nextLevelIndex]}%</span>
+                                            }
+                                        </span>
+                                    </div>
+                                </div>
+                                <div className="bg-black/20 p-2 rounded-md">
+                                    <div className="flex justify-between">
+                                        <span>재료 합성/분해 대박 확률</span>
                                         <span>
                                             {BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[currentLevelIndex]}%
                                             {!isMaxLevel && 

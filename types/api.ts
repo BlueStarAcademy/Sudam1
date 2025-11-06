@@ -17,6 +17,11 @@ export type ChatMessage = {
       message: string;
       scoreChange: number;
   };
+  itemLink?: {
+      itemId: string;
+      userId: string;
+      itemName: string;
+  };
 };
 
 export type HandleActionResult = { 

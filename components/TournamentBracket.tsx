@@ -484,17 +484,29 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus }> = ({ mat
     const p2 = match.players[1];
 
     const PlayerDisplay: React.FC<{ player: PlayerForTournament | null, isWinner: boolean }> = ({ player, isWinner }) => {
-        if (!player) return <div className="h-8 flex items-center"><span className="text-gray-600 truncate">...</span></div>;
+        if (!player) return <div className="h-10 flex items-center px-2"><span className="text-gray-500 truncate italic">경기 대기중...</span></div>;
         
-        const playerClass = !isWinner && match.isFinished ? 'opacity-60' : '';
-        const winnerClass = isWinner ? 'text-yellow-300' : '';
         const avatarUrl = AVATAR_POOL.find(a => a.id === player.avatarId)?.url;
         const borderUrl = BORDER_POOL.find(b => b.id === player.borderId)?.url;
 
         return (
-            <div className={`flex items-center gap-2 ${playerClass}`}>
-                <Avatar userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={28} />
-                <span className={`truncate font-semibold ${winnerClass}`}>{player.nickname}</span>
+            <div className={`flex items-center gap-2 px-2 py-1.5 rounded-md transition-all ${
+                isWinner 
+                    ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-400/50 shadow-lg shadow-yellow-500/20' 
+                    : match.isFinished 
+                        ? 'opacity-50' 
+                        : 'hover:bg-gray-700/30'
+            }`}>
+                <Avatar userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={32} />
+                <span className={`truncate font-semibold text-sm ${
+                    isWinner 
+                        ? 'text-yellow-300 font-bold' 
+                        : match.isFinished 
+                            ? 'text-gray-400' 
+                            : 'text-gray-200'
+                }`}>
+                    {player.nickname}
+                </span>
             </div>
         );
     };
@@ -502,26 +514,71 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus }> = ({ mat
     const p1IsWinner = match.isFinished && match.winner?.id === p1?.id;
     const p2IsWinner = match.isFinished && match.winner?.id === p2?.id;
     const isMyMatch = p1?.id === currentUser.id || p2?.id === currentUser.id;
+    const isFinished = match.isFinished;
+
+    // finalScore에서 집 차이 계산 (finishMatch 함수의 로직과 동일)
+    const calculateWinMargin = (): string => {
+        if (!isFinished || !match.finalScore) return '';
+        const p1Percent = match.finalScore.player1;
+        const diffPercent = Math.abs(p1Percent - 50) * 2;
+        const scoreDiff = diffPercent / 2;
+        const roundedDiff = Math.round(scoreDiff);
+        const finalDiff = roundedDiff + 0.5;
+        return finalDiff < 0.5 ? '0.5' : finalDiff.toFixed(1);
+    };
+
+    const winMargin = calculateWinMargin();
 
     return (
-        <div className={`p-1.5 rounded-lg text-sm space-y-1 ${isMyMatch ? 'bg-blue-900/40 border border-blue-700' : 'bg-gray-700/50'}`}>
-            <div className="flex justify-between items-center">
+        <div className={`relative rounded-xl overflow-hidden transition-all duration-300 ${
+            isMyMatch 
+                ? 'bg-gradient-to-br from-blue-900/60 via-blue-800/50 to-indigo-900/60 border-2 border-blue-500/70 shadow-lg shadow-blue-500/20' 
+                : 'bg-gradient-to-br from-gray-800/80 via-gray-700/70 to-gray-800/80 border border-gray-600/50 shadow-md'
+        } ${isFinished ? '' : 'hover:scale-[1.02] hover:shadow-xl'}`}>
+            {/* 승리 배지 */}
+            {isFinished && (
+                <div className="absolute top-2 right-2 flex gap-1">
+                    {p1IsWinner && (
+                        <div className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-xs px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1">
+                            <span>🏆</span>
+                            <span>{winMargin}집 승</span>
+                        </div>
+                    )}
+                    {p2IsWinner && (
+                        <div className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-xs px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1">
+                            <span>🏆</span>
+                            <span>{winMargin}집 승</span>
+                        </div>
+                    )}
+                </div>
+            )}
+            
+            <div className="p-3 space-y-2">
                 <PlayerDisplay player={p1} isWinner={p1IsWinner} />
-                {p1IsWinner && <span className="font-bold text-green-400">W</span>}
-            </div>
-            <div className="flex justify-between items-center">
+                {!isFinished && (
+                    <div className="flex items-center justify-center py-1">
+                        <div className="text-xs text-gray-400 font-semibold">VS</div>
+                    </div>
+                )}
                 <PlayerDisplay player={p2} isWinner={p2IsWinner} />
-                {p2IsWinner && <span className="font-bold text-green-400">W</span>}
             </div>
         </div>
     );
 };
 
 const RoundColumn: React.FC<{ name: string; matches: Match[] | undefined; currentUser: UserWithStatus }> = ({ name, matches, currentUser }) => {
+    const isFinalRound = name.includes('결승') || name.includes('3,4위전');
+    
     return (
-        <div className="flex flex-col justify-around h-full gap-4 flex-shrink-0 w-44">
-            <h5 className="text-center font-bold text-sm text-gray-400">{name}</h5>
-            <div className="flex flex-col justify-around h-full gap-6">
+        <div className="flex flex-col justify-around h-full gap-4 flex-shrink-0 min-w-[200px]">
+            <div className={`text-center font-bold text-base py-2 px-4 rounded-lg ${
+                isFinalRound
+                    ? 'bg-gradient-to-r from-purple-600/80 to-pink-600/80 text-white shadow-lg shadow-purple-500/30 border-2 border-purple-400/50'
+                    : 'bg-gradient-to-r from-gray-700/80 to-gray-600/80 text-gray-200 shadow-md border border-gray-500/50'
+            }`}>
+                {name}
+            </div>
+            <div className="flex flex-col justify-around h-full gap-4">
                 {matches?.map(match => (
                     <MatchBox key={match.id} match={match} currentUser={currentUser} />
                 ))}
@@ -572,12 +629,8 @@ const RoundRobinDisplay: React.FC<{
     // 현재 표시할 회차 결정
     // 동네바둑리그: 
     // - round_complete 상태일 때는 완료된 회차를 표시 (1회차 완료 후 1회차 표시)
-    // - bracket_ready 상태일 때는 다음 회차를 표시 (다음 경기 버튼을 눌러 2회차로 넘어간 후 2회차 표시)
-    const roundForDisplay = tournamentType === 'neighborhood' 
-        ? (status === 'round_complete' 
-            ? (currentRoundRobinRound || 1)  // 완료된 회차 표시
-            : (currentRoundRobinRound || 1))  // bracket_ready 상태일 때는 다음 회차 표시
-        : (currentRoundRobinRound || 1);
+    // - bracket_ready 상태일 때는 현재 회차를 표시 (다음 경기 버튼을 눌러 2회차로 넘어간 후 2회차 표시)
+    const roundForDisplay = currentRoundRobinRound || 1;
     
     // rounds 배열에서 선택된 회차의 라운드 찾기 (name이 "1회차", "2회차" 등인 라운드)
     const currentRoundObj = useMemo(() => {
@@ -623,27 +676,56 @@ const RoundRobinDisplay: React.FC<{
                             ))}
                         </div>
                         {/* 선택된 회차의 매치 표시 */}
-                        <div className="flex flex-col items-center justify-around flex-grow gap-4 min-h-0">
+                        <div className="flex flex-col items-center justify-around flex-grow gap-4 min-h-0 px-2">
                             {currentRoundMatches.length > 0 ? (
                                 currentRoundMatches.map(match => (
-                                    <MatchBox key={match.id} match={match} currentUser={currentUser} />
+                                    <div key={match.id} className="w-full max-w-md">
+                                        <MatchBox match={match} currentUser={currentUser} />
+                                    </div>
                                 ))
                             ) : (
-                                <div className="text-gray-500 text-sm">경기가 없습니다.</div>
+                                <div className="text-gray-400 text-sm italic">경기가 없습니다.</div>
                             )}
                         </div>
                     </div>
                 ) : (
-                    <ul className="space-y-1.5">
+                    <ul className="space-y-2">
                         {sortedPlayers.map((player, index) => {
                              const stats = playerStats[player.id];
                              const isCurrentUser = player.id === currentUser.id;
+                             const isTopThree = index < 3;
+                             const avatarUrl = AVATAR_POOL.find(a => a.id === player.avatarId)?.url;
+                             const borderUrl = BORDER_POOL.find(b => b.id === player.borderId)?.url;
+                             
                              return (
-                                 <li key={player.id} className={`flex items-center gap-3 p-1.5 rounded-md ${isCurrentUser ? 'bg-blue-900/50' : 'bg-gray-700/50'}`}>
-                                     <span className="font-bold text-lg w-6 text-center flex-shrink-0">{index + 1}</span>
-                                     <span className="flex-grow font-semibold text-sm truncate">{player.nickname}</span>
-                                     <div className="flex items-baseline gap-2 text-xs">
-                                         <span className="font-mono">{stats.wins}승 {stats.losses}패</span>
+                                 <li key={player.id} className={`flex items-center gap-3 p-3 rounded-lg transition-all ${
+                                     isCurrentUser 
+                                         ? 'bg-gradient-to-r from-blue-600/60 to-indigo-600/60 border-2 border-blue-400/70 shadow-lg' 
+                                         : isTopThree
+                                             ? 'bg-gradient-to-r from-yellow-900/40 to-amber-900/40 border border-yellow-600/50 shadow-md'
+                                             : 'bg-gray-700/50 border border-gray-600/30 hover:bg-gray-700/70'
+                                 }`}>
+                                     <div className={`flex items-center justify-center w-8 h-8 rounded-full font-bold text-sm flex-shrink-0 ${
+                                         index === 0 
+                                             ? 'bg-gradient-to-br from-yellow-400 to-amber-500 text-black shadow-lg'
+                                             : index === 1
+                                                 ? 'bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800 shadow-md'
+                                                 : index === 2
+                                                     ? 'bg-gradient-to-br from-amber-600 to-orange-600 text-white shadow-md'
+                                                     : 'bg-gray-600 text-gray-200'
+                                     }`}>
+                                         {index + 1}
+                                     </div>
+                                     <Avatar userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={36} />
+                                     <span className={`flex-grow font-semibold text-sm truncate ${
+                                         isCurrentUser ? 'text-blue-200' : 'text-gray-200'
+                                     }`}>
+                                         {player.nickname}
+                                     </span>
+                                     <div className="flex items-baseline gap-2 text-xs font-semibold">
+                                         <span className="text-green-400">{stats.wins}승</span>
+                                         <span className="text-gray-400">/</span>
+                                         <span className="text-red-400">{stats.losses}패</span>
                                      </div>
                                  </li>
                              );
@@ -730,7 +812,7 @@ const TournamentRoundViewer: React.FC<{ rounds: Round[]; currentUser: UserWithSt
              const finalMatch = tab.matches.filter(m => rounds.find(r => r.matches.includes(m))?.name === '결승');
              const thirdPlaceMatch = tab.matches.filter(m => rounds.find(r => r.matches.includes(m))?.name === '3,4위전');
              return (
-                <div className="flex flex-col justify-center items-center h-full gap-12 p-4">
+                <div className="flex flex-col justify-center items-center h-full gap-8 p-4">
                     <RoundColumn name="결승" matches={finalMatch} currentUser={currentUser} />
                     {thirdPlaceMatch.length > 0 && <RoundColumn name="3,4위전" matches={thirdPlaceMatch} currentUser={currentUser} />}
                 </div>
@@ -746,13 +828,17 @@ const TournamentRoundViewer: React.FC<{ rounds: Round[]; currentUser: UserWithSt
 
     return (
         <div className="h-full flex flex-col min-h-0">
-            <h4 className="font-bold text-center mb-2 flex-shrink-0 text-gray-300">대진표</h4>
-            <div className="flex bg-gray-900/70 p-1 rounded-lg mb-2 flex-shrink-0">
+            <h4 className="font-bold text-center mb-3 flex-shrink-0 text-gray-200 text-lg">대진표</h4>
+            <div className="flex bg-gradient-to-r from-gray-800/90 to-gray-700/90 p-1 rounded-xl mb-3 flex-shrink-0 border border-gray-600/50 shadow-lg">
                 {getRoundsForTabs.map((tab, index) => (
                     <button
                         key={tab.name}
                         onClick={() => setActiveTab(index)}
-                        className={`flex-1 py-1 text-xs font-semibold rounded-md transition-all ${activeTab === index ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}
+                        className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                            activeTab === index 
+                                ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105' 
+                                : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
+                        }`}
                     >
                         {tab.name}
                     </button>
@@ -1045,21 +1131,24 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
             );
         }
 
-        const hasUnfinishedUserMatch = safeRounds.some(r =>
-            r.matches.some(m => m.isUserMatch && !m.isFinished)
-        );
-
-        // 동네바둑리그: 모든 회차(1~5회차)에서 완료 후 다음 회차로 넘어갈 준비가 되면 "다음경기" 버튼 표시
+        // 동네바둑리그: round_complete 상태일 때는 현재 회차가 완료된 상태이므로 다음 회차로 넘어갈 준비가 되면 "다음경기" 버튼 표시
         if (tournament.type === 'neighborhood' && status === 'round_complete') {
             const currentRound = tournament.currentRoundRobinRound || 1;
             const hasNextRound = currentRound < 5;
             
-            // 모든 유저 경기가 완료되었고 다음 회차가 있으면 "다음경기" 버튼 표시
-            if (!hasUnfinishedUserMatch && hasNextRound) {
+            // round_complete 상태는 현재 회차의 모든 경기가 완료된 상태이므로, 다음 회차가 있으면 "다음경기" 버튼 표시
+            if (hasNextRound) {
                 return (
                     <div className="flex items-center justify-center gap-4">
                         <Button 
-                            onClick={() => onStartNextRound()} 
+                            onClick={async () => {
+                                console.log('[TournamentBracket] 다음경기 버튼 클릭');
+                                try {
+                                    await onStartNextRound();
+                                } catch (error) {
+                                    console.error('[TournamentBracket] 다음경기 버튼 오류:', error);
+                                }
+                            }} 
                             colorScheme="blue" 
                             className="animate-pulse"
                         >
@@ -1070,6 +1159,10 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                 );
             }
         }
+
+        const hasUnfinishedUserMatch = safeRounds.some(r =>
+            r.matches.some(m => m.isUserMatch && !m.isFinished)
+        );
 
         if ((status === 'round_complete' || status === 'bracket_ready') && hasUnfinishedUserMatch) {
             return (
@@ -1096,28 +1189,26 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     };
 
     const sidebarContent = (
-        <aside className="w-full lg:w-[35%] xl:w-[25%] flex-shrink-0 flex flex-col gap-2">
-            <div className="flex-1 bg-gray-800/50 rounded-lg p-2 min-h-0">
-                {tournament.type === 'neighborhood' ? (
-                    <RoundRobinDisplay tournamentState={tournament} currentUser={currentUser} />
-                ) : (
-                    <TournamentRoundViewer rounds={safeRounds} currentUser={currentUser} tournamentType={tournament.type} />
-                )}
-            </div>
-            <div className="h-48 flex-shrink-0 bg-gray-800/50 rounded-lg p-3 text-center flex flex-col items-center justify-center">
-                <img src="/images/championship/Ranking.png" alt="Trophy" className="w-20 h-20 mb-2" />
-                <h4 className="font-bold text-gray-400">우승자</h4>
-                {winner ? <p className="text-xl font-semibold text-yellow-300">{winner.nickname}</p> : <p className="text-sm text-gray-500">진행 중...</p>}
-            </div>
-        </aside>
+        <div className="h-full flex flex-col min-h-0 overflow-y-auto">
+            {tournament.type === 'neighborhood' ? (
+                <RoundRobinDisplay tournamentState={tournament} currentUser={currentUser} />
+            ) : (
+                <TournamentRoundViewer rounds={safeRounds} currentUser={currentUser} tournamentType={tournament.type} />
+            )}
+        </div>
     );
 
     const mainContent = (
-        <main className="flex-1 flex flex-col lg:flex-row gap-4 min-h-0">
-            {!isMobile && sidebarContent}
+        <main className="flex-1 flex flex-col lg:flex-row gap-2 min-h-0 overflow-hidden">
+            {!isMobile && (
+                <aside className="hidden lg:flex flex-col lg:w-[320px] xl:w-[380px] flex-shrink-0 min-h-0 overflow-y-auto">
+                    {sidebarContent}
+                </aside>
+            )}
 
-            <div className="flex-grow flex flex-col gap-2 min-h-0 min-w-0">
-                <section className="flex flex-row gap-1 md:gap-2 items-stretch p-2 bg-gray-800/50 rounded-lg">
+            <div className="flex-1 flex flex-col gap-2 min-h-0 min-w-0 overflow-hidden">
+                {/* 플레이어 프로필 섹션 */}
+                <section className="flex-shrink-0 flex flex-row gap-1 md:gap-2 items-stretch p-1.5 md:p-2 bg-gray-800/50 rounded-lg max-h-[200px] md:max-h-[240px]">
                     <div className="flex-1 min-w-0">
                         <PlayerProfilePanel 
                             player={p1} 
@@ -1134,11 +1225,11 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                             tournamentStatus={tournament.status}
                         />
                     </div>
-                    <div className="flex-shrink-0 w-44 sm:w-52 flex flex-col items-center justify-center min-w-0">
-                        <RadarChart datasets={radarDatasets} maxStatValue={maxStatValue} size={isMobile ? 140 : undefined} />
-                        <div className="flex justify-center gap-2 sm:gap-4 text-[10px] sm:text-xs mt-1">
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 sm:w-3 sm:h-3 rounded-sm" style={{backgroundColor: 'rgba(59, 130, 246, 0.6)'}}></div>{p1?.nickname || '선수 1'}</span>
-                            <span className="flex items-center gap-1"><div className="w-2 h-2 sm:w-3 sm:h-3 rounded-sm" style={{backgroundColor: 'rgba(239, 68, 68, 0.6)'}}></div>{p2?.nickname || '선수 2'}</span>
+                    <div className="flex-shrink-0 w-32 sm:w-40 md:w-44 xl:w-52 flex flex-col items-center justify-center min-w-0">
+                        <RadarChart datasets={radarDatasets} maxStatValue={maxStatValue} size={isMobile ? 120 : undefined} />
+                        <div className="flex justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] md:text-xs mt-1">
+                            <span className="flex items-center gap-0.5"><div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-sm" style={{backgroundColor: 'rgba(59, 130, 246, 0.6)'}}></div><span className="truncate max-w-[40px] sm:max-w-none">{p1?.nickname || '선수 1'}</span></span>
+                            <span className="flex items-center gap-0.5"><div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-sm" style={{backgroundColor: 'rgba(239, 68, 68, 0.6)'}}></div><span className="truncate max-w-[40px] sm:max-w-none">{p2?.nickname || '선수 2'}</span></span>
                         </div>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1159,8 +1250,10 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                     </div>
                 </section>
                 
-                <div className="flex-1 flex flex-col lg:flex-row gap-2 min-h-0">
-                    <div className="w-full h-80 lg:h-full lg:w-2/5 bg-gray-800/50 rounded-lg p-2 flex items-center justify-center">
+                {/* SGF뷰어 및 중계패널 섹션 */}
+                <div className="flex-1 flex flex-col lg:flex-row gap-2 min-h-0 overflow-hidden">
+                    {/* SGF뷰어 */}
+                    <div className="w-full lg:w-2/5 flex-1 min-h-0 bg-gray-800/50 rounded-lg p-1 md:p-2 flex items-center justify-center overflow-auto">
                         <SgfViewer 
                             timeElapsed={isSimulating ? tournament.timeElapsed : 0} 
                             fileIndex={
@@ -1189,12 +1282,13 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                         />
                     </div>
                     
-                    <div className="w-full lg:w-3/5 flex-1 flex flex-col gap-2 min-h-0">
-                        <section className="flex-shrink-0 bg-gray-800/50 rounded-lg p-3">
+                    {/* 중계패널 (점수 그래프 + 해설) */}
+                    <div className="w-full lg:w-3/5 flex flex-col gap-2 min-h-0 overflow-hidden">
+                        <section className="flex-shrink-0 bg-gray-800/50 rounded-lg p-2 md:p-3">
                             <ScoreGraph p1Percent={p1Percent} p2Percent={p2Percent} p1Nickname={p1?.nickname} p2Nickname={p2?.nickname}/>
                             <div className="mt-2"><SimulationProgressBar timeElapsed={tournament.timeElapsed} totalDuration={50} /></div>
                         </section>
-                        <div className="h-64 lg:h-auto lg:flex-1 min-h-0 bg-gray-800/50 rounded-lg p-2 flex flex-col">
+                        <div className="flex-1 min-h-0 bg-gray-800/50 rounded-lg p-1 md:p-2 flex flex-col overflow-y-auto">
                             <CommentaryPanel commentary={tournament.currentMatchCommentary} isSimulating={tournament.status === 'round_in_progress'} />
                         </div>
                     </div>
@@ -1204,7 +1298,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     );
     
     const renderFooter = () => (
-        <footer className="flex-shrink-0 bg-gray-800/50 rounded-lg p-3 grid grid-cols-1 md:grid-cols-3 items-center gap-2">
+        <footer className="flex-shrink-0 bg-gray-800/50 rounded-lg p-3 grid grid-cols-1 md:grid-cols-4 items-center gap-2">
             <div className="flex items-center gap-2">
                  <Avatar userId={currentUser.id} userName={currentUser.nickname} size={40} />
                  <div className="text-left">
@@ -1218,15 +1312,20 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
              <div className="text-right">
                 <FinalRewardPanel tournamentState={tournament} currentUser={currentUser} onAction={onAction} />
             </div>
+            <div className="bg-gray-800/50 rounded-lg p-3 text-center flex flex-col items-center justify-center border border-gray-600/50">
+                <img src="/images/championship/Ranking.png" alt="Trophy" className="w-16 h-16 mb-2" />
+                <h4 className="font-bold text-gray-400 text-sm">우승자</h4>
+                {winner ? <p className="text-lg font-semibold text-yellow-300">{winner.nickname}</p> : <p className="text-xs text-gray-500">진행 중...</p>}
+            </div>
         </footer>
     );
 
     return (
-        <div className="w-full p-2 flex flex-col gap-2 bg-gray-900 text-white min-h-full relative">
+        <div className="w-full h-full flex flex-col gap-1 sm:gap-2 bg-gray-900 text-white relative overflow-hidden">
             {isMobile ? (
                 <>
-                    <div className="flex-1 flex flex-col gap-4 min-h-0 relative">
-                        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-20">
+                    <div className="flex-1 flex flex-col gap-1 sm:gap-2 min-h-0 relative overflow-hidden p-1 sm:p-2">
+                        <div className="absolute top-1/2 -translate-y-1/2 right-2 z-20">
                             <button 
                                 onClick={() => setIsMobileSidebarOpen(true)} 
                                 className="w-8 h-12 bg-gray-800/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-white shadow-lg hover:bg-gray-700/80"
@@ -1235,14 +1334,16 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                                 <span className="relative font-bold text-lg">{'<<'}</span>
                             </button>
                         </div>
-                        <div className="flex-1 min-h-0 overflow-y-auto">
+                        <div className="flex-1 min-h-0 overflow-hidden">
                             {mainContent}
                         </div>
-                        {renderFooter()}
+                        <div className="flex-shrink-0">
+                            {renderFooter()}
+                        </div>
                     </div>
                     <div className={`fixed top-0 right-0 h-full w-[320px] bg-gray-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col`}>
                         <div className="flex justify-between items-center p-2 border-b border-gray-600 flex-shrink-0">
-                            <h3 className="text-lg font-bold">대진표 / 우승자</h3>
+                            <h3 className="text-lg font-bold">대진표</h3>
                             <button onClick={() => setIsMobileSidebarOpen(false)} className="text-2xl font-bold text-gray-300 hover:text-white">×</button>
                         </div>
                         <div className="flex-1 min-h-0 overflow-y-auto p-2">
@@ -1253,8 +1354,12 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                 </>
             ) : (
                 <>
-                    {mainContent}
-                    {renderFooter()}
+                    <div className="flex-1 min-h-0 overflow-hidden p-1 sm:p-2">
+                        {mainContent}
+                    </div>
+                    <div className="flex-shrink-0 p-1 sm:p-2">
+                        {renderFooter()}
+                    </div>
                 </>
             )}
             {showConditionPotionModal && userPlayer && (

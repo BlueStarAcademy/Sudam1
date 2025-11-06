@@ -9,15 +9,16 @@ interface CraftingResultModalProps {
         gained: { name: string, amount: number }[];
         used: { name: string, amount: number }[];
         craftType: 'upgrade' | 'downgrade';
+        jackpot?: boolean;
     };
     onClose: () => void;
     isTopmost?: boolean;
 }
 
 const CraftingResultModal: React.FC<CraftingResultModalProps> = ({ result, onClose, isTopmost }) => {
-    const { gained, used, craftType } = result;
+    const { gained, used, craftType, jackpot } = result;
 
-    const title = craftType === 'upgrade' ? "합성 결과" : "분해 결과";
+    const title = jackpot ? (craftType === 'upgrade' ? "합성 대박!" : "분해 대박!") : (craftType === 'upgrade' ? "합성 결과" : "분해 결과");
     const gainedItem = gained[0];
     const usedItem = used[0];
 
@@ -25,8 +26,14 @@ const CraftingResultModal: React.FC<CraftingResultModalProps> = ({ result, onClo
     const usedTemplate = MATERIAL_ITEMS[usedItem.name as keyof typeof MATERIAL_ITEMS];
 
     return (
-        <DraggableWindow title={title} onClose={onClose} windowId="crafting-result" initialWidth={400} isTopmost={isTopmost}>
+        <DraggableWindow title={title} onClose={onClose} windowId="crafting-result" initialWidth={400} isTopmost={isTopmost} zIndex={70}>
             <div className="text-center">
+                {jackpot && (
+                    <div className="mb-4">
+                        <div className="text-3xl font-bold text-yellow-400 animate-pulse">🎉 대박! 🎉</div>
+                        <div className="text-lg text-yellow-300 mt-2">재료를 2배로 획득했습니다!</div>
+                    </div>
+                )}
                 <h2 className="text-xl font-bold mb-4">아래와 같이 아이템을 변환했습니다.</h2>
 
                 <div className="flex items-center justify-around text-center mb-4 bg-gray-900/50 p-4 rounded-lg">
@@ -39,7 +46,9 @@ const CraftingResultModal: React.FC<CraftingResultModalProps> = ({ result, onClo
                     <div className="flex flex-col items-center">
                         {gainedTemplate?.image && <img src={gainedTemplate.image} alt={gainedItem.name} className="w-16 h-16" />}
                         <span className="font-semibold">{gainedItem.name}</span>
-                        <span className="text-sm text-green-400 mt-1">+{gainedItem.amount.toLocaleString()}개</span>
+                        <span className={`text-sm mt-1 ${jackpot ? 'text-yellow-400 font-bold' : 'text-green-400'}`}>
+                            +{gainedItem.amount.toLocaleString()}개
+                        </span>
                     </div>
                 </div>
                 

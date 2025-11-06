@@ -20,7 +20,7 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onAction, mode, onVie
     const [chatInput, setChatInput] = useState('');
     const [showQuickChat, setShowQuickChat] = useState(false);
     const [cooldown, setCooldown] = useState(0);
-    const { currentUserWithStatus, handlers } = useAppContext();
+    const { currentUserWithStatus, handlers, allUsers } = useAppContext();
 
     useEffect(() => {
         if (chatBodyRef.current) {
@@ -108,7 +108,37 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onAction, mode, onVie
                             >
                                 {msg.system ? (isBotMessage ? 'AI 보안관봇' : '시스템') : msg.user.nickname}:
                             </span>
-                            {msg.text && <span className={isBotMessage ? 'text-highlight' : ''}>{msg.text}{isBotMessage && ' 🚓'}</span>}
+                            {msg.text && (() => {
+                                if (msg.itemLink) {
+                                    // 장비 이름에 링크 추가
+                                    const parts = msg.text.split(msg.itemLink.itemName);
+                                    if (parts.length === 2) {
+                                        return (
+                                            <span className={isBotMessage ? 'text-highlight' : ''}>
+                                                {parts[0]}
+                                                <span 
+                                                    className="text-blue-400 cursor-pointer hover:underline font-semibold"
+                                                    onClick={() => {
+                                                        const targetUser = allUsers.find(u => u.id === msg.itemLink!.userId);
+                                                        if (targetUser) {
+                                                            const item = targetUser.inventory?.find(i => i.id === msg.itemLink!.itemId);
+                                                            if (item) {
+                                                                handlers.openViewingItem(item, targetUser.id === currentUserWithStatus?.id);
+                                                            }
+                                                        }
+                                                    }}
+                                                    title={`${msg.itemLink.itemName} 클릭하여 상세 정보 보기`}
+                                                >
+                                                    {msg.itemLink.itemName}
+                                                </span>
+                                                {parts[1]}
+                                                {isBotMessage && ' 🚓'}
+                                            </span>
+                                        );
+                                    }
+                                }
+                                return <span className={isBotMessage ? 'text-highlight' : ''}>{msg.text}{isBotMessage && ' 🚓'}</span>;
+                            })()}
                             {msg.emoji && <span className="text-xl">{msg.emoji}</span>}
                         </div>
                     );

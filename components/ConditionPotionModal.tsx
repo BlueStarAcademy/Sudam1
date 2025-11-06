@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { User } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
+import { useAppContext } from '../hooks/useAppContext.js';
 
 type PotionType = 'small' | 'medium' | 'large';
 
@@ -56,6 +57,7 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
     onConfirm,
     isTopmost 
 }) => {
+    const { handlers } = useAppContext();
     const [selectedPotionType, setSelectedPotionType] = useState<PotionType | null>(null);
 
     // 보유 중인 각 컨디션 회복제 개수 계산
@@ -95,9 +97,19 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
     }, [selectedPotionType, potionCounts]);
 
     const handleConfirm = () => {
-        if (selectedPotionType && hasPotion && canAfford) {
+        if (!selectedPotionType) return;
+        
+        // 0개인 아이템을 선택한 경우 상점 열기
+        if (!hasPotion) {
+            handlers.openShop('consumables');
+            // 창을 닫지 않음 (구매 후 돌아올 수 있도록)
+            return;
+        }
+        
+        // 보유하고 있고 골드가 충분한 경우 사용
+        if (canAfford) {
             onConfirm(selectedPotionType);
-            onClose();
+            // 창을 닫지 않음 (여러 개 사용할 수 있도록)
         }
     };
 
@@ -105,32 +117,26 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
         <DraggableWindow 
             title="컨디션 회복제 사용" 
             initialWidth={600} 
-            initialHeight={500}
+            initialHeight={650}
             onClose={onClose}
             isTopmost={isTopmost}
             windowId="condition-potion-modal"
         >
             <div className="text-white flex flex-col h-full">
                 <div className="flex-1 flex flex-col gap-4 overflow-y-auto">
-                    <div className="text-center">
-                        <p className="text-lg mb-2">컨디션 회복제를 선택하세요</p>
-                        <p className="text-gray-400 text-sm">현재 컨디션: <span className="text-yellow-300 font-bold">{currentCondition}</span></p>
-                    </div>
-
                     <div className="grid grid-cols-3 gap-3">
                         {(Object.keys(POTION_TYPES) as PotionType[]).map((type) => {
                             const potion = POTION_TYPES[type];
                             const count = potionCounts[type];
                             const isSelected = selectedPotionType === type;
-                            const canUse = count > 0 && currentUser.gold >= potion.price;
 
                             return (
                                 <div
                                     key={type}
-                                    onClick={() => canUse && setSelectedPotionType(type)}
+                                    onClick={() => setSelectedPotionType(type)}
                                     className={`bg-gray-800/50 rounded-lg p-3 border-2 cursor-pointer transition-all ${
                                         isSelected ? 'border-yellow-400 bg-gray-700/50' : 'border-gray-700 hover:border-gray-600'
-                                    } ${!canUse ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                    }`}
                                 >
                                     <div className="flex flex-col items-center gap-2">
                                         <img src={potion.image} alt={potion.name} className="w-16 h-16" />
@@ -153,21 +159,6 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
                         })}
                     </div>
 
-                    {selectedPotionType && expectedRecovery && (
-                        <div className="w-full bg-gray-800/50 rounded-lg p-4 border border-gray-700">
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-gray-300">현재 컨디션:</span>
-                                <span className="text-yellow-300 font-bold text-lg">{currentCondition}</span>
-                            </div>
-                            <div className="flex justify-between items-center mb-2">
-                                <span className="text-gray-300">예상 회복 후 컨디션:</span>
-                                <span className="text-green-300 font-bold text-lg">
-                                    {expectedRecovery.min} ~ {expectedRecovery.max}
-                                </span>
-                            </div>
-                        </div>
-                    )}
-
                     {selectedPotionType && !hasPotion && (
                         <p className="text-red-400 text-sm text-center">
                             보유 중인 {POTION_TYPES[selectedPotionType].name}이(가) 없습니다. 상점에서 구매하세요.
@@ -179,6 +170,19 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
                             골드가 부족합니다. (필요: {POTION_TYPES[selectedPotionType].price} 골드)
                         </p>
                     )}
+                </div>
+
+                <div className="w-full bg-gray-800/50 rounded-lg p-4 border border-gray-700 flex-shrink-0">
+                    <div className="flex justify-between items-center mb-2">
+                        <span className="text-gray-300">현재 컨디션:</span>
+                        <span className="text-yellow-300 font-bold text-lg">{currentCondition}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                        <span className="text-gray-300">예상 회복 후 컨디션:</span>
+                        <span className="text-green-300 font-bold text-lg">
+                            {expectedRecovery ? `${expectedRecovery.min} ~ ${expectedRecovery.max}` : '—'}
+                        </span>
+                    </div>
                 </div>
 
                 <div className="flex gap-4 w-full mt-4 flex-shrink-0">
@@ -193,9 +197,9 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
                         onClick={handleConfirm} 
                         colorScheme="green" 
                         className="flex-1"
-                        disabled={!selectedPotionType || !hasPotion || !canAfford}
+                        disabled={!selectedPotionType}
                     >
-                        사용
+                        {selectedPotionType && !hasPotion ? '상점 가기' : '사용'}
                     </Button>
                 </div>
             </div>

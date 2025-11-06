@@ -13,6 +13,7 @@ import TierInfoModal from '../TierInfoModal.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, aiUserId } from '../../constants';
 import QuickAccessSidebar from '../QuickAccessSidebar.js';
 import Button from '../Button.js';
+import AiChallengeModal from './AiChallengeModal.js';
 
 
 interface WaitingRoomComponentProps {
@@ -29,27 +30,24 @@ function usePrevious<T>(value: T): T | undefined {
   return ref.current;
 }
 
-const AiChallengePanel: React.FC<{ mode: GameMode }> = ({ mode }) => {
-    const { handlers } = useAppContext();
-    const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === mode);
-    const isPlayfulAiSupported = PLAYFUL_AI_MODES.includes(mode);
+const AiChallengePanel: React.FC<{ mode: GameMode | 'strategic' | 'playful'; onOpenModal: () => void }> = ({ mode, onOpenModal }) => {
+    const isStrategic = mode === 'strategic' || SPECIAL_GAME_MODES.some(m => m.mode === mode);
+    const isPlayful = mode === 'playful' || PLAYFUL_AI_MODES.includes(mode as GameMode);
 
-    if (!isStrategic && !isPlayfulAiSupported) {
+    if (!isStrategic && !isPlayful) {
         return null;
     }
-    
-    const botName = isStrategic ? `${mode}봇(카타고)` : `${mode}봇`;
 
     return (
         <div className="bg-panel rounded-lg shadow-lg p-3 flex items-center justify-between flex-shrink-0 text-on-panel">
             <div className="flex items-center gap-3">
-                 <Avatar userId={aiUserId} userName="AI" size={40} className="border-2 border-purple-500" />
-                 <div>
+                <Avatar userId={aiUserId} userName="AI" size={40} className="border-2 border-purple-500" />
+                <div>
                     <h3 className="text-base font-bold text-purple-300">AI와 대결하기</h3>
-                    <p className="text-xs text-tertiary">{botName}와(과) 즉시 대국을 시작합니다.</p>
-                 </div>
+                    <p className="text-xs text-tertiary">AI와 즉시 대국을 시작합니다.</p>
+                </div>
             </div>
-            <Button onClick={() => handlers.handleAction({ type: 'CHALLENGE_USER', payload: { opponentId: aiUserId, mode } })} colorScheme="purple" className="!text-sm !py-1.5">설정 및 시작</Button>
+            <Button onClick={onOpenModal} colorScheme="purple" className="!text-sm !py-1.5">설정 및 시작</Button>
         </div>
     );
 };
@@ -119,6 +117,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [isTierInfoModalOpen, setIsTierInfoModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
+  const [isAiChallengeModalOpen, setIsAiChallengeModalOpen] = useState(false);
   const desktopContainerRef = useRef<HTMLDivElement>(null);
 
   // 전략바둑과 놀이바둑 대기실은 각각의 채널 사용
@@ -241,7 +240,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
           <>
             <div className="flex flex-col h-full gap-2">
                 <div className="flex-shrink-0">{mode !== 'strategic' && mode !== 'playful' && <AnnouncementBoard mode={mode} />}</div>
-                <div className="flex-shrink-0">{mode !== 'strategic' && mode !== 'playful' && <AiChallengePanel mode={mode} />}</div>
+                <div className="flex-shrink-0"><AiChallengePanel mode={mode} onOpenModal={() => setIsAiChallengeModalOpen(true)} /></div>
                 <div className="h-[350px] min-h-0">
                     <GameList games={ongoingGames} onAction={handlers.handleAction} currentUser={currentUserWithStatus} />
                 </div>
@@ -288,10 +287,10 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
               {/* Main Content Column */}
                   <div className="lg:col-span-3 flex flex-col gap-4 min-h-0">
                       <div className="flex-shrink-0">
-                          <AnnouncementBoard mode={mode} />
+                          {mode !== 'strategic' && mode !== 'playful' && <AnnouncementBoard mode={mode} />}
                       </div>
                        <div className="flex-shrink-0">
-                          <AiChallengePanel mode={mode} />
+                          <AiChallengePanel mode={mode} onOpenModal={() => setIsAiChallengeModalOpen(true)} />
                       </div>
 
                       <div className="h-[350px] min-h-0">
@@ -322,6 +321,13 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
       </div>
       {isTierInfoModalOpen && <TierInfoModal onClose={() => setIsTierInfoModalOpen(false)} />}
       {isHelpModalOpen && <HelpModal mode={mode as GameMode} onClose={() => setIsHelpModalOpen(false)} />}
+      {isAiChallengeModalOpen && (
+        <AiChallengeModal 
+          lobbyType={isStrategic ? 'strategic' : 'playful'} 
+          onClose={() => setIsAiChallengeModalOpen(false)} 
+          onAction={handlers.handleAction}
+        />
+      )}
     </div>
   );
 };

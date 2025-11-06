@@ -8,9 +8,10 @@ const CraftingDetailModal: React.FC<{
     details: { materialName: string, craftType: 'upgrade' | 'downgrade' };
     inventory: InventoryItem[];
     onClose: () => void;
-    onAction: (action: ServerAction) => void;
+    onAction: (action: ServerAction) => Promise<void>;
 }> = ({ details, inventory, onClose, onAction }) => {
     const { materialName, craftType } = details;
+    const { modals } = useAppContext();
     const isUpgrade = craftType === 'upgrade';
     
     const materialTiers = ['하급 강화석', '중급 강화석', '상급 강화석', '최상급 강화석', '신비의 강화석'];
@@ -40,6 +41,18 @@ const CraftingDetailModal: React.FC<{
         setQuantity(prev => Math.min(prev, newMaxQuantity));
     }, [sourceMaterialCount, conversionRate]);
 
+    // 결과 모달이 표시되면 자동으로 닫기
+    useEffect(() => {
+        if (modals.craftResult) {
+            console.log('[CraftingDetailModal] craftResult detected, closing modal after delay');
+            // 결과 모달이 렌더링될 시간을 확보하기 위해 약간의 지연
+            const timer = setTimeout(() => {
+                onClose();
+            }, 100);
+            return () => clearTimeout(timer);
+        }
+    }, [modals.craftResult, onClose]);
+
     const handleQuantityChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const value = parseInt(e.target.value, 10);
         if (!isNaN(value)) {
@@ -52,12 +65,14 @@ const CraftingDetailModal: React.FC<{
     const handleConfirm = async () => {
         if (quantity > 0) {
             await onAction({ type: 'CRAFT_MATERIAL', payload: { materialName, craftType, quantity } });
+            // 결과 모달이 표시될 때까지 기다리기 (useEffect에서 처리)
+        } else {
+            onClose();
         }
-        onClose();
     };
 
     return (
-        <div className="absolute inset-0 bg-black/80 z-50 flex items-center justify-center" onClick={onClose}>
+        <div className="absolute inset-0 bg-black/80 z-40 flex items-center justify-center" onClick={onClose}>
             <div className="bg-panel rounded-lg shadow-xl p-6 w-full max-w-md border border-color text-on-panel" onClick={e => e.stopPropagation()}>
                 <h2 className="text-xl font-bold text-center mb-4">{isUpgrade ? '재료 합성' : '재료 분해'}</h2>
 
