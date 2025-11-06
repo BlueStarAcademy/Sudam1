@@ -175,18 +175,25 @@ const prepareNextRound = (state: TournamentState, user: User) => {
         const winners = lastRound.matches.map(m => m.winner).filter(Boolean) as PlayerForTournament[];
 
         if (winners.length > 1) {
-            if (winners.length === 2 && state.players.length === 8 && lastRound.matches.length === 2) {
-                const losers = lastRound.matches.map(m => m.players.find(p => p && p.id !== m.winner?.id)).filter(Boolean) as PlayerForTournament[];
-                if (losers.length === 2) {
-                    const thirdPlaceMatch: Match = {
-                        id: `m-${state.rounds.length + 1}-3rd`,
-                        players: [losers[0], losers[1]],
-                        winner: null, isFinished: false, commentary: [],
-                        isUserMatch: (losers[0]?.id === user.id || losers[1]?.id === user.id),
-                        finalScore: null,
-                        sgfFileIndex: Math.floor(Math.random() * 18) + 1,
-                    };
-                    state.rounds.push({ id: state.rounds.length + 1, name: "3,4위전", matches: [thirdPlaceMatch] });
+            // 3/4위전 생성: 4강이 끝났을 때 (전국바둑대회, 월드챔피언십 모두)
+            // 3/4위전이 아직 생성되지 않았고, 4강이 끝났으면 생성
+            if (state.type !== 'neighborhood' && lastRound.name === '4강' && winners.length === 2) {
+                const hasThirdPlaceMatch = state.rounds.some(r => r.name === '3,4위전');
+                if (!hasThirdPlaceMatch) {
+                    const losers = lastRound.matches.map(m => m.players.find(p => p && p.id !== m.winner?.id)).filter(Boolean) as PlayerForTournament[];
+                    if (losers.length === 2) {
+                        const thirdPlaceMatch: Match = {
+                            id: `m-${state.rounds.length + 1}-3rd`,
+                            players: [losers[0], losers[1]],
+                            winner: null, 
+                            isFinished: false, 
+                            commentary: [],
+                            isUserMatch: (losers[0]?.id === user.id || losers[1]?.id === user.id),
+                            finalScore: null,
+                            sgfFileIndex: Math.floor(Math.random() * 18) + 1,
+                        };
+                        state.rounds.push({ id: state.rounds.length + 1, name: "3,4위전", matches: [thirdPlaceMatch] });
+                    }
                 }
             }
             
@@ -202,7 +209,7 @@ const prepareNextRound = (state: TournamentState, user: User) => {
                     commentary: [],
                     isUserMatch: (p1?.id === user.id || p2?.id === user.id),
                     finalScore: null,
-                    sgfFileIndex: Math.floor(Math.random() * 20) + 1,
+                    sgfFileIndex: Math.floor(Math.random() * 18) + 1,
                 });
             }
             const roundName = winners.length === 2 ? "결승" : `${winners.length}강`;
@@ -228,38 +235,33 @@ const processMatchCompletion = (state: TournamentState, user: User, completedMat
 
     if (state.type === 'neighborhood') {
         const currentRound = state.currentRoundRobinRound || 1;
-        const players = state.players;
+        // rounds 배열에서 name이 "1회차", "2회차" 등인 라운드 찾기
+        const currentRoundObj = state.rounds.find(r => r.name === `${currentRound}회차`);
         
-        const schedule = [
-            [[0, 5], [1, 4], [2, 3]],
-            [[0, 4], [5, 3], [1, 2]],
-            [[0, 3], [4, 2], [5, 1]],
-            [[0, 2], [3, 1], [4, 5]],
-            [[0, 1], [2, 5], [3, 4]],
-        ];
-        const roundPairings = schedule[currentRound - 1];
-        const roundMatches = roundPairings.map(pair => {
-            const p1Id = players[pair[0]].id;
-            const p2Id = players[pair[1]].id;
-            return state.rounds[0].matches.find(m =>
-                (m.players[0]?.id === p1Id && m.players[1]?.id === p2Id) ||
-                (m.players[0]?.id === p2Id && m.players[1]?.id === p1Id)
-            );
-        });
+        if (!currentRoundObj) {
+            state.status = 'complete';
+            return;
+        }
+        
+        const roundMatches = currentRoundObj.matches;
 
+        // 유저가 아닌 매치들을 자동 처리
         roundMatches.forEach(m => {
-            if (m && !m.isFinished) {
+            if (!m.isFinished && !m.isUserMatch) {
                 simulateAndFinishMatch(m, state.players);
             }
         });
         
-        const allRoundMatchesFinished = roundMatches.every(m => m?.isFinished);
+        const allRoundMatchesFinished = roundMatches.every(m => m.isFinished);
 
         if (allRoundMatchesFinished) {
             if (currentRound >= 5) {
                 state.status = 'complete';
             } else {
+                // 동네바둑리그: 1회차가 완료되면 round_complete 상태로 유지
+                // 사용자가 "다음 경기" 버튼을 누르면 startNextRound가 호출되어 다음 회차로 넘어감
                 state.status = 'round_complete';
+                // currentRoundRobinRound는 현재 완료된 회차를 유지 (아직 다음 회차로 넘어가지 않음)
             }
         }
         return;
@@ -284,7 +286,8 @@ export const createTournament = (type: TournamentType, user: User, players: Play
     const definition = TOURNAMENT_DEFINITIONS[type];
     const rounds: Round[] = [];
     
-    players.forEach(p => p.condition = 1000);
+    // 경기 시작 전에 컨디션을 40~100 사이로 랜덤 부여
+    players.forEach(p => p.condition = Math.floor(Math.random() * 61) + 40);
 
     if (definition.format === 'tournament') {
         const matches: Match[] = [];
@@ -299,39 +302,43 @@ export const createTournament = (type: TournamentType, user: User, players: Play
                 commentary: [],
                 isUserMatch: (p1?.id === user.id || p2?.id === user.id),
                 finalScore: null,
-                sgfFileIndex: Math.floor(Math.random() * 20) + 1,
+                sgfFileIndex: Math.floor(Math.random() * 18) + 1,
             });
         }
         rounds.push({ id: 1, name: `${players.length}강`, matches });
     } else { // round-robin for 'neighborhood'
-        const roundMatches: Match[] = [];
-        const numPlayers = players.length;
-        const playerIndices = Array.from({ length: numPlayers }, (_, i) => i);
-        if (numPlayers % 2 !== 0) {
-            // Logic for bye if we ever need it
-        }
+        // 6인 풀리그: 5회차로 나누어 진행
+        // 각 회차마다 3경기씩 진행 (총 15경기 = 6C2)
+        const schedule = [
+            [[0, 5], [1, 4], [2, 3]],  // 1회차
+            [[0, 4], [5, 3], [1, 2]],  // 2회차
+            [[0, 3], [4, 2], [5, 1]],  // 3회차
+            [[0, 2], [3, 1], [4, 5]],  // 4회차
+            [[0, 1], [2, 5], [3, 4]],  // 5회차
+        ];
 
-        const schedule: [number, number][] = [];
-        for (let i = 0; i < numPlayers; i++) {
-            for (let j = i + 1; j < numPlayers; j++) {
-                schedule.push([i, j]);
-            }
-        }
-
-        schedule.forEach((pair, index) => {
-            const p1 = players[pair[0]];
-            const p2 = players[pair[1]];
-            roundMatches.push({
-                id: `m-1-${index}`,
-                players: [p1, p2],
-                winner: null, isFinished: false, commentary: [],
-                isUserMatch: (p1.id === user.id || p2.id === user.id),
-                finalScore: null,
-                sgfFileIndex: Math.floor(Math.random() * 20) + 1,
+        // 5개의 라운드(1~5회차) 생성
+        for (let roundNum = 1; roundNum <= 5; roundNum++) {
+            const roundPairings = schedule[roundNum - 1];
+            const roundMatches: Match[] = [];
+            
+            roundPairings.forEach((pair, index) => {
+                const p1 = players[pair[0]];
+                const p2 = players[pair[1]];
+                roundMatches.push({
+                    id: `m-${roundNum}-${index}`,
+                    players: [p1, p2],
+                    winner: null,
+                    isFinished: false,
+                    commentary: [],
+                    isUserMatch: (p1.id === user.id || p2.id === user.id),
+                    finalScore: null,
+                    sgfFileIndex: Math.floor(Math.random() * 18) + 1,
+                });
             });
-        });
-        
-        rounds.push({ id: 1, name: '풀리그', matches: roundMatches });
+            
+            rounds.push({ id: roundNum, name: `${roundNum}회차`, matches: roundMatches });
+        }
     }
 
     return {
@@ -364,37 +371,39 @@ export const startNextRound = (state: TournamentState, user: User) => {
             return;
         }
     
-        const players = state.players;
-        const schedule = [
-            [[0, 5], [1, 4], [2, 3]],
-            [[0, 4], [5, 3], [1, 2]],
-            [[0, 3], [4, 2], [5, 1]],
-            [[0, 2], [3, 1], [4, 5]],
-            [[0, 1], [2, 5], [3, 4]],
-        ];
-        const roundPairings = schedule[currentRound - 1];
-        const roundMatches = roundPairings.map(pair => {
-            const p1Id = players[pair[0]].id;
-            const p2Id = players[pair[1]].id;
-            return state.rounds[0].matches.find(m =>
-                (m.players[0]?.id === p1Id && m.players[1]?.id === p2Id) ||
-                (m.players[0]?.id === p2Id && m.players[1]?.id === p1Id)
-            );
+        // 현재 회차의 라운드 찾기 (name이 "1회차", "2회차" 등인 라운드)
+        const currentRoundObj = state.rounds.find(r => r.name === `${currentRound}회차`);
+        if (!currentRoundObj) {
+            state.status = 'complete';
+            return;
+        }
+        
+        // 다음 회차로 넘어갈 때 컨디션을 새롭게 부여 (40~100 사이 랜덤)
+        state.players.forEach(p => {
+            p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            // 능력치도 초기값으로 리셋
+            if (p.originalStats) {
+                p.stats = JSON.parse(JSON.stringify(p.originalStats));
+            }
         });
+        
+        const roundMatches = currentRoundObj.matches;
     
-        const userMatchInRound = roundMatches.find(m => m?.isUserMatch && !m.isFinished);
+        // 유저의 매치 찾기
+        const userMatchInRound = roundMatches.find(m => m.isUserMatch && !m.isFinished);
     
         if (userMatchInRound) {
-            const matchIndex = state.rounds[0].matches.findIndex(m => m.id === userMatchInRound.id);
-            
-            state.status = 'round_in_progress';
-            state.currentSimulatingMatch = { roundIndex: 0, matchIndex };
-            state.currentMatchCommentary = [];
-            state.timeElapsed = 0;
-            state.currentMatchScores = { player1: 0, player2: 0 };
+            // 유저의 매치가 있으면 대기 상태로 두고, 유저가 경기 시작 버튼을 눌러야 시작됨
+            // 경기 시작은 START_TOURNAMENT_MATCH 액션으로 처리됨
+            state.status = 'bracket_ready';
+            // currentRoundRobinRound가 아직 설정되지 않았으면 설정
+            if (!state.currentRoundRobinRound) {
+                state.currentRoundRobinRound = currentRound;
+            }
         } else {
+            // 유저의 매치가 없으면 모든 매치를 자동 처리
             roundMatches.forEach(m => {
-                if (m && !m.isFinished) {
+                if (!m.isFinished) {
                     simulateAndFinishMatch(m, state.players);
                 }
             });
@@ -403,20 +412,25 @@ export const startNextRound = (state: TournamentState, user: User) => {
         return;
     }
     
+    // 전국바둑대회와 월드챔피언십도 동네바둑리그처럼 자동으로 경기를 시작하지 않음
+    // 유저가 직접 경기 시작 버튼을 눌러야 함 (START_TOURNAMENT_ROUND 액션으로 처리)
     const nextMatchToSimulate = state.rounds
         .flatMap((round, roundIndex) => round.matches.map((match, matchIndex) => ({ match, roundIndex, matchIndex })))
         .find(({ match }) => !match.isFinished && match.isUserMatch);
 
     if (nextMatchToSimulate) {
-        state.status = 'round_in_progress';
-        state.currentSimulatingMatch = {
-            roundIndex: nextMatchToSimulate.roundIndex,
-            matchIndex: nextMatchToSimulate.matchIndex,
-        };
-        state.currentMatchCommentary = [];
-        state.timeElapsed = 0;
-        state.currentMatchScores = { player1: 0, player2: 0 };
+        // 유저의 매치가 있으면 대기 상태로 두고, 유저가 경기 시작 버튼을 눌러야 시작됨
+        // 경기 시작은 START_TOURNAMENT_ROUND 액션으로 처리됨
+        state.status = 'bracket_ready';
     } else {
+        // 유저의 매치가 없으면 모든 매치를 자동 처리
+        state.rounds.forEach(round => {
+            round.matches.forEach(match => {
+                if (!match.isFinished && !match.isUserMatch) {
+                    simulateAndFinishMatch(match, state.players);
+                }
+            });
+        });
         state.status = 'round_complete';
     }
 };
@@ -424,37 +438,63 @@ export const startNextRound = (state: TournamentState, user: User) => {
 export const skipToResults = (state: TournamentState, userId: string) => {
     if (state.status === 'complete') return;
 
+    // eliminated 상태도 처리 (유저가 패배해도 나머지 경기는 진행)
+    if (state.status === 'eliminated') {
+        state.status = 'round_complete';
+    }
+
+    const user = { id: userId } as User;
     let safety = 0; // prevent infinite loops
-    while (state.status !== 'complete' && safety < 10) {
+    while (state.status !== 'complete' && safety < 20) {
         safety++;
         
-        let allMatchesInStateFinished = true;
+        // 현재 라운드의 모든 미완료 매치를 시뮬레이션하고 완료
+        let hasUnfinishedMatches = false;
         state.rounds.forEach(round => {
             round.matches.forEach(match => {
                 if (!match.isFinished) {
-                    allMatchesInStateFinished = false;
+                    hasUnfinishedMatches = true;
                     simulateAndFinishMatch(match, state.players);
                 }
             });
         });
 
-        if (allMatchesInStateFinished) {
+        // 모든 매치가 완료되었는지 확인
+        const allMatchesFinished = state.rounds.every(r => r.matches.every(m => m.isFinished));
+        
+        if (allMatchesFinished) {
+            // 다음 라운드가 필요한지 확인하고 준비
+            const lastRound = state.rounds[state.rounds.length - 1];
+            const winners = lastRound.matches.map(m => m.winner).filter(Boolean) as PlayerForTournament[];
+            
+            // 결승전이 아니고 우승자가 2명 이상이면 다음 라운드 준비
+            if (winners.length > 1 && lastRound.name !== '결승') {
+                prepareNextRound(state, user);
+                // 다음 라운드의 매치들을 즉시 시뮬레이션 (계속 진행)
+                continue;
+            } else {
+                // 모든 경기가 끝났거나 결승전이 끝났으면 완료
+                state.status = 'complete';
+                break;
+            }
+        } else if (hasUnfinishedMatches) {
+            // 매치가 있었는데 아직 완료되지 않았으면 계속 진행
+            continue;
+        } else {
+            // 모든 매치가 완료되었고 다음 라운드가 필요 없으면 완료
             state.status = 'complete';
             break;
-        }
-
-        prepareNextRound(state, { id: userId } as User);
-
-        // After preparing, check again if all matches are finished (e.g., final round was just created and resolved)
-        const finalCheck = state.rounds.every(r => r.matches.every(m => m.isFinished));
-        if(finalCheck) {
-            state.status = 'complete';
         }
     }
     
     // Finalize state
     state.currentSimulatingMatch = null;
     state.timeElapsed = TOTAL_GAME_DURATION;
+    
+    // 안전장치: 여전히 완료되지 않았으면 강제로 완료
+    if (state.status !== 'complete') {
+        state.status = 'complete';
+    }
 };
 
 export const forfeitTournament = (state: TournamentState, userId: string) => {
@@ -536,8 +576,14 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
         if (p1.originalStats) p1.stats = JSON.parse(JSON.stringify(p1.originalStats));
         if (p2.originalStats) p2.stats = JSON.parse(JSON.stringify(p2.originalStats));
 
-        p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-        p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+        // 컨디션은 이미 토너먼트 생성 시 랜덤 부여되었으므로 변경하지 않음
+        // 단, 컨디션이 1000(초기값)인 경우에만 랜덤 부여 (하위 호환성)
+        if (p1.condition === 1000) {
+            p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+        }
+        if (p2.condition === 1000) {
+            p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+        }
     }
     
     // Fluctuate stats every second
@@ -566,10 +612,17 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
         player.stats[statToFluctuate] = (player.stats[statToFluctuate] || 0) + fluctuation;
     }
 
+    // 현재 시간에 맞는 단계 결정 (초반: 1-15초, 중반: 16-35초, 종반: 36-50초)
     const phase = getPhase(state.timeElapsed);
+    
+    // 각 단계에 필요한 능력치의 가중치 합계를 계산
+    // 초반: 전투력*0.4 + 사고속도*0.3 + 집중력*0.3
+    // 중반: 전투력*0.3 + 판단력*0.3 + 집중력*0.2 + 안정감*0.2
+    // 종반: 계산력*0.5 + 안정감*0.3 + 집중력*0.2
     const p1Power = calculatePower(p1, phase);
     const p2Power = calculatePower(p2, phase);
 
+    // 매초 각 단계별 능력치 점수를 누적하여 그래프 점수 계산
     const p1Cumulative = (state.currentMatchScores?.player1 || 0) + p1Power;
     const p2Cumulative = (state.currentMatchScores?.player2 || 0) + p2Power;
     state.currentMatchScores = { player1: p1Cumulative, player2: p2Cumulative };

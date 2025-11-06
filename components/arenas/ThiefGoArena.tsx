@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { GameProps, Player, Point, GameMode } from '../../types.js';
 import GoBoard from '../GoBoard.js';
 import { getGoLogic } from '../../server/goLogic.js';
+import { PLAYFUL_GAME_MODES } from '../../constants/gameModes';
 
 interface ThiefGoArenaProps extends GameProps {
     isMyTurn: boolean;
@@ -66,8 +67,15 @@ const ThiefGoArena: React.FC<ThiefGoArenaProps> = (props) => {
         }
     }, [gameStatus, isMyTurn, session, boardState, myRole, settings.boardSize]);
     
+    const backgroundClass = useMemo(() => {
+        if (PLAYFUL_GAME_MODES.some(m => m.mode === session.mode)) {
+            return 'bg-playful-background';
+        }
+        return 'bg-primary';
+    }, [session.mode]);
+    
     return (
-        <div className="relative w-full h-full">
+        <div className={`relative w-full h-full ${backgroundClass}`}>
             <GoBoard
                 boardState={boardState}
                 boardSize={settings.boardSize}

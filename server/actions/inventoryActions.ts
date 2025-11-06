@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
 import { type ServerAction, type User, type VolatileState, InventoryItem, ItemOption, ItemGrade, EquipmentSlot, CoreStat, SpecialStat, MythicStat, type ItemOptionType, type BorderInfo } from '../../types.js';
+import { broadcast } from '../socket.js';
 import {
     EQUIPMENT_POOL,
     MAIN_STAT_DEFINITIONS,
@@ -57,7 +58,7 @@ const getRandomInt = (min: number, max: number): number => {
 };
 
 // Helper function to generate a new random item
-const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot): InventoryItem => {
+export const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot): InventoryItem => {
     const template = EQUIPMENT_POOL.find(p => p.grade === grade && p.slot === slot);
     const baseItem = template || EQUIPMENT_POOL.find(p => p.grade === grade)!;
 
@@ -246,11 +247,11 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             await db.updateUser(user);
 
-            const updatedUser = { 
-                ...user, 
-                inventory: user.inventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
 
             return { 
                 clientResponse: { 
@@ -327,11 +328,12 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                     grade: bundleInfo.type === 'gold' ? 'uncommon' as const : 'rare' as const
                 }));
 
-                const updatedUser = { 
-                    ...user, 
-                    inventory: user.inventory.map(item => ({ ...item })),
-                    equipment: { ...user.equipment }
-                };
+                // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+                const updatedUser = JSON.parse(JSON.stringify(user));
+                
+                // WebSocket으로 사용자 업데이트 브로드캐스트
+                broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+                
                 return { clientResponse: { obtainedItemsBulk: obtainedItems, updatedUser } };
             }
             
@@ -359,11 +361,12 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             user.inventory = [...tempInventoryAfterUse, ...finalItemsToAdd];
             
             await db.updateUser(user);
-            const updatedUser = { 
-                ...user, 
-                inventory: user.inventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            
             return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser } };
         }
         
@@ -416,11 +419,11 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             if (totalGoldGained > 0) clientResponseItems.push({ name: '골드', quantity: totalGoldGained, image: '/images/icon/Gold.png', type: 'material', grade: 'uncommon' } as any);
             if (totalDiamondsGained > 0) clientResponseItems.push({ name: '다이아', quantity: totalDiamondsGained, image: '/images/icon/Zem.png', type: 'material', grade: 'rare' } as any);
 
-            const updatedUser = { 
-                ...user, 
-                inventory: updatedInventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
 
             return { clientResponse: { obtainedItemsBulk: clientResponseItems, updatedUser } };
         }
@@ -461,6 +464,9 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             await db.updateUser(user);
             
             const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
             
             return { clientResponse: { updatedUser } };
         }
@@ -509,12 +515,11 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             await db.updateUser(user);
             
-            // 깊은 복사로 updatedUser 생성
-            const updatedUser = JSON.parse(JSON.stringify({
-                ...user,
-                inventory: user.inventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            }));
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
             
             return { 
                 clientResponse: { 
@@ -652,11 +657,11 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             await db.updateUser(user);
             const itemBeforeEnhancement = JSON.parse(JSON.stringify(originalItemState));
             
-            const updatedUser = { 
-                ...user, 
-                inventory: user.inventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
             
             return { 
                 clientResponse: { 
@@ -736,11 +741,11 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             await db.updateUser(user);
 
-            const updatedUser = { 
-                ...user, 
-                inventory: user.inventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
 
             return { 
                 clientResponse: { 
@@ -796,11 +801,11 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             updateQuestProgress(user, 'craft_attempt');
             await db.updateUser(user);
             
-            const updatedUser = { 
-                ...user, 
-                inventory: user.inventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
         
             return {
                 clientResponse: {
@@ -840,11 +845,11 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             await db.updateUser(user);
             
-            const updatedUser = { 
-                ...user, 
-                inventory: user.inventory.map(item => ({ ...item })),
-                equipment: { ...user.equipment }
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
             
             return { clientResponse: { updatedUser } };
         }

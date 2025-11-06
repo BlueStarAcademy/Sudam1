@@ -74,30 +74,94 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem
             numberColor = "text-white";
         }
 
+        const starSize = Math.max(8, Math.round(10 * scaleFactor));
+        const fontSize = Math.max(8, Math.round(10 * scaleFactor));
+        const gap = Math.max(2, Math.round(2 * scaleFactor));
+        const padding = Math.max(2, Math.round(2 * scaleFactor));
+
         return (
-            <div className="absolute top-0.5 right-0.5 flex items-center gap-0.5 bg-black/40 rounded-bl-md px-0.5 py-0.5 z-10" style={{ textShadow: '1px 1px 2px black' }}>
-                <img src={starImage} alt="star" className="w-2.5 h-2.5" />
-                <span className={`font-bold text-[10px] leading-none ${numberColor}`}>{stars}</span>
+            <div 
+                className="absolute flex items-center bg-black/40 rounded-bl-md z-10" 
+                style={{ 
+                    textShadow: '1px 1px 2px black',
+                    top: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                    right: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                    gap: `${gap}px`,
+                    padding: `${padding}px`
+                }}
+            >
+                <img src={starImage} alt="star" style={{ width: `${starSize}px`, height: `${starSize}px` }} />
+                <span className={`font-bold leading-none ${numberColor}`} style={{ fontSize: `${fontSize}px` }}>{stars}</span>
             </div>
         );
     };
 
     if (item) {
         const padding = Math.max(4, Math.round(6 * scaleFactor));
+        const borderWidth = Math.max(1, Math.round(2 * scaleFactor));
         return (
             <div
-                className={`relative aspect-square rounded-lg border-2 border-color/50 bg-tertiary/50`}
+                className={`relative aspect-square rounded-lg bg-tertiary/50`}
                 title={item.name}
-                style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0, maxWidth: '100%', maxHeight: '100%' }}
+                style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    minWidth: 0, 
+                    minHeight: 0, 
+                    maxWidth: '100%', 
+                    maxHeight: '100%',
+                    border: `${borderWidth}px solid rgba(255, 255, 255, 0.1)`,
+                    boxSizing: 'border-box'
+                }}
             >
-                <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 object-cover rounded-md" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />
-                {item.image && <img src={item.image} alt={item.name} className="relative object-contain" style={{ width: '100%', height: '100%', padding: `${padding}px`, maxWidth: '100%', maxHeight: '100%' }}/>}
+                <img 
+                    src={gradeBackgrounds[item.grade]} 
+                    alt={item.grade} 
+                    className="absolute inset-0 object-cover rounded-md" 
+                    style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        maxWidth: '100%', 
+                        maxHeight: '100%',
+                        objectFit: 'cover'
+                    }} 
+                />
+                {item.image && (
+                    <img 
+                        src={item.image} 
+                        alt={item.name} 
+                        className="relative object-contain" 
+                        style={{ 
+                            width: '100%', 
+                            height: '100%', 
+                            padding: `${padding}px`, 
+                            maxWidth: '100%', 
+                            maxHeight: '100%',
+                            boxSizing: 'border-box',
+                            objectFit: 'contain'
+                        }}
+                    />
+                )}
                 {renderStarDisplay(item.stars)}
             </div>
         );
     } else {
+        const borderWidth = Math.max(1, Math.round(2 * scaleFactor));
          return (
-             <img src={emptySlotImages[slot]} alt={`${slot} empty slot`} className="aspect-square rounded-lg bg-tertiary/50 border-2 border-color/50" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+             <img 
+                 src={emptySlotImages[slot]} 
+                 alt={`${slot} empty slot`} 
+                 className="aspect-square rounded-lg bg-tertiary/50" 
+                 style={{ 
+                     width: '100%', 
+                     height: '100%', 
+                     maxWidth: '100%', 
+                     maxHeight: '100%', 
+                     objectFit: 'contain',
+                     border: `${borderWidth}px solid rgba(255, 255, 255, 0.1)`,
+                     boxSizing: 'border-box'
+                 }} 
+             />
         );
     }
 };
@@ -106,7 +170,8 @@ const LocalItemDetailDisplay: React.FC<{
     item: InventoryItem | null | undefined;
     title: string;
     comparisonItem?: InventoryItem | null;
-}> = ({ item, title, comparisonItem }) => {
+    scaleFactor?: number;
+}> = ({ item, title, comparisonItem, scaleFactor = 1 }) => {
     if (!item) {
         return <div className="h-full flex items-center justify-center text-tertiary text-sm">{title}</div>;
     }
@@ -133,10 +198,24 @@ const LocalItemDetailDisplay: React.FC<{
             numberColor = "text-white";
         }
 
+        const starSize = Math.max(8, Math.round(10 * scaleFactor));
+        const fontSize = Math.max(8, Math.round(10 * scaleFactor));
+        const gap = Math.max(2, Math.round(2 * scaleFactor));
+        const padding = Math.max(2, Math.round(2 * scaleFactor));
+
         return (
-            <div className="absolute top-0.5 right-0.5 flex items-center gap-0.5 bg-black/40 rounded-bl-md px-0.5 py-0.5 z-10" style={{ textShadow: '1px 1px 2px black' }}>
-                <img src={starImage} alt="star" className="w-2.5 h-2.5" />
-                <span className={`font-bold text-[10px] leading-none ${numberColor}`}>{stars}</span>
+            <div 
+                className="absolute flex items-center bg-black/40 rounded-bl-md z-10" 
+                style={{ 
+                    textShadow: '1px 1px 2px black',
+                    top: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                    right: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                    gap: `${gap}px`,
+                    padding: `${padding}px`
+                }}
+            >
+                <img src={starImage} alt="star" style={{ width: `${starSize}px`, height: `${starSize}px` }} />
+                <span className={`font-bold leading-none ${numberColor}`} style={{ fontSize: `${fontSize}px` }}>{stars}</span>
             </div>
         );
     };
@@ -185,9 +264,15 @@ const LocalItemDetailDisplay: React.FC<{
             {/* Top Section: Image (left), Name & Main Option (right) */}
             <div className="flex items-start justify-between mb-2">
                 {/* Left: Image */}
-                <div className="relative w-20 h-20 rounded-lg flex-shrink-0">
+                <div 
+                    className="relative rounded-lg flex-shrink-0"
+                    style={{
+                        width: `${Math.max(60, Math.round(80 * scaleFactor))}px`,
+                        height: `${Math.max(60, Math.round(80 * scaleFactor))}px`
+                    }}
+                >
                     <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
-                    {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1"/>}
+                    {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain" style={{ padding: `${Math.max(2, Math.round(4 * scaleFactor))}px` }} />}
                     {renderStarDisplay(item.stars)}
                 </div>
                 {/* Right: Name & Main Option */}
@@ -305,14 +390,26 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
         return () => window.removeEventListener('resize', handleResize);
     }, []);
     
-    // 뷰포트 크기에 비례한 창 크기 계산 (85% 너비, 최소 700px, 최대 950px)
-    const calculatedWidth = Math.max(700, Math.min(950, windowWidth * 0.85));
-    // 뷰포트 크기에 비례한 창 높이 계산 (75% 높이, 최소 650px, 최대 850px)
-    const calculatedHeight = Math.max(650, Math.min(850, windowHeight * 0.75));
+    // 뷰포트 크기에 비례한 창 크기 계산 (85% 너비, 최소 400px, 최대 950px)
+    // 브라우저가 작아질수록 창도 함께 작아지도록 비율 기반 계산
+    const calculatedWidth = useMemo(() => {
+        const baseWidth = windowWidth * 0.85;
+        return Math.max(400, Math.min(950, baseWidth));
+    }, [windowWidth]);
     
-    // 창 크기에 비례한 스케일 팩터 계산 (기준: 950px 너비)
+    // 뷰포트 크기에 비례한 창 높이 계산 (75% 높이, 최소 350px, 최대 850px)
+    const calculatedHeight = useMemo(() => {
+        const baseHeight = windowHeight * 0.75;
+        return Math.max(350, Math.min(850, baseHeight));
+    }, [windowHeight]);
+    
+    // 창 크기에 비례한 스케일 팩터 계산 (기준: 950px 너비, 최소 0.4까지 허용)
+    // 브라우저가 작아질수록 모든 요소가 비례적으로 줄어들도록
     const baseWidth = 950;
-    const scaleFactor = Math.max(0.7, Math.min(1.0, calculatedWidth / baseWidth));
+    const scaleFactor = useMemo(() => {
+        const rawScale = calculatedWidth / baseWidth;
+        return Math.max(0.4, Math.min(1.0, rawScale));
+    }, [calculatedWidth]);
 
     const handlePresetChange = (presetIndex: number) => {
         setSelectedPreset(presetIndex);
@@ -480,15 +577,22 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
         <DraggableWindow title="가방" onClose={onClose} windowId="inventory" isTopmost={isTopmost} initialWidth={calculatedWidth} initialHeight={calculatedHeight}>
             <div 
                 className="flex flex-col h-full w-full overflow-hidden"
+                style={{ margin: 0, padding: 0 }}
             >
                 {/* Top section: Equipped items (left) and Selected item details (right) */}
-                <div className="bg-gray-800 p-4 mb-2 rounded-md shadow-inner flex flex-shrink-0" style={{ height: `${400 * scaleFactor}px` }}>
+                <div className="bg-gray-800 mb-2 rounded-md shadow-inner flex flex-shrink-0" style={{ height: `${400 * scaleFactor}px`, padding: `${Math.max(12, Math.round(16 * scaleFactor))}px` }}>
                     {/* Left panel: Equipped items */}
-                    <div className="w-1/3 pr-4 border-r border-gray-700">
-                        <h3 className="text-lg font-bold text-on-panel mb-2">장착 장비</h3>
-                        <div className="grid grid-cols-3 gap-2">
+                    <div className="w-1/3 border-r border-gray-700" style={{ paddingRight: `${Math.max(12, Math.round(16 * scaleFactor))}px` }}>
+                        <h3 className="font-bold text-on-panel" style={{ fontSize: `${Math.max(14, Math.round(18 * scaleFactor))}px`, marginBottom: `${Math.max(6, Math.round(8 * scaleFactor))}px` }}>장착 장비</h3>
+                        <div 
+                            className="grid" 
+                            style={{ 
+                                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                                gap: `${Math.max(6, Math.round(8 * scaleFactor))}px`
+                            }}
+                        >
                             {EQUIPMENT_SLOTS.map(slot => (
-                                <div key={slot} className="w-full">
+                                <div key={slot} style={{ width: '100%', minWidth: 0 }}>
                                     <EquipmentSlotDisplay slot={slot} item={getItemForSlot(slot)} scaleFactor={scaleFactor} />
                                 </div>
                             ))}
@@ -534,7 +638,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                             <div className="flex flex-col w-1/3 h-full bg-panel-secondary rounded-lg p-3 relative overflow-hidden ml-4 border-r border-gray-700">
                                 <h3 className="text-lg font-bold text-on-panel mb-2">현재 장착 장비</h3>
                                 {correspondingEquippedItem ? (
-                                    <LocalItemDetailDisplay item={correspondingEquippedItem} title="장착된 장비 없음" comparisonItem={selectedItem} />
+                                    <LocalItemDetailDisplay item={correspondingEquippedItem} title="장착된 장비 없음" comparisonItem={selectedItem} scaleFactor={scaleFactor} />
                                 ) : (
                                     <div className="h-full flex items-center justify-center text-tertiary text-sm">장착된 장비 없음</div>
                                 )}
@@ -543,7 +647,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                             {/* Right panel: Selected equipment item */}
                             <div className="flex flex-col w-1/3 h-full bg-panel-secondary rounded-lg p-3 relative overflow-hidden ml-4">
                                 <h3 className="text-lg font-bold text-on-panel mb-2">선택 장비</h3>
-                                <LocalItemDetailDisplay item={selectedItem} title="선택된 아이템 없음" comparisonItem={correspondingEquippedItem} />
+                                <LocalItemDetailDisplay item={selectedItem} title="선택된 아이템 없음" comparisonItem={correspondingEquippedItem} scaleFactor={scaleFactor} />
                                 <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-2 px-4">
                                     {selectedItem.id === correspondingEquippedItem?.id ? (
                                         <Button
@@ -588,9 +692,15 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                                         </h3>
                                         <div className="flex flex-col h-full text-xs">
                                             <div className="flex items-start justify-between mb-2">
-                                                <div className="relative w-20 h-20 rounded-lg flex-shrink-0">
+                                                <div 
+                                                    className="relative rounded-lg flex-shrink-0"
+                                                    style={{
+                                                        width: `${Math.max(60, Math.round(80 * scaleFactor))}px`,
+                                                        height: `${Math.max(60, Math.round(80 * scaleFactor))}px`
+                                                    }}
+                                                >
                                                     <img src={gradeBackgrounds[selectedItem.grade]} alt={selectedItem.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
-                                                    {selectedItem.image && <img src={selectedItem.image} alt={selectedItem.name} className="relative w-full h-full object-contain p-1"/>}
+                                                    {selectedItem.image && <img src={selectedItem.image} alt={selectedItem.name} className="relative w-full h-full object-contain" style={{ padding: `${Math.max(2, Math.round(4 * scaleFactor))}px` }} />}
                                                 </div>
                                                 <div className="flex-grow text-right ml-2">
                                                     <h3 className={`text-lg font-bold ${gradeStyles[selectedItem.grade].color}`}>{selectedItem.name}</h3>
@@ -662,8 +772,8 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                 </div>
 
                 {/* Bottom section: Inventory grid */}
-                <div className="flex-shrink-0 bg-gray-900 p-4 rounded-b-md overflow-hidden" style={{ height: `${200 * scaleFactor}px` }}>
-                    <div className="flex-shrink-0 p-2 bg-gray-900/50 rounded-md mb-2">
+                <div className="flex-shrink-0 bg-gray-900 overflow-hidden flex flex-col" style={{ flex: '1 1 auto', minHeight: `${200 * scaleFactor}px`, padding: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingTop: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingBottom: `${Math.max(12, Math.round(16 * scaleFactor))}px`, marginBottom: 0 }}>
+                    <div className="flex-shrink-0 bg-gray-900/50 rounded-md mb-2" style={{ padding: `${Math.max(6, Math.round(8 * scaleFactor))}px`, marginBottom: `${Math.max(6, Math.round(8 * scaleFactor))}px` }}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">
                                 <Button onClick={() => setActiveTab('all')} colorScheme={activeTab === 'all' ? 'blue' : 'gray'} className="!text-xs !py-1 !px-2">전체</Button>
@@ -684,7 +794,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-y-auto pr-2 h-full" style={{ width: '100%', minWidth: 0 }}>
+                    <div className="overflow-y-auto h-full" style={{ width: '100%', minWidth: 0, paddingRight: `${Math.max(6, Math.round(8 * scaleFactor))}px` }}>
                         <div 
                             className="grid gap-2" 
                             style={{ 
@@ -840,23 +950,55 @@ const InventoryItemCard: React.FC<{
             style={{ width: '100%', height: '100%', minWidth: 0, minHeight: 0, maxWidth: '100%', maxHeight: '100%' }}
         >
             <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 object-cover rounded-md" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />
-            {item.image && <img src={item.image} alt={item.name} className="relative object-contain p-1.5" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />}
+            {item.image && <img src={item.image} alt={item.name} className="relative object-contain" style={{ width: '100%', height: '100%', padding: `${Math.max(4, Math.round(6 * scaleFactor))}px`, maxWidth: '100%', maxHeight: '100%' }} />}
             {isEquipped && (
-                <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-green-500 text-white text-xs flex items-center justify-center rounded-full border-2 border-gray-800">
+                <div 
+                    className="absolute bg-green-500 text-white flex items-center justify-center rounded-full border-2 border-gray-800"
+                    style={{
+                        top: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                        left: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                        width: `${Math.max(12, Math.round(16 * scaleFactor))}px`,
+                        height: `${Math.max(12, Math.round(16 * scaleFactor))}px`,
+                        fontSize: `${Math.max(8, Math.round(10 * scaleFactor))}px`
+                    }}
+                >
                     E
                 </div>
             )}
             {!isEquipped && isPresetEquipped && (
-                <div className="absolute top-0.5 left-0.5 w-4 h-4 bg-blue-500 text-white text-xs flex items-center justify-center rounded-full border-2 border-gray-800">
+                <div 
+                    className="absolute bg-blue-500 text-white flex items-center justify-center rounded-full border-2 border-gray-800"
+                    style={{
+                        top: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                        left: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                        width: `${Math.max(12, Math.round(16 * scaleFactor))}px`,
+                        height: `${Math.max(12, Math.round(16 * scaleFactor))}px`,
+                        fontSize: `${Math.max(8, Math.round(10 * scaleFactor))}px`
+                    }}
+                >
                     P
                 </div>
             )}
             {(item.type === 'consumable' || item.type === 'material') && item.quantity && item.quantity > 1 && (
-                <div className="absolute bottom-0.5 right-0.5 bg-black/70 text-white text-[10px] font-bold px-1 py-0.5 rounded border border-white/30">
+                <div 
+                    className="absolute bg-black/70 text-white font-bold rounded border border-white/30"
+                    style={{
+                        bottom: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                        right: `${Math.max(2, Math.round(2 * scaleFactor))}px`,
+                        fontSize: `${Math.max(8, Math.round(10 * scaleFactor))}px`,
+                        padding: `${Math.max(2, Math.round(4 * scaleFactor))}px ${Math.max(3, Math.round(4 * scaleFactor))}px`
+                    }}
+                >
                     {item.quantity}
                 </div>
             )}
-            <div className="absolute bottom-0 left-0 right-0 text-center text-xs font-bold text-white bg-black/50 py-0.5">
+            <div 
+                className="absolute bottom-0 left-0 right-0 text-center font-bold text-white bg-black/50"
+                style={{
+                    padding: `${Math.max(2, Math.round(2 * scaleFactor))}px 0`,
+                    fontSize: `${Math.max(10, Math.round(12 * scaleFactor))}px`
+                }}
+            >
                 <span className={starInfo.colorClass}>{starInfo.text}</span>
             </div>
         </div>

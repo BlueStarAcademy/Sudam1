@@ -84,7 +84,9 @@ export const CONSUMABLE_ITEMS: (Omit<InventoryItem, 'id'|'createdAt'|'isEquipped
     { name: '다이아 꾸러미2', description: '10 ~ 30 다이아 획득', type: 'consumable', slot: null, image: '/images/Box/DiaBox2.png', grade: 'epic' },
     { name: '다이아 꾸러미3', description: '20 ~ 50 다이아 획득', type: 'consumable', slot: null, image: '/images/Box/DiaBox3.png', grade: 'legendary' },
     { name: '다이아 꾸러미4', description: '30 ~ 100 다이아 획득', type: 'consumable', slot: null, image: '/images/Box/DiaBox4.png', grade: 'mythic' },
-    { name: '컨디션 물약', description: '컨디션을 100까지 회복합니다.', type: 'consumable', slot: null, image: '/images/Box/EquipmentBox1.png', grade: 'uncommon' },
+    { name: '컨디션회복제(소)', description: '컨디션을 1~10 회복합니다.', type: 'consumable', slot: null, image: '/images/use/con1.png', grade: 'normal' },
+    { name: '컨디션회복제(중)', description: '컨디션을 10~20 회복합니다.', type: 'consumable', slot: null, image: '/images/use/con2.png', grade: 'uncommon' },
+    { name: '컨디션회복제(대)', description: '컨디션을 20~30 회복합니다.', type: 'consumable', slot: null, image: '/images/use/con3.png', grade: 'rare' },
 ];
 
 export const MATERIAL_ITEMS: Record<string, Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'|'enhancementFails'>> = {

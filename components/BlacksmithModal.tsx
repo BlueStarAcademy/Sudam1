@@ -39,6 +39,13 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
         }
     }, [selectedItemForEnhancement, onSetActiveTab]);
 
+    // 강화 성공 시 selectedItem을 업데이트된 아이템으로 갱신
+    useEffect(() => {
+        if (enhancementOutcome?.success && selectedItem && enhancementOutcome.itemAfter.id === selectedItem.id) {
+            setSelectedItem(enhancementOutcome.itemAfter);
+        }
+    }, [enhancementOutcome, selectedItem]);
+
     useEffect(() => {
         setCombinationItems([null, null, null]);
     }, [activeTab]);
@@ -194,7 +201,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
             <DraggableWindow 
                 title="대장간" 
                 onClose={onClose} 
-                isTopmost={isTopmost && !modals.isBlacksmithHelpOpen && !modals.disassemblyResult}
+                isTopmost={isTopmost}
                 initialWidth={950} 
                 windowId="blacksmith"
                 zIndex={50}

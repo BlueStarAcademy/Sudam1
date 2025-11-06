@@ -6,8 +6,11 @@ import {
   CAPTURE_TARGETS, SPEED_BOARD_SIZES, SPEED_TIME_LIMITS, BASE_STONE_COUNTS,
   HIDDEN_STONE_COUNTS, SCAN_COUNTS, MISSILE_BOARD_SIZES, MISSILE_COUNTS,
   ALKKAGI_STONE_COUNTS, ALKKAGI_ROUNDS, CURLING_STONE_COUNTS, CURLING_ROUNDS,
-  OMOK_BOARD_SIZES, HIDDEN_BOARD_SIZES
+  OMOK_BOARD_SIZES, HIDDEN_BOARD_SIZES, TTAMOK_CAPTURE_TARGETS, DICE_GO_ITEM_COUNTS,
+  ALKKAGI_ITEM_COUNTS, CURLING_ITEM_COUNTS, ALKKAGI_GAUGE_SPEEDS, CURLING_GAUGE_SPEEDS,
+  FISCHER_INCREMENT_SECONDS
 } from '../constants/gameSettings.js';
+import { AlkkagiPlacementType, AlkkagiLayoutType } from '../types.js';
 import Button from './Button.js';
 import DraggableWindow from './DraggableWindow.js';
 import Avatar from './Avatar.js';
@@ -97,12 +100,17 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
   const showBoardSize = ![GameMode.Alkkagi, GameMode.Curling, GameMode.Dice].includes(selectedMode);
   const showKomi = ![GameMode.Capture, GameMode.Omok, GameMode.Ttamok, GameMode.Alkkagi, GameMode.Curling, GameMode.Dice, GameMode.Thief, GameMode.Base].includes(selectedMode);
   const showTimeControls = ![GameMode.Alkkagi, GameMode.Curling, GameMode.Dice, GameMode.Thief].includes(selectedMode);
+  const showFischer = selectedMode === GameMode.Speed || (selectedMode === GameMode.Mix && !!settings.mixedModes?.includes(GameMode.Speed));
   const showCaptureTarget = selectedMode === GameMode.Capture;
+  const showTtamokCaptureTarget = selectedMode === GameMode.Ttamok;
+  const showOmokRules = selectedMode === GameMode.Omok || selectedMode === GameMode.Ttamok;
   const showBaseStones = selectedMode === GameMode.Base;
   const showHiddenStones = selectedMode === GameMode.Hidden;
   const showMissileCount = selectedMode === GameMode.Missile;
+  const showDiceGoSettings = selectedMode === GameMode.Dice;
   const showAlkkagiSettings = selectedMode === GameMode.Alkkagi;
   const showCurlingSettings = selectedMode === GameMode.Curling;
+  const showMixModeSelection = selectedMode === GameMode.Mix;
 
   const [imgError, setImgError] = useState(false);
   
@@ -299,9 +307,21 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
                       onChange={e => handleSettingChange('timeLimit', parseInt(e.target.value))}
                       className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
                     >
-                      {TIME_LIMITS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                      {(selectedMode === GameMode.Speed ? SPEED_TIME_LIMITS : TIME_LIMITS).map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                     </select>
                   </div>
+                  {showFischer && (
+                    <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                      <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">피셔 보너스</label>
+                      <select 
+                        value={settings.timeIncrement ?? FISCHER_INCREMENT_SECONDS} 
+                        onChange={e => handleSettingChange('timeIncrement', parseInt(e.target.value))}
+                        className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                      >
+                        {[0, 5, 10, 15, 20, 30].map(t => <option key={t} value={t}>{t}초</option>)}
+                      </select>
+                    </div>
+                  )}
                   <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
                     <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">초읽기</label>
                     <div className="flex gap-2">
@@ -335,6 +355,42 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
                     {CAPTURE_TARGETS.map(t => <option key={t} value={t}>{t}점</option>)}
                   </select>
                 </div>
+              )}
+
+              {showTtamokCaptureTarget && (
+                <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                  <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">따내기 목표</label>
+                  <select 
+                    value={settings.captureTarget ?? 20} 
+                    onChange={e => handleSettingChange('captureTarget', parseInt(e.target.value))}
+                    className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                  >
+                    {TTAMOK_CAPTURE_TARGETS.map(t => <option key={t} value={t}>{t}개</option>)}
+                  </select>
+                </div>
+              )}
+
+              {showOmokRules && (
+                <>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">쌍삼 금지</label>
+                    <input 
+                      type="checkbox" 
+                      checked={settings.has33Forbidden ?? true} 
+                      onChange={e => handleSettingChange('has33Forbidden', e.target.checked)} 
+                      className="w-5 h-5"
+                    />
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">장목 금지</label>
+                    <input 
+                      type="checkbox" 
+                      checked={settings.hasOverlineForbidden ?? true} 
+                      onChange={e => handleSettingChange('hasOverlineForbidden', e.target.checked)} 
+                      className="w-5 h-5"
+                    />
+                  </div>
+                </>
               )}
 
               {showBaseStones && (
@@ -401,12 +457,47 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
                 </div>
               )}
 
+              {showDiceGoSettings && (
+                <>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">라운드 설정</label>
+                    <select 
+                      value={settings.diceGoRounds ?? 3} 
+                      onChange={e => handleSettingChange('diceGoRounds', parseInt(e.target.value, 10) as 1 | 2 | 3)}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {[1, 2, 3].map(r => <option key={r} value={r}>{r}라운드</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">홀수 주사위</label>
+                    <select 
+                      value={settings.oddDiceCount ?? 1} 
+                      onChange={e => handleSettingChange('oddDiceCount', parseInt(e.target.value, 10))}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {DICE_GO_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">짝수 주사위</label>
+                    <select 
+                      value={settings.evenDiceCount ?? 1} 
+                      onChange={e => handleSettingChange('evenDiceCount', parseInt(e.target.value, 10))}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {DICE_GO_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+                    </select>
+                  </div>
+                </>
+              )}
+
               {showAlkkagiSettings && (
                 <>
                   <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
                     <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">돌 개수</label>
                     <select 
-                      value={settings.alkkagiStoneCount} 
+                      value={settings.alkkagiStoneCount ?? 5} 
                       onChange={e => handleSettingChange('alkkagiStoneCount', parseInt(e.target.value))}
                       className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
                     >
@@ -416,11 +507,61 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
                   <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
                     <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">라운드</label>
                     <select 
-                      value={settings.alkkagiRounds} 
+                      value={settings.alkkagiRounds ?? 1} 
                       onChange={e => handleSettingChange('alkkagiRounds', parseInt(e.target.value) as 1 | 2 | 3)}
                       className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
                     >
                       {ALKKAGI_ROUNDS.map(r => <option key={r} value={r}>{r}라운드</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">배치 방식</label>
+                    <select 
+                      value={settings.alkkagiPlacementType ?? AlkkagiPlacementType.TurnByTurn} 
+                      onChange={e => handleSettingChange('alkkagiPlacementType', e.target.value as AlkkagiPlacementType)}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {Object.values(AlkkagiPlacementType).map(type => <option key={type} value={type}>{type}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">배치 전장</label>
+                    <select 
+                      value={settings.alkkagiLayout ?? AlkkagiLayoutType.Normal} 
+                      onChange={e => handleSettingChange('alkkagiLayout', e.target.value as AlkkagiLayoutType)}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {Object.values(AlkkagiLayoutType).map(type => <option key={type} value={type}>{type}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">게이지 속도</label>
+                    <select 
+                      value={settings.alkkagiGaugeSpeed ?? 700} 
+                      onChange={e => handleSettingChange('alkkagiGaugeSpeed', parseInt(e.target.value))}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {ALKKAGI_GAUGE_SPEEDS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">슬로우 아이템</label>
+                    <select 
+                      value={settings.alkkagiSlowItemCount ?? 2} 
+                      onChange={e => handleSettingChange('alkkagiSlowItemCount', parseInt(e.target.value))}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {ALKKAGI_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">조준선 아이템</label>
+                    <select 
+                      value={settings.alkkagiAimingLineItemCount ?? 2} 
+                      onChange={e => handleSettingChange('alkkagiAimingLineItemCount', parseInt(e.target.value))}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {ALKKAGI_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
                     </select>
                   </div>
                 </>
@@ -431,7 +572,7 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
                   <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
                     <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">돌 개수</label>
                     <select 
-                      value={settings.curlingStoneCount} 
+                      value={settings.curlingStoneCount ?? 5} 
                       onChange={e => handleSettingChange('curlingStoneCount', parseInt(e.target.value))}
                       className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
                     >
@@ -441,14 +582,78 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
                   <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
                     <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">라운드</label>
                     <select 
-                      value={settings.curlingRounds} 
+                      value={settings.curlingRounds ?? 3} 
                       onChange={e => handleSettingChange('curlingRounds', parseInt(e.target.value) as 1 | 2 | 3)}
                       className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
                     >
                       {CURLING_ROUNDS.map(r => <option key={r} value={r}>{r}라운드</option>)}
                     </select>
                   </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">게이지 속도</label>
+                    <select 
+                      value={settings.curlingGaugeSpeed ?? 700} 
+                      onChange={e => handleSettingChange('curlingGaugeSpeed', parseInt(e.target.value))}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {CURLING_GAUGE_SPEEDS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">슬로우 아이템</label>
+                    <select 
+                      value={settings.curlingSlowItemCount ?? 2} 
+                      onChange={e => handleSettingChange('curlingSlowItemCount', parseInt(e.target.value))}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {CURLING_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+                    </select>
+                  </div>
+                  <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
+                    <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">조준선 아이템</label>
+                    <select 
+                      value={settings.curlingAimingLineItemCount ?? 2} 
+                      onChange={e => handleSettingChange('curlingAimingLineItemCount', parseInt(e.target.value))}
+                      className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                    >
+                      {CURLING_ITEM_COUNTS.map(c => <option key={c} value={c}>{c}개</option>)}
+                    </select>
+                  </div>
                 </>
+              )}
+
+              {showMixModeSelection && (
+                <div className="flex flex-col gap-2">
+                  <label className="font-semibold text-gray-300 text-xs lg:text-sm">믹스룰 게임 모드 선택</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {[...SPECIAL_GAME_MODES, ...PLAYFUL_GAME_MODES]
+                      .filter(m => m.mode !== GameMode.Mix && m.mode !== GameMode.Dice && m.mode !== GameMode.Omok && m.mode !== GameMode.Ttamok && m.mode !== GameMode.Alkkagi && m.mode !== GameMode.Curling)
+                      .map(modeDef => {
+                        const isSelected = settings.mixedModes?.includes(modeDef.mode) || false;
+                        return (
+                          <label key={modeDef.mode} className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={isSelected}
+                              onChange={e => {
+                                const currentModes = settings.mixedModes || [];
+                                if (e.target.checked) {
+                                  handleSettingChange('mixedModes', [...currentModes, modeDef.mode]);
+                                } else {
+                                  handleSettingChange('mixedModes', currentModes.filter(m => m !== modeDef.mode));
+                                }
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <span className="text-xs text-gray-300">{modeDef.mode}</span>
+                          </label>
+                        );
+                      })}
+                  </div>
+                  {settings.mixedModes && settings.mixedModes.length < 2 && (
+                    <p className="text-xs text-red-400">최소 2개 이상의 게임 모드를 선택해야 합니다.</p>
+                  )}
+                </div>
               )}
               </div>
             </div>

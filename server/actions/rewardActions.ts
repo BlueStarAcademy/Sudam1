@@ -303,11 +303,38 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
 
             user.mail.splice(mailIndex, 1);
             await db.updateUser(user);
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUserCopy = JSON.parse(JSON.stringify(user));
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUserCopy } });
+            
             return {};
         }
         case 'DELETE_ALL_CLAIMED_MAIL': {
             user.mail = user.mail.filter(m => !(m.attachments && m.attachmentsClaimed));
             await db.updateUser(user);
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUserCopy = JSON.parse(JSON.stringify(user));
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUserCopy } });
+            
+            return {};
+        }
+        case 'MARK_MAIL_AS_READ': {
+            const { mailId } = payload;
+            const mail = user.mail.find(m => m.id === mailId);
+            if (!mail) return { error: 'Mail not found.' };
+            
+            mail.isRead = true;
+            await db.updateUser(user);
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUserCopy = JSON.parse(JSON.stringify(user));
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUserCopy } });
+            
             return {};
         }
         case 'CLAIM_TOURNAMENT_REWARD': {

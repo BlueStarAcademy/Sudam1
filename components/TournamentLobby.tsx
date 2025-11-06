@@ -361,11 +361,31 @@ const TournamentCard: React.FC<{
     onClick: () => void;
     onContinue: () => void;
     inProgress: TournamentState | null;
-}> = ({ type, onClick, onContinue, inProgress }) => {
+    currentUser: UserWithStatus;
+}> = ({ type, onClick, onContinue, inProgress, currentUser }) => {
     const definition = TOURNAMENT_DEFINITIONS[type];
     const isSimulationInProgress = inProgress && inProgress.status === 'round_in_progress';
     const hasResultToView = inProgress && (inProgress.status === 'complete' || inProgress.status === 'eliminated');
     const isReadyToContinue = inProgress && (inProgress.status === 'bracket_ready' || inProgress.status === 'round_complete');
+
+    // 참가 횟수 계산
+    const now = Date.now();
+    let playedDateKey: keyof UserWithStatus;
+    switch (type) {
+        case 'neighborhood':
+            playedDateKey = 'lastNeighborhoodPlayedDate';
+            break;
+        case 'national':
+            playedDateKey = 'lastNationalPlayedDate';
+            break;
+        case 'world':
+            playedDateKey = 'lastWorldPlayedDate';
+            break;
+    }
+    const lastPlayedDate = currentUser[playedDateKey as keyof UserWithStatus] as number | null | undefined;
+    const hasPlayedToday = lastPlayedDate && isSameDayKST(lastPlayedDate, now);
+    const participationCount = hasPlayedToday ? 1 : 0;
+    const maxParticipation = 1;
 
     let buttonText = '참가하기';
     let action = onClick;
@@ -386,7 +406,10 @@ const TournamentCard: React.FC<{
             className="group bg-gray-800 rounded-lg p-3 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full"
             onClick={action}
         >
-            <h2 className="text-lg font-bold mb-2">{definition.name}</h2>
+            <div className="flex justify-between items-center mb-2">
+                <h2 className="text-lg font-bold">{definition.name}</h2>
+                <span className="text-sm text-gray-400">({participationCount}/{maxParticipation})</span>
+            </div>
             <div className="w-full aspect-video bg-gray-700 rounded-md flex items-center justify-center text-gray-500 overflow-hidden relative flex-grow">
                 <img src={definition.image} alt={definition.name} className="w-full h-full object-cover" />
             </div>
@@ -462,9 +485,9 @@ const TournamentLobby: React.FC = () => {
             <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0">
                 <main className="flex-grow grid grid-cols-12 gap-6 min-h-0">
                     <div className="col-span-12 grid grid-cols-3 gap-4 flex-shrink-0">
-                        <TournamentCard type="neighborhood" onClick={() => handleEnterArena('neighborhood')} onContinue={() => handleContinueTournament('neighborhood')} inProgress={neighborhoodState || null} />
-                        <TournamentCard type="national" onClick={() => handleEnterArena('national')} onContinue={() => handleContinueTournament('national')} inProgress={nationalState || null} />
-                        <TournamentCard type="world" onClick={() => handleEnterArena('world')} onContinue={() => handleContinueTournament('world')} inProgress={worldState || null} />
+                        <TournamentCard type="neighborhood" onClick={() => handleEnterArena('neighborhood')} onContinue={() => handleContinueTournament('neighborhood')} inProgress={neighborhoodState || null} currentUser={currentUserWithStatus} />
+                        <TournamentCard type="national" onClick={() => handleEnterArena('national')} onContinue={() => handleContinueTournament('national')} inProgress={nationalState || null} currentUser={currentUserWithStatus} />
+                        <TournamentCard type="world" onClick={() => handleEnterArena('world')} onContinue={() => handleContinueTournament('world')} inProgress={worldState || null} currentUser={currentUserWithStatus} />
                     </div>
                     <div className="col-span-8 bg-gray-800/50 rounded-lg shadow-lg min-h-0">
                         <ChatWindow

@@ -469,9 +469,10 @@ const Profile: React.FC<ProfileProps> = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     {Object.values(CoreStat).map(stat => {
-                        const baseValue = (currentUserWithStatus.baseStats[stat] || 0) + (currentUserWithStatus.spentStatPoints?.[stat] || 0);
-                        const bonus = Math.floor(baseValue * (coreStatBonuses[stat].percent / 100)) + coreStatBonuses[stat].flat;
-                        const finalValue = baseValue + bonus;
+						const baseValue = (currentUserWithStatus.baseStats[stat] || 0) + (currentUserWithStatus.spentStatPoints?.[stat] || 0);
+						// Align with calculateTotalStats: final = floor((base + flat) * (1 + percent/100))
+						const finalValue = Math.floor((baseValue + coreStatBonuses[stat].flat) * (1 + coreStatBonuses[stat].percent / 100));
+						const bonus = finalValue - baseValue;
                         return (
                             <div key={stat} className="bg-tertiary/40 p-1 rounded-md flex items-center justify-between text-xs">
                                 <span className="font-semibold text-secondary">{stat}</span>

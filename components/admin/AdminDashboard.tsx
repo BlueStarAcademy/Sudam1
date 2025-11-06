@@ -1,7 +1,7 @@
 
 import React from 'react';
 // FIX: Import missing types from the centralized types file.
-import { AdminProps, LiveGameSession } from '../../types/index.js';
+import { AdminProps, LiveGameSession, TournamentType } from '../../types/index.js';
 import Button from '../Button.js';
 
 type AdminView = 'dashboard' | 'userManagement' | 'mailSystem' | 'serverSettings';
@@ -11,11 +11,27 @@ interface AdminDashboardProps extends Omit<AdminProps, 'onBack'> {
     onBackToProfile: () => void;
 }
 
-const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onBackToProfile, liveGames, onAction }) => {
+const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onBackToProfile, liveGames, onAction, currentUser }) => {
     
     const handleDeleteGame = (game: LiveGameSession) => {
         if (window.confirm(`[${game.player1.nickname} vs ${game.player2.nickname}] 대국을 강제로 종료하시겠습니까?`)) {
             onAction({ type: 'ADMIN_FORCE_DELETE_GAME', payload: { gameId: game.id } });
+        }
+    }
+
+    const handleResetTournament = (tournamentType: TournamentType) => {
+        const tournamentNames = {
+            neighborhood: '동네바둑리그',
+            national: '전국바둑대회',
+            world: '월드챔피언십'
+        };
+        const tournamentName = tournamentNames[tournamentType];
+        
+        if (window.confirm(`${tournamentName} 토너먼트를 초기화하고 새로 매칭하시겠습니까?`)) {
+            onAction({ 
+                type: 'ADMIN_RESET_TOURNAMENT_SESSION', 
+                payload: { targetUserId: currentUser.id, tournamentType } 
+            });
         }
     }
 
@@ -39,6 +55,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onBackToPro
                 <div onClick={() => onNavigate('serverSettings')} className="bg-yellow-800/50 hover:bg-yellow-700/50 p-6 rounded-lg shadow-lg cursor-pointer transition-all transform hover:-translate-y-1 border border-color">
                     <h2 className="text-2xl font-bold text-yellow-300">서버 설정</h2>
                     <p className="mt-2 text-gray-400">공지사항, 게임 모드 활성화 등 서버 전체 설정을 관리합니다.</p>
+                </div>
+            </div>
+
+            <div className="mt-8 bg-panel border border-color p-6 rounded-lg shadow-lg">
+                <h2 className="text-xl font-semibold mb-4 border-b border-color pb-2 text-on-panel">챔피언십 토너먼트 테스트</h2>
+                <p className="text-sm text-gray-400 mb-4">각 경기장의 토너먼트를 초기화하고 새로운 매칭을 생성하여 테스트할 수 있습니다.</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <Button 
+                        onClick={() => handleResetTournament('neighborhood')} 
+                        colorScheme="purple" 
+                        className="w-full"
+                    >
+                        동네바둑리그 재매칭
+                    </Button>
+                    <Button 
+                        onClick={() => handleResetTournament('national')} 
+                        colorScheme="purple" 
+                        className="w-full"
+                    >
+                        전국바둑대회 재매칭
+                    </Button>
+                    <Button 
+                        onClick={() => handleResetTournament('world')} 
+                        colorScheme="purple" 
+                        className="w-full"
+                    >
+                        월드챔피언십 재매칭
+                    </Button>
                 </div>
             </div>
 

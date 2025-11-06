@@ -4,14 +4,15 @@ import fs from 'fs';
 import path from 'path';
 import { LiveGameSession, AnalysisResult, Player, Point, RecommendedMove } from '../types.js';
 import * as types from '../types.js';
+import { fileURLToPath } from 'url';
 
-// --- Configuration ---
-// These paths should be configured for your environment.
-// Based on user's log, assuming this structure.
-const KATAGO_PATH = 'c:/katago/katago.exe';
-const MODEL_PATH = 'c:/katago/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz';
-const CONFIG_PATH = path.resolve('server/temp_katago_config.cfg');
-const KATAGO_HOME_PATH = path.resolve('server/katago_home');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const KATAGO_PATH = path.resolve(__dirname, '../../katago/katago.exe');
+const MODEL_PATH = path.resolve(__dirname, '../../katago/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz');
+const CONFIG_PATH = path.resolve(__dirname, './temp_katago_config.cfg');
+const KATAGO_HOME_PATH = path.resolve(__dirname, './katago_home');
 
 const LETTERS = "ABCDEFGHJKLMNOPQRST";
 

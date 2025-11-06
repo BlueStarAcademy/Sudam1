@@ -2,17 +2,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { UserWithStatus, InventoryItem, ServerAction, ItemGrade, ItemOption } from '../../types.js';
 import Button from '../Button.js';
-import { ENHANCEMENT_SUCCESS_RATES, ENHANCEMENT_COSTS, MATERIAL_ITEMS, ENHANCEMENT_FAIL_BONUS_RATES, GRADE_LEVEL_REQUIREMENTS, calculateEnhancementGoldCost } from '../../constants';
+import { ENHANCEMENT_SUCCESS_RATES, ENHANCEMENT_COSTS, MATERIAL_ITEMS, ENHANCEMENT_FAIL_BONUS_RATES, GRADE_LEVEL_REQUIREMENTS, calculateEnhancementGoldCost, gradeBackgrounds, gradeStyles } from '../../constants';
 import { useAppContext } from '../../hooks/useAppContext.js';
-
-const gradeStyles: Record<ItemGrade, { name: string; color: string; background: string; }> = {
-    normal: { name: '일반', color: 'text-gray-300', background: '/images/equipments/normalbgi.png' },
-    uncommon: { name: '고급', color: 'text-green-400', background: '/images/equipments/uncommonbgi.png' },
-    rare: { name: '희귀', color: 'text-blue-400', background: '/images/equipments/rarebgi.png' },
-    epic: { name: '에픽', color: 'text-purple-400', background: '/images/equipments/epicbgi.png' },
-    legendary: { name: '전설', color: 'text-red-500', background: '/images/equipments/legendarybgi.png' },
-    mythic: { name: '신화', color: 'text-orange-400', background: '/images/equipments/mythicbgi.png' },
-};
 
 const renderStarDisplay = (stars: number) => {
     if (stars === 0) return null;
@@ -42,12 +33,11 @@ const renderStarDisplay = (stars: number) => {
     );
 };
 
-const ItemDisplay: React.FC<{ item: InventoryItem }> = ({ item }) => {
-    const { currentUserWithStatus } = useAppContext();
+const ItemDisplay: React.FC<{ item: InventoryItem; currentUser: UserWithStatus }> = ({ item, currentUser }) => {
     const styles = gradeStyles[item.grade];
 
     const requiredLevel = GRADE_LEVEL_REQUIREMENTS[item.grade];
-    const userLevelSum = (currentUserWithStatus?.strategyLevel || 0) + (currentUserWithStatus?.playfulLevel || 0);
+    const userLevelSum = (currentUser?.strategyLevel || 0) + (currentUser?.playfulLevel || 0);
     const canEquip = userLevelSum >= requiredLevel;
 
     return (
@@ -108,60 +98,7 @@ const getStarDisplayInfo = (stars: number) => {
     return { text: "", colorClass: "text-white" };
 };
 
-const EnhancementResultDisplay: React.FC<{ outcome: { message: string; success: boolean; itemBefore: InventoryItem; itemAfter: InventoryItem; } | null, onConfirm: () => void }> = ({ outcome, onConfirm }) => {
-    if (!outcome) return null;
 
-    const { success, message, itemBefore, itemAfter } = outcome;
-
-    const changedSubOption = useMemo(() => {
-        if (!success || !itemBefore.options || !itemAfter.options) return null;
-        
-        if (itemAfter.options.combatSubs.length > itemBefore.options.combatSubs.length) {
-            const newSub = itemAfter.options.combatSubs.find(afterSub => 
-                !itemBefore.options!.combatSubs.some(beforeSub => beforeSub.type === afterSub.type && beforeSub.isPercentage === afterSub.isPercentage)
-            );
-            return newSub ? { type: 'new', option: newSub } : null;
-        }
-
-        for (const afterSub of itemAfter.options.combatSubs) {
-            const beforeSub = itemBefore.options.combatSubs.find(s => s.type === afterSub.type && s.isPercentage === afterSub.isPercentage);
-            if (!beforeSub || beforeSub.value !== afterSub.value) {
-                return { type: 'upgraded', before: beforeSub, after: afterSub };
-            }
-        }
-        return null;
-    }, [success, itemBefore, itemAfter]);
-
-    const starInfoBefore = getStarDisplayInfo(itemBefore.stars);
-    const starInfoAfter = getStarDisplayInfo(itemAfter.stars);
-
-    return (
-        <div className="absolute inset-0 bg-gray-900/80 rounded-lg flex flex-col items-center justify-center z-20 animate-fade-in p-4">
-            <div className={`text-6xl mb-4 ${success ? 'animate-bounce' : ''}`}>{success ? '🎉' : '💥'}</div>
-            <h2 className={`text-3xl font-bold ${success ? 'text-green-400' : 'text-red-400'}`}>
-                {success ? '강화 성공!' : '강화 실패...'}
-            </h2>
-            <p className="text-gray-300 mt-2 text-center">{message}</p>
-            {success && (
-                <div className="bg-gray-800/50 p-3 rounded-lg mt-4 w-full max-w-sm text-xs space-y-1">
-                    <h4 className="font-bold text-center text-yellow-300 mb-2">변경 사항</h4>
-                    <div className="flex justify-between">
-                        <span>등급:</span> 
-                        <span className="flex items-center gap-2">
-                            <span className={starInfoBefore.colorClass}>{starInfoBefore.text || '(미강화)'}</span>
-                             → 
-                            <span className={starInfoAfter.colorClass}>{starInfoAfter.text}</span>
-                        </span>
-                    </div>
-                    {itemBefore.options && itemAfter.options && <div className="flex justify-between"><span>주옵션:</span> <span className="truncate">{itemBefore.options.main.display} → {itemAfter.options.main.display}</span></div>}
-                    {changedSubOption?.type === 'new' && changedSubOption.option && <div className="flex justify-between text-green-300"><span>부옵션 추가:</span> <span className="truncate">{changedSubOption.option.display}</span></div>}
-                    {changedSubOption?.type === 'upgraded' && changedSubOption.before && <div className="flex justify-between text-green-300"><span>부옵션 강화:</span> <span className="truncate">{changedSubOption.before.display} → {changedSubOption.after.display}</span></div>}
-                </div>
-            )}
-            <Button onClick={onConfirm} colorScheme="green" className="mt-6 w-full max-w-sm">확인</Button>
-        </div>
-    );
-};
 
 interface EnhancementViewProps {
     selectedItem: InventoryItem | null;
@@ -275,6 +212,13 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
         setIsEnhancing(false);
     }, [selectedItem]);
 
+    // 강화 결과가 나오면 isEnhancing 상태를 초기화
+    useEffect(() => {
+        if (enhancementOutcome) {
+            setIsEnhancing(false);
+        }
+    }, [enhancementOutcome]);
+
     if (!selectedItem) {
         return (
             <div className="flex items-center justify-center h-full text-gray-500">
@@ -294,82 +238,78 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
     };
 
     return (
-        <div className="relative h-full">
-            <EnhancementResultDisplay outcome={enhancementOutcome} onConfirm={onOutcomeConfirm} />
-            
-            <div className="flex flex-row gap-6 h-full">
-                <div className="w-1/2 flex flex-col bg-gray-900/40 p-2 rounded-lg h-full">
-                    <ItemDisplay item={selectedItem} />
-                </div>
+        <div className="flex flex-row gap-6 h-full min-h-0">
+            <div className="w-1/2 flex flex-col bg-gray-900/40 p-2 rounded-lg h-full">
+                <ItemDisplay item={selectedItem} currentUser={currentUser} />
+            </div>
 
-                <div className="w-1/2 space-y-3 flex flex-col">
-                    <div className="bg-gray-900/50 p-3 rounded-lg">
-                        <h4 className="font-semibold text-center mb-2 text-green-300">강화 성공 시</h4>
-                        <div className="space-y-1 text-xs sm:text-sm text-left">
-                            <div className="flex justify-between items-center">
-                                <span className="text-gray-400">등급:</span>
-                                <div className="font-mono text-white flex items-center gap-2">
-                                    <span className={starInfoCurrent.colorClass}>{starInfoCurrent.text || '(★0)'}</span>
-                                     → 
-                                    {starInfoNext ? <span className={starInfoNext.colorClass}>{starInfoNext.text}</span> : '-'}
-                                </div> 
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">주옵션:</span>
-                                <span className="font-mono text-white">{mainOptionPreview}</span> 
-                            </div>
-                            <div className="flex justify-between">
-                                <span className="text-gray-400">부옵션:</span>
-                                <span className="font-mono text-white">{selectedItem.stars < 10 ? subOptionPreview : ''}</span>
-                            </div>
+            <div className="w-1/2 space-y-2 flex flex-col min-h-0">
+                <div className="bg-gray-900/50 p-3 rounded-lg flex-shrink-0">
+                    <h4 className="font-semibold text-center mb-2 text-green-300">강화 성공 시</h4>
+                    <div className="space-y-1 text-xs sm:text-sm text-left">
+                        <div className="flex justify-between items-center">
+                            <span className="text-gray-400">등급:</span>
+                            <div className="font-mono text-white flex items-center gap-2">
+                                <span className={starInfoCurrent.colorClass}>{starInfoCurrent.text || '(★0)'}</span>
+                                 → 
+                                {starInfoNext ? <span className={starInfoNext.colorClass}>{starInfoNext.text}</span> : '-'}
+                            </div> 
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-400">주옵션:</span>
+                            <span className="font-mono text-white truncate ml-2">{mainOptionPreview}</span> 
+                        </div>
+                        <div className="flex justify-between">
+                            <span className="text-gray-400">부옵션:</span>
+                            <span className="font-mono text-white truncate ml-2">{selectedItem.stars < 10 ? subOptionPreview : ''}</span>
                         </div>
                     </div>
-                    <div className="bg-gray-900/50 p-3 rounded-lg">
-                        <h4 className="font-semibold text-center mb-2">필요 재료</h4>
-                        <div className="space-y-1 text-sm">
-                            {/* 골드 비용 표시 */}
-                            <div className="flex justify-between items-center">
-                                <span className="flex items-center gap-2">
-                                    <img src="/images/icon/Gold.png" alt="골드" className="w-6 h-6" />
-                                    골드
-                                </span>
-                                <span className={`font-mono ${hasEnoughGold ? 'text-green-400' : 'text-red-400'}`}>
-                                    {(currentUser?.gold || 0).toLocaleString()} / {goldCost.toLocaleString()}
-                                </span>
-                            </div>
-                            {costs?.map(cost => {
-                                const userHas = userMaterials[cost.name] || 0;
-                                const hasEnough = userHas >= cost.amount;
-                                return (
-                                    <div key={cost.name} className="flex justify-between items-center">
-                                        <span className="flex items-center gap-2">
-                                            <img src={MATERIAL_ITEMS[cost.name].image!} alt={cost.name} className="w-6 h-6" />
-                                            {cost.name}
-                                        </span>
-                                        <span className={`font-mono ${hasEnough ? 'text-green-400' : 'text-red-400'}`}>
-                                            {userHas.toLocaleString()} / {cost.amount.toLocaleString()}
-                                        </span>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
-                    <div className="bg-gray-900/50 p-3 rounded-lg text-center flex-grow flex flex-col justify-center">
-                        <h4 className="font-semibold mb-1">강화 성공 확률</h4>
-                         <p className="text-3xl font-bold text-yellow-300">
-                            {baseSuccessRate}%
-                            {failBonus > 0 && <span className="text-xl text-green-400 ml-2">(+{failBonus.toFixed(1).replace(/\.0$/, '')}%)</span>}
-                        </p>
-                    </div>
-                    <Button
-                        onClick={handleEnhanceClick}
-                        disabled={!canEnhance || isEnhancing || selectedItem.stars >= 10}
-                        colorScheme="yellow"
-                        className="w-full py-3 mt-auto"
-                    >
-                        {buttonText}
-                    </Button>
                 </div>
+                <div className="bg-gray-900/50 p-3 rounded-lg flex-shrink-0 overflow-y-auto max-h-48">
+                    <h4 className="font-semibold text-center mb-2">필요 재료</h4>
+                    <div className="space-y-1 text-sm">
+                        {/* 골드 비용 표시 */}
+                        <div className="flex justify-between items-center">
+                            <span className="flex items-center gap-2">
+                                <img src="/images/icon/Gold.png" alt="골드" className="w-6 h-6" />
+                                골드
+                            </span>
+                            <span className={`font-mono ${hasEnoughGold ? 'text-green-400' : 'text-red-400'}`}>
+                                {(currentUser?.gold || 0).toLocaleString()} / {goldCost.toLocaleString()}
+                            </span>
+                        </div>
+                        {costs?.map(cost => {
+                            const userHas = userMaterials[cost.name] || 0;
+                            const hasEnough = userHas >= cost.amount;
+                            return (
+                                <div key={cost.name} className="flex justify-between items-center">
+                                    <span className="flex items-center gap-2">
+                                        <img src={MATERIAL_ITEMS[cost.name].image!} alt={cost.name} className="w-6 h-6" />
+                                        {cost.name}
+                                    </span>
+                                    <span className={`font-mono ${hasEnough ? 'text-green-400' : 'text-red-400'}`}>
+                                        {userHas.toLocaleString()} / {cost.amount.toLocaleString()}
+                                    </span>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+                <div className="bg-gray-900/50 p-3 rounded-lg text-center flex-shrink-0">
+                    <h4 className="font-semibold mb-1">강화 성공 확률</h4>
+                     <p className="text-2xl font-bold text-yellow-300">
+                        {baseSuccessRate}%
+                        {failBonus > 0 && <span className="text-lg text-green-400 ml-2">(+{failBonus.toFixed(1).replace(/\.0$/, '')}%)</span>}
+                    </p>
+                </div>
+                <Button
+                    onClick={handleEnhanceClick}
+                    disabled={!canEnhance || isEnhancing || selectedItem.stars >= 10}
+                    colorScheme="yellow"
+                    className="w-full py-2 flex-shrink-0"
+                >
+                    {buttonText}
+                </Button>
             </div>
         </div>
     );

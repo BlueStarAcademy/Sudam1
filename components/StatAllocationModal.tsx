@@ -13,7 +13,8 @@ interface StatAllocationModalProps {
 }
 
 const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, onClose, onAction, isTopmost }) => {
-    const [isEditing, setIsEditing] = useState(!currentUser.spentStatPoints || Object.keys(currentUser.spentStatPoints).length === 0);
+    // 분배 버튼을 눌렀을 때는 항상 편집 모드로 시작
+    const [isEditing, setIsEditing] = useState(true);
     const [tempPoints, setTempPoints] = useState<Record<CoreStat, number>>(() => {
         if (currentUser.spentStatPoints && Object.keys(currentUser.spentStatPoints).length > 0) {
             return currentUser.spentStatPoints;

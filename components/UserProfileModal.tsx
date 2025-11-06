@@ -1,10 +1,12 @@
 import React, { useMemo, useState } from 'react';
-import { UserWithStatus, EquipmentSlot, InventoryItem, ItemGrade, GameMode } from '../types.js';
+import { UserWithStatus, EquipmentSlot, InventoryItem, ItemGrade, GameMode, CoreStat } from '../types.js';
 import Avatar from './Avatar.js';
 import DraggableWindow from './DraggableWindow.js';
-import { AVATAR_POOL, BORDER_POOL, emptySlotImages, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, LEAGUE_DATA } from '../constants';
+import { AVATAR_POOL, BORDER_POOL, emptySlotImages, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, LEAGUE_DATA, CORE_STATS_DATA } from '../constants';
 import { getMannerScore, getMannerRank, getMannerStyle } from '../services/manner.js';
+import { calculateTotalStats } from '../services/statService.js';
 import MbtiInfoModal from './MbtiInfoModal.js';
+import { useAppContext } from '../hooks/useAppContext.js';
 
 // Re-using components from Profile.tsx for consistency.
 const XpBar: React.FC<{ level: number, currentXp: number, label: string, colorClass: string }> = ({ level, currentXp, label, colorClass }) => {
@@ -135,10 +137,40 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onVi
     const { inventory, stats, nickname, avatarId, borderId, equipment } = user;
     const [activeTab, setActiveTab] = useState<'strategic' | 'playful'>('strategic');
     const [showMbtiHelp, setShowMbtiHelp] = useState(false);
+    const { allUsers } = useAppContext();
     
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === avatarId)?.url, [avatarId]);
     const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === borderId)?.url, [borderId]);
     const leagueData = useMemo(() => LEAGUE_DATA.find(l => l.tier === user.league), [user.league]);
+    
+    // 챔피언십 전체 순위 계산 (누적 점수 합계 기준)
+    const championshipRank = useMemo(() => {
+        if (!allUsers || allUsers.length === 0) return null;
+        const sortedUsers = [...allUsers]
+            .filter(u => u && u.id && typeof u.cumulativeTournamentScore === 'number')
+            .sort((a, b) => {
+                const scoreA = a.cumulativeTournamentScore || 0;
+                const scoreB = b.cumulativeTournamentScore || 0;
+                if (scoreB !== scoreA) return scoreB - scoreA;
+                // 동점일 경우 ID로 정렬 (일관성 유지)
+                return a.id.localeCompare(b.id);
+            });
+        
+        // 동점자 처리: 같은 점수면 같은 순위
+        let currentRank = 1;
+        let prevScore = sortedUsers[0]?.cumulativeTournamentScore ?? 0;
+        for (let i = 0; i < sortedUsers.length; i++) {
+            const currentScore = sortedUsers[i].cumulativeTournamentScore || 0;
+            if (currentScore < prevScore) {
+                currentRank = i + 1;
+            }
+            if (sortedUsers[i].id === user.id) {
+                return currentRank;
+            }
+            prevScore = currentScore;
+        }
+        return null;
+    }, [allUsers, user.id]);
 
     // equipment 필드와 inventory를 매칭하여 장착된 아이템 찾기
     const equippedItems = useMemo(() => {
@@ -169,9 +201,10 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onVi
     const totalMannerScore = getMannerScore(user);
     const mannerRank = getMannerRank(totalMannerScore);
     const mannerStyle = getMannerStyle(totalMannerScore);
+    const totalStats = calculateTotalStats(user);
 
     return (
-        <DraggableWindow title={`${nickname}님의 프로필`} onClose={onClose} windowId={`user-profile-${user.id}`} initialWidth={750} isTopmost={isTopmost}>
+        <DraggableWindow title={`${user.nickname}님의 프로필`} onClose={onClose} windowId={`view-user-${user.id}`} initialWidth={900} isTopmost={isTopmost}>
             {showMbtiHelp && <MbtiInfoModal onClose={() => setShowMbtiHelp(false)} isTopmost={true} />}
             <div className="flex flex-col md:flex-row gap-4 max-h-[calc(var(--vh,1vh)*70)]">
                 {/* Left Column */}
@@ -199,11 +232,27 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onVi
                             <div className={`${mannerStyle.colorClass} h-full rounded-full`} style={{ width: `${mannerStyle.percentage}%` }}></div>
                         </div>
                     </div>
+
+                    <div className="bg-gray-800/50 rounded-lg p-4">
+                        <h4 className="font-semibold text-center mb-2 text-gray-400">능력치</h4>
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm bg-gray-900/50 p-2 rounded-lg justify-between">
+                            {Object.entries(totalStats).map(([stat, value]) => (
+                                <div key={stat} className="flex items-center gap-2 min-w-[120px]">
+                                    <span className="font-semibold text-gray-300">{CORE_STATS_DATA[stat as CoreStat]?.name || stat}:</span>
+                                    <span className="font-mono text-right">{value}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
                     {leagueData && (
                         <div className="bg-gray-800/50 rounded-lg p-4 flex flex-col items-center text-center">
                              <img src={leagueData.icon} alt={leagueData.name} className="w-16 h-16" />
                              <h3 className="font-bold text-purple-300 mt-1">{leagueData.name}</h3>
-                             <p className="text-sm text-gray-300">{user.tournamentScore.toLocaleString()} 점</p>
+                             <p className="text-sm text-gray-300 mt-1">누적 점수: {(user.cumulativeTournamentScore || 0).toLocaleString()} 점</p>
+                             {championshipRank !== null && (
+                                 <p className="text-sm text-yellow-300 mt-1">전체 순위: {championshipRank}위</p>
+                             )}
                         </div>
                     )}
                 </div>

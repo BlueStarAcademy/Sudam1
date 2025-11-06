@@ -30,9 +30,9 @@ import MbtiInfoModal from './components/MbtiInfoModal.js';
 import BlacksmithModal from './components/BlacksmithModal.js';
 import BlacksmithHelpModal from './components/blacksmith/BlacksmithHelpModal.js';
 import CombinationResultModal from './components/blacksmith/CombinationResultModal.js';
-import EnhancementResultModal from './components/modals/EnhancementResultModal.js';
 import EnhancementModal from './components/EnhancementModal';
 import EquipmentEffectsModal from './components/EquipmentEffectsModal';
+import EnhancementResultModal from './components/modals/EnhancementResultModal.js';
 
 function usePrevious<T>(value: T): T | undefined {
     const ref = useRef<T | undefined>(undefined);
@@ -117,9 +117,6 @@ const AppContent: React.FC = () => {
         if (modals.rewardSummary) ids.push('rewardSummary');
         if (modals.isClaimAllSummaryOpen) ids.push('claimAllSummary');
         if (modals.isShopOpen) ids.push('shop');
-        // itemObtained은 나중에 추가하여 항상 최상단에 위치
-        if (modals.disassemblyResult) ids.push('disassemblyResult');
-        if (modals.craftResult) ids.push('craftResult');
         if (modals.viewingUser) ids.push('viewingUser');
         if (modals.isInfoModalOpen) ids.push('infoModal');
         if (modals.isEncyclopediaOpen) ids.push('encyclopedia');
@@ -130,7 +127,12 @@ const AppContent: React.FC = () => {
         if (modals.viewingItem) ids.push('viewingItem');
         if (modals.enhancingItem) ids.push('enhancingItem');
         if (modals.isBlacksmithModalOpen) ids.push('blacksmith');
+        if (modals.isBlacksmithHelpOpen) ids.push('blacksmithHelp');
+        // 결과 모달들은 대장간보다 뒤에 추가하여 항상 위에 표시
         if (modals.combinationResult) ids.push('combinationResult');
+        if (modals.disassemblyResult) ids.push('disassemblyResult');
+        if (modals.craftResult) ids.push('craftResult');
+        if (modals.isEnhancementResultModalOpen) ids.push('enhancementResult');
         if (modals.isMbtiInfoModalOpen) ids.push('mbtiInfo');
         // itemObtained은 항상 마지막에 추가하여 최상단에 표시
         if (modals.lastUsedItemResult) ids.push('itemObtained');
@@ -213,7 +215,7 @@ const AppContent: React.FC = () => {
                     {modals.isQuestsOpen && <QuestsModal currentUser={currentUserWithStatus} onClose={handlers.closeQuests} onAction={handlers.handleAction} isTopmost={topmostModalId === 'quests'} />}
                     {modals.rewardSummary && <RewardSummaryModal summary={modals.rewardSummary} onClose={handlers.closeRewardSummary} isTopmost={topmostModalId === 'rewardSummary'} />}
                     {modals.isClaimAllSummaryOpen && modals.claimAllSummary && <ClaimAllSummaryModal summary={modals.claimAllSummary} onClose={handlers.closeClaimAllSummary} isTopmost={topmostModalId === 'claimAllSummary'} />}
-                    {modals.isShopOpen && <ShopModal currentUser={currentUserWithStatus} onClose={handlers.closeShop} onAction={handlers.handleAction} isTopmost={topmostModalId === 'shop'} />}
+                    {modals.isShopOpen && <ShopModal currentUser={currentUserWithStatus} onClose={handlers.closeShop} onAction={handlers.handleAction} isTopmost={topmostModalId === 'shop'} initialTab={modals.shopInitialTab} />}
                     
                     {modals.lastUsedItemResult && modals.lastUsedItemResult.length === 1 && <ItemObtainedModal item={modals.lastUsedItemResult[0]} onClose={handlers.closeItemObtained} isTopmost={topmostModalId === 'itemObtained'} />}
                     {modals.lastUsedItemResult && modals.lastUsedItemResult.length > 1 && <BulkItemObtainedModal items={modals.lastUsedItemResult} onClose={handlers.closeItemObtained} isTopmost={topmostModalId === 'itemObtained'} />}

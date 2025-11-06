@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 // FIX: Import missing types from the centralized types file.
-import { User, ServerAction, AdminProps, LiveGameSession, GameMode, Quest, DailyQuestData, WeeklyQuestData, MonthlyQuestData } from '../../types/index.js';
+import { User, ServerAction, AdminProps, LiveGameSession, GameMode, Quest, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentType } from '../../types/index.js';
 import DraggableWindow from '../DraggableWindow.js';
 import Button from '../Button.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants';
@@ -211,6 +211,46 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ user, current
                             <Button onClick={() => handleReset('stats')} colorScheme="yellow" className="w-full">모든 전적 초기화</Button>
                             <Button onClick={() => handleReset('full')} colorScheme="orange" className="w-full">레벨 포함 전체 초기화</Button>
                             <Button onClick={handleDelete} colorScheme="red" className="w-full">아이디 삭제</Button>
+                            
+                            <div className="mt-6 pt-6 border-t border-color">
+                                <h3 className="text-lg font-bold text-yellow-400 mb-3">챔피언십 토너먼트 세션 초기화</h3>
+                                <p className="text-sm text-gray-400 mb-4">선택한 경기장의 토너먼트 세션을 초기화하고 새로운 매칭을 생성합니다.</p>
+                                <div className="space-y-2">
+                                    <Button 
+                                        onClick={() => {
+                                            if (window.confirm(`[${user.nickname}] 님의 동네바둑리그 토너먼트를 초기화하고 새로 매칭하시겠습니까?`)) {
+                                                onAction({ type: 'ADMIN_RESET_TOURNAMENT_SESSION', payload: { targetUserId: user.id, tournamentType: 'neighborhood' } });
+                                            }
+                                        }} 
+                                        colorScheme="purple" 
+                                        className="w-full"
+                                    >
+                                        동네바둑리그 재매칭
+                                    </Button>
+                                    <Button 
+                                        onClick={() => {
+                                            if (window.confirm(`[${user.nickname}] 님의 전국바둑대회 토너먼트를 초기화하고 새로 매칭하시겠습니까?`)) {
+                                                onAction({ type: 'ADMIN_RESET_TOURNAMENT_SESSION', payload: { targetUserId: user.id, tournamentType: 'national' } });
+                                            }
+                                        }} 
+                                        colorScheme="purple" 
+                                        className="w-full"
+                                    >
+                                        전국바둑대회 재매칭
+                                    </Button>
+                                    <Button 
+                                        onClick={() => {
+                                            if (window.confirm(`[${user.nickname}] 님의 월드챔피언십 토너먼트를 초기화하고 새로 매칭하시겠습니까?`)) {
+                                                onAction({ type: 'ADMIN_RESET_TOURNAMENT_SESSION', payload: { targetUserId: user.id, tournamentType: 'world' } });
+                                            }
+                                        }} 
+                                        colorScheme="purple" 
+                                        className="w-full"
+                                    >
+                                        월드챔피언십 재매칭
+                                    </Button>
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>

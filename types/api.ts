@@ -192,12 +192,15 @@ export type ServerAction =
     // Tournament
     | { type: 'START_TOURNAMENT_SESSION', payload: { type: TournamentType } }
     | { type: 'START_TOURNAMENT_ROUND', payload: { type: TournamentType } }
+    | { type: 'START_TOURNAMENT_MATCH', payload: { type: TournamentType } }
     | { type: 'CLEAR_TOURNAMENT_SESSION', payload: { type?: TournamentType } }
     | { type: 'SAVE_TOURNAMENT_PROGRESS', payload: { type: TournamentType } }
     | { type: 'FORFEIT_TOURNAMENT', payload: { type: TournamentType } }
     | { type: 'FORFEIT_CURRENT_MATCH', payload: { type: TournamentType } }
     | { type: 'SKIP_TOURNAMENT_END', payload: { type: TournamentType } }
     | { type: 'CLAIM_TOURNAMENT_REWARD', payload: { tournamentType: TournamentType } }
+    | { type: 'USE_CONDITION_POTION', payload: { tournamentType: TournamentType; potionType: 'small' | 'medium' | 'large' } }
+    | { type: 'BUY_CONDITION_POTION', payload: { potionType: 'small' | 'medium' | 'large'; quantity: number } }
     | { type: 'ENTER_TOURNAMENT_VIEW', payload?: never }
     | { type: 'LEAVE_TOURNAMENT_VIEW', payload?: never }
     // Single Player

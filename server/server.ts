@@ -10,18 +10,19 @@ import { updateGameStates } from './gameModes.js';
 import * as db from './db.js';
 import { analyzeGame } from './kataGoService.js';
 // FIX: Import missing types from the centralized types file.
-import * as types from '../types.js';
+import * as types from '../types/index.js';
 import { processGameSummary, endGame } from './summaryService.js';
 // FIX: Correctly import from the placeholder module.
 import * as aiPlayer from './aiPlayer.js';
-import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset } from './scheduledTasks.js';
+import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset, resetAllTournamentScores, processDailyRankings } from './scheduledTasks.js';
 import * as tournamentService from './tournamentService.js';
 import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS } from '../constants';
 import { calculateTotalStats } from './statService.js';
-import { isSameDayKST } from '../utils/timeUtils.js';
+import { isSameDayKST, getKSTDate } from '../utils/timeUtils.js';
 import { createDefaultBaseStats, createDefaultUser } from './initialData.ts';
 import { containsProfanity } from '../profanity.js';
 import { volatileState } from './state.js';
+import { CoreStat } from '../types/index.js';
 
 const processSinglePlayerMissions = (user: types.User): types.User => {
     const now = Date.now();
@@ -76,9 +77,37 @@ const startServer = async () => {
     try {
         await db.initializeDatabase();
     } catch (err) {
-        console.error("FATAL: Could not initialize database.", err);
+        console.error("Error during server startup:", err);
         (process as any).exit(1);
     }
+
+    // Fetch all users from DB
+    const allDbUsers = await db.getAllUsers();
+    const coreStats = Object.values(CoreStat) as CoreStat[];
+    let usersUpdatedCount = 0;
+
+    // First, run the migration logic to ensure all users have correct base stats
+    for (const user of allDbUsers) {
+        const defaultBaseStats = createDefaultBaseStats();
+        let needsUpdate = false;
+
+        // More robust check: if baseStats is missing, or any stat is not a number or is less than 100
+        if (!user.baseStats || coreStats.some(stat => typeof user.baseStats?.[stat] !== 'number' || user.baseStats[stat] < 100)) {
+            user.baseStats = defaultBaseStats;
+            needsUpdate = true;
+        }
+        
+        if (needsUpdate) {
+            console.log(`[Server Startup] Updating base stats for user: ${user.nickname}`);
+            await db.updateUser(user);
+            usersUpdatedCount++;
+        }
+    }
+
+    console.log(`[Server Startup] Base stats update complete. ${usersUpdatedCount} user(s) had their base stats updated.`);
+
+    // --- 1회성 챔피언십 점수 초기화 (주석 해제하여 실행) ---
+    // await resetAllTournamentScores();
 
     const app = express();
     console.log(`[Server] process.env.PORT: ${process.env.PORT}`);
@@ -129,6 +158,13 @@ const startServer = async () => {
                 // Use the original check, but rename my flag to avoid confusion
                 if (userModifiedByTournament || JSON.stringify(user) !== JSON.stringify(updatedUser)) {
                     await db.updateUser(updatedUser);
+                    
+                    // Tournament simulation이 진행된 경우 클라이언트에 업데이트 브로드캐스트
+                    if (userModifiedByTournament) {
+                        const { broadcast } = await import('./socket.js');
+                        const updatedUserCopy = JSON.parse(JSON.stringify(updatedUser));
+                        broadcast({ type: 'USER_UPDATE', payload: { [updatedUser.id]: updatedUserCopy } });
+                    }
                 }
             }
             // --- END NEW OFFLINE AP REGEN LOGIC ---
@@ -136,11 +172,30 @@ const startServer = async () => {
             const activeGames = await db.getAllActiveGames();
             const originalGamesJson = activeGames.map(g => JSON.stringify(g));
             
-            // Handle weekly tournament reset (Monday 0:00 KST)
+            // Handle weekly league updates (Monday 0:00 KST) - 점수 리셋 전에 실행
+            // 리그 업데이트는 각 사용자 로그인 시 processWeeklyLeagueUpdates에서 처리되지만,
+            // 월요일 0시에 명시적으로 모든 사용자에 대해 리그 업데이트를 실행
+            const kstNow = getKSTDate(now);
+            const isMondayMidnight = kstNow.getUTCDay() === 1 && kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
+            if (isMondayMidnight) {
+                console.log(`[WeeklyLeagueUpdate] Processing weekly league updates for all users at Monday 0:00 KST`);
+                const allUsersForLeagueUpdate = await db.getAllUsers();
+                for (const user of allUsersForLeagueUpdate) {
+                    const updatedUser = await processWeeklyLeagueUpdates(user);
+                    if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+                        await db.updateUser(updatedUser);
+                    }
+                }
+            }
+            
+            // Handle weekly tournament reset (Monday 0:00 KST) - 리그 업데이트 후 실행
             await processWeeklyTournamentReset();
             
             // Handle ranking rewards
             await processRankingRewards(volatileState);
+            
+            // Handle daily ranking calculations (매일 0시 정산)
+            await processDailyRankings();
 
             // Handle user timeouts and disconnections
             const onlineUserIdsBeforeTimeoutCheck = Object.keys(volatileState.userConnections);
@@ -298,10 +353,12 @@ const startServer = async () => {
                 broadcast({ type: 'GAME_UPDATE', payload: systemMessageGamesToBroadcast });
             }
 
-            // Handle post-game summary processing for strategic games that finished via analysis
+            // Handle post-game summary processing for all games that finished
             const summaryGamesToBroadcast: Record<string, types.LiveGameSession> = {};
             for (const game of updatedGames) {
-                if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) && (game.gameStatus === 'ended' || game.gameStatus === 'no_contest') && !game.statsUpdated) {
+                const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === game.mode);
+                const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === game.mode);
+                if ((isPlayful || isStrategic) && (game.gameStatus === 'ended' || game.gameStatus === 'no_contest') && !game.statsUpdated) {
                     await processGameSummary(game);
                     game.statsUpdated = true;
                     await db.saveGame(game);
@@ -467,12 +524,24 @@ const startServer = async () => {
             const validEquipped: types.Equipment = {};
             
             // equipment와 inventory가 모두 존재하는지 확인
+            // 관리자 계정의 경우 장비 데이터 손실을 방지하기 위해 특별 처리
             if (updatedUser.equipment && typeof updatedUser.equipment === 'object' && Object.keys(updatedUser.equipment).length > 0) {
                 if (!updatedUser.inventory || !Array.isArray(updatedUser.inventory) || updatedUser.inventory.length === 0) {
-                    console.warn(`[/api/auth/login] User ${updatedUser.id} has equipment but empty inventory! Clearing equipment.`);
-                    // inventory가 비어있으면 equipment도 비움 (데이터 불일치 해결)
-                    updatedUser.equipment = {};
-                    itemsUnequipped = true;
+                    // 관리자 계정은 절대 장비를 삭제하지 않음 (데이터 손실 방지)
+                    if (updatedUser.isAdmin) {
+                        console.error(`[/api/auth/login] CRITICAL: Admin user ${updatedUser.id} has equipment but empty inventory! Preserving equipment. DO NOT DELETE.`);
+                        console.error(`[/api/auth/login] Admin equipment:`, JSON.stringify(updatedUser.equipment));
+                        // 관리자 계정의 경우 장비를 절대 삭제하지 않음
+                        // equipment는 그대로 유지하고 경고만 출력
+                        // itemsUnequipped는 false로 유지하여 equipment가 유지되도록 함
+                    } else {
+                        console.warn(`[/api/auth/login] User ${updatedUser.id} has equipment but empty inventory! This may indicate data loss. Preserving equipment for recovery.`);
+                        // 일반 사용자도 장비를 보존 (데이터 손실 방지)
+                        // equipment는 유지하고 나중에 복원 가능하도록 함
+                        // itemsUnequipped는 false로 유지
+                    }
+                    // 장비를 삭제하지 않고 유지 (데이터 손실 방지)
+                    // itemsUnequipped는 true로 설정하지 않음
                 } else {
                     for(const slot in updatedUser.equipment) {
                         const itemId = updatedUser.equipment[slot as types.EquipmentSlot];

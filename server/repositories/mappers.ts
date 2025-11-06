@@ -80,7 +80,19 @@ export const rowToUser = (row: any): types.User | null => {
             pendingPenaltyNotification: row.pendingPenaltyNotification,
             previousSeasonTier: row.previousSeasonTier,
             stats: { ...defaultStats, ...safeParse(row.stats, {}, row.id, 'stats') },
-            baseStats: { ...createDefaultBaseStats(), ...safeParse(row.baseStats, {}, row.id, 'baseStats') },
+            baseStats: (() => {
+                const defaultBaseStats = createDefaultBaseStats();
+                const parsedBaseStats = safeParse(row.baseStats, {}, row.id, 'baseStats');
+                // Ensure all stats are at least 100 (default value)
+                const merged = { ...defaultBaseStats, ...parsedBaseStats };
+                // If any stat is less than 100, use default value
+                for (const key of Object.keys(defaultBaseStats)) {
+                    if (typeof merged[key] !== 'number' || merged[key] < 100) {
+                        merged[key] = defaultBaseStats[key as keyof typeof defaultBaseStats];
+                    }
+                }
+                return merged;
+            })(),
             spentStatPoints: { ...createDefaultSpentStatPoints(), ...safeParse(row.spentStatPoints, {}, row.id, 'spentStatPoints') },
             inventory: safeParse(row.inventory, [], row.id, 'inventory'),
             equipment: safeParse(row.equipment, {}, row.id, 'equipment'),

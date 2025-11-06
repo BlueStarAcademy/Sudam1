@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef, useCallback, ReactNode } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, ReactNode } from 'react';
 
 interface DraggableWindowProps {
 
@@ -92,7 +92,6 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
 
     useEffect(() => {
-
         const checkIsMobile = () => {
             const newIsMobile = window.innerWidth < 768;
             setIsMobile(newIsMobile);
@@ -110,53 +109,58 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
             }
         };
 
-        window.addEventListener('resize', checkIsMobile);
+        const handleResize = () => {
+            setWindowWidth(window.innerWidth);
+            setWindowHeight(window.innerHeight);
+            checkIsMobile();
+        };
 
+        window.addEventListener('resize', handleResize);
         checkIsMobile();
 
-        return () => window.removeEventListener('resize', checkIsMobile);
-
+        return () => window.removeEventListener('resize', handleResize);
     }, [windowId]);
 
 
 
-    const [calculatedWidth, setCalculatedWidth] = useState(initialWidth);
-    const [calculatedHeight, setCalculatedHeight] = useState(initialHeight);
+    // 브라우저 크기에 따라 창 크기를 비례적으로 조정
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+    
+    const calculatedWidth = useMemo(() => {
+        if (!initialWidth) return undefined;
+        // 브라우저 너비에 비례하여 조정 (최소 400px, 최대 initialWidth)
+        const baseWidth = initialWidth;
+        const viewportRatio = windowWidth / 1920; // 기준 해상도 1920px
+        const adjustedWidth = Math.max(400, Math.min(baseWidth, baseWidth * viewportRatio));
+        return adjustedWidth;
+    }, [initialWidth, windowWidth]);
+    
+    const calculatedHeight = useMemo(() => {
+        if (!initialHeight) return undefined;
+        // 브라우저 높이에 비례하여 조정 (최소 300px, 최대 initialHeight)
+        const baseHeight = initialHeight;
+        const viewportRatio = windowHeight / 1080; // 기준 해상도 1080px
+        const adjustedHeight = Math.max(300, Math.min(baseHeight, baseHeight * viewportRatio));
+        return adjustedHeight;
+    }, [initialHeight, windowHeight]);
 
     useEffect(() => {
-        setCalculatedWidth(initialWidth);
-        setCalculatedHeight(initialHeight);
-    }, [initialWidth, initialHeight]);
-
-    useEffect(() => {
-
         const handleResize = () => {
-
             if (isMobile) {
-
                 setScale(1);
-
                 return;
-
             }
 
             // 뷰포트 기반 크기를 사용할 때는 스케일링 비활성화 (직접 크기 조정)
-            // initialWidth가 변경될 때마다 재계산되므로 스케일링은 필요 없음
             setScale(1);
-
         };
 
-
-
         window.addEventListener('resize', handleResize);
-
         handleResize(); // Initial calculation
 
-
-
         return () => window.removeEventListener('resize', handleResize);
-
-    }, [isMobile, calculatedWidth]);
+    }, [isMobile]);
 
 
 
@@ -488,13 +492,13 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
                                 style={{
 
-                                    width: isMobile ? '95vw' : calculatedWidth ? `${calculatedWidth}px` : undefined,
+                                    width: isMobile ? '95vw' : (calculatedWidth ? `${calculatedWidth}px` : (initialWidth ? `${initialWidth}px` : undefined)),
 
-                                    minWidth: isMobile ? '95vw' : calculatedWidth ? `${calculatedWidth}px` : `${initialWidth}px`,
+                                    minWidth: isMobile ? '95vw' : (calculatedWidth ? `${calculatedWidth}px` : (initialWidth ? `${Math.max(400, initialWidth)}px` : '400px')),
 
                                     maxWidth: isMobile ? '95vw' : 'calc(100vw - 40px)', // Re-enable maxWidth
 
-                                    height: calculatedHeight ? `${calculatedHeight}px` : (initialHeight ? `${initialHeight}px` : undefined), // Use calculatedHeight or initialHeight
+                                    height: isMobile ? undefined : (calculatedHeight ? `${calculatedHeight}px` : (initialHeight ? `${initialHeight}px` : undefined)), // Use calculatedHeight or initialHeight
 
                                     maxHeight: isMobile ? '85vh' : '90vh',
 
@@ -533,7 +537,14 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
                         {onClose && (
 
-                            <button onClick={isTopmost ? onClose : undefined} className="w-10 h-10 flex items-center justify-center rounded-full bg-tertiary hover:bg-danger transition-colors z-30">
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    onClose();
+                                }} 
+                                className="w-10 h-10 flex items-center justify-center rounded-full bg-tertiary hover:bg-danger transition-colors z-30"
+                                style={{ pointerEvents: 'auto', cursor: 'pointer' }}
+                            >
 
                                 <span className="text-white font-bold text-lg">✕</span>
 
@@ -545,7 +556,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
                 </div>
 
-                <div className="p-3 md:p-6 flex-grow h-full overflow-hidden flex flex-col">
+                <div className="flex-grow h-full overflow-hidden flex flex-col p-4">
 
                     {children}
 

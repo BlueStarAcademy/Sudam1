@@ -3,6 +3,7 @@ import { GameProps, Player, GameStatus, User, AnimationData, GameMode, Point } f
 import GoBoard from '../GoBoard.js';
 import { getGoLogic } from '../../server/goLogic.js';
 import { audioService } from '../../services/audioService.js';
+import { PLAYFUL_GAME_MODES } from '../../constants/gameModes';
 
 interface DiceGoArenaProps extends GameProps {
     isMyTurn: boolean;
@@ -49,8 +50,15 @@ const DiceGoArena: React.FC<DiceGoArenaProps> = (props) => {
         onAction({ type: 'DICE_PLACE_STONE', payload: { gameId, x, y } });
     };
 
+    const backgroundClass = useMemo(() => {
+        if (PLAYFUL_GAME_MODES.some(m => m.mode === session.mode)) {
+            return 'bg-playful-background';
+        }
+        return 'bg-primary';
+    }, [session.mode]);
+
     return (
-        <div className="relative w-full h-full flex flex-col items-center justify-center">
+        <div className={`relative w-full h-full flex flex-col items-center justify-center ${backgroundClass}`}>
             <GoBoard
                 boardState={boardState}
                 boardSize={settings.boardSize}

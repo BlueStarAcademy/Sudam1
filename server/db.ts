@@ -204,6 +204,8 @@ export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCreden
             isMbtiPublic: user.isMbtiPublic,
             inventory: user.inventory, // 전투력 계산을 위해 포함
             equipment: user.equipment, // 전투력 계산을 위해 포함
+            baseStats: user.baseStats, // 전투력 계산을 위해 포함
+            spentStatPoints: user.spentStatPoints, // 전투력 계산을 위해 포함
         };
     }
     

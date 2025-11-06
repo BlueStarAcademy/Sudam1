@@ -295,6 +295,11 @@ export type User = {
   cumulativeRankingScore?: Record<string, number>;
   cumulativeTournamentScore?: number; // 누적 챔피언십 점수 (홈 화면 랭킹용)
   inventorySlotsMigrated?: boolean;
+  dailyRankings?: {
+    strategic?: { rank: number; score: number; lastUpdated: number };
+    playful?: { rank: number; score: number; lastUpdated: number };
+    championship?: { rank: number; score: number; lastUpdated: number };
+  };
 };
 
 export type EnhancementResult = {
@@ -312,6 +317,7 @@ export type PlayerForTournament = Pick<User, 'id' | 'nickname' | 'avatarId' | 'b
     wins: number;
     losses: number;
     condition: number;
+    statsTimestamp?: number; // 오늘 0시 기준 타임스탬프 (능력치 고정용)
 };
 
 export type StageInfo = {

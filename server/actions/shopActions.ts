@@ -6,6 +6,7 @@ import * as db from '../db.js';
 import { type ServerAction, type User, type VolatileState, InventoryItem } from '../../types.js';
 import * as shop from '../shop.js';
 import { SHOP_ITEMS } from '../shop.js';
+import { broadcast } from '../socket.js';
 import { isSameDayKST, isDifferentWeekKST } from '../../utils/timeUtils.js';
 import { CONSUMABLE_ITEMS, MATERIAL_ITEMS, ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT, SHOP_BORDER_ITEMS } from '../../constants';
 import { addItemsToInventory } from '../../utils/inventoryUtils.js';
@@ -89,6 +90,9 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                     ...user,
                     inventory: safeInventory
                 }));
+
+                // WebSocket으로 사용자 업데이트 브로드캐스트
+                broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
 
                 return { clientResponse: { obtainedItemsBulk: obtainedItems, updatedUser } };
             } catch (error: any) {
@@ -194,6 +198,9 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 inventory: safeInventory
             }));
 
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+
             const aggregated: Record<string, number> = {};
             allObtainedItems.forEach(item => {
                 aggregated[item.name] = (aggregated[item.name] || 0) + (item.quantity || 1);
@@ -226,6 +233,10 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             
             await db.updateUser(user);
             const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            
             return { clientResponse: { updatedUser } };
         }
         case 'EXPAND_INVENTORY': {
@@ -249,6 +260,10 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             
             await db.updateUser(user);
             const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            
             return { clientResponse: { updatedUser } };
         }
         case 'BUY_BORDER': {
@@ -271,7 +286,116 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             user.ownedBorders.push(borderId);
             await db.updateUser(user);
             const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            
             return { clientResponse: { updatedUser } };
+        }
+        case 'BUY_CONDITION_POTION': {
+            const { potionType, quantity } = payload as { potionType: 'small' | 'medium' | 'large'; quantity: number };
+            
+            const potionInfo = {
+                small: { name: '컨디션회복제(소)', price: 100 },
+                medium: { name: '컨디션회복제(중)', price: 150 },
+                large: { name: '컨디션회복제(대)', price: 200 }
+            }[potionType];
+
+            if (!potionInfo) {
+                return { error: '유효하지 않은 회복제 타입입니다.' };
+            }
+
+            if (typeof quantity !== 'number' || quantity <= 0) {
+                return { error: '유효하지 않은 수량입니다.' };
+            }
+
+            const now = Date.now();
+            const itemId = `condition_potion_${potionType}`;
+            const DAILY_LIMIT = 3;
+
+            // 일일 구매 제한 체크
+            if (!user.dailyShopPurchases) user.dailyShopPurchases = {};
+            const purchaseRecord = user.dailyShopPurchases[itemId];
+            
+            let purchasesToday = 0;
+            if (purchaseRecord && isSameDayKST(purchaseRecord.date, now)) {
+                purchasesToday = purchaseRecord.quantity;
+            }
+
+            if (!user.isAdmin) {
+                if (purchasesToday + quantity > DAILY_LIMIT) {
+                    return { error: `오늘 구매 한도를 초과했습니다. (남은 구매 가능: ${DAILY_LIMIT - purchasesToday}개)` };
+                }
+            }
+
+            const totalCost = potionInfo.price * quantity;
+            if (!user.isAdmin) {
+                if (user.gold < totalCost) {
+                    return { error: `골드가 부족합니다. (필요: ${totalCost} 골드)` };
+                }
+            }
+
+            // 아이템 생성
+            const template = CONSUMABLE_ITEMS.find(item => item.name === potionInfo.name);
+            if (!template) {
+                return { error: '회복제 템플릿을 찾을 수 없습니다.' };
+            }
+
+            const newItem: InventoryItem = {
+                ...template,
+                id: `item-${randomUUID()}`,
+                createdAt: Date.now(),
+                quantity: quantity,
+                isEquipped: false,
+                level: 1,
+                stars: 0,
+            };
+
+            if (!user.inventory) {
+                user.inventory = [];
+            }
+            if (!user.inventorySlots) {
+                user.inventorySlots = { equipment: 30, consumable: 30, material: 30 };
+            }
+
+            // 인벤토리에 추가
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory(user.inventory, user.inventorySlots, [newItem]);
+            if (!success || !updatedInventory) {
+                return { error: '인벤토리 공간이 부족합니다.' };
+            }
+
+            // 골드 차감 및 구매 기록 업데이트
+            if (!user.isAdmin) {
+                user.gold -= totalCost;
+                if (!user.dailyShopPurchases[itemId] || !isSameDayKST(purchaseRecord?.date || 0, now)) {
+                    user.dailyShopPurchases[itemId] = { quantity: 0, date: now };
+                }
+                user.dailyShopPurchases[itemId].quantity = purchasesToday + quantity;
+                user.dailyShopPurchases[itemId].date = now;
+            }
+
+            user.inventory = updatedInventory;
+            await db.updateUser(user);
+
+            // 깊은 복사로 updatedUser 생성
+            const safeInventory = Array.isArray(updatedInventory) 
+                ? updatedInventory.map(item => JSON.parse(JSON.stringify(item)))
+                : [];
+            
+            const updatedUser = JSON.parse(JSON.stringify({
+                ...user,
+                inventory: safeInventory
+            }));
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+
+            return { 
+                clientResponse: { 
+                    obtainedItemsBulk: [{ ...newItem }], 
+                    updatedUser 
+                } 
+            };
         }
         default:
             return { error: 'Unknown shop action.' };

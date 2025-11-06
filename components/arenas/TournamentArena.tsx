@@ -20,6 +20,7 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
         return () => window.removeEventListener('resize', checkIsMobile);
     }, []);
 
+    // stateKey 결정
     let stateKey: keyof Pick<UserWithStatus, 'lastNeighborhoodTournament' | 'lastNationalTournament' | 'lastWorldTournament'>;
     switch (type) {
         case 'neighborhood': stateKey = 'lastNeighborhoodTournament'; break;
@@ -31,11 +32,36 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
     const tournamentState = currentUserWithStatus?.[stateKey] as any;
     const tournamentDefinition = TOURNAMENT_DEFINITIONS[type];
 
-    if (!tournamentState || !currentUserWithStatus) {
+    // 토너먼트 상태가 있으면 최신 상태로 업데이트 (자동 시작하지 않음 - 사용자가 직접 경기 시작 버튼을 눌러야 함)
+    // 각 경기장은 독립적으로 작동하므로 자동으로 START_TOURNAMENT_ROUND를 호출하지 않습니다.
+
+    if (!currentUserWithStatus) {
         return (
             <div className="p-4 text-center">
-                <p>토너먼트 정보를 불러오는 중입니다...</p>
+                <p>사용자 정보를 불러오는 중입니다...</p>
                 <Button onClick={() => window.location.hash = '#/tournament'} className="mt-4">로비로 돌아가기</Button>
+            </div>
+        );
+    }
+
+    // 토너먼트 상태가 없을 때 (매일 0시에 자동 매칭되므로 대기 메시지 표시)
+    if (!tournamentState) {
+        return (
+            <div className="p-4 sm:p-6 lg:p-8 w-full flex flex-col h-[calc(100vh-5rem)] relative">
+                <header className="flex justify-between items-center mb-6 flex-shrink-0">
+                    <button onClick={() => window.location.hash = '#/tournament'} className="transition-transform active:scale-90 filter hover:drop-shadow-lg">
+                        <img src="/images/button/back.png" alt="Back" className="w-10 h-10" />
+                    </button>
+                    <h1 className="text-3xl lg:text-4xl font-bold">{tournamentDefinition.name}</h1>
+                    <div className="w-10"></div>
+                </header>
+                <main className="flex-1 flex items-center justify-center">
+                    <div className="text-center">
+                        <p className="text-xl mb-2">토너먼트가 아직 시작되지 않았습니다.</p>
+                        <p className="text-gray-400 mb-4">매일 0시에 자동으로 토너먼트가 생성됩니다.</p>
+                        <Button onClick={() => window.location.hash = '#/tournament'} className="mt-4">로비로 돌아가기</Button>
+                    </div>
+                </main>
             </div>
         );
     }
@@ -69,6 +95,7 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
                     onStartNextRound={() => handlers.handleAction({ type: 'START_TOURNAMENT_ROUND', payload: { type: type } })}
                     onReset={() => handlers.handleAction({ type: 'CLEAR_TOURNAMENT_SESSION', payload: { type: type } })}
                     onSkip={() => handlers.handleAction({ type: 'SKIP_TOURNAMENT_END', payload: { type: type } })}
+                    onOpenShop={() => handlers.openShop('consumables')}
                     isMobile={isMobile}
                 />
             </main>

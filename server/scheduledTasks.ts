@@ -4,10 +4,11 @@ import * as db from './db.js';
 import * as types from '../types.js';
 import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, SEASONAL_TIER_BORDERS } from '../constants';
 import { randomUUID } from 'crypto';
-import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST } from '../utils/timeUtils.js';
+import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST, isSameDayKST, getStartOfDayKST } from '../utils/timeUtils.js';
 
 let lastSeasonProcessed: SeasonInfo | null = null;
 let lastWeeklyResetTimestamp: number | null = null;
+let lastDailyRankingUpdateTimestamp: number | null = null;
 
 const processRewardsForSeason = async (season: SeasonInfo) => {
     console.log(`[Scheduler] Processing rewards for ${season.name}...`);
@@ -194,9 +195,9 @@ export async function processWeeklyTournamentReset(): Promise<void> {
         
         for (const user of allUsers) {
             const weeklyScore = user.tournamentScore || 0;
-            // Add weekly score to cumulative
+            // Add weekly score to cumulative (리그 업데이트는 이미 processWeeklyLeagueUpdates에서 처리됨)
             user.cumulativeTournamentScore = (user.cumulativeTournamentScore || 0) + weeklyScore;
-            // Reset weekly score to 0
+            // Reset weekly score to 0 for new week
             user.tournamentScore = 0;
             await db.updateUser(user);
         }
@@ -204,6 +205,19 @@ export async function processWeeklyTournamentReset(): Promise<void> {
         lastWeeklyResetTimestamp = now;
         console.log(`[WeeklyReset] Reset all tournament scores and updated cumulative scores`);
     }
+}
+
+// 1회성 챔피언십 점수 초기화 함수
+export async function resetAllTournamentScores(): Promise<void> {
+    console.log(`[OneTimeReset] Resetting all tournament scores to 0`);
+    const allUsers = await db.getAllUsers();
+    
+    for (const user of allUsers) {
+        user.tournamentScore = 0;
+        await db.updateUser(user);
+    }
+    
+    console.log(`[OneTimeReset] Reset ${allUsers.length} users' tournament scores to 0`);
 }
 
 export async function processWeeklyLeagueUpdates(user: types.User): Promise<types.User> {
@@ -351,4 +365,116 @@ export async function updateWeeklyCompetitorsIfNeeded(user: types.User, allUsers
     updatedUser.lastWeeklyCompetitorsUpdate = now;
 
     return updatedUser;
+}
+
+// 매일 0시에 랭킹 정산 (전략바둑, 놀이바둑, 챔피언십)
+export async function processDailyRankings(): Promise<void> {
+    const now = Date.now();
+    const kstNow = getKSTDate(now);
+    const isMidnight = kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
+    
+    if (!isMidnight) {
+        return;
+    }
+    
+    // 이미 오늘 처리했는지 확인
+    if (lastDailyRankingUpdateTimestamp !== null) {
+        const lastUpdateKst = getKSTDate(lastDailyRankingUpdateTimestamp);
+        const todayStart = getStartOfDayKST(now);
+        const lastUpdateStart = getStartOfDayKST(lastDailyRankingUpdateTimestamp);
+        
+        if (lastUpdateStart === todayStart) {
+            return; // Already processed today
+        }
+    }
+    
+    console.log(`[DailyRanking] Processing daily ranking calculations at midnight KST`);
+    
+    const allUsers = await db.getAllUsers();
+    
+    // 전략바둑 랭킹 계산 (누적 점수 기준)
+    const strategicRankings = allUsers
+        .filter(user => user && user.id && user.cumulativeRankingScore?.['standard'] !== undefined)
+        .map(user => ({
+            user,
+            score: user.cumulativeRankingScore?.['standard'] || 0
+        }))
+        .sort((a, b) => b.score - a.score)
+        .map((entry, index) => ({
+            userId: entry.user.id,
+            rank: index + 1,
+            score: entry.score
+        }));
+    
+    // 놀이바둑 랭킹 계산 (누적 점수 기준)
+    const playfulRankings = allUsers
+        .filter(user => user && user.id && user.cumulativeRankingScore?.['playful'] !== undefined)
+        .map(user => ({
+            user,
+            score: user.cumulativeRankingScore?.['playful'] || 0
+        }))
+        .sort((a, b) => b.score - a.score)
+        .map((entry, index) => ({
+            userId: entry.user.id,
+            rank: index + 1,
+            score: entry.score
+        }));
+    
+    // 챔피언십 랭킹 계산 (누적 점수 기준)
+    const championshipRankings = allUsers
+        .filter(user => user && user.id && user.cumulativeTournamentScore !== undefined)
+        .map(user => ({
+            user,
+            score: user.cumulativeTournamentScore || 0
+        }))
+        .sort((a, b) => b.score - a.score)
+        .map((entry, index) => ({
+            userId: entry.user.id,
+            rank: index + 1,
+            score: entry.score
+        }));
+    
+    // 각 유저의 dailyRankings 업데이트
+    for (const user of allUsers) {
+        const updatedUser = JSON.parse(JSON.stringify(user));
+        
+        if (!updatedUser.dailyRankings) {
+            updatedUser.dailyRankings = {};
+        }
+        
+        // 전략바둑 순위 저장
+        const strategicRank = strategicRankings.findIndex(r => r.userId === user.id);
+        if (strategicRank !== -1) {
+            updatedUser.dailyRankings.strategic = {
+                rank: strategicRank + 1,
+                score: user.cumulativeRankingScore?.['standard'] || 0,
+                lastUpdated: now
+            };
+        }
+        
+        // 놀이바둑 순위 저장
+        const playfulRank = playfulRankings.findIndex(r => r.userId === user.id);
+        if (playfulRank !== -1) {
+            updatedUser.dailyRankings.playful = {
+                rank: playfulRank + 1,
+                score: user.cumulativeRankingScore?.['playful'] || 0,
+                lastUpdated: now
+            };
+        }
+        
+        // 챔피언십 순위 저장
+        const championshipRank = championshipRankings.findIndex(r => r.userId === user.id);
+        if (championshipRank !== -1) {
+            updatedUser.dailyRankings.championship = {
+                rank: championshipRank + 1,
+                score: user.cumulativeTournamentScore || 0,
+                lastUpdated: now
+            };
+        }
+        
+        await db.updateUser(updatedUser);
+    }
+    
+    lastDailyRankingUpdateTimestamp = now;
+    console.log(`[DailyRanking] Updated daily rankings for ${allUsers.length} users`);
 }

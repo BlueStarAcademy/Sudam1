@@ -219,6 +219,34 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                     await db.saveGame(game);
                 }
             }
+            
+            // 두 플레이어가 모두 나갔는지 확인
+            const p1Status = volatileState.userStatuses[game.player1.id];
+            const p2Status = volatileState.userStatuses[game.player2.id];
+            const p1Left = !p1Status || p1Status.gameId !== gameId;
+            const p2Left = !p2Status || p2Status.gameId !== gameId;
+            const bothPlayersLeft = p1Left && p2Left;
+            
+            // 관전자가 있는지 확인
+            const hasSpectators = Object.values(volatileState.userStatuses).some(
+                status => status.spectatingGameId === gameId
+            );
+            
+            // 두 플레이어가 모두 나갔고 관전자도 없으면 게임 삭제
+            if (bothPlayersLeft && !hasSpectators) {
+                // 리매치 협상이 진행 중인지 확인
+                const isRematchBeingNegotiated = Object.values(volatileState.negotiations).some(
+                    neg => neg.rematchOfGameId === gameId
+                );
+                
+                if (!isRematchBeingNegotiated) {
+                    console.log(`[GC] Deleting game ${gameId} - both players left and no spectators`);
+                    await db.deleteGame(gameId);
+                    // 게임 삭제를 클라이언트에 알리기 위해 GAME_DELETED 브로드캐스트
+                    broadcast({ type: 'GAME_DELETED', payload: { gameId } });
+                }
+            }
+            
             return {};
         }
         case 'LEAVE_AI_GAME': {

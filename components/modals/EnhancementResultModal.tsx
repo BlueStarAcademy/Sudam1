@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import DraggableWindow from '../DraggableWindow.js';
+import Button from '../Button.js';
 import { InventoryItem } from '../../types.js';
 import { gradeBackgrounds, gradeStyles } from '../../constants/items';
 
@@ -14,6 +15,19 @@ interface EnhancementResultModalProps {
     isTopmost?: boolean;
 }
 
+const getStarDisplayInfo = (stars: number) => {
+    if (stars >= 10) {
+        return { text: `(★${stars})`, colorClass: "prism-text-effect" };
+    } else if (stars >= 7) {
+        return { text: `(★${stars})`, colorClass: "text-purple-400" };
+    } else if (stars >= 4) {
+        return { text: `(★${stars})`, colorClass: "text-amber-400" };
+    } else if (stars >= 1) {
+        return { text: `(★${stars})`, colorClass: "text-white" };
+    }
+    return { text: "", colorClass: "text-white" };
+};
+
 const ItemDisplay: React.FC<{ item: InventoryItem }> = ({ item }) => (
     <div className="flex flex-col items-center">
         <div className="relative w-20 h-20 mb-2">
@@ -23,29 +37,92 @@ const ItemDisplay: React.FC<{ item: InventoryItem }> = ({ item }) => (
                 <span className="text-white">★{item.stars}</span>
             </div>
         </div>
-        <p className={`font-bold ${gradeStyles[item.grade].color}`}>{item.name}</p>
+        <p className={`font-bold text-sm ${gradeStyles[item.grade].color}`}>{item.name}</p>
     </div>
 );
 
 const EnhancementResultModal: React.FC<EnhancementResultModalProps> = ({ result, onClose, isTopmost }) => {
-    const title = result.success ? '강화 성공!' : '강화 실패!';
-    const titleColor = result.success ? 'text-green-400' : 'text-red-400';
+    const { success, message, itemBefore, itemAfter } = result;
+    
+    const changedSubOption = useMemo(() => {
+        if (!success || !itemBefore.options || !itemAfter.options) return null;
+        
+        if (itemAfter.options.combatSubs.length > itemBefore.options.combatSubs.length) {
+            const newSub = itemAfter.options.combatSubs.find(afterSub => 
+                !itemBefore.options!.combatSubs.some(beforeSub => beforeSub.type === afterSub.type && beforeSub.isPercentage === afterSub.isPercentage)
+            );
+            return newSub ? { type: 'new', option: newSub } : null;
+        }
+
+        for (const afterSub of itemAfter.options.combatSubs) {
+            const beforeSub = itemBefore.options.combatSubs.find(s => s.type === afterSub.type && s.isPercentage === afterSub.isPercentage);
+            if (!beforeSub || beforeSub.value !== afterSub.value) {
+                return { type: 'upgraded', before: beforeSub, after: afterSub };
+            }
+        }
+        return null;
+    }, [success, itemBefore, itemAfter]);
+
+    const starInfoBefore = getStarDisplayInfo(itemBefore.stars);
+    const starInfoAfter = getStarDisplayInfo(itemAfter.stars);
+
+    const title = success ? '강화 성공!' : '강화 실패!';
+    const titleColor = success ? 'text-green-400' : 'text-red-400';
 
     return (
-        <DraggableWindow title={title} onClose={onClose} windowId="enhancementResult" initialWidth={400} isTopmost={isTopmost}>
+        <DraggableWindow title={title} onClose={onClose} windowId="enhancementResult" initialWidth={500} isTopmost={isTopmost}>
             <div className="p-4 text-center">
-                <h3 className={`text-xl font-bold mb-4 ${titleColor}`}>{result.message}</h3>
+                <div className={`text-6xl mb-4 ${success ? 'animate-bounce' : ''}`}>{success ? '🎉' : '💥'}</div>
+                <h3 className={`text-2xl font-bold mb-2 ${titleColor}`}>
+                    {success ? '강화 성공!' : '강화 실패...'}
+                </h3>
+                <p className="text-gray-300 mb-4">{message}</p>
                 <div className="flex justify-around items-center mb-4">
-                    <ItemDisplay item={result.itemBefore} />
-                    <span className="text-2xl font-bold mx-4">{result.success ? '->' : 'X'}</span>
-                    <ItemDisplay item={result.itemAfter} />
+                    <ItemDisplay item={itemBefore} />
+                    <span className="text-2xl font-bold mx-4">{success ? '→' : 'X'}</span>
+                    <ItemDisplay item={itemAfter} />
                 </div>
-                <button
-                    onClick={onClose}
-                    className="mt-4 px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-md"
+                {success && (
+                    <div className="bg-gray-800/50 p-3 rounded-lg mb-4 text-xs space-y-1 text-left">
+                        <h4 className="font-bold text-center text-yellow-300 mb-2">변경 사항</h4>
+                        <div className="flex justify-between">
+                            <span>등급:</span> 
+                            <span className="flex items-center gap-2">
+                                <span className={starInfoBefore.colorClass}>{starInfoBefore.text || '(미강화)'}</span>
+                                 → 
+                                <span className={starInfoAfter.colorClass}>{starInfoAfter.text}</span>
+                            </span>
+                        </div>
+                        {itemBefore.options && itemAfter.options && (
+                            <div className="flex justify-between">
+                                <span>주옵션:</span> 
+                                <span className="truncate ml-2">{itemBefore.options.main.display} → {itemAfter.options.main.display}</span>
+                            </div>
+                        )}
+                        {changedSubOption?.type === 'new' && changedSubOption.option && (
+                            <div className="flex justify-between text-green-300">
+                                <span>부옵션 추가:</span> 
+                                <span className="truncate ml-2">{changedSubOption.option.display}</span>
+                            </div>
+                        )}
+                        {changedSubOption?.type === 'upgraded' && changedSubOption.before && (
+                            <div className="flex justify-between text-green-300">
+                                <span>부옵션 강화:</span> 
+                                <span className="truncate ml-2">{changedSubOption.before.display} → {changedSubOption.after.display}</span>
+                            </div>
+                        )}
+                    </div>
+                )}
+                <Button
+                    onClick={(e) => {
+                        e?.stopPropagation();
+                        onClose();
+                    }}
+                    colorScheme="blue"
+                    className="mt-4 w-full"
                 >
                     확인
-                </button>
+                </Button>
             </div>
         </DraggableWindow>
     );

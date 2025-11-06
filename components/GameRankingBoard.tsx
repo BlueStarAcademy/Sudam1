@@ -1,34 +1,13 @@
 import React, { useState, useMemo } from 'react';
 import { useAppContext } from '../hooks/useAppContext.js';
-import { User, InventoryItem, ItemOptions, ItemOption } from '../types.js';
+import { User } from '../types.js';
 import Avatar from './Avatar.js';
 import { AVATAR_POOL, BORDER_POOL } from '../constants';
+import { calculateTotalStats } from '../services/statService.js';
 
 interface GameRankingBoardProps {
     isTopmost?: boolean;
 }
-
-const calculateCombatPower = (user: User): number => {
-    if (!user.inventory) return 0;
-
-    const equippedItems = user.inventory.filter(item => item.isEquipped);
-
-    let totalPower = 0;
-
-    equippedItems.forEach((item: InventoryItem) => {
-        if (item.options) {
-            const { main, combatSubs, specialSubs, mythicSubs } = item.options;
-            if (main) {
-                totalPower += main.value;
-            }
-            combatSubs.forEach(option => totalPower += option.value);
-            specialSubs.forEach(option => totalPower += option.value);
-            mythicSubs.forEach(option => totalPower += option.value);
-        }
-    });
-
-    return totalPower;
-};
 
 const RankingRow = ({ user, rank, value, isCurrentUser, onViewUser }: { user: User, rank: number, value: number, isCurrentUser: boolean, onViewUser?: (userId: string) => void }) => {
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === user.avatarId)?.url, [user.avatarId]);
@@ -67,7 +46,11 @@ const GameRankingBoard: React.FC<GameRankingBoardProps> = ({ isTopmost }) => {
         if (activeTab === 'combat') {
             const result = allUsers
                 .filter(user => user && user.id)
-                .map(user => ({ user, value: calculateCombatPower(user) }))
+                .map(user => {
+                    const totalStats = calculateTotalStats(user);
+                    const sum = Object.values(totalStats).reduce((acc, value) => acc + value, 0);
+                    return { user, value: sum };
+                })
                 .sort((a, b) => b.value - a.value)
                 .slice(0, 100);
             console.log('[GameRankingBoard] Combat rankings:', result.length, 'users');
@@ -89,7 +72,15 @@ const GameRankingBoard: React.FC<GameRankingBoardProps> = ({ isTopmost }) => {
         if (rank !== -1) {
             return { ...rankings[rank], rank: rank + 1 };
         }
-        const value = activeTab === 'combat' ? calculateCombatPower(currentUserWithStatus) : currentUserWithStatus.mannerScore;
+        
+        let value;
+        if (activeTab === 'combat') {
+            const totalStats = calculateTotalStats(currentUserWithStatus);
+            value = Object.values(totalStats).reduce((acc, val) => acc + val, 0);
+        } else {
+            value = currentUserWithStatus.mannerScore;
+        }
+        
         return { user: currentUserWithStatus, value, rank: 'N/A' };
     }, [rankings, currentUserWithStatus, activeTab]);
 

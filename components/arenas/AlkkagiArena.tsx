@@ -4,6 +4,7 @@ import { AlkkagiStone, GameProps, Player, Point, GameStatus } from '../../types.
 import AlkkagiBoard, { AlkkagiBoardHandle } from '../AlkkagiBoard.js';
 import { ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_TURN_TIME_LIMIT } from '../../constants';
 import { audioService } from '../../services/audioService.js';
+import { PLAYFUL_GAME_MODES } from '../../constants/gameModes';
 
 interface AlkkagiArenaProps extends GameProps {}
 
@@ -365,8 +366,15 @@ const AlkkagiArena: React.FC<AlkkagiArenaProps> = (props) => {
         return alkkagiStones?.find(s => s.id === selectedStoneId) || null;
     }, [selectedStoneId, alkkagiStones]);
 
+    const backgroundClass = useMemo(() => {
+        if (PLAYFUL_GAME_MODES.some(m => m.mode === session.mode)) {
+            return 'bg-playful-background';
+        }
+        return 'bg-primary';
+    }, [session.mode]);
+
     return (
-        <div className="relative w-full h-full flex items-center justify-center px-4 sm:px-6 lg:px-0">
+        <div className={`relative w-full h-full flex items-center justify-center px-4 sm:px-6 lg:px-0 ${backgroundClass}`}>
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 w-3/4 max-w-md z-10 pointer-events-none">
                 {(dragStartPoint || flickPower !== null) && (
                     <div className={`bg-gray-900/50 rounded-full h-6 border-2 border-gray-500 ${flickPower !== null ? 'animate-flick-power-pulse' : ''}`}>

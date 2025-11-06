@@ -43,40 +43,53 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
         }
         
         if (activeTab === 'championship') {
+            // 챔피언십: dailyRankings에 저장된 순위 사용 (매일 0시 정산된 값)
             const result = allUsers
-                .filter(user => user && user.id && typeof user.cumulativeTournamentScore === 'number')
-                .map(user => ({ user, value: user.cumulativeTournamentScore || 0 }))
-                .sort((a, b) => b.value - a.value)
+                .filter(user => user && user.id && user.dailyRankings?.championship)
+                .map(user => ({
+                    user,
+                    value: user.dailyRankings!.championship!.score,
+                    rank: user.dailyRankings!.championship!.rank
+                }))
+                .sort((a, b) => a.rank - b.rank) // 순위 순으로 정렬
                 .slice(0, 100);
-            console.log('[BadukRankingBoard] Championship rankings (cumulative):', result.length, 'users');
+            console.log('[BadukRankingBoard] Championship rankings (daily):', result.length, 'users');
             return result;
         } else {
-            const mode = activeTab === 'strategic' ? 'standard' : 'playful';
+            const mode = activeTab === 'strategic' ? 'strategic' : 'playful';
+            // 전략바둑/놀이바둑: dailyRankings에 저장된 순위 사용 (매일 0시 정산된 값)
             const result = allUsers
-                .filter(user => user && user.id)
-                .map(user => ({ user, value: user.cumulativeRankingScore?.[mode] || 0 }))
-                .sort((a, b) => b.value - a.value)
+                .filter(user => user && user.id && user.dailyRankings?.[mode])
+                .map(user => ({
+                    user,
+                    value: user.dailyRankings![mode]!.score,
+                    rank: user.dailyRankings![mode]!.rank
+                }))
+                .sort((a, b) => a.rank - b.rank) // 순위 순으로 정렬
                 .slice(0, 100);
-            console.log('[BadukRankingBoard]', mode, 'rankings:', result.length, 'users');
+            console.log('[BadukRankingBoard]', mode, 'rankings (daily):', result.length, 'users');
             return result;
         }
     }, [allUsers, activeTab]);
 
     const currentUserRanking = useMemo(() => {
         if (!currentUserWithStatus) return null;
-        let value;
+        
         if (activeTab === 'championship') {
-            value = currentUserWithStatus.cumulativeTournamentScore || 0;
+            const dailyRanking = currentUserWithStatus.dailyRankings?.championship;
+            if (dailyRanking) {
+                return { user: currentUserWithStatus, value: dailyRanking.score, rank: dailyRanking.rank };
+            }
+            return { user: currentUserWithStatus, value: 0, rank: 'N/A' };
         } else {
-            const mode = activeTab === 'strategic' ? 'standard' : 'playful';
-            value = currentUserWithStatus.cumulativeRankingScore?.[mode] || 0;
+            const mode = activeTab === 'strategic' ? 'strategic' : 'playful';
+            const dailyRanking = currentUserWithStatus.dailyRankings?.[mode];
+            if (dailyRanking) {
+                return { user: currentUserWithStatus, value: dailyRanking.score, rank: dailyRanking.rank };
+            }
+            return { user: currentUserWithStatus, value: 0, rank: 'N/A' };
         }
-        const rank = rankings.findIndex(r => r.user && r.user.id === currentUserWithStatus.id);
-        if (rank !== -1) {
-            return { ...rankings[rank], rank: rank + 1 };
-        }
-        return { user: currentUserWithStatus, value, rank: 'N/A' };
-    }, [rankings, currentUserWithStatus, activeTab]);
+    }, [currentUserWithStatus, activeTab]);
 
     return (
         <div className="bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col gap-2 h-full">

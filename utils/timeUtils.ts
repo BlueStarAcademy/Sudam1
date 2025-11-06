@@ -98,3 +98,10 @@ export const getPreviousSeason = (date: Date | number = Date.now()): SeasonInfo 
     const shortYear = prevYear.toString().slice(-2);
     return { year: prevYear, season: prevSeason, name: `${shortYear}-${prevSeason}시즌` };
 };
+
+export const getStartOfDayKST = (timestamp: number = Date.now()): number => {
+    const kstDate = getKSTDate(timestamp);
+    kstDate.setUTCHours(0, 0, 0, 0);
+    // Convert back to UTC timestamp
+    return kstDate.getTime() - KST_OFFSET;
+};

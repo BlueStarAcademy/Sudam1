@@ -1,13 +1,16 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, AdminLog, Announcement, OverrideAnnouncement, GameMode, LiveGameSession, UserStatusInfo, InventoryItem, InventoryItemType, UserStatus } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, AdminLog, Announcement, OverrideAnnouncement, GameMode, LiveGameSession, UserStatusInfo, InventoryItem, InventoryItemType, UserStatus, TournamentType } from '../../types.js';
 import * as types from '../../types.js';
 import { defaultStats, createDefaultBaseStats, createDefaultSpentStatPoints, createDefaultInventory, createDefaultQuests, createDefaultUser } from '../initialData.js';
 import * as summaryService from '../summaryService.js';
 import { createItemFromTemplate } from '../shop.js';
-import { EQUIPMENT_POOL, CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../../constants';
+import { EQUIPMENT_POOL, CONSUMABLE_ITEMS, MATERIAL_ITEMS, TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL, BORDER_POOL } from '../../constants';
 import * as mannerService from '../mannerService.js';
 import { containsProfanity } from '../../profanity.js';
+import { broadcast } from '../socket.js';
+import { calculateTotalStats } from '../statService.js';
+import * as tournamentService from '../tournamentService.js';
 
 type HandleActionResult = { 
     clientResponse?: any;
@@ -58,6 +61,11 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
 
             await db.updateUser(targetUser);
             await createAdminLog(user, 'apply_sanction', targetUser, { sanctionType, durationMinutes });
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUser = JSON.parse(JSON.stringify(targetUser));
+            broadcast({ type: 'USER_UPDATE', payload: { [targetUser.id]: updatedUser } });
+            
             return {};
         }
 
@@ -74,6 +82,11 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
 
             await db.updateUser(targetUser);
             await createAdminLog(user, 'lift_sanction', targetUser, { sanctionType });
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUser = JSON.parse(JSON.stringify(targetUser));
+            broadcast({ type: 'USER_UPDATE', payload: { [targetUser.id]: updatedUser } });
+            
             return {};
         }
         case 'ADMIN_RESET_USER_DATA': {
@@ -94,6 +107,11 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
 
             await db.updateUser(targetUser);
             await createAdminLog(user, resetType === 'full' ? 'reset_full' : 'reset_stats', targetUser, backupData);
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUser = JSON.parse(JSON.stringify(targetUser));
+            broadcast({ type: 'USER_UPDATE', payload: { [targetUser.id]: updatedUser } });
+            
             return {};
         }
         case 'ADMIN_DELETE_USER': {
@@ -211,6 +229,10 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                 };
                 target.mail.unshift(newMail);
                 await db.updateUser(target);
+                
+                // WebSocket으로 사용자 업데이트 브로드캐스트
+                const updatedUser = JSON.parse(JSON.stringify(target));
+                broadcast({ type: 'USER_UPDATE', payload: { [target.id]: updatedUser } });
             }
              await createAdminLog(user, 'send_mail', { id: targetSpecifier, nickname: targetSpecifier }, { mailTitle: title });
             return {};
@@ -363,8 +385,155 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             await mannerService.applyMannerRankChange(targetUser, oldMannerScore);
             await db.updateUser(targetUser);
             await createAdminLog(user, 'update_user_details', targetUser, backupData);
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUser = JSON.parse(JSON.stringify(targetUser));
+            broadcast({ type: 'USER_UPDATE', payload: { [targetUser.id]: updatedUser } });
+            
             return {};
         }
+        
+        case 'ADMIN_RESET_TOURNAMENT_SESSION': {
+            const { targetUserId, tournamentType } = payload as { targetUserId: string; tournamentType: TournamentType };
+            const targetUser = await db.getUser(targetUserId);
+            if (!targetUser) return { error: '대상 사용자를 찾을 수 없습니다.' };
+
+            // 토너먼트 타입에 따른 stateKey 결정
+            let stateKey: keyof types.User;
+            let playedDateKey: keyof types.User;
+            switch (tournamentType) {
+                case 'neighborhood':
+                    stateKey = 'lastNeighborhoodTournament';
+                    playedDateKey = 'lastNeighborhoodPlayedDate';
+                    break;
+                case 'national':
+                    stateKey = 'lastNationalTournament';
+                    playedDateKey = 'lastNationalPlayedDate';
+                    break;
+                case 'world':
+                    stateKey = 'lastWorldTournament';
+                    playedDateKey = 'lastWorldPlayedDate';
+                    break;
+                default:
+                    return { error: 'Invalid tournament type.' };
+            }
+
+            // 1. 기존 토너먼트 세션 초기화
+            (targetUser as any)[stateKey] = null;
+            (targetUser as any)[playedDateKey] = 0;
+            
+            // volatileState에서도 제거
+            if (volatileState.activeTournaments?.[targetUserId]) {
+                if (volatileState.activeTournaments[targetUserId].type === tournamentType) {
+                    delete volatileState.activeTournaments[targetUserId];
+                }
+            }
+            
+            await db.updateUser(targetUser);
+
+            // 2. 새로운 토너먼트 세션 생성
+            const definition = TOURNAMENT_DEFINITIONS[tournamentType];
+            if (!definition) return { error: '유효하지 않은 토너먼트 타입입니다.' };
+
+            const freshUser = await db.getUser(targetUserId);
+            if (!freshUser) return { error: '사용자를 찾을 수 없습니다.' };
+
+            const allUsers = await db.getAllUsers();
+            const myLeague = freshUser.league;
+            const myId = freshUser.id;
+        
+            const potentialOpponents = allUsers
+                .filter(u => u.id !== myId && u.league === myLeague)
+                .sort(() => 0.5 - Math.random());
+            
+            const neededOpponents = definition.players - 1;
+            const selectedOpponents = potentialOpponents.slice(0, neededOpponents);
+        
+            const botsToCreate = neededOpponents - selectedOpponents.length;
+            const botNames = [...BOT_NAMES].sort(() => 0.5 - Math.random());
+            
+            // 봇 생성 함수 import
+            const { createBotUser } = await import('./tournamentActions.js');
+            const { CoreStat } = await import('../../types/index.js');
+            
+            const botUsers: types.User[] = [];
+            for (let i = 0; i < botsToCreate; i++) {
+                const botName = botNames[i % botNames.length];
+                const botAvatar = AVATAR_POOL[Math.floor(Math.random() * AVATAR_POOL.length)];
+                const botBorder = BORDER_POOL[Math.floor(Math.random() * BORDER_POOL.length)];
+                const botId = `bot-${botName}-${i}`;
+                
+                // 봇 생성 함수 사용
+                const botUser = createBotUser(myLeague, tournamentType, botId, botName, botAvatar, botBorder);
+                botUsers.push(botUser);
+                
+                selectedOpponents.push({
+                    id: botId,
+                    nickname: botName,
+                    avatarId: botAvatar.id,
+                    borderId: botBorder.id,
+                    league: myLeague,
+                } as any);
+            }
+            
+            const participants: types.PlayerForTournament[] = [freshUser, ...selectedOpponents].map(p => {
+                let initialStats: Record<CoreStat, number>;
+                if (p.id.startsWith('bot-')) {
+                    const botUser = botUsers.find(b => b.id === p.id);
+                    if (botUser) {
+                        initialStats = botUser.stats;
+                    } else {
+                        const baseStatValue = 100;
+                        const stats: Partial<Record<CoreStat, number>> = {};
+                        for (const key of Object.values(CoreStat)) {
+                            stats[key] = baseStatValue;
+                        }
+                        initialStats = stats as Record<CoreStat, number>;
+                    }
+                } else {
+                    const realUser = allUsers.find(u => u.id === p.id);
+                    if (realUser) {
+                        initialStats = calculateTotalStats(realUser);
+                    } else {
+                        const baseStatValue = 100;
+                        const stats: Partial<Record<CoreStat, number>> = {};
+                        for (const key of Object.values(CoreStat)) {
+                            stats[key] = baseStatValue;
+                        }
+                        initialStats = stats as Record<CoreStat, number>;
+                    }
+                }
+                
+                return {
+                    id: p.id,
+                    nickname: p.nickname,
+                    avatarId: p.avatarId,
+                    borderId: p.borderId,
+                    league: p.league,
+                    stats: JSON.parse(JSON.stringify(initialStats)),
+                    originalStats: initialStats,
+                    wins: 0,
+                    losses: 0,
+                    condition: 1000,
+                };
+            });
+            
+            const shuffledParticipants = [participants[0], ...participants.slice(1).sort(() => 0.5 - Math.random())];
+            const newState = tournamentService.createTournament(tournamentType, freshUser, shuffledParticipants);
+            (freshUser as any)[stateKey] = newState;
+            (freshUser as any)[playedDateKey] = Date.now();
+            
+            await db.updateUser(freshUser);
+
+            await createAdminLog(user, 'reset_tournament_session', targetUser, { tournamentType });
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUserCopy = JSON.parse(JSON.stringify(freshUser));
+            broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUserCopy } });
+
+            return { clientResponse: { message: '토너먼트 세션이 성공적으로 재생성되었습니다.', tournamentType } };
+        }
+        
         default:
             return { error: 'Unknown admin action type.' };
     }

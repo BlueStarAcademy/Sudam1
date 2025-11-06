@@ -125,8 +125,8 @@ const ShopItemCard: React.FC<{
     );
 };
 
-const ShopModal: React.FC<ShopModalProps> = ({ currentUser, onClose, onAction, isTopmost }) => {
-    const [activeTab, setActiveTab] = useState<ShopTab>('equipment');
+const ShopModal: React.FC<ShopModalProps> = ({ currentUser, onClose, onAction, isTopmost, initialTab }) => {
+    const [activeTab, setActiveTab] = useState<ShopTab>(initialTab || 'equipment');
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [purchasingItem, setPurchasingItem] = useState<PurchasableItem | null>(null);
 
@@ -145,9 +145,16 @@ const ShopModal: React.FC<ShopModalProps> = ({ currentUser, onClose, onAction, i
         const item = purchasingItem;
         if (!item) return;
 
-        const actionType = item.type === 'equipment' ? 'BUY_SHOP_ITEM' : 'BUY_MATERIAL_BOX';
-        onAction({ type: actionType, payload: { itemId, quantity } });
+        // 컨디션 회복제는 별도의 액션 사용
+        if (itemId.startsWith('condition_potion_')) {
+            const potionType = itemId.replace('condition_potion_', '') as 'small' | 'medium' | 'large';
+            onAction({ type: 'BUY_CONDITION_POTION', payload: { potionType, quantity } });
+        } else {
+            const actionType = item.type === 'equipment' ? 'BUY_SHOP_ITEM' : 'BUY_MATERIAL_BOX';
+            onAction({ type: actionType, payload: { itemId, quantity } });
+        }
         setToastMessage('구매 완료! 가방을 확인하세요.');
+        setPurchasingItem(null);
     };
     
     const handleBuyActionPoints = () => {
@@ -194,9 +201,14 @@ const ShopModal: React.FC<ShopModalProps> = ({ currentUser, onClose, onAction, i
                 );
             case 'consumables':
             default:
+                const consumableItems = [
+                    { itemId: 'condition_potion_small', name: "컨디션회복제(소)", description: "컨디션을 1~10 회복합니다.", price: { gold: 100 }, image: "/images/use/con1.png", dailyLimit: 3, type: 'consumable' as const },
+                    { itemId: 'condition_potion_medium', name: "컨디션회복제(중)", description: "컨디션을 10~20 회복합니다.", price: { gold: 150 }, image: "/images/use/con2.png", dailyLimit: 3, type: 'consumable' as const },
+                    { itemId: 'condition_potion_large', name: "컨디션회복제(대)", description: "컨디션을 20~30 회복합니다.", price: { gold: 200 }, image: "/images/use/con3.png", dailyLimit: 3, type: 'consumable' as const },
+                ];
                 return (
-                    <div className="h-full flex items-center justify-center text-gray-500">
-                        <p>이 카테고리는 현재 준비 중입니다.</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {consumableItems.map(item => <ShopItemCard key={item.itemId} item={item} onBuy={handleInitiatePurchase} currentUser={currentUser} />)}
                     </div>
                 );
         }
