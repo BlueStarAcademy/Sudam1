@@ -11,6 +11,14 @@ interface SinglePlayerSummaryModalProps {
     onClose: () => void;
 }
 
+const handleClose = (session: LiveGameSession, onClose: () => void) => {
+    // 게임이 종료된 상태이고, 싱글플레이 게임인 경우 싱글플레이 로비로 리다이렉트
+    if (session.gameStatus === 'ended' && session.isSinglePlayer) {
+        sessionStorage.setItem('postGameRedirect', '#/singleplayer');
+    }
+    onClose();
+};
+
 const RewardItemDisplay: React.FC<{ item: any }> = ({ item }) => (
     <div className="flex flex-col items-center justify-center text-center p-1 bg-gray-900/50 rounded-md" title={item.name}>
         <img src={item.image} alt={item.name} className="w-12 h-12 object-contain" />
@@ -47,7 +55,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
     return (
         <DraggableWindow 
             title={isWinner ? "미션 클리어" : "미션 실패"} 
-            onClose={onClose} 
+            onClose={() => handleClose(session, onClose)} 
             windowId="sp-summary-redesigned"
             initialWidth={500}
         >

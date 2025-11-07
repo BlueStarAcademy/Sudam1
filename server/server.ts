@@ -8,7 +8,7 @@ import { handleAction, resetAndGenerateQuests, updateQuestProgress } from './gam
 import { regenerateActionPoints } from './effectService.js';
 import { updateGameStates } from './gameModes.js';
 import * as db from './db.js';
-import { analyzeGame } from './kataGoService.js';
+import { analyzeGame, initializeKataGo } from './kataGoService.js';
 // FIX: Import missing types from the centralized types file.
 import * as types from '../types/index.js';
 import { processGameSummary, endGame } from './summaryService.js';
@@ -124,6 +124,9 @@ const startServer = async () => {
 
     app.use(cors());
     app.use(express.json({ limit: '10mb' }) as any);
+    
+    // TODO: compression 패키지 설치 후 압축 미들웨어 추가
+    // npm install compression @types/compression
 
     // --- Constants ---
     const LOBBY_TIMEOUT_MS = 90 * 1000;
@@ -133,8 +136,11 @@ const startServer = async () => {
     const server = http.createServer(app);
     createWebSocketServer(server);
 
-    server.listen(port, '0.0.0.0', () => {
+    server.listen(port, '0.0.0.0', async () => {
         console.log(`Server listening on port ${port}`);
+        
+        // KataGo 엔진 초기화 (서버 시작 시 미리 준비)
+        await initializeKataGo();
     });
 
     // --- Main Game Loop ---
@@ -807,7 +813,7 @@ const startServer = async () => {
             const dbState = await db.getAllData();
             console.log('[/api/state] All DB data retrieved');
     
-            // Add ended games that users are still in to the liveGames object
+            // Add ended games that users are still in to the appropriate category
             console.log(`[API/State] User ${user.nickname}: Processing ended games.`);
             for (const status of Object.values(volatileState.userStatuses)) {
                 let gameId: string | undefined;
@@ -816,10 +822,25 @@ const startServer = async () => {
                 } else if ('spectatingGameId' in status && status.spectatingGameId) {
                     gameId = status.spectatingGameId;
                 }
-                if (gameId && !dbState.liveGames[gameId]) {
-                    const endedGame = await db.getLiveGame(gameId);
-                    if (endedGame) {
-                        dbState.liveGames[endedGame.id] = endedGame;
+                if (gameId) {
+                    // 모든 카테고리에서 확인
+                    const isInLiveGames = dbState.liveGames[gameId];
+                    const isInSinglePlayerGames = dbState.singlePlayerGames[gameId];
+                    const isInTowerGames = dbState.towerGames[gameId];
+                    
+                    if (!isInLiveGames && !isInSinglePlayerGames && !isInTowerGames) {
+                        const endedGame = await db.getLiveGame(gameId);
+                        if (endedGame) {
+                            // 게임 카테고리에 따라 올바른 객체에 추가
+                            const category = endedGame.gameCategory || (endedGame.isSinglePlayer ? 'singleplayer' : 'normal');
+                            if (category === 'singleplayer') {
+                                dbState.singlePlayerGames[endedGame.id] = endedGame;
+                            } else if (category === 'tower') {
+                                dbState.towerGames[endedGame.id] = endedGame;
+                            } else {
+                                dbState.liveGames[endedGame.id] = endedGame;
+                            }
+                        }
                     }
                 }
             }

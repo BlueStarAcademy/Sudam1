@@ -48,6 +48,23 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
         return previousStage ? !isStageCleared(previousStage.id) : true;
     };
 
+    // 스테이지의 게임 모드 이름 결정 (살리기 바둑과 따내기 바둑 구분)
+    const getStageGameModeName = (stage: typeof stages[0]): string => {
+        if (stage.hiddenCount !== undefined) {
+            return '히든 바둑';
+        } else if (stage.missileCount !== undefined) {
+            return '미사일 바둑';
+        } else if (stage.timeControl.type === 'fischer') {
+            return '스피드 바둑';
+        } else if (stage.survivalTurns !== undefined) {
+            return '살리기 바둑';
+        } else if (stage.blackTurnLimit !== undefined) {
+            return '따내기 바둑';
+        } else {
+            return '정통 바둑';
+        }
+    };
+
     return (
         <div className="bg-panel rounded-lg shadow-lg p-4 h-full flex flex-col">
             <h2 className="text-xl font-bold text-on-panel mb-4 border-b border-color pb-2">
@@ -63,13 +80,15 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
                         const isCleared = isStageCleared(stage.id);
                         const isLocked = isStageLocked(index);
                         const stageNumber = parseInt(stage.id.split('-')[1]);
+                        const gameModeName = getStageGameModeName(stage);
+                        const hasEnoughAP = currentUser.actionPoints.current >= stage.actionPointCost;
 
                         return (
                             <div
                                 key={stage.id}
                                 className={`
                                     relative bg-tertiary rounded-lg p-3 flex flex-col items-center justify-between
-                                    transition-all duration-200 min-h-[120px]
+                                    transition-all duration-200 min-h-[140px]
                                     ${isLocked 
                                         ? 'opacity-50 cursor-not-allowed' 
                                         : isCleared
@@ -81,40 +100,38 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
                             >
                                 {isLocked && (
                                     <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center z-10">
-                                        <span className="text-white font-bold text-xs">🔒</span>
+                                        <span className="text-white font-bold text-xl">🔒</span>
                                     </div>
                                 )}
                                 
                                 {isCleared && (
-                                    <div className="absolute top-1 right-1 bg-green-500 rounded-full p-1">
-                                        <span className="text-white text-xs">✓</span>
+                                    <div className="absolute top-2 right-2 bg-green-500 rounded-full w-6 h-6 flex items-center justify-center z-20 shadow-lg">
+                                        <span className="text-white text-sm font-bold">✓</span>
                                     </div>
                                 )}
 
-                                <div className="text-center w-full">
-                                    <div className="text-2xl font-bold text-primary mb-1">
+                                {/* 스테이지 번호 */}
+                                <div className="text-center w-full mb-2">
+                                    <div className="text-3xl sm:text-4xl font-black text-primary mb-1 drop-shadow-lg">
                                         {stageNumber}
-                                    </div>
-                                    <div className="text-xs text-on-panel mb-2">
-                                        {stage.name}
                                     </div>
                                 </div>
 
-                                <div className="w-full space-y-1 text-xs text-on-panel">
-                                    <div className="flex justify-between">
-                                        <span>AP:</span>
-                                        <span className="font-bold">{stage.actionPointCost}</span>
-                                    </div>
-                                    <div className="flex justify-between">
-                                        <span>보드:</span>
-                                        <span className="font-bold">{stage.boardSize}×{stage.boardSize}</span>
-                                    </div>
-                                    {isCleared && (
-                                        <div className="text-green-400 text-xs mt-1">
-                                            클리어 완료
+                                {/* 바둑 종류 */}
+                                <div className="w-full mb-3">
+                                    <div className="bg-gray-700/60 rounded-lg px-2 py-1.5 border border-gray-600/50">
+                                        <div className="text-xs sm:text-sm font-semibold text-center text-yellow-300">
+                                            {gameModeName}
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
+
+                                {/* 클리어 표시 */}
+                                {isCleared && (
+                                    <div className="text-green-400 text-xs font-semibold mb-2">
+                                        클리어 완료
+                                    </div>
+                                )}
 
                                 {!isLocked && (
                                     <Button
@@ -123,10 +140,11 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
                                             handleStageEnter(stage.id);
                                         }}
                                         colorScheme="blue"
-                                        className="w-full mt-2 !text-xs !py-1"
-                                        disabled={currentUser.actionPoints.current < stage.actionPointCost}
+                                        className="w-full mt-auto !text-xs sm:!text-sm !py-2 flex items-center justify-center gap-1.5"
+                                        disabled={!hasEnoughAP}
                                     >
-                                        입장
+                                        <span>⚡</span>
+                                        <span>입장 ({stage.actionPointCost})</span>
                                     </Button>
                                 )}
                             </div>

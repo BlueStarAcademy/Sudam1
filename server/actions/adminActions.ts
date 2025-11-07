@@ -5,7 +5,7 @@ import * as types from '../../types.js';
 import { defaultStats, createDefaultBaseStats, createDefaultSpentStatPoints, createDefaultInventory, createDefaultQuests, createDefaultUser } from '../initialData.js';
 import * as summaryService from '../summaryService.js';
 import { createItemFromTemplate } from '../shop.js';
-import { EQUIPMENT_POOL, CONSUMABLE_ITEMS, MATERIAL_ITEMS, TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL, BORDER_POOL } from '../../constants';
+import { EQUIPMENT_POOL, CONSUMABLE_ITEMS, MATERIAL_ITEMS, TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants';
 import * as mannerService from '../mannerService.js';
 import { containsProfanity } from '../../profanity.js';
 import { broadcast } from '../socket.js';
@@ -54,9 +54,38 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                 targetUser.chatBanUntil = banUntil;
             } else if (sanctionType === 'connection') {
                 targetUser.connectionBanUntil = banUntil;
+                
+                // 사용자가 게임 중인 경우 게임 종료 처리
+                const userStatus = volatileState.userStatuses[targetUserId];
+                if (userStatus?.gameId) {
+                    const activeGame = await db.getLiveGame(userStatus.gameId);
+                    if (activeGame && activeGame.gameStatus !== 'ended' && activeGame.gameStatus !== 'no_contest') {
+                        // 상대방이 승리하도록 게임 종료
+                        const opponentId = activeGame.player1.id === targetUserId ? activeGame.player2.id : activeGame.player1.id;
+                        const winner = activeGame.blackPlayerId === opponentId ? types.Player.Black : types.Player.White;
+                        await summaryService.endGame(activeGame, winner, 'disconnect');
+                        await db.saveGame(activeGame);
+                        
+                        // 상대방 상태 업데이트
+                        if (volatileState.userStatuses[opponentId]) {
+                            const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === activeGame.mode);
+                            const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === activeGame.mode);
+                            const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : activeGame.mode;
+                            volatileState.userStatuses[opponentId].status = UserStatus.Waiting;
+                            volatileState.userStatuses[opponentId].mode = lobbyMode;
+                            delete volatileState.userStatuses[opponentId].gameId;
+                        }
+                        
+                        broadcast({ type: 'GAME_UPDATE', payload: { [activeGame.id]: activeGame } });
+                    }
+                }
+                
                 // Also log them out
                 delete volatileState.userConnections[targetUserId];
                 delete volatileState.userStatuses[targetUserId];
+                
+                // 사용자 상태 업데이트 브로드캐스트
+                broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             }
 
             await db.updateUser(targetUser);
@@ -120,11 +149,39 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             if (!targetUser) return { error: '대상 사용자를 찾을 수 없습니다.' };
             if (targetUser.isAdmin) return { error: '관리자 계정은 삭제할 수 없습니다.' };
 
+            // 사용자가 게임 중인 경우 게임 종료 처리
+            const userStatus = volatileState.userStatuses[targetUserId];
+            if (userStatus?.gameId) {
+                const activeGame = await db.getLiveGame(userStatus.gameId);
+                if (activeGame && activeGame.gameStatus !== 'ended' && activeGame.gameStatus !== 'no_contest') {
+                    // 상대방이 승리하도록 게임 종료
+                    const opponentId = activeGame.player1.id === targetUserId ? activeGame.player2.id : activeGame.player1.id;
+                    const winner = activeGame.blackPlayerId === opponentId ? types.Player.Black : types.Player.White;
+                    await summaryService.endGame(activeGame, winner, 'disconnect');
+                    await db.saveGame(activeGame);
+                    
+                    // 상대방 상태 업데이트
+                    if (volatileState.userStatuses[opponentId]) {
+                        const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === activeGame.mode);
+                        const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === activeGame.mode);
+                        const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : activeGame.mode;
+                        volatileState.userStatuses[opponentId].status = UserStatus.Waiting;
+                        volatileState.userStatuses[opponentId].mode = lobbyMode;
+                        delete volatileState.userStatuses[opponentId].gameId;
+                    }
+                    
+                    broadcast({ type: 'GAME_UPDATE', payload: { [activeGame.id]: activeGame } });
+                }
+            }
+
             const backupData = JSON.parse(JSON.stringify(targetUser));
             await db.deleteUser(targetUserId);
 
             delete volatileState.userConnections[targetUserId];
             delete volatileState.userStatuses[targetUserId];
+
+            // 사용자 상태 업데이트 브로드캐스트
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
 
             await createAdminLog(user, 'delete_user', targetUser, backupData);
             return {};
@@ -151,9 +208,37 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             const targetUser = await db.getUser(targetUserId);
             if (!targetUser) return { error: '대상 사용자를 찾을 수 없습니다.' };
 
+            // 사용자가 게임 중인 경우 게임 종료 처리
+            const userStatus = volatileState.userStatuses[targetUserId];
+            if (userStatus?.gameId) {
+                const activeGame = await db.getLiveGame(userStatus.gameId);
+                if (activeGame && activeGame.gameStatus !== 'ended' && activeGame.gameStatus !== 'no_contest') {
+                    // 상대방이 승리하도록 게임 종료
+                    const opponentId = activeGame.player1.id === targetUserId ? activeGame.player2.id : activeGame.player1.id;
+                    const winner = activeGame.blackPlayerId === opponentId ? types.Player.Black : types.Player.White;
+                    await summaryService.endGame(activeGame, winner, 'disconnect');
+                    await db.saveGame(activeGame);
+                    
+                    // 상대방 상태 업데이트
+                    if (volatileState.userStatuses[opponentId]) {
+                        const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === activeGame.mode);
+                        const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === activeGame.mode);
+                        const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : activeGame.mode;
+                        volatileState.userStatuses[opponentId].status = UserStatus.Waiting;
+                        volatileState.userStatuses[opponentId].mode = lobbyMode;
+                        delete volatileState.userStatuses[opponentId].gameId;
+                    }
+                    
+                    broadcast({ type: 'GAME_UPDATE', payload: { [activeGame.id]: activeGame } });
+                }
+            }
+            
             const backupData = { status: volatileState.userStatuses[targetUserId] };
             delete volatileState.userConnections[targetUserId];
             delete volatileState.userStatuses[targetUserId];
+            
+            // 사용자 상태 업데이트 브로드캐스트
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             
             await createAdminLog(user, 'force_logout', targetUser, backupData);
             return {};
@@ -280,6 +365,10 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             if (!game) return { error: 'Game not found.' };
             game.description = description;
             await db.saveGame(game);
+            
+            // 게임 업데이트 브로드캐스트
+            broadcast({ type: 'GAME_UPDATE', payload: { [gameId]: game } });
+            
             await createAdminLog(user, 'set_game_description', game.player1, { mailTitle: `Game ${game.id}`});
             return {};
         }
@@ -290,16 +379,41 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
 
             const backupData = JSON.parse(JSON.stringify(game));
 
+            // 게임을 강제 종료 (no_contest 상태로 설정)
             game.gameStatus = 'no_contest';
             game.winReason = 'disconnect';
+            await db.saveGame(game);
+
+            // 사용자 상태 업데이트 및 로비 모드 결정
+            const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === game.mode);
+            const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === game.mode);
+            const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : game.mode;
+
+            // 플레이어 상태 업데이트
             if (volatileState.userStatuses[game.player1.id]) {
                 volatileState.userStatuses[game.player1.id].status = UserStatus.Waiting;
-                volatileState.userStatuses[game.player1.id].mode = game.mode;
+                volatileState.userStatuses[game.player1.id].mode = lobbyMode;
+                delete volatileState.userStatuses[game.player1.id].gameId;
             }
             if (volatileState.userStatuses[game.player2.id]) {
                 volatileState.userStatuses[game.player2.id].status = UserStatus.Waiting;
-                volatileState.userStatuses[game.player2.id].mode = game.mode;
+                volatileState.userStatuses[game.player2.id].mode = lobbyMode;
+                delete volatileState.userStatuses[game.player2.id].gameId;
             }
+
+            // 관전자 상태 업데이트
+            Object.values(volatileState.userStatuses).forEach(status => {
+                if (status.spectatingGameId === gameId) {
+                    delete status.spectatingGameId;
+                }
+            });
+
+            // 게임 삭제 (DB에서 완전히 제거)
+            await db.deleteGame(gameId);
+
+            // 브로드캐스트
+            broadcast({ type: 'GAME_DELETED', payload: { gameId, gameCategory: game.gameCategory } });
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
 
             await createAdminLog(user, 'force_delete_game', game.player1, backupData);
             return {};
@@ -315,17 +429,37 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             const winnerEnum = game.blackPlayerId === winnerId ? types.Player.Black : types.Player.White;
             const winnerUser = game.player1.id === winnerId ? game.player1 : game.player2;
 
-            await summaryService.endGame(game, winnerEnum, 'resign'); // Use 'resign' as the reason for 기권승
+            // 게임을 정상적으로 종료 (승자 지정)
+            await summaryService.endGame(game, winnerEnum, 'resign');
+            await db.saveGame(game);
 
-            // Clean up statuses for both players
+            // 사용자 상태 업데이트 및 로비 모드 결정
+            const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === game.mode);
+            const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === game.mode);
+            const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : game.mode;
+
+            // 플레이어 상태 업데이트
             if (volatileState.userStatuses[game.player1.id]) {
                 volatileState.userStatuses[game.player1.id].status = UserStatus.Waiting;
-                volatileState.userStatuses[game.player1.id].mode = game.mode;
+                volatileState.userStatuses[game.player1.id].mode = lobbyMode;
+                delete volatileState.userStatuses[game.player1.id].gameId;
             }
             if (volatileState.userStatuses[game.player2.id]) {
                 volatileState.userStatuses[game.player2.id].status = UserStatus.Waiting;
-                volatileState.userStatuses[game.player2.id].mode = game.mode;
+                volatileState.userStatuses[game.player2.id].mode = lobbyMode;
+                delete volatileState.userStatuses[game.player2.id].gameId;
             }
+
+            // 관전자 상태 업데이트
+            Object.values(volatileState.userStatuses).forEach(status => {
+                if (status.spectatingGameId === gameId) {
+                    delete status.spectatingGameId;
+                }
+            });
+
+            // 브로드캐스트
+            broadcast({ type: 'GAME_UPDATE', payload: { [gameId]: game } });
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             
             await createAdminLog(user, 'force_win', winnerUser, { gameId, winnerId });
             return {};
@@ -422,7 +556,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             (targetUser as any)[stateKey] = null;
             (targetUser as any)[playedDateKey] = 0;
             
-            // volatileState에서도 제거
+            // volatileState에서도 제거 (해당 토너먼트 타입만)
             if (volatileState.activeTournaments?.[targetUserId]) {
                 if (volatileState.activeTournaments[targetUserId].type === tournamentType) {
                     delete volatileState.activeTournaments[targetUserId];
@@ -518,20 +652,60 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                 };
             });
             
-            const shuffledParticipants = [participants[0], ...participants.slice(1).sort(() => 0.5 - Math.random())];
-            const newState = tournamentService.createTournament(tournamentType, freshUser, shuffledParticipants);
+            // 참가자를 완전히 무작위로 섞기 (첫 번째 플레이어도 포함하여 섞음)
+            // 하지만 freshUser가 토너먼트에 포함되는지 확인
+            const allParticipantsShuffled = [...participants].sort(() => 0.5 - Math.random());
+            
+            // freshUser가 참가자 목록에 있는지 확인 (필수)
+            const userInParticipants = allParticipantsShuffled.find(p => p.id === freshUser.id);
+            if (!userInParticipants) {
+                // 만약 freshUser가 목록에 없다면 첫 번째 위치에 추가
+                allParticipantsShuffled.unshift(participants.find(p => p.id === freshUser.id)!);
+            }
+            
+            const newState = tournamentService.createTournament(tournamentType, freshUser, allParticipantsShuffled);
             (freshUser as any)[stateKey] = newState;
             (freshUser as any)[playedDateKey] = Date.now();
             
             await db.updateUser(freshUser);
 
+            // volatileState에 새로운 토너먼트 추가
+            if (!volatileState.activeTournaments) {
+                volatileState.activeTournaments = {};
+            }
+            volatileState.activeTournaments[targetUserId] = newState;
+
             await createAdminLog(user, 'reset_tournament_session', targetUser, { tournamentType });
 
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            const updatedUserCopy = JSON.parse(JSON.stringify(freshUser));
-            broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUserCopy } });
-
-            return { clientResponse: { message: '토너먼트 세션이 성공적으로 재생성되었습니다.', tournamentType } };
+            // 최신 사용자 데이터를 다시 가져와서 브로드캐스트 (토너먼트 상태가 반영된 최신 데이터)
+            const latestUser = await db.getUser(targetUserId);
+            if (latestUser) {
+                // WebSocket으로 사용자 업데이트 브로드캐스트 (토너먼트 상태 포함)
+                // 전체 사용자 객체를 보내므로 토너먼트 상태 필드도 포함됨
+                const updatedUserCopy = JSON.parse(JSON.stringify(latestUser));
+                broadcast({ type: 'USER_UPDATE', payload: { [latestUser.id]: updatedUserCopy } });
+                
+                // HTTP 응답에도 업데이트된 사용자 데이터 포함 (즉시 반영을 위해)
+                return { 
+                    clientResponse: { 
+                        message: '토너먼트 세션이 성공적으로 재생성되었습니다.', 
+                        tournamentType,
+                        updatedUser: updatedUserCopy // 클라이언트에서 즉시 업데이트할 수 있도록
+                    } 
+                };
+            } else {
+                // 사용자를 찾을 수 없는 경우에도 기본 브로드캐스트
+                const updatedUserCopy = JSON.parse(JSON.stringify(freshUser));
+                broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUserCopy } });
+                
+                return { 
+                    clientResponse: { 
+                        message: '토너먼트 세션이 성공적으로 재생성되었습니다.', 
+                        tournamentType,
+                        updatedUser: updatedUserCopy
+                    } 
+                };
+            }
         }
         
         default:

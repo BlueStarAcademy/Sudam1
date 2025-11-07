@@ -5,6 +5,7 @@ import { AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES } from '../../constants';
 import { containsProfanity } from '../../profanity.js';
 import { UserStatus } from '../../types/enums.js';
 import { broadcast } from '../socket.js';
+import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
 
 type HandleActionResult = {
     clientResponse?: any;
@@ -23,10 +24,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             } else {
                 return { error: 'Invalid avatar ID.' };
             }
-            const updatedUser = JSON.parse(JSON.stringify(user));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'UPDATE_AVATAR');
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             return { clientResponse: { updatedUser } };
         }
@@ -38,10 +41,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             } else {
                 return { error: 'Invalid border ID.' };
             }
-            const updatedUser = JSON.parse(JSON.stringify(user));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'UPDATE_BORDER');
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             return { clientResponse: { updatedUser } };
         }
@@ -62,10 +67,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             }
             user.nickname = newNickname;
             await db.updateUser(user);
-            const updatedUser = JSON.parse(JSON.stringify(user));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'CHANGE_NICKNAME');
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             return { clientResponse: { updatedUser } };
         }
@@ -87,10 +94,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             
             await db.updateUser(user);
             
-            const updatedUser = JSON.parse(JSON.stringify(user));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'UPDATE_MBTI');
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             // 첫 설정 시 다이아 100개 획득 아이템 생성
             const mbtiRewardItem = wasFirstTime ? {
@@ -124,10 +133,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
                 user.spentStatPoints[key] = 0;
             }
             await db.updateUser(user);
-            const updatedUser = JSON.parse(JSON.stringify(user));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'RESET_STAT_POINTS');
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             return { clientResponse: { updatedUser } };
         }
@@ -147,10 +158,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
 
             user.spentStatPoints = newStatPoints;
             await db.updateUser(user);
-            const updatedUser = JSON.parse(JSON.stringify(user));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'CONFIRM_STAT_ALLOCATION');
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             return { clientResponse: { updatedUser } };
         }
@@ -167,10 +180,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
                 }
             }
             await db.updateUser(user);
-            const updatedUser = JSON.parse(JSON.stringify(user));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'UPDATE_REJECTION_SETTINGS');
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             return { clientResponse: { updatedUser } };
         }
@@ -181,10 +196,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             }
             user.equipmentPresets[index] = preset;
             await db.updateUser(user);
-            const updatedUser = JSON.parse(JSON.stringify(user));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'SAVE_PRESET');
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             return { clientResponse: { updatedUser } };
         }
@@ -236,10 +253,12 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             validateAndFixEquipmentConsistency(user);
 
             await db.updateUser(user);
-            const updatedUser = JSON.parse(JSON.stringify(user));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'APPLY_PRESET');
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             return { clientResponse: { updatedUser } };
         }

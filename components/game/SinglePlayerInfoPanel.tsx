@@ -1,6 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { LiveGameSession, GameMode } from '../../types.js';
-import { DEFAULT_KOMI } from '../../constants';
 
 const goProverbs = [
     { term: "부득탐승(不得貪勝)", meaning: "너무 이기려고 탐하지 말라." },
@@ -17,26 +15,7 @@ const goProverbs = [
     { term: "적의 급소는 나의 급소", meaning: "상대가 두고 싶어하는 좋은 자리는 나에게도 좋은 자리이다." }
 ];
 
-const GameInfoPanel: React.FC<{ session: LiveGameSession }> = ({ session }) => {
-    const { settings } = session;
-    return (
-        <div className="h-full bg-stone-800/60 backdrop-blur-sm p-3 rounded-md flex-shrink-0 border border-stone-700/50 text-stone-300">
-            <h3 className="text-base font-bold border-b border-stone-600/50 pb-1 mb-2 text-amber-300 text-center">
-                대국 정보
-            </h3>
-            <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
-                <div className="font-semibold text-stone-400">판 크기:</div>
-                <div>{settings.boardSize}x{settings.boardSize}</div>
-                <div className="font-semibold text-stone-400">AI 레벨:</div>
-                <div>{settings.aiDifficulty}</div>
-                <div className="font-semibold text-stone-400">목표 점수:</div>
-                <div>{settings.captureTarget}점</div>
-            </div>
-        </div>
-    );
-};
-
-const ProverbPanel: React.FC = () => {
+const ProverbPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
     const [proverbIndex, setProverbIndex] = useState(0);
 
     useEffect(() => {
@@ -49,11 +28,12 @@ const ProverbPanel: React.FC = () => {
     const currentProverb = goProverbs[proverbIndex];
 
     return (
-        <div className="bg-stone-800/60 backdrop-blur-sm p-3 rounded-md flex-1 border border-stone-700/50 text-stone-300 flex flex-col items-center justify-center text-center">
-            <h3 className="text-base font-bold border-b border-stone-600/50 pb-1 mb-2 text-amber-300">
-                바둑 격언
+        <div className="bg-gray-800/80 backdrop-blur-sm p-3 rounded-md flex-1 border border-gray-700/50 text-stone-300 flex flex-col min-h-0">
+            <h3 className="text-base font-bold border-b border-gray-700 pb-1 mb-2 text-amber-300 flex justify-between items-center flex-shrink-0">
+                <span>바둑 격언</span>
+                {onClose && <button onClick={onClose} className="text-xl font-bold text-gray-400 hover:text-white">×</button>}
             </h3>
-            <div className="flex-grow flex flex-col items-center justify-center">
+            <div className="flex-grow flex flex-col items-center justify-center text-center min-h-0">
                 <p className="text-2xl font-semibold text-stone-100">{currentProverb.term}</p>
                 <p className="text-sm text-stone-300 mt-2">{currentProverb.meaning}</p>
             </div>
@@ -61,17 +41,4 @@ const ProverbPanel: React.FC = () => {
     );
 };
 
-interface SinglePlayerInfoPanelProps {
-    session: LiveGameSession;
-}
-
-const SinglePlayerInfoPanel: React.FC<SinglePlayerInfoPanelProps> = ({ session }) => {
-    return (
-        <div className="flex flex-col md:flex-row h-full gap-2">
-            <GameInfoPanel session={session} />
-            <ProverbPanel />
-        </div>
-    );
-};
-
-export default SinglePlayerInfoPanel;
+export default ProverbPanel;

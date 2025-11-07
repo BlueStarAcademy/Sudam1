@@ -19,6 +19,7 @@ interface GameControlsProps {
     onCancelMove: () => void;
     isMobile: boolean;
     settings: AppSettings;
+    isSinglePlayer?: boolean;
 }
 
 const formatCooldown = (ms: number) => {
@@ -335,7 +336,7 @@ const CurlingItemPanel: React.FC<{ session: LiveGameSession; isMyTurn: boolean; 
 
 
 const GameControls: React.FC<GameControlsProps> = (props) => {
-    const { session, isMyTurn, isSpectator, onAction, setShowResultModal, setConfirmModalType, currentUser, onlineUsers, pendingMove, onConfirmMove, onCancelMove, isMobile, settings } = props;
+    const { session, isMyTurn, isSpectator, onAction, setShowResultModal, setConfirmModalType, currentUser, onlineUsers, pendingMove, onConfirmMove, onCancelMove, isMobile, settings, isSinglePlayer } = props;
     const { id: gameId, mode, gameStatus, blackPlayerId, whitePlayerId, player1, player2 } = session;
     const isMixMode = mode === GameMode.Mix;
     const isGameEnded = ['ended', 'no_contest', 'rematch_pending'].includes(gameStatus);
@@ -408,13 +409,15 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                     <Button onClick={onConfirmMove} colorScheme="green" className="!py-3 !px-6 animate-pulse">착수</Button>
                 </div>
             )}
-            {/* Row 1: Manner Actions */}
-            <div className="bg-gray-900/50 rounded-md p-2 flex flex-row items-center gap-4 w-full">
-                <h3 className="text-xs font-bold text-gray-300 whitespace-nowrap">매너 액션 {usesLeftText}</h3>
-                <div className="flex-grow flex items-center justify-center">
-                    <ActionButtonsPanel session={session} isSpectator={isSpectator} onAction={onAction} currentUser={currentUser} />
+            {/* Row 1: Manner Actions - 숨김 (싱글플레이에서는 AI봇과의 경기이므로) */}
+            {!isSinglePlayer && (
+                <div className="bg-gray-900/50 rounded-md p-2 flex flex-row items-center gap-4 w-full">
+                    <h3 className="text-xs font-bold text-gray-300 whitespace-nowrap">매너 액션 {usesLeftText}</h3>
+                    <div className="flex-grow flex items-center justify-center">
+                        <ActionButtonsPanel session={session} isSpectator={isSpectator} onAction={onAction} currentUser={currentUser} />
+                    </div>
                 </div>
-            </div>
+            )}
 
             {/* Row 2: Game and Special/Playful Functions */}
             <div className="flex flex-col lg:flex-row gap-1 w-full">

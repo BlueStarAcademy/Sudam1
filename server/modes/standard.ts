@@ -9,7 +9,7 @@ import { initializeBase, updateBaseState, handleBaseAction } from './base.js';
 import { initializeCapture, updateCaptureState, handleCaptureAction } from './capture.js';
 import { initializeHidden, updateHiddenState, handleHiddenAction } from './hidden.js';
 import { initializeMissile, updateMissileState, handleMissileAction } from './missile.js';
-import { transitionToPlaying } from './shared.js';
+import { transitionToPlaying, handleSharedAction } from './shared.js';
 import { UserStatus } from '../../types.js';
 
 
@@ -53,6 +53,11 @@ export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.
 };
 
 export const updateStrategicGameState = async (game: types.LiveGameSession, now: number) => {
+    // pending 상태의 게임은 처리하지 않음 (아직 시작되지 않음)
+    if (game.gameStatus === 'pending') {
+        return;
+    }
+    
     // This is the core update logic for all Go-based games.
     if (game.gameStatus === 'playing' && game.turnDeadline && now > game.turnDeadline) {
         const timedOutPlayer = game.currentPlayer;
@@ -96,6 +101,10 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
 };
 
 export const handleStrategicGameAction = async (volatileState: types.VolatileState, game: types.LiveGameSession, action: types.ServerAction & { userId: string }, user: types.User): Promise<types.HandleActionResult | undefined> => {
+    // Try shared actions first (e.g., USE_ACTION_BUTTON)
+    const sharedResult = await handleSharedAction(volatileState, game, action, user);
+    if (sharedResult) return sharedResult;
+    
     // Try each specific handler. If one returns a result, we're done.
     let result: types.HandleActionResult | null = null;
     

@@ -111,6 +111,7 @@ export const createDefaultUser = (id: string, username: string, nickname: string
         mbti: null,
         isMbtiPublic: false,
         singlePlayerProgress: 0,
+        clearedSinglePlayerStages: [],
         bonusStatPoints: 0,
         blacksmithLevel: 1,
         blacksmithXp: 0,
@@ -143,7 +144,7 @@ export const createDefaultUser = (id: string, username: string, nickname: string
 };
 
 
-export const getInitialState = (): Omit<AppState, 'liveGames' | 'negotiations' | 'userStatuses' | 'userConnections' | 'userLastChatMessage' | 'waitingRoomChats' | 'gameChats' | 'adminLogs' | 'announcements' | 'globalOverrideAnnouncement' | 'gameModeAvailability' | 'announcementInterval'> => {
+export const getInitialState = (): Omit<AppState, 'liveGames' | 'singlePlayerGames' | 'towerGames' | 'negotiations' | 'userStatuses' | 'userConnections' | 'userLastChatMessage' | 'waitingRoomChats' | 'gameChats' | 'adminLogs' | 'announcements' | 'globalOverrideAnnouncement' | 'gameModeAvailability' | 'announcementInterval'> => {
     const adminUser = createDefaultUser(`user-admin-${randomUUID()}`, '푸른별바둑학원', '관리자', true);
     const testUser1 = createDefaultUser(`user-test-${randomUUID()}`, '푸른별', '푸른별');
     const testUser2 = createDefaultUser(`user-test-${randomUUID()}`, '노란별', '노란별');

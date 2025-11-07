@@ -36,11 +36,25 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
     if (isWinner) {
         const stageIndex = SINGLE_PLAYER_STAGES.findIndex(s => s.id === stage.id);
         const currentProgress = user.singlePlayerProgress ?? 0;
-
-        const rewards = currentProgress === stageIndex 
+        
+        // clearedSinglePlayerStages 배열 초기화 (없는 경우)
+        if (!user.clearedSinglePlayerStages) {
+            user.clearedSinglePlayerStages = [];
+        }
+        
+        // 최초 클리어 여부 확인: clearedSinglePlayerStages에 스테이지 ID가 없으면 최초 클리어
+        const isFirstClear = !user.clearedSinglePlayerStages.includes(stage.id);
+        
+        const rewards = isFirstClear 
             ? stage.rewards.firstClear 
             : stage.rewards.repeatClear;
         
+        // 최초 클리어인 경우 clearedSinglePlayerStages에 추가
+        if (isFirstClear) {
+            user.clearedSinglePlayerStages.push(stage.id);
+        }
+        
+        // singlePlayerProgress는 순차 진행 여부를 추적 (다음 스테이지 언락용)
         if (currentProgress === stageIndex) {
             user.singlePlayerProgress = currentProgress + 1;
         }
@@ -97,6 +111,10 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
     user.strategyXp = currentXp;
 
     await db.updateUser(user);
+    
+    // 사용자 업데이트를 클라이언트에 브로드캐스트 (clearedSinglePlayerStages 업데이트 포함)
+    const { broadcast } = await import('./socket.js');
+    broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
 };
 
 

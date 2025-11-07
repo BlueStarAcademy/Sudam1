@@ -16,6 +16,8 @@ import DisconnectionModal from './components/DisconnectionModal.js';
 import TimeoutFoulModal from './components/TimeoutFoulModal.js';
 import SinglePlayerControls from './components/game/SinglePlayerControls.js';
 import SinglePlayerInfoPanel from './components/game/SinglePlayerInfoPanel.js';
+import SinglePlayerGameDescriptionModal from './components/SinglePlayerGameDescriptionModal.js';
+import SinglePlayerSidebar from './components/game/SinglePlayerSidebar.js';
 import { useClientTimer } from './hooks/useClientTimer.js';
 
 function usePrevious<T>(value: T): T | undefined {
@@ -271,6 +273,10 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         }
         if (['ended', 'no_contest', 'rematch_pending'].includes(gameStatus)) {
             const actionType = session.isAiGame ? 'LEAVE_AI_GAME' : 'LEAVE_GAME_ROOM';
+            // 싱글플레이 게임인 경우 postGameRedirect 설정
+            if (session.isSinglePlayer) {
+                sessionStorage.setItem('postGameRedirect', '#/singleplayer');
+            }
             handlers.handleAction({ type: actionType, payload: { gameId } });
             return;
         }
@@ -281,7 +287,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         } else {
             setConfirmModalType('resign');
         }
-    }, [isSpectator, handlers.handleAction, session.isAiGame, gameId, gameStatus, isNoContestLeaveAvailable]);
+    }, [isSpectator, handlers.handleAction, session.isAiGame, session.isSinglePlayer, gameId, gameStatus, isNoContestLeaveAvailable]);
     
     const globalChat = useMemo(() => waitingRoomChats['global'] || [], [waitingRoomChats]);
     
@@ -291,6 +297,29 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         setShowResultModal(false);
         setShowFinalTerritory(false);
     }, []);
+
+    // 싱글플레이 게임 설명창 표시 여부
+    const showGameDescription = isSinglePlayer && gameStatus === 'pending';
+    
+    // 디버깅: 게임 상태 확인
+    useEffect(() => {
+        if (isSinglePlayer) {
+            console.log('[Game] Single player game status:', {
+                gameStatus,
+                isSinglePlayer,
+                showGameDescription,
+                gameId: session.id,
+                stageId: session.stageId
+            });
+        }
+    }, [isSinglePlayer, gameStatus, showGameDescription, session.id, session.stageId]);
+
+    const handleStartGame = useCallback(() => {
+        handlers.handleAction({ 
+            type: 'CONFIRM_SINGLE_PLAYER_GAME_START', 
+            payload: { gameId } 
+        } as ServerAction);
+    }, [handlers.handleAction, gameId]);
     
     const gameProps: GameProps = {
         session, onAction: handlers.handleAction, currentUser: currentUserWithStatus, waitingRoomChat: globalChat,
@@ -304,44 +333,90 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
 
     if (isSinglePlayer) {
         return (
-            <div className="w-full h-dvh flex flex-col p-1 lg:p-4 bg-wood-pattern text-stone-200">
+            <div className={`w-full h-dvh flex flex-col p-1 lg:p-2 relative max-w-full bg-single-player-background text-stone-200`}>
+                {showGameDescription && (
+                    <SinglePlayerGameDescriptionModal 
+                        session={session}
+                        onStart={handleStartGame}
+                    />
+                )}
                 <button
                     onClick={handlers.openSettingsModal}
-                    className="absolute top-2 right-2 z-30 p-2 rounded-lg text-xl hover:bg-black/20 transition-colors"
+                    className="absolute top-2 right-2 z-30 p-2 rounded-lg text-xl hover:bg-secondary/50 transition-colors"
                     title="설정"
                 >
                     ⚙️
                 </button>
-                <main className="flex-1 flex flex-col items-center justify-center gap-2 lg:gap-4 max-w-5xl w-full mx-auto min-h-0">
-                    <div className="w-full flex-shrink-0">
-                        <PlayerPanel {...gameProps} clientTimes={clientTimes.clientTimes} isSinglePlayer={true} />
-                    </div>
-                    <div className="flex-1 w-full relative">
-                        <div className="absolute inset-0">
-                             <GameArena 
-                                {...gameProps}
-                                isMyTurn={isMyTurn} 
-                                myPlayerEnum={myPlayerEnum} 
-                                handleBoardClick={handleBoardClick} 
-                                isItemModeActive={isItemModeActive} 
-                                showTerritoryOverlay={showFinalTerritory} 
-                                isMobile={isMobile}
-                                myRevealedMoves={session.revealedHiddenMoves?.[currentUser.id] || []}
-                                showLastMoveMarker={settings.features.lastMoveMarker}
+                <div className="flex-1 flex flex-col lg:flex-row gap-2 min-h-0">
+                    <main className="flex-1 flex items-center justify-center min-w-0 min-h-0">
+                        <div className="w-full h-full max-h-full max-w-full lg:max-w-[calc(100vh-8rem)] flex flex-col items-center gap-1 lg:gap-2">
+                            <div className="flex-shrink-0 w-full">
+                                <PlayerPanel {...gameProps} clientTimes={clientTimes.clientTimes} isSinglePlayer={true} />
+                            </div>
+                            <div className="flex-1 w-full relative">
+                                <div className="absolute inset-0">
+                                    <GameArena 
+                                        {...gameProps}
+                                        isMyTurn={isMyTurn} 
+                                        myPlayerEnum={myPlayerEnum} 
+                                        handleBoardClick={handleBoardClick} 
+                                        isItemModeActive={isItemModeActive} 
+                                        showTerritoryOverlay={showFinalTerritory} 
+                                        isMobile={isMobile}
+                                        myRevealedMoves={session.revealedHiddenMoves?.[currentUser.id] || []}
+                                        showLastMoveMarker={settings.features.lastMoveMarker}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex-shrink-0 w-full flex flex-col gap-1">
+                                <TurnDisplay session={session} />
+                                <GameControls {...gameControlsProps} isSinglePlayer={true} />
+                            </div>
+                        </div>
+                    </main>
+                    
+                    {!isMobile && (
+                        <div className="w-full lg:w-[320px] xl:w-[360px] flex-shrink-0">
+                            <SinglePlayerSidebar 
+                                session={session}
+                                gameChat={gameChat}
+                                onAction={handlers.handleAction}
+                                currentUser={currentUserWithStatus}
+                                onLeaveOrResign={handleLeaveOrResignClick}
                             />
                         </div>
-                    </div>
-                    <div className="w-full flex flex-col-reverse md:flex-row gap-2 lg:gap-4 items-stretch flex-shrink-0">
-                        <div className="flex-1">
-                            <SinglePlayerInfoPanel session={session} />
-                        </div>
-                        <div className="flex flex-col gap-2 flex-shrink-0 w-full md:w-auto">
-                            <TurnDisplay session={session} />
-                            <SinglePlayerControls {...gameProps} currentUser={currentUserWithStatus} />
-                        </div>
-                    </div>
-                </main>
-                 <GameModals 
+                    )}
+                    
+                    {isMobile && (
+                        <>
+                            <div className="absolute top-1/2 -translate-y-1/2 right-0 z-20">
+                                <button 
+                                    onClick={() => setIsMobileSidebarOpen(true)} 
+                                    className="w-8 h-12 bg-secondary/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-primary shadow-lg"
+                                    aria-label="메뉴 열기"
+                                >
+                                    <span className="relative font-bold text-lg">
+                                        {'<'}
+                                    </span>
+                                </button>
+                            </div>
+
+                            <div className={`fixed top-0 right-0 h-full w-[280px] bg-secondary shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                                <SinglePlayerSidebar 
+                                    session={session}
+                                    gameChat={gameChat}
+                                    onAction={handlers.handleAction}
+                                    currentUser={currentUserWithStatus}
+                                    onLeaveOrResign={handleLeaveOrResignClick}
+                                    onClose={() => setIsMobileSidebarOpen(false)}
+                                />
+                            </div>
+                            {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}
+                        </>
+                    )}
+                </div>
+                
+                <GameModals 
                     {...gameProps}
                     confirmModalType={confirmModalType}
                     onHideConfirmModal={() => setConfirmModalType(null)}
@@ -352,8 +427,19 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         );
     }
 
+    // PVP 게임 배경 이미지 결정
+    const pvpBackgroundClass = useMemo(() => {
+        if (SPECIAL_GAME_MODES.some(m => m.mode === mode)) {
+            return 'bg-strategic-background';
+        }
+        if (PLAYFUL_GAME_MODES.some(m => m.mode === mode)) {
+            return 'bg-playful-background';
+        }
+        return 'bg-tertiary';
+    }, [mode]);
+
     return (
-        <div className={`w-full h-dvh flex flex-col p-1 lg:p-2 relative max-w-full bg-tertiary`}>
+        <div className={`w-full h-dvh flex flex-col p-1 lg:p-2 relative max-w-full ${pvpBackgroundClass}`}>
             {session.disconnectionState && <DisconnectionModal session={session} currentUser={currentUser} />}
             {session.gameStatus === 'scoring' && (
                 <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-30">

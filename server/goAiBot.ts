@@ -224,11 +224,11 @@ export async function makeGoAiBotMove(
         return;
     }
 
-    // 2. 살리기 바둑 모드일 때는 도망가는 로직 사용
+    // 2. 살리기 바둑 모드일 때는 공격적인 로직 사용
     let scoredMoves: Array<{ move: Point; score: number }>;
     if (isSurvivalMode && aiPlayerEnum === Player.White) {
-        // 살리기 바둑: AI(백)가 도망가는 전략 사용
-        scoredMoves = scoreMovesForSurvival(
+        // 살리기 바둑: AI(백)가 유저(흑)의 돌을 적극적으로 잡으러 오는 전략 사용
+        scoredMoves = scoreMovesForAggressiveCapture(
             allValidMoves,
             game,
             profile,
@@ -697,10 +697,10 @@ function evaluateLifeDeath(
 
     // 자신의 그룹을 살리는 수인지 확인
     const groups = logic.getAllGroups(aiPlayer, testResult.newBoardState);
-    const pointGroup = groups.find(g => g.some(p => p.x === point.x && p.y === point.y));
+    const pointGroup = groups.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
     if (pointGroup) {
-        const liberties = logic.getGroupLiberties(pointGroup, testResult.newBoardState);
-        if (liberties.length >= 2) {
+        const libertyCount = pointGroup.libertyPoints.size;
+        if (libertyCount >= 2) {
             return 0.8; // 그룹을 살리는 수
         }
     }
@@ -799,9 +799,9 @@ function evaluateWinFocus(
 }
 
 /**
- * 살리기 바둑 모드: AI(백)가 도망가는 전략으로 수를 점수화
+ * 살리기 바둑 모드: AI(백)가 유저(흑)의 돌을 적극적으로 잡으러 오는 전략으로 수를 점수화
  */
-function scoreMovesForSurvival(
+function scoreMovesForAggressiveCapture(
     moves: Point[],
     game: types.LiveGameSession,
     profile: GoAiBotProfile,
@@ -815,31 +815,35 @@ function scoreMovesForSurvival(
         let score = 0;
         const point: Point = { x: move.x, y: move.y };
 
-        // 살리기 바둑의 목표: 도망가서 살아남기
+        // 살리기 바둑의 목표: 유저(흑)의 돌을 적극적으로 잡기
 
-        // 1. 위험 평가 (상대 돌과의 거리) - 거리가 멀수록 좋음
-        const dangerScore = evaluateDanger(game, logic, point, opponentPlayer);
-        score += dangerScore * 150; // 위험 회피가 최우선
-
-        // 2. 안전성 평가 (자신의 그룹을 살리는 수)
-        const safetyScore = evaluateSafety(game, logic, point, aiPlayer);
-        score += safetyScore * 100;
-
-        // 3. 도망 평가 (상대 돌과 멀어지는 수)
-        const escapeScore = evaluateEscape(game, logic, point, aiPlayer, opponentPlayer);
-        score += escapeScore * 80;
-
-        // 4. 자유도 평가 (자신의 그룹의 자유도를 늘리는 수)
-        const libertyScore = evaluateLibertyGain(game, logic, point, aiPlayer);
-        score += libertyScore * 60;
-
-        // 5. 따내기 기회는 피하기 (따내려 하지 않음)
+        // 1. 따내기 기회 평가 (최우선) - 유저의 돌을 잡을 수 있는 수
         const captureScore = evaluateCaptureOpportunity(game, logic, point, aiPlayer, opponentPlayer);
-        score -= captureScore * 50; // 따내기는 위험할 수 있으므로 감점
+        score += captureScore * 300; // 따내기가 최우선 (매우 높은 가중치)
 
-        // 6. 실수 확률 적용
-        if (Math.random() < profile.mistakeRate * 1.5) { // 살리기 모드에서는 실수율 증가
-            score *= 0.6;
+        // 2. 공격 기회 평가 - 유저의 돌을 위협하는 수
+        const attackScore = evaluateAttackOpportunity(game, logic, point, aiPlayer, opponentPlayer);
+        score += attackScore * 200; // 공격 기회도 높은 점수
+
+        // 3. 유저 돌과의 근접성 평가 - 유저 돌 근처로 가는 수
+        const proximityScore = evaluateProximityToOpponent(game, logic, point, opponentPlayer);
+        score += proximityScore * 150; // 유저 돌 근처로 접근
+
+        // 4. 유저 그룹을 포위하는 수 평가
+        const surroundScore = evaluateSurroundOpportunity(game, logic, point, aiPlayer, opponentPlayer);
+        score += surroundScore * 120; // 유저 그룹 포위
+
+        // 5. 전투 성향 반영 - 유저와 전투를 벌이는 수
+        const combatScore = evaluateCombat(game, logic, point, aiPlayer, opponentPlayer);
+        score += combatScore * 100;
+
+        // 6. 자신의 안전성도 약간 고려 (너무 위험한 수는 피하기)
+        const safetyScore = evaluateSafety(game, logic, point, aiPlayer);
+        score += safetyScore * 50; // 안전성은 낮은 가중치
+
+        // 7. 실수 확률 적용 (공격 모드에서는 실수율 감소)
+        if (Math.random() < profile.mistakeRate * 0.7) { // 살리기 공격 모드에서는 실수율 감소
+            score *= 0.8;
         }
 
         scoredMoves.push({ move, score });
@@ -852,9 +856,57 @@ function scoreMovesForSurvival(
 }
 
 /**
- * 위험 평가 (상대 돌과의 거리)
+ * 공격 기회 평가 - 유저의 돌을 위협할 수 있는 수
  */
-function evaluateDanger(
+function evaluateAttackOpportunity(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    // 이 수를 둔 후 유저의 그룹이 위험해지는지 확인
+    const opponentGroups = logic.getAllGroups(opponentPlayer, testResult.newBoardState);
+    let attackScore = 0;
+
+    for (const group of opponentGroups) {
+        const libertyCount = group.libertyPoints.size;
+        // 유저 그룹의 자유도가 적을수록 공격 성공 가능성 높음
+        if (libertyCount === 1) {
+            attackScore += 3.0; // 다음 턴에 잡을 수 있는 위치
+        } else if (libertyCount === 2) {
+            attackScore += 2.0; // 2턴 안에 잡을 수 있는 위치
+        } else if (libertyCount === 3) {
+            attackScore += 1.0; // 위협적인 위치
+        }
+
+        // 이 수가 유저 그룹의 자유도를 감소시켰는지 확인 (이전 상태와 비교)
+        const oldOpponentGroups = logic.getAllGroups(opponentPlayer, game.boardState);
+        const oldGroup = oldOpponentGroups.find(g => 
+            g.stones.some(s => group.stones.some(gs => gs.x === s.x && gs.y === s.y))
+        );
+        if (oldGroup && libertyCount < oldGroup.libertyPoints.size) {
+            attackScore += 1.5; // 자유도를 줄인 수
+        }
+    }
+
+    return attackScore;
+}
+
+/**
+ * 유저 돌과의 근접성 평가 - 유저 돌 근처로 가는 수
+ */
+function evaluateProximityToOpponent(
     game: types.LiveGameSession,
     logic: ReturnType<typeof getGoLogic>,
     point: Point,
@@ -862,24 +914,88 @@ function evaluateDanger(
 ): number {
     const boardSize = game.settings.boardSize;
     let minDistance = Infinity;
+    let nearbyOpponentStones = 0;
 
-    // 모든 상대 돌과의 최단 거리 계산
+    // 모든 유저 돌과의 최단 거리 계산
     for (let y = 0; y < boardSize; y++) {
         for (let x = 0; x < boardSize; x++) {
             if (game.boardState[y][x] === opponentPlayer) {
                 const distance = Math.abs(point.x - x) + Math.abs(point.y - y);
                 minDistance = Math.min(minDistance, distance);
+                
+                // 근처의 유저 돌 개수 (거리 2 이내)
+                if (distance <= 2) {
+                    nearbyOpponentStones++;
+                }
             }
         }
     }
 
-    // 거리가 멀수록 높은 점수 (안전)
-    if (minDistance === Infinity) return 1.0; // 상대 돌이 없음
-    if (minDistance >= 4) return 1.0; // 매우 안전
-    if (minDistance >= 3) return 0.8; // 안전
-    if (minDistance >= 2) return 0.5; // 보통
-    if (minDistance >= 1) return 0.2; // 위험
-    return 0.0; // 매우 위험 (인접)
+    // 거리가 가까울수록 높은 점수 (공격적)
+    if (minDistance === Infinity) return 0.0; // 유저 돌이 없음
+    if (minDistance === 1) return 1.0; // 바로 인접 (최고 점수)
+    if (minDistance === 2) return 0.8; // 2칸 거리
+    if (minDistance === 3) return 0.6; // 3칸 거리
+    if (minDistance >= 4) return 0.2; // 멀면 낮은 점수
+
+    // 근처에 유저 돌이 많을수록 더 높은 점수
+    return Math.min(1.0, nearbyOpponentStones / 3.0);
+}
+
+/**
+ * 유저 그룹 포위 기회 평가
+ */
+function evaluateSurroundOpportunity(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    const boardSize = game.settings.boardSize;
+    let surroundScore = 0;
+
+    // 이 수 주변의 유저 그룹 확인
+    const directions = [
+        { x: -1, y: 0 }, { x: 1, y: 0 },
+        { x: 0, y: -1 }, { x: 0, y: 1 }
+    ];
+
+    for (const dir of directions) {
+        const nx = point.x + dir.x;
+        const ny = point.y + dir.y;
+        if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize) {
+            if (testResult.newBoardState[ny][nx] === opponentPlayer) {
+                // 유저 돌과 인접한 위치에 자신의 돌을 둠
+                const opponentGroups = logic.getAllGroups(opponentPlayer, testResult.newBoardState);
+                const nearbyGroup = opponentGroups.find(g => 
+                    g.stones.some(p => p.x === nx && p.y === ny)
+                );
+                
+                if (nearbyGroup) {
+                    const libertyCount = nearbyGroup.libertyPoints.size;
+                    // 유저 그룹을 포위하는 수일수록 높은 점수
+                    if (libertyCount <= 2) {
+                        surroundScore += 2.0;
+                    } else if (libertyCount <= 3) {
+                        surroundScore += 1.0;
+                    }
+                }
+            }
+        }
+    }
+
+    return surroundScore;
 }
 
 /**
@@ -903,13 +1019,13 @@ function evaluateSafety(
 
     // 자신의 그룹의 자유도 확인
     const groups = logic.getAllGroups(aiPlayer, testResult.newBoardState);
-    const pointGroup = groups.find(g => g.some(p => p.x === point.x && p.y === point.y));
+    const pointGroup = groups.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
     
     if (pointGroup) {
-        const liberties = logic.getGroupLiberties(pointGroup, testResult.newBoardState);
-        if (liberties.length >= 3) return 1.0; // 매우 안전
-        if (liberties.length >= 2) return 0.7; // 안전
-        if (liberties.length >= 1) return 0.3; // 위험
+        const libertyCount = pointGroup.libertyPoints.size;
+        if (libertyCount >= 3) return 1.0; // 매우 안전
+        if (libertyCount >= 2) return 0.7; // 안전
+        if (libertyCount >= 1) return 0.3; // 위험
         return 0.0; // 매우 위험 (자유도 없음)
     }
 
@@ -990,12 +1106,12 @@ function evaluateLibertyGain(
     if (!testResult.isValid) return 0;
 
     const groups = logic.getAllGroups(aiPlayer, testResult.newBoardState);
-    const pointGroup = groups.find(g => g.some(p => p.x === point.x && p.y === point.y));
+    const pointGroup = groups.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
     
     if (pointGroup) {
-        const liberties = logic.getGroupLiberties(pointGroup, testResult.newBoardState);
+        const libertyCount = pointGroup.libertyPoints.size;
         // 자유도가 많을수록 좋음
-        return Math.min(1.0, liberties.length / 5.0);
+        return Math.min(1.0, libertyCount / 5.0);
     }
 
     return 0.3; // 새로운 그룹

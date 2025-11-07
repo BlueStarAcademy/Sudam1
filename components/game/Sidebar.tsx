@@ -23,7 +23,7 @@ interface SidebarProps extends GameProps {
     onClose?: () => void;
 }
 
-const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () => void }> = ({ session, onClose }) => {
+export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () => void }> = ({ session, onClose }) => {
     const { mode, settings, effectiveCaptureTargets } = session;
 
     const renderSetting = (label: string, value: React.ReactNode) => (
@@ -214,7 +214,7 @@ const UserListPanel: React.FC<SidebarProps & { onClose?: () => void }> = ({ sess
 };
 
 
-const ChatPanel: React.FC<Omit<SidebarProps, 'onLeaveOrResign' | 'isNoContestLeaveAvailable'>> = (props) => {
+export const ChatPanel: React.FC<Omit<SidebarProps, 'onLeaveOrResign' | 'isNoContestLeaveAvailable'>> = (props) => {
     const { session, isSpectator, onAction, waitingRoomChat, gameChat, onClose, onViewUser } = props;
     const { mode } = session;
     const { currentUserWithStatus, handlers, allUsers } = useAppContext();

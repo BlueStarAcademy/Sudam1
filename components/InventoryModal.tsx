@@ -398,10 +398,10 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
         return Math.max(400, Math.min(950, baseWidth));
     }, [windowWidth]);
     
-    // 뷰포트 크기에 비례한 창 높이 계산 (75% 높이, 최소 350px, 최대 850px)
+    // 뷰포트 크기에 비례한 창 높이 계산 (80% 높이, 최소 450px, 최대 900px) - 인벤토리 슬롯 2줄 이상 보이도록
     const calculatedHeight = useMemo(() => {
-        const baseHeight = windowHeight * 0.75;
-        return Math.max(350, Math.min(850, baseHeight));
+        const baseHeight = windowHeight * 0.80;
+        return Math.max(450, Math.min(900, baseHeight));
     }, [windowHeight]);
     
     // 창 크기에 비례한 스케일 팩터 계산 (기준: 950px 너비, 최소 0.4까지 허용)
@@ -421,7 +421,13 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
 
     const selectedItem = useMemo(() => {
         if (!selectedItemId) return null;
-        return currentUser.inventory.find(item => item.id === selectedItemId) || null;
+        // 현재 인벤토리에서 아이템이 사라졌을 경우 선택 해제
+        const found = currentUser.inventory.find(item => item.id === selectedItemId);
+        if (!found && selectedItemId) {
+            // 아이템이 사라진 경우 선택 해제 (다음 렌더링에서 처리)
+            setTimeout(() => setSelectedItemId(null), 0);
+        }
+        return found || null;
     }, [selectedItemId, currentUser.inventory]);
 
     const expansionCost = useMemo(() => {
@@ -824,7 +830,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                 </div>
 
                 {/* Bottom section: Inventory grid */}
-                <div className="bg-gray-900 overflow-hidden flex flex-col" style={{ flex: '1 1 0', minHeight: `${Math.max(200 * scaleFactor, windowHeight * 0.25)}px`, padding: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingTop: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingBottom: `${Math.max(12, Math.round(16 * scaleFactor))}px`, marginBottom: 0 }}>
+                <div className="bg-gray-900 overflow-hidden flex flex-col" style={{ flex: '1 1 0', minHeight: `${Math.max(250 * scaleFactor, windowHeight * 0.35)}px`, padding: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingTop: `${Math.max(12, Math.round(16 * scaleFactor))}px`, paddingBottom: `${Math.max(12, Math.round(16 * scaleFactor))}px`, marginBottom: 0 }}>
                     <div className="flex-shrink-0 bg-gray-900/50 rounded-md mb-2" style={{ padding: `${Math.max(6, Math.round(8 * scaleFactor))}px`, marginBottom: `${Math.max(6, Math.round(8 * scaleFactor))}px` }}>
                         <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2">

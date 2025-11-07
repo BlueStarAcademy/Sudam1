@@ -413,21 +413,21 @@ const TournamentCard: React.FC<{
     
     return (
         <div 
-            className="group bg-gray-800 rounded-lg p-3 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full relative"
+            className="group bg-gray-800 rounded-lg p-2 sm:p-3 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full relative"
             onClick={action}
         >
             {/* 보상 미수령 표시: 붉은 점 */}
             {hasUnclaimedReward && (
-                <div className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full z-10 border-2 border-gray-800"></div>
+                <div className="absolute top-1.5 right-1.5 sm:top-2 sm:right-2 w-2.5 h-2.5 sm:w-3 sm:h-3 bg-red-500 rounded-full z-10 border-2 border-gray-800"></div>
             )}
-            <div className="flex justify-between items-center mb-2">
-                <h2 className="text-lg font-bold">{definition.name}</h2>
-                <span className="text-sm text-gray-400">입장가능횟수({availableEntries}/1)</span>
+            <div className="flex justify-between items-center mb-1.5 sm:mb-2">
+                <h2 className="text-xs sm:text-sm lg:text-lg font-bold">{definition.name}</h2>
+                <span className="text-[10px] sm:text-xs text-gray-400">입장({availableEntries}/1)</span>
             </div>
             <div className="w-full aspect-video bg-gray-700 rounded-md flex items-center justify-center text-gray-500 overflow-hidden relative flex-grow">
                 <img src={definition.image} alt={definition.name} className="w-full h-full object-cover" />
             </div>
-            <span className="font-bold text-sm mt-2 text-yellow-300">{buttonText} &rarr;</span>
+            <span className="font-bold text-[10px] sm:text-xs lg:text-sm mt-1.5 sm:mt-2 text-yellow-300">{buttonText} &rarr;</span>
         </div>
     );
 };
@@ -484,18 +484,18 @@ const StatsDisplayPanel: React.FC<{ currentUser: UserWithStatus }> = ({ currentU
     const { coreStatBonuses } = useMemo(() => calculateUserEffects(currentUser), [currentUser]);
     
     return (
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-1.5 sm:gap-2">
             {Object.values(CoreStat).map(stat => {
                 const baseValue = (currentUser.baseStats[stat] || 0) + (currentUser.spentStatPoints?.[stat] || 0);
                 // Align with calculateTotalStats: final = floor((base + flat) * (1 + percent/100))
                 const finalValue = Math.floor((baseValue + coreStatBonuses[stat].flat) * (1 + coreStatBonuses[stat].percent / 100));
                 const bonus = finalValue - baseValue;
                 return (
-                    <div key={stat} className="bg-gray-700/50 p-2 rounded-md flex items-center justify-between text-xs">
+                    <div key={stat} className="bg-gray-700/50 p-1.5 sm:p-2 rounded-md flex items-center justify-between text-[10px] sm:text-xs">
                         <span className="font-semibold text-gray-300">{coreStatAbbreviations[stat]}</span>
                         <span className="font-mono font-bold" title={`기본: ${baseValue}, 장비: ${bonus}`}>
                             {finalValue}
-                            {bonus > 0 && <span className="text-green-400 text-xs ml-0.5">(+{bonus})</span>}
+                            {bonus > 0 && <span className="text-green-400 text-[9px] sm:text-xs ml-0.5">(+{bonus})</span>}
                         </span>
                     </div>
                 );
@@ -594,18 +594,18 @@ const TournamentLobby: React.FC = () => {
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto flex flex-col h-[calc(100vh-5rem)] relative overflow-hidden">
-            <header className="flex justify-between items-center mb-6 flex-shrink-0">
+            <header className="flex justify-between items-center mb-4 sm:mb-6 flex-shrink-0">
                 <button onClick={() => window.location.hash = '#/profile'} className="transition-transform active:scale-90 filter hover:drop-shadow-lg">
-                    <img src="/images/button/back.png" alt="Back" className="w-10 h-10" />
+                    <img src="/images/button/back.png" alt="Back" className="w-8 h-8 sm:w-10 sm:h-10" />
                 </button>
-                <h1 className="text-3xl lg:text-4xl font-bold">챔피언십</h1>
+                <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold">챔피언십</h1>
                 {isMobile ? (
                     <button 
                         onClick={() => setIsMobileSidebarOpen(true)}
-                        className="w-10 h-10 flex items-center justify-center bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-gray-700/80 transition-colors"
+                        className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-gray-700/80 transition-colors"
                         aria-label="메뉴 열기"
                     >
-                        <span className="text-2xl font-bold text-white">{'<'}</span>
+                        <span className="text-lg sm:text-2xl font-bold text-white">{'>'}</span>
                     </button>
                 ) : (
                     <div className="w-10"></div>
@@ -614,65 +614,75 @@ const TournamentLobby: React.FC = () => {
             
             <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0 overflow-hidden">
                 <main className="flex-grow flex flex-col gap-6 min-h-0 overflow-hidden">
-                    <div className="grid grid-cols-3 gap-4 flex-shrink-0">
+                    <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4 flex-shrink-0">
                         <TournamentCard type="neighborhood" onClick={() => handleEnterArena('neighborhood')} onContinue={() => handleContinueTournament('neighborhood')} inProgress={neighborhoodState || null} currentUser={currentUserWithStatus} />
                         <TournamentCard type="national" onClick={() => handleEnterArena('national')} onContinue={() => handleContinueTournament('national')} inProgress={nationalState || null} currentUser={currentUserWithStatus} />
                         <TournamentCard type="world" onClick={() => handleEnterArena('world')} onContinue={() => handleContinueTournament('world')} inProgress={worldState || null} currentUser={currentUserWithStatus} />
                     </div>
                     
-                    {/* 장착 장비 패널 */}
-                    <div className="bg-gray-800/50 rounded-lg p-4 shadow-lg flex-shrink-0">
-                        <div className="grid grid-cols-2 gap-4">
-                            {/* 왼쪽: 장착 장비 및 프리셋 */}
-                            <div className="flex flex-col gap-3">
-                                <h3 className="font-semibold text-gray-200 text-sm">장착 장비</h3>
-                                <div className="grid grid-cols-3 gap-2">
-                                    {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
-                                        const item = getItemForSlot(slot);
-                                        return (
-                                            <div key={slot} className="w-full">
-                                                <EquipmentSlotDisplay
-                                                    slot={slot}
-                                                    item={item}
-                                                    onClick={() => item && handlers.openViewingItem(item, true)}
-                                                />
+                    {/* 데스크톱: 채팅창 / 장착장비+능력치 / 일일 획득 가능점수 패널 - 1x3 배열 */}
+                    {/* 모바일: 장착장비+일일획득점수 한 줄, 그 아래 채팅 */}
+                    <div className="flex-1 flex flex-col lg:grid lg:grid-cols-12 gap-3 sm:gap-4 lg:gap-6 min-h-0 overflow-hidden">
+                        {/* 모바일: 장착 장비 + 일일 획득 가능점수 패널을 한 줄에 */}
+                        <div className="lg:hidden grid grid-cols-2 gap-3 sm:gap-4 flex-shrink-0">
+                            {/* 장착 장비 패널 (모바일) */}
+                            <div className="bg-gray-800/50 rounded-lg p-2 sm:p-3 shadow-lg min-h-0 flex flex-col overflow-hidden">
+                                <div className="flex flex-col gap-2 h-full min-h-0">
+                                    {/* 장착 장비 섹션 */}
+                                    <div className="flex flex-col gap-2 flex-shrink-0">
+                                        <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                                            {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
+                                                const item = getItemForSlot(slot);
+                                                return (
+                                                    <div key={slot} className="w-full">
+                                                        <EquipmentSlotDisplay
+                                                            slot={slot}
+                                                            item={item}
+                                                            onClick={() => item && handlers.openViewingItem(item, true)}
+                                                        />
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="flex flex-col gap-1.5">
+                                            <Button 
+                                                onClick={handlers.openEquipmentEffectsModal} 
+                                                colorScheme="blue" 
+                                                className="!text-[10px] sm:!text-xs w-full !py-1 !px-2"
+                                            >
+                                                장비 효과 보기
+                                            </Button>
+                                            <div>
+                                                <select
+                                                    value={selectedPreset}
+                                                    onChange={handlePresetChange}
+                                                    className="bg-gray-700 border border-gray-600 text-[10px] sm:text-xs rounded-md p-1 sm:p-1.5 focus:ring-purple-500 focus:border-purple-500 w-full text-gray-200"
+                                                >
+                                                    {presets && presets.map((preset, index) => (
+                                                        <option key={index} value={index}>{preset.name}</option>
+                                                    ))}
+                                                </select>
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                                <div className="flex flex-col gap-2">
-                                    <Button 
-                                        onClick={handlers.openEquipmentEffectsModal} 
-                                        colorScheme="blue" 
-                                        className="!text-xs w-full"
-                                    >
-                                        장비 효과 보기
-                                    </Button>
-                                    <div>
-                                        <label className="block text-xs text-gray-400 mb-1">프리셋</label>
-                                        <select
-                                            value={selectedPreset}
-                                            onChange={handlePresetChange}
-                                            className="bg-gray-700 border border-gray-600 text-xs rounded-md p-2 focus:ring-purple-500 focus:border-purple-500 w-full text-gray-200"
-                                        >
-                                            {presets && presets.map((preset, index) => (
-                                                <option key={index} value={index}>{preset.name}</option>
-                                            ))}
-                                        </select>
+                                        </div>
+                                    </div>
+                                    
+                                    {/* 능력치 섹션 */}
+                                    <div className="flex flex-col gap-2 flex-1 min-h-0">
+                                        <div className="flex-1 min-h-0">
+                                            <StatsDisplayPanel currentUser={currentUserWithStatus} />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
                             
-                            {/* 오른쪽: 6가지 능력치 (한 줄에 2가지씩) */}
-                            <div className="flex flex-col gap-3">
-                                <h3 className="font-semibold text-gray-200 text-sm">능력치</h3>
-                                <StatsDisplayPanel currentUser={currentUserWithStatus} />
+                            {/* 일일 획득 가능점수 패널 (모바일) */}
+                            <div className="flex flex-col min-h-0 overflow-hidden">
+                                <PointsInfoPanel />
                             </div>
                         </div>
-                    </div>
-
-                    <div className="flex-1 grid grid-cols-12 gap-6 min-h-0 overflow-hidden">
-                        <div className="col-span-8 bg-gray-800/50 rounded-lg shadow-lg min-h-0 flex flex-col overflow-hidden">
+                        
+                        {/* 채팅창 - 모바일에서는 아래에, 데스크톱에서는 왼쪽에 */}
+                        <div className="flex-1 lg:col-span-5 bg-gray-800/50 rounded-lg shadow-lg min-h-0 flex flex-col overflow-hidden">
                             <ChatWindow
                                 messages={waitingRoomChats.global || []}
                                 mode="global"
@@ -681,7 +691,59 @@ const TournamentLobby: React.FC = () => {
                                 locationPrefix="[챔피언십]"
                             />
                         </div>
-                        <div className="col-span-4 flex flex-col min-h-0 overflow-hidden">
+                        
+                        {/* 데스크톱: 장착 장비 + 능력치 패널 (세로 배치) */}
+                        <div className="hidden lg:flex col-span-4 bg-gray-800/50 rounded-lg p-4 shadow-lg min-h-0 flex-col overflow-hidden">
+                            <div className="flex flex-col gap-4 h-full min-h-0">
+                                {/* 장착 장비 섹션 */}
+                                <div className="flex flex-col gap-3 flex-shrink-0">
+                                    <div className="grid grid-cols-3 gap-2">
+                                        {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
+                                            const item = getItemForSlot(slot);
+                                            return (
+                                                <div key={slot} className="w-full">
+                                                    <EquipmentSlotDisplay
+                                                        slot={slot}
+                                                        item={item}
+                                                        onClick={() => item && handlers.openViewingItem(item, true)}
+                                                    />
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="flex flex-col gap-2">
+                                        <Button 
+                                            onClick={handlers.openEquipmentEffectsModal} 
+                                            colorScheme="blue" 
+                                            className="!text-xs w-full"
+                                        >
+                                            장비 효과 보기
+                                        </Button>
+                                        <div>
+                                            <select
+                                                value={selectedPreset}
+                                                onChange={handlePresetChange}
+                                                className="bg-gray-700 border border-gray-600 text-xs rounded-md p-2 focus:ring-purple-500 focus:border-purple-500 w-full text-gray-200"
+                                            >
+                                                {presets && presets.map((preset, index) => (
+                                                    <option key={index} value={index}>{preset.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                {/* 능력치 섹션 */}
+                                <div className="flex flex-col gap-3 flex-1 min-h-0">
+                                    <div className="flex-1 min-h-0">
+                                        <StatsDisplayPanel currentUser={currentUserWithStatus} />
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        {/* 데스크톱: 일일 획득 가능점수 패널 */}
+                        <div className="hidden lg:flex col-span-3 flex flex-col min-h-0 overflow-hidden">
                             <PointsInfoPanel />
                         </div>
                     </div>
@@ -701,25 +763,25 @@ const TournamentLobby: React.FC = () => {
                 </aside>
             </div>
 
-            {/* Mobile Sidebar */}
+            {/* Mobile Sidebar - 오른쪽에서 왼쪽으로 열림 */}
             {isMobile && (
                 <>
-                    <div className={`fixed top-0 left-0 h-full w-[360px] bg-gray-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'} flex flex-col`}>
-                        <div className="flex justify-between items-center p-2 border-b border-gray-600 flex-shrink-0">
-                            <h3 className="text-lg font-bold">메뉴</h3>
-                            <button onClick={() => setIsMobileSidebarOpen(false)} className="text-2xl font-bold text-gray-300 hover:text-white">×</button>
+                    <div className={`fixed top-0 right-0 h-full w-[320px] sm:w-[360px] bg-gray-800 shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'} flex flex-col`}>
+                        <div className="flex justify-between items-center p-2 sm:p-3 border-b border-gray-600 flex-shrink-0">
+                            <h3 className="text-base sm:text-lg font-bold">메뉴</h3>
+                            <button onClick={() => setIsMobileSidebarOpen(false)} className="text-xl sm:text-2xl font-bold text-gray-300 hover:text-white">×</button>
                         </div>
                         <div className="flex flex-col gap-2 p-2 flex-grow min-h-0 overflow-y-auto">
                             {/* Quick Access Sidebar - Horizontal */}
-                            <div className="flex-shrink-0 p-2 bg-gray-900/50 rounded-lg border border-gray-700">
+                            <div className="flex-shrink-0 p-1.5 sm:p-2 bg-gray-900/50 rounded-lg border border-gray-700">
                                 <QuickAccessSidebar mobile={true} />
                             </div>
                             {/* Weekly Competitors Panel */}
-                            <div className="h-[300px] min-h-[300px] bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+                            <div className="h-[250px] sm:h-[300px] min-h-[250px] sm:min-h-[300px] bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
                                 <WeeklyCompetitorsPanel setHasRankChanged={setHasRankChanged}/>
                             </div>
                             {/* Championship Ranking Panel */}
-                            <div className="flex-1 min-h-[300px] bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
+                            <div className="flex-1 min-h-[250px] sm:min-h-[300px] bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
                                 <ChampionshipRankingPanel />
                             </div>
                         </div>

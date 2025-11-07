@@ -1,4 +1,4 @@
-import { Player, GameMode, LeagueTier, UserStatus, WinReason, RPSChoice, DiceGoVariant, AlkkagiPlacementType, AlkkagiLayoutType, Point, Move, BoardState, EquipmentSlot, InventoryItemType, ItemGrade, CoreStat, ItemOptionType, TournamentType, TournamentSimulationStatus, GameStatus, SinglePlayerLevel } from './enums.js';
+import { Player, GameMode, LeagueTier, UserStatus, WinReason, RPSChoice, DiceGoVariant, AlkkagiPlacementType, AlkkagiLayoutType, Point, Move, BoardState, EquipmentSlot, InventoryItemType, ItemGrade, CoreStat, ItemOptionType, TournamentType, TournamentSimulationStatus, GameStatus, SinglePlayerLevel, GameCategory } from './enums.js';
 // FIX: ChatMessage is now defined in api.ts to break circular dependency.
 import { UserStatusInfo, ChatMessage } from './api.js';
 
@@ -302,6 +302,7 @@ export type User = {
   statResetCountToday?: number;
   lastStatResetDate?: string;
   singlePlayerProgress?: number;
+  clearedSinglePlayerStages?: string[]; // 클리어한 스테이지 ID 배열 (최초 클리어 여부 추적용)
   bonusStatPoints?: number;
   singlePlayerMissions?: Record<string, SinglePlayerMissionState>;
   guildId?: string;
@@ -356,7 +357,6 @@ export type SinglePlayerStageInfo = {
     actionPointCost: number;
     boardSize: 7 | 9 | 11 | 13;
     targetScore: { black: number; white: number; };
-    katagoLevel: number;
     placements: {
         black: number;
         white: number;
@@ -384,6 +384,8 @@ export type SinglePlayerStageInfo = {
     // 히든바둑 모드: 히든/스캔 아이템 개수
     hiddenCount?: number; // 히든 아이템 개수
     scanCount?: number; // 스캔 아이템 개수
+    // 흑(유저)의 턴 수 제한
+    blackTurnLimit?: number; // 유저(흑)의 턴 수 제한
     // AI 히든 아이템 사용 턴 범위 (유단자 히든바둑용)
     aiHiddenItemTurnRange?: { min: number; max: number }; // AI가 히든 아이템을 사용할 턴 수 범위
 };
@@ -713,8 +715,10 @@ export type LiveGameSession = {
       [playerId: string]: number;
   };
   pendingSystemMessages?: ChatMessage[];
-  isSinglePlayer?: boolean;
+  isSinglePlayer?: boolean;  // Deprecated: Use gameCategory instead
+  gameCategory?: GameCategory;  // 게임 카테고리: normal, singleplayer, tower
   stageId?: string;
+  towerFloor?: number;  // 도전의 탑 층수
   blackPatternStones?: Point[];
   whitePatternStones?: Point[];
   whiteTurnsPlayed?: number; // 살리기 바둑 모드: 백(AI)이 둔 턴 수

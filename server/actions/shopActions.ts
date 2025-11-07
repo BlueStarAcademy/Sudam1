@@ -10,6 +10,7 @@ import { broadcast } from '../socket.js';
 import { isSameDayKST, isDifferentWeekKST } from '../../utils/timeUtils.js';
 import { CONSUMABLE_ITEMS, MATERIAL_ITEMS, ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT, SHOP_BORDER_ITEMS } from '../../constants';
 import { addItemsToInventory } from '../../utils/inventoryUtils.js';
+import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
 
 type HandleActionResult = { 
     clientResponse?: any;
@@ -71,28 +72,41 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                     user.diamonds -= totalDiamondCost;
                 }
 
-                user.inventory = updatedInventory;
+                // 인벤토리를 깊은 복사하여 새로운 배열로 할당 (참조 문제 방지)
+                user.inventory = JSON.parse(JSON.stringify(updatedInventory));
                 
                 try {
+                    // 데이터베이스에 저장
                     await db.updateUser(user);
+                    
+                    // 저장 후 DB에서 다시 읽어서 검증 (저장이 제대로 되었는지 확인)
+                    const savedUser = await db.getUser(user.id);
+                    if (!savedUser) {
+                        console.error(`[BUY_SHOP_ITEM] User not found after save: ${user.id}`);
+                        return { error: '저장 후 사용자를 찾을 수 없습니다.' };
+                    }
+                    
+                    // 저장된 인벤토리 길이 확인
+                    if (!savedUser.inventory || savedUser.inventory.length !== user.inventory.length) {
+                        console.error(`[BUY_SHOP_ITEM] Inventory mismatch after save. Expected: ${user.inventory.length}, Got: ${savedUser.inventory?.length || 0}`);
+                        // 저장된 사용자 데이터 사용 (DB에 실제로 저장된 것)
+                        user = savedUser;
+                    } else {
+                        // 저장이 성공했으므로 저장된 사용자 데이터 사용
+                        user = savedUser;
+                    }
                 } catch (error: any) {
                     console.error(`[BUY_SHOP_ITEM] Error updating user ${user.id}:`, error);
+                    console.error(`[BUY_SHOP_ITEM] Error stack:`, error.stack);
                     return { error: '데이터 저장 중 오류가 발생했습니다.' };
                 }
 
-                // 깊은 복사로 updatedUser 생성
-                // updatedInventory가 배열인지 확인하고, 각 아이템도 깊은 복사
-                const safeInventory = Array.isArray(updatedInventory) 
-                    ? updatedInventory.map(item => JSON.parse(JSON.stringify(item)))
-                    : [];
-                
-                const updatedUser = JSON.parse(JSON.stringify({
-                    ...user,
-                    inventory: safeInventory
-                }));
+                // 선택적 필드만 반환 (메시지 크기 최적화)
+                const updatedUser = getSelectiveUserUpdate(user, 'BUY_SHOP_ITEM');
 
-                // WebSocket으로 사용자 업데이트 브로드캐스트
-                broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+                // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+                const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+                broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
 
                 return { clientResponse: { obtainedItemsBulk: obtainedItems, updatedUser } };
             } catch (error: any) {
@@ -176,7 +190,8 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 user.diamonds -= totalCost.diamonds;
             }
             
-            user.inventory = updatedInventory;
+            // 인벤토리를 깊은 복사하여 새로운 배열로 할당 (참조 문제 방지)
+            user.inventory = JSON.parse(JSON.stringify(updatedInventory));
             
             if (!user.isAdmin) {
                 if (resetPurchaseRecord || !user.dailyShopPurchases[itemId]) {
@@ -186,20 +201,31 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 user.dailyShopPurchases[itemId].date = now;
             }
             
-            await db.updateUser(user);
+            try {
+                // 데이터베이스에 저장
+                await db.updateUser(user);
+                
+                // 저장 후 DB에서 다시 읽어서 검증
+                const savedUser = await db.getUser(user.id);
+                if (!savedUser) {
+                    console.error(`[BUY_MATERIAL_BOX] User not found after save: ${user.id}`);
+                    return { error: '저장 후 사용자를 찾을 수 없습니다.' };
+                }
+                
+                // 저장된 사용자 데이터 사용 (DB에 실제로 저장된 것)
+                user = savedUser;
+            } catch (error: any) {
+                console.error(`[BUY_MATERIAL_BOX] Error updating user ${user.id}:`, error);
+                console.error(`[BUY_MATERIAL_BOX] Error stack:`, error.stack);
+                return { error: '데이터 저장 중 오류가 발생했습니다.' };
+            }
             
-            // 깊은 복사로 updatedUser 생성
-            const safeInventory = Array.isArray(updatedInventory) 
-                ? updatedInventory.map(item => JSON.parse(JSON.stringify(item)))
-                : [];
-            
-            const updatedUser = JSON.parse(JSON.stringify({
-                ...user,
-                inventory: safeInventory
-            }));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'BUY_MATERIAL_BOX');
 
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
 
             const aggregated: Record<string, number> = {};
             allObtainedItems.forEach(item => {
@@ -374,21 +400,34 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 user.dailyShopPurchases[itemId].date = now;
             }
 
-            user.inventory = updatedInventory;
-            await db.updateUser(user);
-
-            // 깊은 복사로 updatedUser 생성
-            const safeInventory = Array.isArray(updatedInventory) 
-                ? updatedInventory.map(item => JSON.parse(JSON.stringify(item)))
-                : [];
+            // 인벤토리를 깊은 복사하여 새로운 배열로 할당 (참조 문제 방지)
+            user.inventory = JSON.parse(JSON.stringify(updatedInventory));
             
-            const updatedUser = JSON.parse(JSON.stringify({
-                ...user,
-                inventory: safeInventory
-            }));
+            try {
+                // 데이터베이스에 저장
+                await db.updateUser(user);
+                
+                // 저장 후 DB에서 다시 읽어서 검증
+                const savedUser = await db.getUser(user.id);
+                if (!savedUser) {
+                    console.error(`[BUY_CONDITION_POTION] User not found after save: ${user.id}`);
+                    return { error: '저장 후 사용자를 찾을 수 없습니다.' };
+                }
+                
+                // 저장된 사용자 데이터 사용 (DB에 실제로 저장된 것)
+                user = savedUser;
+            } catch (error: any) {
+                console.error(`[BUY_CONDITION_POTION] Error updating user ${user.id}:`, error);
+                console.error(`[BUY_CONDITION_POTION] Error stack:`, error.stack);
+                return { error: '데이터 저장 중 오류가 발생했습니다.' };
+            }
 
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(user, 'BUY_CONDITION_POTION');
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
 
             return { 
                 clientResponse: { 

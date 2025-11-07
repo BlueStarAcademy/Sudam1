@@ -11,10 +11,18 @@ const __dirname = path.dirname(__filename);
 
 // 프로젝트 루트 기준으로 경로 설정 (process.cwd() 사용)
 const PROJECT_ROOT = process.cwd();
-const KATAGO_PATH = path.resolve(PROJECT_ROOT, 'katago/katago.exe');
-const MODEL_PATH = path.resolve(PROJECT_ROOT, 'katago/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz');
+
+// 환경 변수로 KataGo 경로 설정 가능
+const KATAGO_PATH = process.env.KATAGO_PATH || path.resolve(PROJECT_ROOT, 'katago/katago.exe');
+const MODEL_PATH = process.env.KATAGO_MODEL_PATH || path.resolve(PROJECT_ROOT, 'katago/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz');
 const CONFIG_PATH = path.resolve(__dirname, './temp_katago_config.cfg');
-const KATAGO_HOME_PATH = path.resolve(__dirname, './katago_home');
+const KATAGO_HOME_PATH = process.env.KATAGO_HOME_PATH || path.resolve(__dirname, './katago_home');
+
+// KataGo 설정 - 환경 변수로 조정 가능
+const KATAGO_NUM_ANALYSIS_THREADS = parseInt(process.env.KATAGO_NUM_ANALYSIS_THREADS || '4', 10);
+const KATAGO_NUM_SEARCH_THREADS = parseInt(process.env.KATAGO_NUM_SEARCH_THREADS || '8', 10);
+const KATAGO_MAX_VISITS = parseInt(process.env.KATAGO_MAX_VISITS || '1000', 10);
+const KATAGO_NN_MAX_BATCH_SIZE = parseInt(process.env.KATAGO_NN_MAX_BATCH_SIZE || '16', 10);
 
 const LETTERS = "ABCDEFGHJKLMNOPQRST";
 
@@ -181,6 +189,25 @@ class KataGoManager {
         // Eager start removed. Will be started lazily on first query.
     }
 
+    // 서버 시작 시 미리 초기화할 수 있도록 public 메서드로 변경
+    public async ensureStarted(): Promise<void> {
+        if (!this.process && !this.isStarting && !this.readyPromise) {
+            try {
+                await this.start();
+            } catch (error: any) {
+                // 초기화 실패는 로그만 남기고 계속 진행 (KataGo 없이도 서버는 동작 가능)
+                console.error('[KataGo] Failed to start engine during initialization:', error.message);
+            }
+        } else if (this.readyPromise) {
+            // 이미 시작 중이면 대기
+            try {
+                await this.readyPromise;
+            } catch (error: any) {
+                console.error('[KataGo] Engine initialization promise rejected:', error.message);
+            }
+        }
+    }
+
     private start(): Promise<void> {
         if (this.readyPromise) {
             return this.readyPromise;
@@ -190,33 +217,79 @@ class KataGoManager {
         this.readyPromise = new Promise<void>((resolve, reject) => {
             console.log('[KataGo] Lazily attempting to start engine...');
 
-            // 경로 확인 및 로깅
-            console.log(`[KataGo] Checking path: ${KATAGO_PATH}`);
-            console.log(`[KataGo] __dirname: ${__dirname}`);
-            console.log(`[KataGo] Path exists: ${fs.existsSync(KATAGO_PATH)}`);
+            // 여러 경로 시도 (환경 변수 > 프로젝트 루트 katago 폴더 > 대체 경로들)
+            let actualKataGoPath = KATAGO_PATH;
+            let actualModelPath = MODEL_PATH;
             
-            if (!fs.existsSync(KATAGO_PATH)) {
-                // 대체 경로 시도
-                const altPath = path.resolve(process.cwd(), 'katago/katago.exe');
-                console.log(`[KataGo] Trying alternative path: ${altPath}`);
-                if (fs.existsSync(altPath)) {
-                    console.log(`[KataGo] Using alternative path: ${altPath}`);
-                    // KATAGO_PATH를 동적으로 변경할 수 없으므로, 직접 경로 사용
-                    const errorMsg = `[KataGo] Engine not found at ${KATAGO_PATH}. Please check the path. Expected: ${altPath}`;
-                    console.error(errorMsg);
-                    this.isStarting = false;
-                    this.readyPromise = null;
-                    return reject(new Error(errorMsg));
+            // 프로젝트 루트의 katago 폴더 경로 (가장 일반적인 위치)
+            const projectKatagoPath = path.resolve(PROJECT_ROOT, 'katago/katago.exe');
+            const projectModelPath = path.resolve(PROJECT_ROOT, 'katago/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz');
+            
+            const pathsToTry = [
+                // 1. 환경 변수로 명시적으로 설정된 경로 (최우선)
+                ...(process.env.KATAGO_PATH ? [KATAGO_PATH] : []),
+                // 2. 프로젝트 루트의 katago 폴더 (가장 일반적인 위치)
+                projectKatagoPath,
+                // 3. 기타 대체 경로들
+                path.resolve(__dirname, '../katago/katago.exe'),
+                path.resolve(__dirname, '../../katago/katago.exe'),
+                'C:\\katago\\katago.exe',
+                'D:\\katago\\katago.exe',
+            ];
+            
+            const modelPathsToTry = [
+                // 1. 환경 변수로 명시적으로 설정된 경로 (최우선)
+                ...(process.env.KATAGO_MODEL_PATH ? [MODEL_PATH] : []),
+                // 2. 프로젝트 루트의 katago 폴더 (가장 일반적인 위치)
+                projectModelPath,
+                // 3. 기타 대체 경로들
+                path.resolve(__dirname, '../katago/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz'),
+                path.resolve(__dirname, '../../katago/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz'),
+            ];
+            
+            console.log(`[KataGo] Checking path: ${KATAGO_PATH}`);
+            console.log(`[KataGo] PROJECT_ROOT: ${PROJECT_ROOT}`);
+            console.log(`[KataGo] __dirname: ${__dirname}`);
+            
+            // KataGo 실행 파일 찾기
+            let foundKataGo = false;
+            for (const tryPath of pathsToTry) {
+                if (fs.existsSync(tryPath)) {
+                    actualKataGoPath = tryPath;
+                    console.log(`[KataGo] Engine found at: ${actualKataGoPath}`);
+                    foundKataGo = true;
+                    break;
+                } else {
+                    console.log(`[KataGo] Not found at: ${tryPath}`);
                 }
-                
-                const errorMsg = `[KataGo] Engine not found at ${KATAGO_PATH}. Analysis will be unavailable.`;
+            }
+            
+            if (!foundKataGo) {
+                const errorMsg = `[KataGo] Engine not found. Tried paths:\n${pathsToTry.map(p => `  - ${p}`).join('\n')}\n\nPlease set KATAGO_PATH environment variable or place katago.exe in one of the expected locations.`;
                 console.error(errorMsg);
                 this.isStarting = false;
                 this.readyPromise = null;
                 return reject(new Error(errorMsg));
             }
             
-            console.log(`[KataGo] Engine found at ${KATAGO_PATH}`);
+            // 모델 파일 찾기
+            let foundModel = false;
+            for (const tryPath of modelPathsToTry) {
+                if (fs.existsSync(tryPath)) {
+                    actualModelPath = tryPath;
+                    console.log(`[KataGo] Model found at: ${actualModelPath}`);
+                    foundModel = true;
+                    break;
+                }
+            }
+            
+            if (!foundModel) {
+                const errorMsg = `[KataGo] Model file not found. Tried paths:\n${modelPathsToTry.map(p => `  - ${p}`).join('\n')}\n\nPlease set KATAGO_MODEL_PATH environment variable or place the model file in one of the expected locations.`;
+                console.error(errorMsg);
+                this.isStarting = false;
+                this.readyPromise = null;
+                return reject(new Error(errorMsg));
+            }
             
             try {
                 if (!fs.existsSync(KATAGO_HOME_PATH)) {
@@ -233,12 +306,18 @@ class KataGoManager {
             const configContent = `
 logFile = ./katago_analysis_log.txt
 homeDataDir = ${KATAGO_HOME_PATH.replace(/\\/g, '/')}
-nnMaxBatchSize = 16
+nnMaxBatchSize = ${KATAGO_NN_MAX_BATCH_SIZE}
 analysisPVLen = 10
-numAnalysisThreads = 4
-numSearchThreads = 8
-maxVisits = 1000
+numAnalysisThreads = ${KATAGO_NUM_ANALYSIS_THREADS}
+numSearchThreads = ${KATAGO_NUM_SEARCH_THREADS}
+maxVisits = ${KATAGO_MAX_VISITS}
             `.trim();
+            
+            console.log(`[KataGo] Configuration:`);
+            console.log(`  - Analysis Threads: ${KATAGO_NUM_ANALYSIS_THREADS}`);
+            console.log(`  - Search Threads: ${KATAGO_NUM_SEARCH_THREADS}`);
+            console.log(`  - Max Visits: ${KATAGO_MAX_VISITS}`);
+            console.log(`  - NN Max Batch Size: ${KATAGO_NN_MAX_BATCH_SIZE}`);
 
             try {
                 fs.writeFileSync(CONFIG_PATH, configContent);
@@ -251,9 +330,15 @@ maxVisits = 1000
             }
 
             try {
-                this.process = spawn(KATAGO_PATH, [
+                console.log(`[KataGo] Spawning process with:`);
+                console.log(`  - Executable: ${actualKataGoPath}`);
+                console.log(`  - Model: ${actualModelPath}`);
+                console.log(`  - Config: ${CONFIG_PATH}`);
+                console.log(`  - Home: ${KATAGO_HOME_PATH}`);
+                
+                this.process = spawn(actualKataGoPath, [
                     'analysis', 
-                    '-model', MODEL_PATH, 
+                    '-model', actualModelPath, 
                     '-config', CONFIG_PATH,
                 ], {
                     cwd: KATAGO_HOME_PATH
@@ -415,6 +500,19 @@ const getKataGoManager = (): KataGoManager => {
         kataGoManager = new KataGoManager();
     }
     return kataGoManager;
+};
+
+// 서버 시작 시 KataGo 엔진을 미리 초기화하는 함수
+export const initializeKataGo = async (): Promise<void> => {
+    try {
+        console.log('[KataGo] Initializing KataGo engine on server startup...');
+        const manager = getKataGoManager();
+        await manager.ensureStarted();
+        console.log('[KataGo] KataGo engine initialized and ready for analysis.');
+    } catch (error: any) {
+        console.error('[KataGo] Failed to initialize KataGo on startup:', error);
+        // 초기화 실패해도 서버는 계속 실행 (KataGo 없이도 서버는 동작 가능)
+    }
 };
 
 export const analyzeGame = async (session: LiveGameSession, options?: { maxVisits?: number }): Promise<AnalysisResult> => {

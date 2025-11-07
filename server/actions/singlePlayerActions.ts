@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
 import { type ServerAction, type User, type VolatileState, LiveGameSession, Player, GameMode, Point, BoardState, SinglePlayerStageInfo, SinglePlayerMissionState, UserStatus } from '../../types.js';
-import { SINGLE_PLAYER_STAGES, KATAGO_LEVEL_TO_MAX_VISITS, SINGLE_PLAYER_MISSIONS } from '../../constants/singlePlayerConstants';
+import { SINGLE_PLAYER_STAGES, SINGLE_PLAYER_MISSIONS } from '../../constants/singlePlayerConstants';
 import { getAiUser } from '../aiPlayer.js';
 import { broadcast } from '../socket.js';
 
@@ -26,6 +26,40 @@ const placeStonesOnBoard = (board: BoardState, boardSize: number, count: number,
         }
     }
     return placedStones;
+};
+
+/**
+ * 스테이지 ID로부터 AI 레벨 계산
+ * 입문1~10: 1단계, 입문11~20: 2단계
+ * 초급1~10: 3단계, 초급11~20: 4단계
+ * 중급1~10: 5단계, 중급11~20: 6단계
+ * 고급1~10: 7단계, 고급11~20: 8단계
+ * 유단자1~10: 9단계, 유단자11~20: 10단계
+ */
+const getAiLevelFromStageId = (stageId: string): number => {
+    const [levelName, stageNumStr] = stageId.split('-');
+    const stageNum = parseInt(stageNumStr, 10);
+    
+    if (isNaN(stageNum)) {
+        return 1; // 기본값
+    }
+    
+    const isFirstHalf = stageNum <= 10;
+    
+    switch (levelName) {
+        case '입문':
+            return isFirstHalf ? 1 : 2;
+        case '초급':
+            return isFirstHalf ? 3 : 4;
+        case '중급':
+            return isFirstHalf ? 5 : 6;
+        case '고급':
+            return isFirstHalf ? 7 : 8;
+        case '유단자':
+            return isFirstHalf ? 9 : 10;
+        default:
+            return 1; // 기본값
+    }
 };
 
 const generateSinglePlayerBoard = (stage: SinglePlayerStageInfo): { board: BoardState, blackPattern: Point[], whitePattern: Point[] } => {
@@ -106,11 +140,15 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 }
             }
 
+            // 스테이지별 AI 레벨 계산
+            const aiLevel = getAiLevelFromStageId(stage.id);
+
             const gameId = `sp-game-${randomUUID()}`;
             const game: LiveGameSession = {
                 id: gameId,
                 mode: gameMode,
                 isSinglePlayer: true,
+                gameCategory: 'singleplayer',
                 stageId: stage.id,
                 isAiGame: true,
                 settings: {
@@ -121,7 +159,7 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                     byoyomiCount: byoyomiCount,
                     timeIncrement: timeIncrement,
                     captureTarget: stage.targetScore.black, // Default for display, effective targets used in logic
-                    aiDifficulty: stage.katagoLevel,
+                    aiDifficulty: aiLevel, // 스테이지별 AI 레벨 (1~10단계)
                     survivalTurns: stage.survivalTurns, // 살리기 바둑 모드: AI가 살아남아야 하는 턴 수
                     isSurvivalMode: isSurvivalMode, // 살리기 바둑 모드 플래그
                     hiddenStoneCount: stage.hiddenCount, // 히든바둑: 히든 아이템 개수
@@ -132,7 +170,7 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 player2: aiUser,
                 blackPlayerId: user.id,
                 whitePlayerId: aiUser.id,
-                gameStatus: 'playing',
+                gameStatus: 'pending', // 게임 설명창 표시 후 사용자가 시작하기 버튼을 눌러야 게임 시작
                 currentPlayer: Player.Black,
                 boardState: board,
                 blackPatternStones: blackPattern,
@@ -156,8 +194,9 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 whiteTimeLeft: timeLimit * 60,
                 blackByoyomiPeriodsLeft: byoyomiCount,
                 whiteByoyomiPeriodsLeft: byoyomiCount,
-                turnStartTime: now,
-                turnDeadline: now + (timeLimit * 60 * 1000),
+                // pending 상태에서는 시간이 흐르지 않음 (게임 시작 시 설정)
+                turnStartTime: undefined,
+                turnDeadline: undefined,
                 effectiveCaptureTargets: {
                     [Player.None]: 0,
                     // 살리기 바둑: 흑만 목표점수 있음 (백을 잡아서 승리)
@@ -192,11 +231,44 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
 
             return { clientResponse: { gameId: game.id, updatedUser: user } };
         }
+        case 'CONFIRM_SINGLE_PLAYER_GAME_START': {
+            const { gameId } = payload;
+            const game = await db.getLiveGame(gameId);
+            if (!game || !game.isSinglePlayer || !game.stageId) {
+                return { error: 'Invalid single player game.' };
+            }
+            if (game.gameStatus !== 'pending') {
+                return { error: '게임이 이미 시작되었거나 시작할 수 없는 상태입니다.' };
+            }
+
+            // 게임 상태를 playing으로 변경하고 시간 시작
+            const now = Date.now();
+            game.gameStatus = 'playing';
+            game.turnStartTime = now;
+            const timeLimit = game.settings.timeLimit || 5;
+            game.turnDeadline = now + (timeLimit * 60 * 1000);
+            
+            // 시간 관련 필드 초기화 (pending 상태에서는 시간이 흐르지 않았으므로 처음부터 시작)
+            game.blackTimeLeft = timeLimit * 60;
+            game.whiteTimeLeft = timeLimit * 60;
+            const byoyomiCount = game.settings.byoyomiCount || 0;
+            game.blackByoyomiPeriodsLeft = byoyomiCount;
+            game.whiteByoyomiPeriodsLeft = byoyomiCount;
+
+            await db.saveGame(game);
+            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+
+            return { clientResponse: { success: true } };
+        }
         case 'SINGLE_PLAYER_REFRESH_PLACEMENT': {
             const { gameId } = payload;
             const game = await db.getLiveGame(gameId);
             if (!game || !game.isSinglePlayer || !game.stageId) {
                 return { error: 'Invalid single player game.' };
+            }
+            // pending 상태에서는 배치 새로고침 불가 (게임이 시작되지 않음)
+            if (game.gameStatus === 'pending') {
+                return { error: '게임이 시작되지 않았습니다.' };
             }
             if (game.gameStatus !== 'playing' || game.currentPlayer !== Player.Black || game.moveHistory.length > 0) {
                 return { error: '배치는 첫 수 전에만 새로고침할 수 있습니다.' };
@@ -262,21 +334,55 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             return { clientResponse: { updatedUser: user } };
         }
         case 'CLAIM_SINGLE_PLAYER_MISSION_REWARD': {
+            if (!payload || typeof payload !== 'object') {
+                return { error: 'Invalid payload.' };
+            }
+            
             const { missionId } = payload;
+            if (!missionId || typeof missionId !== 'string') {
+                return { error: '미션 ID가 필요합니다.' };
+            }
+            
             const missionInfo = SINGLE_PLAYER_MISSIONS.find(m => m.id === missionId);
-            if (!missionInfo) return { error: '미션을 찾을 수 없습니다.' };
+            if (!missionInfo) {
+                return { error: `미션을 찾을 수 없습니다. (ID: ${missionId})` };
+            }
         
-            const missionState = user.singlePlayerMissions?.[missionId];
-            if (!missionState || !missionState.isStarted) return { error: '미션이 시작되지 않았습니다.' };
+            if (!user.singlePlayerMissions) {
+                user.singlePlayerMissions = {};
+            }
+            
+            const missionState = user.singlePlayerMissions[missionId];
+            if (!missionState) {
+                return { error: '미션이 시작되지 않았습니다.' };
+            }
+            
+            if (!missionState.isStarted) {
+                return { error: '미션이 시작되지 않았습니다.' };
+            }
             
             const currentLevel = missionState.level || 1;
+            if (!missionInfo.levels || !Array.isArray(missionInfo.levels) || missionInfo.levels.length < currentLevel) {
+                return { error: '레벨 정보를 찾을 수 없습니다.' };
+            }
+            
             const levelInfo = missionInfo.levels[currentLevel - 1];
-            if (!levelInfo) return { error: '레벨 정보를 찾을 수 없습니다.' };
+            if (!levelInfo) {
+                return { error: `레벨 정보를 찾을 수 없습니다. (레벨: ${currentLevel})` };
+            }
         
+            // 미션 상태 초기화 (없는 필드 보완)
+            if (typeof missionState.accumulatedAmount !== 'number') {
+                missionState.accumulatedAmount = 0;
+            }
+            if (!missionState.lastCollectionTime || typeof missionState.lastCollectionTime !== 'number') {
+                missionState.lastCollectionTime = now;
+            }
+            
             // Recalculate amount accumulated since last server tick, before claiming
             const elapsedMs = now - missionState.lastCollectionTime;
             const productionIntervalMs = levelInfo.productionRateMinutes * 60 * 1000;
-            let finalAmountToClaim = missionState.accumulatedAmount;
+            let finalAmountToClaim = missionState.accumulatedAmount || 0;
 
             if (productionIntervalMs > 0 && elapsedMs > 0) {
                 const cycles = Math.floor(elapsedMs / productionIntervalMs);
@@ -290,7 +396,11 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 return { error: '수령할 보상이 없습니다.' };
             }
         
-            if (missionInfo.rewardType === 'gold') {
+            // 보상 지급 전 값 저장 (모달 표시용)
+            const rewardAmount = finalAmountToClaim;
+            const rewardType = missionInfo.rewardType;
+        
+            if (rewardType === 'gold') {
                 user.gold += finalAmountToClaim;
             } else {
                 user.diamonds += finalAmountToClaim;
@@ -303,7 +413,16 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
         
             await db.updateUser(user);
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
-            return { clientResponse: { updatedUser: user } };
+            
+            // 보상 정보를 클라이언트에 반환
+            return { 
+                clientResponse: { 
+                    updatedUser: user,
+                    reward: {
+                        [rewardType]: rewardAmount
+                    }
+                } 
+            };
         }
         case 'LEVEL_UP_TRAINING_QUEST': {
             const { missionId } = payload;

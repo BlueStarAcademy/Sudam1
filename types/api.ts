@@ -3,7 +3,7 @@ import {
     AdminLog, Announcement, OverrideAnnouncement, InventoryItem,
     QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus, EquipmentPreset, GameSettings
 } from './entities.js';
-import { GameMode, RPSChoice, Point, Player, UserStatus, TournamentType, InventoryItemType } from './enums.js';
+import { GameMode, RPSChoice, Point, Player, UserStatus, TournamentType, InventoryItemType, GameCategory } from './enums.js';
 
 export type ChatMessage = {
   id: string;
@@ -32,7 +32,9 @@ export type HandleActionResult = {
 export interface AppState {
     users: Record<string, User>;
     userCredentials: Record<string, any>; // Not sent to client
-    liveGames: Record<string, LiveGameSession>;
+    liveGames: Record<string, LiveGameSession>;  // 일반 게임만 포함 (normal category)
+    singlePlayerGames: Record<string, LiveGameSession>;  // 싱글플레이 게임
+    towerGames: Record<string, LiveGameSession>;  // 도전의 탑 게임
     userConnections: Record<string, number>;
     userStatuses: Record<string, UserStatusInfo>;
     negotiations: Record<string, Negotiation>;
@@ -210,6 +212,7 @@ export type ServerAction =
     | { type: 'LEAVE_TOURNAMENT_VIEW', payload?: never }
     // Single Player
     | { type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: string } }
+    | { type: 'CONFIRM_SINGLE_PLAYER_GAME_START', payload: { gameId: string } }
     | { type: 'SINGLE_PLAYER_REFRESH_PLACEMENT', payload: { gameId: string } }
     | { type: 'START_SINGLE_PLAYER_MISSION', payload: { missionId: string } }
     | { type: 'CLAIM_SINGLE_PLAYER_MISSION_REWARD', payload: { missionId: string } }

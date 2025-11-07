@@ -54,6 +54,11 @@ export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.
 };
 
 export const updateStrategicGameState = async (game: types.LiveGameSession, now: number) => {
+    // pending 상태의 게임은 처리하지 않음 (아직 시작되지 않음)
+    if (game.gameStatus === 'pending') {
+        return;
+    }
+
     // This is the core update logic for all Go-based games.
     // AI 턴일 때는 타임아웃 체크를 건너뛰기 (AI는 시간 제한이 없음)
     const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None && 

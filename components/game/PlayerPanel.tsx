@@ -319,7 +319,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
         const stage = SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
         if (!stage) return null;
         
-        // 따내기바둑: 흑의 남은 턴
+        // 따내기바둑: 흑의 남은 턴 (blackTurnLimit이 있는 경우)
         if (stage.blackTurnLimit) {
             const blackMovesCount = session.moveHistory.filter(m => m.player === Player.Black && m.x !== -1).length;
             const remainingTurns = Math.max(0, stage.blackTurnLimit - blackMovesCount);
@@ -355,6 +355,8 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
             };
         }
         
+        // 기본: 현재 턴 표시 (다른 조건이 없는 경우)
+        // 이 경우에는 턴 정보를 표시하지 않음
         return null;
     }, [isSinglePlayer, session.stageId, session.moveHistory, session.whiteTurnsPlayed, session.totalTurns, session.settings]);
     
@@ -380,12 +382,12 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
                 isSinglePlayer={isSinglePlayer}
             />
             {isSinglePlayer && turnInfo && (
-                <div className="flex items-center justify-center w-20 h-20 flex-shrink-0 bg-stone-800/90 rounded-lg border-2 border-stone-600 shadow-lg">
+                <div className="flex items-center justify-center w-24 h-24 md:w-28 md:h-28 flex-shrink-0 bg-stone-800/95 rounded-lg border-2 border-stone-500 shadow-xl">
                     <div className="flex flex-col items-center justify-center text-center px-2">
-                        <span className="text-[10px] text-stone-400 mb-0.5 leading-tight">{turnInfo.label}</span>
-                        <div className="flex items-baseline justify-center gap-0.5">
-                            <span className="text-xl font-bold text-stone-100">{turnInfo.remaining}</span>
-                            <span className="text-xs text-stone-500">/{turnInfo.total}</span>
+                        <span className="text-[11px] md:text-xs text-stone-300 mb-1 leading-tight font-semibold">{turnInfo.label}</span>
+                        <div className="flex items-baseline justify-center gap-1">
+                            <span className="text-2xl md:text-3xl font-bold text-amber-300">{turnInfo.remaining}</span>
+                            <span className="text-sm md:text-base text-stone-400">/{turnInfo.total}</span>
                         </div>
                     </div>
                 </div>

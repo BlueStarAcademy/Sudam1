@@ -657,6 +657,8 @@ export const createTournament = (type: TournamentType, user: User, players: Play
         nextRoundStartTime: Date.now() + 5000,
         timeElapsed: 0,
         accumulatedGold: type === 'neighborhood' ? 0 : undefined, // 동네바둑리그만 골드 누적
+        accumulatedMaterials: type === 'national' ? {} : undefined, // 전국바둑대회만 재료 누적
+        accumulatedEquipmentBoxes: type === 'world' ? {} : undefined, // 월드챔피언십만 장비상자 누적
     };
 };
 

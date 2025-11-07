@@ -2,7 +2,7 @@ import { User, GameMode, LiveGameSession, Player, Point, AlkkagiStone, BoardStat
 import { defaultStats, createDefaultInventory, createDefaultQuests, createDefaultBaseStats, createDefaultSpentStatPoints } from './initialData.js';
 import { getOmokLogic } from './omokLogic.js';
 import { getGoLogic, processMove } from './goLogic.js';
-import { DICE_GO_MAIN_ROLL_TIME, DICE_GO_LAST_CAPTURE_BONUS_BY_TOTAL_ROUNDS, ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_TURN_TIME_LIMIT, KATAGO_LEVEL_TO_MAX_VISITS, SPECIAL_GAME_MODES, SINGLE_PLAYER_STAGES, ALKKAGI_SIMULTANEOUS_PLACEMENT_TIME_LIMIT, CURLING_TURN_TIME_LIMIT, BATTLE_PLACEMENT_ZONES } from '../constants';
+import { DICE_GO_MAIN_ROLL_TIME, DICE_GO_LAST_CAPTURE_BONUS_BY_TOTAL_ROUNDS, ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_TURN_TIME_LIMIT, SPECIAL_GAME_MODES, SINGLE_PLAYER_STAGES, ALKKAGI_SIMULTANEOUS_PLACEMENT_TIME_LIMIT, CURLING_TURN_TIME_LIMIT, BATTLE_PLACEMENT_ZONES } from '../constants';
 import * as types from '../types.js';
 import { analyzeGame } from './kataGoService.js';
 import * as summaryService from './summaryService.js';
@@ -305,7 +305,10 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
     }
 
     // 1. Get analysis from KataGo
-    const maxVisits = KATAGO_LEVEL_TO_MAX_VISITS[game.settings.aiDifficulty || 2] || 10;
+    // aiDifficulty를 기반으로 maxVisits 계산 (katagoLevel 제거됨)
+    // 기본값: aiDifficulty 1-2 -> 10, 3-4 -> 20, 5-6 -> 30, 7-8 -> 40, 9-10 -> 50
+    const aiDifficulty = game.settings.aiDifficulty || 2;
+    const maxVisits = Math.min(50, Math.max(10, Math.ceil(aiDifficulty / 2) * 10));
     const analysis = await analyzeGame(game, { maxVisits });
     const recommendedMoves = analysis.recommendedMoves || [];
     
@@ -1126,15 +1129,8 @@ export const makeAiMove = async (game: LiveGameSession) => {
         let aiLevel = 1; // 기본값
         
         if (game.isSinglePlayer) {
-            // 싱글플레이: 스테이지의 katagoLevel을 AI 봇 단계로 사용
-            const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
-            if (stage) {
-                // katagoLevel을 1~10 범위로 매핑
-                // katagoLevel 1-2 -> AI 1단계, 3-4 -> AI 2단계, ... 19-20 -> AI 10단계
-                aiLevel = Math.min(10, Math.max(1, Math.ceil(stage.katagoLevel / 2)));
-            } else {
-                aiLevel = (game.settings.aiDifficulty || 1);
-            }
+            // 싱글플레이: 게임 설정의 aiDifficulty를 사용 (katagoLevel 제거됨)
+            aiLevel = (game.settings.aiDifficulty || 1);
         } else if ((game.settings as any)?.goAiBotLevel !== undefined) {
             aiLevel = (game.settings as any).goAiBotLevel;
         } else {

@@ -76,6 +76,9 @@ const migrations: { [version: number]: string } = {
     34: 'ALTER TABLE users ADD COLUMN inventorySlotsMigrated BOOLEAN;',
     54: 'ALTER TABLE users ADD COLUMN cumulativeTournamentScore INTEGER;',
     55: 'ALTER TABLE users ADD COLUMN singlePlayerMissions TEXT;',
+    56: 'ALTER TABLE live_games ADD COLUMN gameCategory TEXT;',
+    57: 'ALTER TABLE live_games ADD COLUMN towerFloor INTEGER;',
+    58: 'ALTER TABLE users ADD COLUMN clearedSinglePlayerStages TEXT;',
 };
 
 export const initializeAndGetDb = async (): Promise<Database> => {
@@ -155,6 +158,7 @@ export const initializeAndGetDb = async (): Promise<Database> => {
             isMbtiPublic BOOLEAN,
             monthlyGoldBuffExpiresAt INTEGER,
             singlePlayerProgress INTEGER,
+            clearedSinglePlayerStages TEXT,
             bonusStatPoints INTEGER,
             inventorySlotsMigrated BOOLEAN,
             blacksmithLevel INTEGER,

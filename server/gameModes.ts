@@ -198,6 +198,7 @@ export const initializeGame = async (neg: Negotiation): Promise<LiveGameSession>
     const game: LiveGameSession = {
         id: gameId,
         mode, settings, description: randomDescription, player1: challenger, player2: opponent, isAiGame,
+        gameCategory: 'normal',  // 일반 게임은 normal 카테고리
         boardState: Array(settings.boardSize).fill(0).map(() => Array(settings.boardSize).fill(types.Player.None)),
         moveHistory: [], captures: { [types.Player.None]: 0, [types.Player.Black]: 0, [types.Player.White]: 0 },
         baseStoneCaptures: { [types.Player.None]: 0, [types.Player.Black]: 0, [types.Player.White]: 0 }, 
@@ -236,6 +237,8 @@ export const resetGameForRematch = (game: LiveGameSession, negotiation: types.Ne
 
     newGame.mode = negotiation.mode;
     newGame.settings = negotiation.settings;
+    // 게임 카테고리는 원래 게임의 카테고리 유지 (일반 게임의 리매치는 일반 게임)
+    newGame.gameCategory = game.gameCategory || 'normal';
     
     const now = Date.now();
     const baseFields = {
@@ -272,6 +275,12 @@ export const resetGameForRematch = (game: LiveGameSession, negotiation: types.Ne
 export const updateGameStates = async (games: LiveGameSession[], now: number): Promise<LiveGameSession[]> => {
     const updatedGames: LiveGameSession[] = [];
     for (const game of games) {
+        // pending 상태의 게임은 아직 시작되지 않았으므로 게임 루프에서 처리하지 않음
+        if (game.gameStatus === 'pending') {
+            updatedGames.push(game);
+            continue;
+        }
+
         if (game.disconnectionState && (now - game.disconnectionState.timerStartedAt > 90000)) {
             game.winner = game.blackPlayerId === game.disconnectionState.disconnectedPlayerId ? types.Player.White : types.Player.Black;
             game.winReason = 'disconnect';

@@ -188,6 +188,12 @@ export enum SinglePlayerLevel {
     유단자 = '유단자'
 }
 
+export enum GameCategory {
+    Normal = 'normal',      // 일반 게임 (전략/놀이바둑 대기실)
+    SinglePlayer = 'singleplayer',  // 싱글플레이
+    Tower = 'tower'         // 도전의 탑
+}
+
 // --- Game Primitives ---
 export type Point = { x: number; y: number; };
 export type Move = { player: Player; x: number; y: number; };

@@ -39,7 +39,15 @@ const Router: React.FC = () => {
             return <Lobby lobbyType={lobbyType} />;
         case 'waiting':
             if (currentRoute.params.mode) {
-                return <WaitingRoom mode={currentRoute.params.mode as GameMode | 'strategic' | 'playful'} />;
+                const mode = currentRoute.params.mode;
+                // 통합 대기실(strategic/playful)만 허용, 개별 게임 모드는 프로필로 리다이렉트
+                if (mode === 'strategic' || mode === 'playful') {
+                    return <WaitingRoom mode={mode as 'strategic' | 'playful'} />;
+                } else {
+                    console.warn('Router: Individual game mode waiting room access denied, redirecting to profile:', mode);
+                    window.location.hash = '#/profile';
+                    return null;
+                }
             }
             // Fallback if mode is missing
             window.location.hash = '#/profile';

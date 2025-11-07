@@ -1,12 +1,13 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, ChatMessage, UserStatus, type Negotiation, TournamentType } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, ChatMessage, UserStatus, type Negotiation, TournamentType, GameMode } from '../../types.js';
 import * as types from '../../types.js';
 import { updateQuestProgress } from './../questService.js';
 import { containsProfanity } from '../../profanity.js';
 import * as tournamentService from '../tournamentService.js';
 import * as summaryService from '../summaryService.js';
 import { broadcast } from '../socket.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants.js';
 
 
 type HandleActionResult = { 
@@ -120,6 +121,15 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                     };
                     if (!volatileState.waitingRoomChats[channel]) volatileState.waitingRoomChats[channel] = [];
                     volatileState.waitingRoomChats[channel].push(banMessage);
+                    
+                    // 금지 메시지도 브로드캐스트
+                    broadcast({ 
+                        type: 'WAITING_ROOM_CHAT_UPDATE', 
+                        payload: { 
+                            [channel]: volatileState.waitingRoomChats[channel] 
+                        } 
+                    });
+                    
                     return { error: `동일한 메시지를 반복하여 ${banDurationMinutes}분간 채팅이 금지되었습니다.` };
                 }
             }
@@ -142,6 +152,14 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                 updateQuestProgress(user, 'chat_greeting');
                 await db.updateUser(user);
             }
+
+            // 채팅 메시지를 모든 클라이언트에 브로드캐스트
+            broadcast({ 
+                type: 'WAITING_ROOM_CHAT_UPDATE', 
+                payload: { 
+                    [channel]: volatileState.waitingRoomChats[channel] 
+                } 
+            });
 
             return {};
         }
@@ -193,7 +211,23 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             if (!game) return { error: 'Game not found.' };
 
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
+                // 싱글플레이 게임이 아닌 경우, 게임 모드를 strategic/playful로 변환
+                let lobbyMode: GameMode | 'strategic' | 'playful' | undefined = undefined;
+                if (!game.isSinglePlayer) {
+                    if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode)) {
+                        lobbyMode = 'strategic';
+                    } else if (PLAYFUL_GAME_MODES.some(m => m.mode === game.mode)) {
+                        lobbyMode = 'playful';
+                    }
+                }
+                // 싱글플레이 게임이거나 모드를 찾을 수 없는 경우 Online 상태로 변경 (게임 모드 없음)
+                if (game.isSinglePlayer || !lobbyMode) {
+                    volatileState.userStatuses[user.id] = { status: UserStatus.Online };
+                    delete volatileState.userStatuses[user.id].mode;
+                    delete volatileState.userStatuses[user.id].gameId;
+                } else {
+                    volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: lobbyMode };
+                }
             }
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
 
@@ -255,7 +289,23 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             if (!game) return { error: 'Game not found.' };
 
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
+                // 싱글플레이 게임이 아닌 경우, 게임 모드를 strategic/playful로 변환
+                let lobbyMode: GameMode | 'strategic' | 'playful' | undefined = undefined;
+                if (!game.isSinglePlayer) {
+                    if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode)) {
+                        lobbyMode = 'strategic';
+                    } else if (PLAYFUL_GAME_MODES.some(m => m.mode === game.mode)) {
+                        lobbyMode = 'playful';
+                    }
+                }
+                // 싱글플레이 게임이거나 모드를 찾을 수 없는 경우 Online 상태로 변경 (게임 모드 없음)
+                if (game.isSinglePlayer || !lobbyMode) {
+                    volatileState.userStatuses[user.id] = { status: UserStatus.Online };
+                    delete volatileState.userStatuses[user.id].mode;
+                    delete volatileState.userStatuses[user.id].gameId;
+                } else {
+                    volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: lobbyMode };
+                }
             }
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             

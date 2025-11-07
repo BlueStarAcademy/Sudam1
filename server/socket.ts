@@ -102,6 +102,8 @@ export const createWebSocketServer = (server: Server) => {
                     const otherData = {
                         onlineUsers: payload.onlineUsers,
                         liveGames: payload.liveGames,
+                        singlePlayerGames: payload.singlePlayerGames,
+                        towerGames: payload.towerGames,
                         negotiations: payload.negotiations,
                         waitingRoomChats: payload.waitingRoomChats,
                         gameChats: payload.gameChats,

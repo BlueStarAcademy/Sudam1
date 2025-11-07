@@ -163,14 +163,30 @@ export const deleteGame = async (id: string): Promise<void> => {
 
 
 // --- Full State Retrieval (for client sync) ---
-export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCredentials' | 'liveGames' | 'adminLogs' | 'announcements' | 'globalOverrideAnnouncement' | 'gameModeAvailability' | 'announcementInterval'>> => {
+export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCredentials' | 'liveGames' | 'singlePlayerGames' | 'towerGames' | 'adminLogs' | 'announcements' | 'globalOverrideAnnouncement' | 'gameModeAvailability' | 'announcementInterval'>> => {
     const db = await getDb();
     const userRepository = await import('./repositories/userRepository.ts');
     const gameRepository = await import('./repositories/gameRepository.ts');
     const kvRepository = await import('./repositories/kvRepository.ts');
     
     const users = await userRepository.getAllUsers(db);
-    const liveGames = await gameRepository.getAllActiveGames(db);
+    const allGames = await gameRepository.getAllActiveGames(db);
+    
+    // 게임을 카테고리별로 분리
+    const liveGames: Record<string, LiveGameSession> = {};
+    const singlePlayerGames: Record<string, LiveGameSession> = {};
+    const towerGames: Record<string, LiveGameSession> = {};
+    
+    for (const game of allGames) {
+        const category = game.gameCategory || (game.isSinglePlayer ? 'singleplayer' : 'normal');
+        if (category === 'singleplayer') {
+            singlePlayerGames[game.id] = game;
+        } else if (category === 'tower') {
+            towerGames[game.id] = game;
+        } else {
+            liveGames[game.id] = game;
+        }
+    }
     
     const adminLogs = await kvRepository.getKV<AdminLog[]>(db, 'adminLogs') || [];
     const announcements = await kvRepository.getKV<Announcement[]>(db, 'announcements') || [];
@@ -212,7 +228,9 @@ export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCreden
     return {
         users: optimizedUsers,
         userCredentials: {}, // Never send credentials to client
-        liveGames: liveGames.reduce((acc: Record<string, LiveGameSession>, game: LiveGameSession) => { acc[game.id] = game; return acc; }, {}),
+        liveGames,
+        singlePlayerGames,
+        towerGames,
         adminLogs,
         announcements,
         globalOverrideAnnouncement,

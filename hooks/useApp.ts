@@ -71,7 +71,9 @@ export const useApp = () => {
     // --- Server State ---
     const [usersMap, setUsersMap] = useState<Record<string, User>>({});
     const [onlineUsers, setOnlineUsers] = useState<UserWithStatus[]>([]);
-    const [liveGames, setLiveGames] = useState<Record<string, LiveGameSession>>({});
+    const [liveGames, setLiveGames] = useState<Record<string, LiveGameSession>>({});  // 일반 게임만
+    const [singlePlayerGames, setSinglePlayerGames] = useState<Record<string, LiveGameSession>>({});  // 싱글플레이 게임
+    const [towerGames, setTowerGames] = useState<Record<string, LiveGameSession>>({});  // 도전의 탑 게임
     const [negotiations, setNegotiations] = useState<Record<string, Negotiation>>({});
     const [waitingRoomChats, setWaitingRoomChats] = useState<Record<string, ChatMessage[]>>({});
     const [gameChats, setGameChats] = useState<Record<string, ChatMessage[]>>({});
@@ -199,17 +201,18 @@ export const useApp = () => {
             // status가 'in-game'이거나 'spectating'이면 게임으로 라우팅
             // 'negotiating' 상태는 제거 (대국 신청 중에는 게임이 아님)
             if (currentUserWithStatus.status === 'in-game' || currentUserWithStatus.status === 'spectating') {
-                const game = liveGames[gameId];
+                // 모든 게임 카테고리에서 찾기
+                const game = liveGames[gameId] || singlePlayerGames[gameId] || towerGames[gameId];
                 if (game) {
-                    console.log('[useApp] activeGame calculated:', gameId, 'status:', currentUserWithStatus.status);
+                    console.log('[useApp] activeGame calculated:', gameId, 'status:', currentUserWithStatus.status, 'category:', game.gameCategory);
                     return game;
                 } else {
-                    console.log('[useApp] activeGame: gameId exists but game not in liveGames yet:', gameId);
+                    console.log('[useApp] activeGame: gameId exists but game not found in any category yet:', gameId);
                 }
             }
         }
         return null;
-    }, [currentUserWithStatus, liveGames]);
+    }, [currentUserWithStatus, liveGames, singlePlayerGames, towerGames]);
 
     const activeNegotiation = useMemo(() => {
         if (!currentUserWithStatus) return null;
@@ -403,6 +406,16 @@ export const useApp = () => {
                     // flushSync를 직접 사용하여 즉시 반영 (비동기 Promise 사용하지 않음)
                     const newUser = JSON.parse(JSON.stringify(updatedUser));
                     
+                    // USE_ITEM 액션의 경우 인벤토리 변경이 확실히 반영되도록 추가 처리
+                    if (action.type === 'USE_ITEM' || action.type === 'USE_ALL_ITEMS_OF_TYPE') {
+                        console.log(`[handleAction] ${action.type} - Force updating inventory state`, {
+                            oldInventoryLength: currentUser?.inventory?.length,
+                            newInventoryLength: newUser.inventory?.length,
+                            oldInventory: currentUser?.inventory?.map(i => ({ id: i.id, name: i.name, quantity: i.quantity })),
+                            newInventory: newUser.inventory?.map(i => ({ id: i.id, name: i.name, quantity: i.quantity }))
+                        });
+                    }
+                    
                     // 즉시 동기적으로 상태 업데이트
                     flushSync(() => {
                         setCurrentUser(newUser);
@@ -412,20 +425,33 @@ export const useApp = () => {
                     // 추가 업데이트로 모든 컴포넌트가 변경을 감지하도록 함
                     requestAnimationFrame(() => {
                         flushSync(() => {
-                            setCurrentUser(JSON.parse(JSON.stringify(updatedUser)));
+                            // 깊은 복사로 새로운 객체 생성하여 React가 변경을 확실히 감지
+                            const freshUser = JSON.parse(JSON.stringify(updatedUser));
+                            setCurrentUser(freshUser);
                             setUpdateTrigger(prev => prev + 1);
                         });
                     });
                     
-                    // setTimeout으로 추가 보장
+                    // setTimeout으로 추가 보장 (인벤토리 모달 등이 열려있을 경우 대비)
                     setTimeout(() => {
-                        setCurrentUser(JSON.parse(JSON.stringify(updatedUser)));
+                        const freshUser = JSON.parse(JSON.stringify(updatedUser));
+                        setCurrentUser(freshUser);
                         setUpdateTrigger(prev => prev + 1);
                     }, 0);
                     
+                    // 추가 리렌더링 트리거 (특히 인벤토리 모달)
                     setTimeout(() => {
                         setUpdateTrigger(prev => prev + 1);
                     }, 10);
+                    
+                    // 인벤토리 관련 액션의 경우 추가로 한 번 더 업데이트하여 확실히 반영
+                    if (action.type === 'USE_ITEM' || action.type === 'USE_ALL_ITEMS_OF_TYPE' || action.type === 'TOGGLE_EQUIP_ITEM' || action.type === 'SELL_ITEM') {
+                        setTimeout(() => {
+                            const freshUser = JSON.parse(JSON.stringify(updatedUser));
+                            setCurrentUser(freshUser);
+                            setUpdateTrigger(prev => prev + 1);
+                        }, 50);
+                    }
                     
                     // HTTP 응답에서 받은 updatedUser가 최신이므로, WebSocket 업데이트가 이를 덮어쓰지 않도록 보장
                     // (이미 위의 shouldIgnoreWebSocketUpdate 로직과 추가 체크로 처리됨)
@@ -457,38 +483,84 @@ export const useApp = () => {
                         }, 10);
                     }
                 }
-                 // 상태 동기화를 위한 추가 업데이트 (모든 액션에 대해)
-                 // 사용자 데이터가 변경될 수 있는 액션들에 대해 강제 리렌더링
-                 const userDataChangingActions = [
-                     'TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'ENHANCE_ITEM', 'COMBINE_ITEMS', 'DISASSEMBLE_ITEM', 
-                     'CRAFT_MATERIAL', 'BUY_SHOP_ITEM', 'BUY_CONDITION_POTION', 'UPDATE_AVATAR', 
-                     'UPDATE_BORDER', 'CHANGE_NICKNAME', 'UPDATE_MBTI', 'ALLOCATE_STAT_POINT',
-                     'SELL_ITEM', 'EXPAND_INVENTORY', 'BUY_BORDER', 'APPLY_PRESET', 'SAVE_PRESET'
-                 ];
+                 // 사용자 데이터가 변경될 수 있는 모든 액션 목록
+                const userDataChangingActions = [
+                    'TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'ENHANCE_ITEM', 'COMBINE_ITEMS', 'DISASSEMBLE_ITEM', 
+                    'CRAFT_MATERIAL', 'BUY_SHOP_ITEM', 'BUY_CONDITION_POTION', 'USE_CONDITION_POTION', 'UPDATE_AVATAR', 
+                    'UPDATE_BORDER', 'CHANGE_NICKNAME', 'UPDATE_MBTI', 'ALLOCATE_STAT_POINT',
+                    'SELL_ITEM', 'EXPAND_INVENTORY', 'BUY_BORDER', 'APPLY_PRESET', 'SAVE_PRESET',
+                    'DELETE_MAIL', 'DELETE_ALL_CLAIMED_MAIL', 'CLAIM_MAIL_ATTACHMENTS', 'CLAIM_ALL_MAIL_ATTACHMENTS', 'MARK_MAIL_AS_READ',
+                    'CLAIM_QUEST_REWARD', 'CLAIM_ACTIVITY_MILESTONE',
+                    'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST',
+                    'ADMIN_RESET_TOURNAMENT_SESSION'
+                ];
                  
-                 if (userDataChangingActions.includes(action.type)) {
-                     // 추가 강제 리렌더링으로 상태 동기화 보장
-                     setTimeout(() => {
+                // 업데이트된 사용자 데이터 처리 - 모든 사용자 데이터 변경 액션에 대해 즉시 동기 처리
+                 const updatedUser = result.clientResponse?.updatedUser;
+                 if (updatedUser) {
+                     // HTTP 응답의 updatedUser를 항상 최우선으로 처리 (userDataChangingActions 체크 제거)
+                     // flushSync를 사용하여 React가 즉시 상태를 업데이트하도록 보장
+                     console.log(`[handleAction] ${action.type} - Immediately updating currentUser from HTTP response:`, {
+                         inventoryLength: updatedUser.inventory?.length,
+                         gold: updatedUser.gold,
+                         diamonds: updatedUser.diamonds,
+                         equipment: updatedUser.equipment,
+                         actionType: action.type,
+                         hasUpdatedUser: !!updatedUser
+                     });
+                     
+                     // 즉시 동기 업데이트 (여러 번 수행하여 확실히 반영)
+                     const deepCopiedUser = JSON.parse(JSON.stringify(updatedUser));
+                     
+                     // 첫 번째: flushSync로 즉시 반영
+                     flushSync(() => {
+                         setCurrentUser(deepCopiedUser);
                          setUpdateTrigger(prev => prev + 1);
-                     }, 50);
-                     setTimeout(() => {
+                     });
+                     
+                     // 두 번째: requestAnimationFrame으로 다음 프레임에 재확인
+                     requestAnimationFrame(() => {
+                         flushSync(() => {
+                             setCurrentUser(JSON.parse(JSON.stringify(updatedUser)));
                          setUpdateTrigger(prev => prev + 1);
-                     }, 100);
-                     // 최종 상태 동기화 확인
+                         });
+                     });
+                     
+                     // 세 번째: 추가 보장을 위한 업데이트
                      setTimeout(() => {
-                         if (updatedUserFromResponse) {
-                             const finalUser = JSON.parse(JSON.stringify(updatedUserFromResponse));
-                             setCurrentUser(finalUser);
+                         setCurrentUser(JSON.parse(JSON.stringify(updatedUser)));
                              setUpdateTrigger(prev => prev + 1);
-                         }
-                     }, 150);
+                     }, 0);
+                     
+                     // WebSocket 업데이트와의 충돌을 방지하기 위해 액션 타입과 시간 기록
+                     lastActionProcessedTime.current = Date.now();
+                     lastActionType.current = action.type;
+                     
+                     // sessionStorage에도 저장하여 페이지 새로고침 시에도 상태 유지
+                     try {
+                         sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
+                     } catch (e) {
+                         console.error('Failed to save user to sessionStorage', e);
+                     }
                  }
                  
                  const obtainedItemsBulk = result.clientResponse?.obtainedItemsBulk || result.obtainedItemsBulk;
                  if (obtainedItemsBulk) setLastUsedItemResult(obtainedItemsBulk);
                  const scoreChange = result.clientResponse?.tournamentScoreChange;
                  if (scoreChange) setTournamentScoreChange(scoreChange);
+                
                  if (result.rewardSummary) setRewardSummary(result.rewardSummary);
+                
+                // 싱글플레이 수련과제 보상 수령 모달
+                if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' && result.clientResponse?.reward) {
+                    const reward = result.clientResponse.reward;
+                    setRewardSummary({
+                        reward: reward,
+                        items: [],
+                        title: '수련과제 보상 수령'
+                    });
+                }
+                
                 if (result.claimAllSummary) {
                     setClaimAllSummary(result.claimAllSummary);
                     setIsClaimAllSummaryOpen(true);
@@ -593,9 +665,15 @@ export const useApp = () => {
                         attempts++;
                         console.log(`[handleAction] Attempt ${attempts}/${maxAttempts} to route to game ${gameId}`);
                         
-                        // liveGames와 onlineUsers 상태를 직접 확인
+                        // liveGames, singlePlayerGames, towerGames와 onlineUsers 상태를 직접 확인
                         setLiveGames(currentGames => {
                             const hasGame = currentGames[gameId] !== undefined;
+                            
+                            setSinglePlayerGames(currentSPGames => {
+                                const hasSPGame = currentSPGames[gameId] !== undefined;
+                                
+                                setTowerGames(currentTowerGames => {
+                                    const hasTowerGame = currentTowerGames[gameId] !== undefined;
                             
                             setOnlineUsers(prevOnlineUsers => {
                                 const currentUserStatus = prevOnlineUsers.find(u => u.id === currentUser?.id);
@@ -604,6 +682,8 @@ export const useApp = () => {
                                 
                                 console.log('[handleAction] Route check:', {
                                     hasGame,
+                                            hasSPGame,
+                                            hasTowerGame,
                                     hasStatus,
                                     isInGame,
                                     gameId,
@@ -611,21 +691,34 @@ export const useApp = () => {
                                     userStatus: currentUserStatus?.status
                                 });
                                 
-                                // 조건을 만족하면 즉시 라우팅
-                                if (hasGame && hasStatus && isInGame) {
-                                    console.log('[handleAction] All conditions met, routing to game:', gameId);
+                                        // 게임이 발견되면 라우팅 (singlePlayerGames 또는 towerGames에서도 확인)
+                                        if (hasGame || hasSPGame || hasTowerGame) {
+                                            if (isInGame || hasStatus) {
+                                                console.log('[handleAction] Game found and user status confirmed, routing:', gameId);
                                     setTimeout(() => {
                                         window.location.hash = `#/game/${gameId}`;
                                     }, 100);
+                                            }
+                                        } else {
+                                            // 게임이 아직 없으면 재시도
+                                            console.log('[handleAction] Game not found yet, will retry:', gameId);
+                                        }
+                                        
                                     return prevOnlineUsers;
-                                }
+                                    });
+                                    
+                                    return currentTowerGames;
+                                });
                                 
-                                // 게임이 있으면 상태 업데이트를 기다리며 계속 시도
-                                if (hasGame && attempts < maxAttempts) {
+                                return currentSPGames;
+                            });
+                            
+                            return currentGames;
+                        });
+                                
+                        // 게임이 아직 없으면 재시도
+                        if (attempts < maxAttempts) {
                                     setTimeout(tryRoute, 150);
-                                } else if (!hasGame && attempts < maxAttempts) {
-                                    // 게임이 아직 없으면 더 기다림
-                                    setTimeout(tryRoute, 200);
                                 } else {
                                     // 최대 시도 횟수에 도달했어도 라우팅 시도 (게임이 생성되었으므로)
                                     console.warn('[handleAction] Max attempts reached, routing anyway:', gameId);
@@ -633,11 +726,6 @@ export const useApp = () => {
                                         window.location.hash = `#/game/${gameId}`;
                                     }, 100);
                                 }
-                                return prevOnlineUsers;
-                            });
-                            
-                            return currentGames;
-                        });
                     };
                     
                     // 첫 시도는 200ms 후에 (WebSocket 메시지를 받을 시간을 줌)
@@ -651,13 +739,49 @@ export const useApp = () => {
         }
     }, [currentUser?.id]);
 
-    const handleLogout = useCallback(() => {
+    const handleLogout = useCallback(async () => {
         if (!currentUser) return;
         isLoggingOut.current = true;
-        handleAction({ type: 'LOGOUT' });
+        
+        const userId = currentUser.id; // 현재 사용자 ID 저장
+        
+        // 로그아웃 액션을 먼저 전송 (비동기 처리)
+        try {
+            // currentUser가 null이 되기 전에 userId를 직접 사용
+            const res = await fetch('/api/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ type: 'LOGOUT', userId }),
+            });
+            
+            if (res.ok) {
+                const result = await res.json();
+                if (result.error) {
+                    console.error('[handleLogout] Server error:', result.error);
+                }
+            } else {
+                console.error('[handleLogout] HTTP error:', res.status);
+            }
+        } catch (error) {
+            console.error('[handleLogout] Error during logout action:', error);
+        }
+        
+        // 상태 초기화 (WebSocket은 useEffect cleanup에서 자동으로 닫힘)
         setCurrentUser(null);
+        sessionStorage.removeItem('currentUser');
+        
+        // 모든 상태 초기화
+        setOnlineUsers([]);
+        setLiveGames({});
+        setSinglePlayerGames({});
+        setTowerGames({});
+        setNegotiations({});
+        setWaitingRoomChats({});
+        setGameChats({});
+        
+        // 라우팅 초기화 (로그인 페이지로 이동)
         window.location.hash = '';
-    }, [currentUser, handleAction]);
+    }, [currentUser]);
     
 
 
@@ -738,6 +862,8 @@ export const useApp = () => {
             if (otherData) {
                 if (otherData.onlineUsers !== undefined) setOnlineUsers(otherData.onlineUsers || []);
                 if (otherData.liveGames !== undefined) setLiveGames(otherData.liveGames || {});
+                if (otherData.singlePlayerGames !== undefined) setSinglePlayerGames(otherData.singlePlayerGames || {});
+                if (otherData.towerGames !== undefined) setTowerGames(otherData.towerGames || {});
                 if (otherData.negotiations !== undefined) setNegotiations(otherData.negotiations || {});
                 if (otherData.waitingRoomChats !== undefined) setWaitingRoomChats(otherData.waitingRoomChats || {});
                 if (otherData.gameChats !== undefined) setGameChats(otherData.gameChats || {});
@@ -959,8 +1085,20 @@ export const useApp = () => {
                                 const now = Date.now();
                                 const timeSinceLastAction = now - lastActionProcessedTime.current;
                                 // 사용자 데이터 변경 액션의 경우 더 긴 시간 동안 무시 (상태 동기화 시간 확보)
-                                const userDataChangingActions = ['TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'UPDATE_AVATAR', 'UPDATE_BORDER', 'CHANGE_NICKNAME'];
-                                const ignoreDuration = userDataChangingActions.includes(lastActionType.current || '') ? 5000 : 3000;
+                                // 사용자 데이터 변경 액션 목록 (HTTP 응답 우선 처리)
+                                const userDataChangingActions = [
+                                    'TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'ENHANCE_ITEM', 'COMBINE_ITEMS', 'DISASSEMBLE_ITEM', 
+                                    'CRAFT_MATERIAL', 'BUY_SHOP_ITEM', 'BUY_CONDITION_POTION', 'USE_CONDITION_POTION', 'UPDATE_AVATAR', 
+                                    'UPDATE_BORDER', 'CHANGE_NICKNAME', 'UPDATE_MBTI', 'ALLOCATE_STAT_POINT',
+                                    'SELL_ITEM', 'EXPAND_INVENTORY', 'BUY_BORDER', 'APPLY_PRESET', 'SAVE_PRESET',
+                                    'DELETE_MAIL', 'DELETE_ALL_CLAIMED_MAIL', 'CLAIM_MAIL_ATTACHMENTS', 'CLAIM_ALL_MAIL_ATTACHMENTS', 'MARK_MAIL_AS_READ',
+                                    'CLAIM_QUEST_REWARD', 'CLAIM_ACTIVITY_MILESTONE',
+                                    'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST',
+                                    'ADMIN_RESET_TOURNAMENT_SESSION'
+                                ];
+                                // HTTP 응답이 최근에 처리된 경우 WebSocket 업데이트 무시 (사용자 데이터 변경 액션은 더 길게)
+                                // 상태 동기화 시간을 충분히 확보하기 위해 15초로 증가
+                                const ignoreDuration = userDataChangingActions.includes(lastActionType.current || '') ? 15000 : 3000;
                                 const shouldIgnoreForCurrentUser = timeSinceLastAction < ignoreDuration && lastActionType.current !== null;
                                 
                                 setUsersMap(currentUsersMap => {
@@ -977,46 +1115,29 @@ export const useApp = () => {
                                             const updatedCurrentUser = message.payload[currentUser.id];
                                             // 현재 사용자와 ID가 일치하는지 확인
                                             if (updatedCurrentUser.id === currentUser.id) {
-                                                // 상태 업데이트를 즉시 동기적으로 처리
+                                                // 상태 업데이트를 즉시 동기적으로 처리 (HTTP 응답이 없는 경우에만)
                                                 const newUser = JSON.parse(JSON.stringify(updatedCurrentUser));
-                                                console.log(`[WebSocket] Updating currentUser from WebSocket:`, {
+                                                console.log(`[WebSocket] Updating currentUser from WebSocket (HTTP response not available):`, {
                                                     inventoryLength: newUser.inventory?.length,
                                                     gold: newUser.gold,
                                                     diamonds: newUser.diamonds,
                                                     equipment: newUser.equipment,
-                                                    avatarId: newUser.avatarId,
-                                                    borderId: newUser.borderId,
-                                                    nickname: newUser.nickname,
-                                                    blacksmithLevel: newUser.blacksmithLevel,
-                                                    blacksmithXp: newUser.blacksmithXp,
                                                     timeSinceLastAction,
                                                     lastActionType: lastActionType.current
                                                 });
                                                 
-                                                // 첫 번째 업데이트: flushSync로 즉시 반영 (비동기 Promise 사용하지 않음)
+                                                // 단일 동기 업데이트 (불필요한 중복 제거)
                                                 flushSync(() => {
                                                     setCurrentUser(newUser);
                                                     setUpdateTrigger(prev => prev + 1);
                                                 });
                                                 
-                                                // 두 번째 업데이트: requestAnimationFrame으로 다음 프레임에 반영
-                                                requestAnimationFrame(() => {
-                                                    flushSync(() => {
-                                                        setCurrentUser(JSON.parse(JSON.stringify(updatedCurrentUser)));
-                                                        setUpdateTrigger(prev => prev + 1);
-                                                    });
-                                                });
-                                                
-                                                // 세 번째 업데이트: setTimeout으로 추가 보장
-                                                setTimeout(() => {
-                                                    setCurrentUser(JSON.parse(JSON.stringify(updatedCurrentUser)));
-                                                    setUpdateTrigger(prev => prev + 1);
-                                                }, 0);
-                                                
-                                                // 네 번째 업데이트: 추가 지연으로 최종 보장
-                                                setTimeout(() => {
-                                                    setUpdateTrigger(prev => prev + 1);
-                                                }, 10);
+                                                // sessionStorage에도 저장
+                                                try {
+                                                    sessionStorage.setItem('currentUser', JSON.stringify(updatedCurrentUser));
+                                                } catch (e) {
+                                                    console.error('Failed to save user to sessionStorage', e);
+                                                }
                                             }
                                         } else {
                                             console.log(`[WebSocket] Ignoring USER_UPDATE for ${currentUser.id} - HTTP response was processed ${timeSinceLastAction}ms ago (more recent)`);
@@ -1096,10 +1217,30 @@ export const useApp = () => {
                                                 const currentHash = window.location.hash;
                                                 const isGamePage = currentHash.startsWith('#/game/');
                                                 if (isGamePage) {
-                                                    console.log('[WebSocket] Current user status updated to waiting, routing to waiting room:', currentUserStatus.mode);
+                                                    // postGameRedirect가 설정되어 있으면 (싱글플레이 등) 그것을 사용
+                                                    const postGameRedirect = sessionStorage.getItem('postGameRedirect');
+                                                    if (postGameRedirect) {
+                                                        console.log('[WebSocket] Current user status updated to waiting, routing to postGameRedirect:', postGameRedirect);
+                                                        sessionStorage.removeItem('postGameRedirect');
                                                     setTimeout(() => {
-                                                        window.location.hash = `#/waiting/${encodeURIComponent(currentUserStatus.mode)}`;
+                                                            window.location.hash = postGameRedirect;
+                                                        }, 100);
+                                                    } else {
+                                                        // 개별 게임 모드가 아닌 strategic/playful만 허용
+                                                        const mode = currentUserStatus.mode;
+                                                        if (mode === 'strategic' || mode === 'playful') {
+                                                            console.log('[WebSocket] Current user status updated to waiting, routing to waiting room:', mode);
+                                                            setTimeout(() => {
+                                                                window.location.hash = `#/waiting/${mode}`;
+                                                            }, 100);
+                                                        } else {
+                                                            // 개별 게임 모드인 경우 프로필로 이동 (통합 대기실 외에는 접근 불가)
+                                                            console.warn('[WebSocket] Individual game mode detected, redirecting to profile:', mode);
+                                                            setTimeout(() => {
+                                                                window.location.hash = '#/profile';
                                                     }, 100);
+                                                        }
+                                                    }
                                                 }
                                             }
                                         }
@@ -1129,12 +1270,56 @@ export const useApp = () => {
                                 });
                                 break;
                             case 'GAME_UPDATE':
-                                // 게임 업데이트 처리
+                                // 게임 업데이트 처리 (게임 카테고리별로 분리)
+                                Object.entries(message.payload || {}).forEach(([gameId, game]: [string, any]) => {
+                                    const gameCategory = game.gameCategory || (game.isSinglePlayer ? 'singleplayer' : 'normal');
+                                    
+                                    if (gameCategory === 'singleplayer') {
+                                        setSinglePlayerGames(currentGames => {
+                                            const updatedGames = { ...currentGames };
+                                            updatedGames[gameId] = game;
+                                            console.log('[WebSocket] Single player game updated:', gameId, game.mode);
+                                            
+                                            // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
+                                            if (currentUser && game.player1 && game.player2) {
+                                                const isPlayer1 = game.player1.id === currentUser.id;
+                                                const isPlayer2 = game.player2.id === currentUser.id;
+                                                
+                                                if (isPlayer1 || isPlayer2) {
+                                                    console.log('[WebSocket] Current user is a player in single player game, routing:', gameId);
+                                                    setTimeout(() => {
+                                                        window.location.hash = `#/game/${gameId}`;
+                                                    }, 100);
+                                                }
+                                            }
+                                            return updatedGames;
+                                        });
+                                    } else if (gameCategory === 'tower') {
+                                        setTowerGames(currentGames => {
+                                            const updatedGames = { ...currentGames };
+                                            updatedGames[gameId] = game;
+                                            console.log('[WebSocket] Tower game updated:', gameId, game.mode);
+                                            
+                                            // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
+                                            if (currentUser && game.player1 && game.player2) {
+                                                const isPlayer1 = game.player1.id === currentUser.id;
+                                                const isPlayer2 = game.player2.id === currentUser.id;
+                                                
+                                                if (isPlayer1 || isPlayer2) {
+                                                    console.log('[WebSocket] Current user is a player in tower game, routing:', gameId);
+                                                    setTimeout(() => {
+                                                        window.location.hash = `#/game/${gameId}`;
+                                                    }, 100);
+                                                }
+                                            }
+                                            return updatedGames;
+                                        });
+                                    } else {
+                                        // normal 게임
                                 setLiveGames(currentGames => {
                                     const updatedGames = { ...currentGames };
-                                    Object.entries(message.payload || {}).forEach(([gameId, game]: [string, any]) => {
                                         updatedGames[gameId] = game;
-                                        console.log('[WebSocket] Game updated:', gameId, game.mode);
+                                            console.log('[WebSocket] Normal game updated:', gameId, game.mode);
                                         
                                         // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
                                         if (currentUser && game.player1 && game.player2) {
@@ -1149,21 +1334,91 @@ export const useApp = () => {
                                                 }, 100);
                                             }
                                         }
-                                    });
-                                    
                                     return updatedGames;
+                                        });
+                                    }
                                 });
                                 break;
                             case 'GAME_DELETED':
-                                // 게임 삭제 처리
+                                // 게임 삭제 처리 (게임 카테고리별로 분리)
                                 const deletedGameId = message.payload?.gameId;
+                                const serverGameCategory = message.payload?.gameCategory;
                                 if (deletedGameId) {
+                                    // 서버에서 제공한 gameCategory를 우선 사용
+                                    if (serverGameCategory === 'singleplayer') {
+                                        setSinglePlayerGames(currentGames => {
+                                            if (currentGames[deletedGameId]) {
+                                                const updatedGames = { ...currentGames };
+                                                delete updatedGames[deletedGameId];
+                                                console.log('[WebSocket] Single player game deleted:', deletedGameId);
+                                                return updatedGames;
+                                            }
+                                            return currentGames;
+                                        });
+                                    } else if (serverGameCategory === 'tower') {
+                                        setTowerGames(currentGames => {
+                                            if (currentGames[deletedGameId]) {
+                                                const updatedGames = { ...currentGames };
+                                                delete updatedGames[deletedGameId];
+                                                console.log('[WebSocket] Tower game deleted:', deletedGameId);
+                                                return updatedGames;
+                                            }
+                                            return currentGames;
+                                        });
+                                    } else {
+                                        // normal 게임 또는 gameCategory가 없는 경우 (하위 호환성)
                                     setLiveGames(currentGames => {
+                                            if (currentGames[deletedGameId]) {
                                         const updatedGames = { ...currentGames };
                                         delete updatedGames[deletedGameId];
-                                        console.log('[WebSocket] Game deleted:', deletedGameId);
+                                                console.log('[WebSocket] Normal game deleted:', deletedGameId);
                                         return updatedGames;
-                                    });
+                                            }
+                                            return currentGames;
+                                        });
+                                        
+                                        // 모든 카테고리에서 찾기 (하위 호환성)
+                                        setSinglePlayerGames(currentGames => {
+                                            if (currentGames[deletedGameId]) {
+                                                const updatedGames = { ...currentGames };
+                                                delete updatedGames[deletedGameId];
+                                                console.log('[WebSocket] Single player game deleted (fallback):', deletedGameId);
+                                                return updatedGames;
+                                            }
+                                            return currentGames;
+                                        });
+                                        
+                                        setTowerGames(currentGames => {
+                                            if (currentGames[deletedGameId]) {
+                                                const updatedGames = { ...currentGames };
+                                                delete updatedGames[deletedGameId];
+                                                console.log('[WebSocket] Tower game deleted (fallback):', deletedGameId);
+                                                return updatedGames;
+                                            }
+                                            return currentGames;
+                                        });
+                                    }
+                                    
+                                    // 싱글플레이 게임이 삭제되었고, 현재 게임 페이지에 있으면 postGameRedirect 확인
+                                    if (serverGameCategory === 'singleplayer') {
+                                        const currentHash = window.location.hash;
+                                        const isGamePage = currentHash.startsWith('#/game/') && currentHash.includes(deletedGameId);
+                                        if (isGamePage) {
+                                            const postGameRedirect = sessionStorage.getItem('postGameRedirect');
+                                            if (postGameRedirect) {
+                                                console.log('[WebSocket] Single player game deleted, routing to postGameRedirect:', postGameRedirect);
+                                                sessionStorage.removeItem('postGameRedirect');
+                                                setTimeout(() => {
+                                                    window.location.hash = postGameRedirect;
+                                                }, 100);
+                                            } else {
+                                                console.log('[WebSocket] Single player game deleted, routing to singleplayer lobby');
+                                                setTimeout(() => {
+                                                    window.location.hash = '#/singleplayer';
+                                                }, 100);
+                                            }
+                                        }
+                                    }
                                 }
                                 break;
                             case 'CHALLENGE_DECLINED':

@@ -294,12 +294,15 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             user.mail.splice(mailIndex, 1);
             await db.updateUser(user);
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            const updatedUserCopy = JSON.parse(JSON.stringify(user));
-            const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUserCopy } });
+            // 깊은 복사로 updatedUser 생성
+            const updatedUser = JSON.parse(JSON.stringify(user));
             
-            return {};
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            
+            // HTTP 응답에도 updatedUser 포함 (즉시 클라이언트 상태 업데이트)
+            return { clientResponse: { updatedUser } };
         }
         case 'DELETE_ALL_CLAIMED_MAIL': {
             // user.mail이 없거나 배열이 아닌 경우 초기화

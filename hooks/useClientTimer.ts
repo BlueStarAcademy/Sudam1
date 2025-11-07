@@ -12,6 +12,12 @@ export const useClientTimer = (session: LiveGameSession) => {
             return;
         }
 
+        // pending 상태의 게임은 시간이 흐르지 않도록 함
+        if (session.gameStatus === 'pending') {
+            setClientTimes({ black: session.blackTimeLeft, white: session.whiteTimeLeft });
+            return;
+        }
+
         const deadline = session.turnDeadline || session.alkkagiTurnDeadline || session.curlingTurnDeadline || session.alkkagiPlacementDeadline || session.turnChoiceDeadline || session.guessDeadline || session.basePlacementDeadline || session.captureBidDeadline || session.itemUseDeadline;
 
         if (!deadline) {
@@ -45,7 +51,7 @@ export const useClientTimer = (session: LiveGameSession) => {
         
         animationFrameId = requestAnimationFrame(updateTimer);
         return () => cancelAnimationFrame(animationFrameId);
-    }, [session.turnDeadline, session.alkkagiTurnDeadline, session.curlingTurnDeadline, session.alkkagiPlacementDeadline, session.turnChoiceDeadline, session.guessDeadline, session.basePlacementDeadline, session.captureBidDeadline, session.itemUseDeadline, session.currentPlayer, session.blackTimeLeft, session.whiteTimeLeft, session.gameStatus]);
+    }, [session.turnDeadline, session.alkkagiTurnDeadline, session.curlingTurnDeadline, session.alkkagiPlacementDeadline, session.turnChoiceDeadline, session.guessDeadline, session.basePlacementDeadline, session.captureBidDeadline, session.itemUseDeadline, session.currentPlayer, session.blackTimeLeft, session.whiteTimeLeft, session.gameStatus, session.id]);
 
     return { clientTimes };
 };
