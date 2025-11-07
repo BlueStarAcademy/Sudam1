@@ -106,7 +106,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                     <Button onClick={handleNextStage} colorScheme="blue" className="w-full" disabled={!canTryNext}>
                         다음 단계{nextStage ? `: ${nextStage.name.replace('스테이지 ', '')}` : ''}
                     </Button>
-                    <Button onClick={onClose} colorScheme="green" className="w-full">확인</Button>
+                    <Button onClick={() => handleClose(session, onClose)} colorScheme="green" className="w-full">확인</Button>
                 </div>
             </div>
         </DraggableWindow>
