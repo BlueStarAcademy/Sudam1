@@ -62,11 +62,12 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             mail.attachmentsClaimed = true;
             await db.updateUser(user);
             
-            const updatedUser = { 
-                ...user, 
-                inventory: finalItemsToAdd.map(item => ({ ...item })),
-                mail: user.mail.map(m => ({ ...m }))
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
             
             return {
                 clientResponse: {
@@ -112,11 +113,12 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
 
             await db.updateUser(user);
             
-            const updatedUser = { 
-                ...user, 
-                inventory: updatedInventory.map(item => ({ ...item })),
-                mail: user.mail.map(m => ({ ...m }))
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
             
             const reward: QuestReward = {
                 gold: totalGold,
@@ -195,20 +197,13 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
 
             await db.updateUser(user);
             
-            const updatedQuests = {
-                ...user.quests,
-                [questType!]: {
-                    ...user.quests[questType!]!,
-                    quests: user.quests[questType!]!.quests.map(q => ({ ...q })),
-                    activityProgress: user.quests[questType!]!.activityProgress
-                }
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
             
-            const updatedUser = { 
-                ...user, 
-                inventory: updatedInventory.map(item => ({ ...item })),
-                quests: updatedQuests
-            };
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            
             return { 
                 clientResponse: { 
                     rewardSummary: {
@@ -268,17 +263,12 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
 
             await db.updateUser(user);
             
-            const updatedUser = { 
-                ...user, 
-                inventory: updatedInventory.map(item => ({ ...item })),
-                quests: {
-                    ...user.quests,
-                    [questType!]: {
-                        ...user.quests[questType!]!,
-                        claimedMilestones: [...data.claimedMilestones]
-                    }
-                }
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
             
             return { 
                 clientResponse: { 
@@ -392,18 +382,46 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                     return { error: 'Invalid tournament type.' };
             }
 
-            if ((user as any)[statusKey]) return { error: '이미 보상을 수령했습니다.' };
+            // DB에서 최신 상태를 다시 확인하여 중복 보상 지급 방지
+            const freshUser = await db.getUser(user.id);
+            if (!freshUser) return { error: '사용자를 찾을 수 없습니다.' };
             
-            const tournamentState = (user as any)[tourneyKey] as TournamentState | null;
+            if ((freshUser as any)[statusKey]) {
+                console.warn(`[CLAIM_TOURNAMENT_REWARD] User ${user.id} already claimed reward for ${tournamentType}`);
+                return { error: '이미 보상을 수령했습니다.' };
+            }
+            
+            // freshUser를 사용하도록 변경
+            const tournamentState = (freshUser as any)[tourneyKey] as TournamentState | null;
             if (!tournamentState || (tournamentState.status !== 'complete' && tournamentState.status !== 'eliminated')) {
                  return { error: '토너먼트가 아직 종료되지 않았습니다.' };
             }
             
             const itemRewardInfo = BASE_TOURNAMENT_REWARDS[tournamentType];
+            if (!itemRewardInfo) {
+                console.error(`[CLAIM_TOURNAMENT_REWARD] Item reward info not found for tournament type:`, tournamentType);
+                return { error: `토너먼트 보상 정보를 찾을 수 없습니다. (타입: ${tournamentType})` };
+            }
             
-            const rankings = calculateRanks(tournamentState);
-            const userRanking = rankings.find(r => r.id === user.id);
-            if (!userRanking) return { error: '순위를 결정할 수 없습니다.' };
+            let rankings;
+            try {
+                rankings = calculateRanks(tournamentState);
+            } catch (error: any) {
+                console.error(`[CLAIM_TOURNAMENT_REWARD] Error calculating ranks:`, error);
+                console.error(`[CLAIM_TOURNAMENT_REWARD] Tournament state:`, JSON.stringify(tournamentState, null, 2));
+                return { error: `순위 계산 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}` };
+            }
+            
+            if (!rankings || rankings.length === 0) {
+                console.error(`[CLAIM_TOURNAMENT_REWARD] No rankings calculated for tournament:`, tournamentState);
+                return { error: '순위를 계산할 수 없습니다.' };
+            }
+            
+            const userRanking = rankings.find(r => r.id === freshUser.id);
+            if (!userRanking) {
+                console.error(`[CLAIM_TOURNAMENT_REWARD] User ranking not found. User ID: ${freshUser.id}, Rankings:`, rankings);
+                return { error: '순위를 결정할 수 없습니다.' };
+            }
             const userRank = userRanking.rank;
 
             let itemRewardKey: number;
@@ -426,47 +444,153 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 else if (userRank <= 8) scoreRewardKey = 5;
                 else scoreRewardKey = 9;
             }
-            const scoreReward = scoreRewardInfo[scoreRewardKey] || 0;
+            const scoreReward = scoreRewardInfo[scoreRewardKey];
+            if (scoreReward === undefined) {
+                console.error(`[CLAIM_TOURNAMENT_REWARD] Invalid scoreRewardKey: ${scoreRewardKey} for tournamentType: ${tournamentType}, userRank: ${userRank}`);
+                return { error: `순위에 대한 점수 보상이 정의되지 않았습니다. (순위: ${userRank})` };
+            }
             
-            const itemReward = itemRewardInfo.rewards[itemRewardKey];
+            console.log(`[CLAIM_TOURNAMENT_REWARD] tournamentType: ${tournamentType}, userRank: ${userRank}, scoreRewardKey: ${scoreRewardKey}, scoreReward: ${scoreReward}, currentTournamentScore: ${freshUser.tournamentScore || 0}`);
+            
+            const itemReward = itemRewardInfo.rewards?.[itemRewardKey];
 
             if (!itemReward) {
-                (user as any)[statusKey] = true;
-                user.tournamentScore = (user.tournamentScore || 0) + scoreReward;
-                updateQuestProgress(user, 'tournament_complete');
-                await db.updateUser(user);
-                return { clientResponse: { obtainedItemsBulk: [] }};
+                console.error(`[CLAIM_TOURNAMENT_REWARD] Item reward not found. tournamentType: ${tournamentType}, itemRewardKey: ${itemRewardKey}, userRank: ${userRank}`);
+                console.error(`[CLAIM_TOURNAMENT_REWARD] Available reward keys:`, itemRewardInfo.rewards ? Object.keys(itemRewardInfo.rewards) : 'none');
+                // itemReward가 없어도 점수 보상은 지급해야 하므로 계속 진행
+            }
+            
+            if (!itemReward) {
+                // 동네바둑리그: 누적 골드 추가
+                let accumulatedGold = 0;
+                if (tournamentType === 'neighborhood' && tournamentState.accumulatedGold) {
+                    accumulatedGold = tournamentState.accumulatedGold;
+                }
+                
+                // 전국바둑대회: 누적 재료 추가
+                let accumulatedMaterials: InventoryItem[] = [];
+                if (tournamentType === 'national' && tournamentState.accumulatedMaterials) {
+                    const materialItems = Object.entries(tournamentState.accumulatedMaterials).map(([materialName, quantity]) => ({
+                        itemId: materialName,
+                        quantity: quantity
+                    }));
+                    accumulatedMaterials = createItemInstancesFromReward(materialItems);
+                }
+                
+                // 월드챔피언십: 누적 장비상자 추가
+                let accumulatedEquipmentBoxes: InventoryItem[] = [];
+                if (tournamentType === 'world' && tournamentState.accumulatedEquipmentBoxes) {
+                    const boxItems = Object.entries(tournamentState.accumulatedEquipmentBoxes).map(([boxName, quantity]) => ({
+                        itemId: boxName,
+                        quantity: quantity
+                    }));
+                    accumulatedEquipmentBoxes = createItemInstancesFromReward(boxItems);
+                }
+                
+                // 재료와 장비상자를 함께 인벤토리에 추가
+                const allAccumulatedItems = [...accumulatedMaterials, ...accumulatedEquipmentBoxes];
+                if (allAccumulatedItems.length > 0) {
+                    const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory([...freshUser.inventory], freshUser.inventorySlots, allAccumulatedItems);
+                    if (!success) {
+                        return { error: '보상을 받기에 가방 공간이 부족합니다. 가방을 비우고 다시 시도해주세요.' };
+                    }
+                    freshUser.inventory = updatedInventory;
+                }
+                
+                (freshUser as any)[statusKey] = true;
+                const oldScore = freshUser.tournamentScore || 0;
+                freshUser.tournamentScore = oldScore + scoreReward;
+                freshUser.gold += accumulatedGold;
+                console.log(`[CLAIM_TOURNAMENT_REWARD] Updated tournamentScore: ${oldScore} -> ${freshUser.tournamentScore}`);
+                if (accumulatedGold > 0) {
+                    console.log(`[CLAIM_TOURNAMENT_REWARD] Added accumulated gold: ${accumulatedGold}`);
+                }
+                if (accumulatedMaterials.length > 0) {
+                    console.log(`[CLAIM_TOURNAMENT_REWARD] Added accumulated materials:`, accumulatedMaterials.map(m => `${m.name} x${m.quantity}`).join(', '));
+                }
+                if (accumulatedEquipmentBoxes.length > 0) {
+                    console.log(`[CLAIM_TOURNAMENT_REWARD] Added accumulated equipment boxes:`, accumulatedEquipmentBoxes.map(b => `${b.name} x${b.quantity}`).join(', '));
+                }
+                updateQuestProgress(freshUser, 'tournament_complete');
+                await db.updateUser(freshUser);
+                
+                // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+                const updatedUser = JSON.parse(JSON.stringify(freshUser));
+                
+                // WebSocket으로 사용자 업데이트 브로드캐스트
+                const { broadcast } = await import('../socket.js');
+                broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUser } });
+                
+                const allObtainedItems: any[] = [...accumulatedMaterials, ...accumulatedEquipmentBoxes];
+                if (accumulatedGold > 0) {
+                    allObtainedItems.unshift({ name: `${accumulatedGold} 골드 (경기 보상)`, image: '/images/icon/Gold.png' });
+                }
+                
+                return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser, tournamentScoreChange: { oldScore: oldScore, newScore: freshUser.tournamentScore, scoreReward: scoreReward } }};
             }
 
             const itemsToCreate = itemReward.items ? createItemInstancesFromReward(itemReward.items as {itemId: string, quantity: number}[]) : [];
             
-            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
+            // 전국바둑대회: 누적 재료 추가
+            if (tournamentType === 'national' && tournamentState.accumulatedMaterials) {
+                const materialItems = Object.entries(tournamentState.accumulatedMaterials).map(([materialName, quantity]) => ({
+                    itemId: materialName,
+                    quantity: quantity
+                }));
+                const createdMaterials = createItemInstancesFromReward(materialItems);
+                itemsToCreate.push(...createdMaterials);
+            }
+            
+            // 월드챔피언십: 누적 장비상자 추가
+            if (tournamentType === 'world' && tournamentState.accumulatedEquipmentBoxes) {
+                const boxItems = Object.entries(tournamentState.accumulatedEquipmentBoxes).map(([boxName, quantity]) => ({
+                    itemId: boxName,
+                    quantity: quantity
+                }));
+                const createdBoxes = createItemInstancesFromReward(boxItems);
+                itemsToCreate.push(...createdBoxes);
+            }
+            
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory([...freshUser.inventory], freshUser.inventorySlots, itemsToCreate);
             if (!success) {
                 return { error: '보상을 받기에 가방 공간이 부족합니다. 가방을 비우고 다시 시도해주세요.' };
             }
             
             // If we'vepassed the check, apply all changes
-            (user as any)[statusKey] = true;
-            user.tournamentScore = (user.tournamentScore || 0) + scoreReward;
+            (freshUser as any)[statusKey] = true;
+            const oldScore = freshUser.tournamentScore || 0;
+            freshUser.tournamentScore = oldScore + scoreReward;
+            console.log(`[CLAIM_TOURNAMENT_REWARD] Updated tournamentScore: ${oldScore} -> ${freshUser.tournamentScore}`);
             
-            user.gold += itemReward.gold || 0;
-            user.diamonds += itemReward.diamonds || 0;
-            user.inventory = updatedInventory;
+            // 동네바둑리그: 누적 골드 추가
+            let accumulatedGold = 0;
+            if (tournamentType === 'neighborhood' && tournamentState.accumulatedGold) {
+                accumulatedGold = tournamentState.accumulatedGold;
+            }
             
-            updateQuestProgress(user, 'tournament_complete');
+            freshUser.gold += (itemReward.gold || 0) + accumulatedGold;
+            freshUser.diamonds += itemReward.diamonds || 0;
+            freshUser.inventory = updatedInventory;
+            
+            updateQuestProgress(freshUser, 'tournament_complete');
 
-            await db.updateUser(user);
+            await db.updateUser(freshUser);
             
-            const updatedUser = { 
-                ...user, 
-                inventory: updatedInventory.map(item => ({ ...item }))
-            };
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(freshUser));
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const { broadcast } = await import('../socket.js');
+            broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUser } });
 
             const allObtainedItems = [...itemsToCreate];
+            if (accumulatedGold > 0) {
+                allObtainedItems.unshift({ name: `${accumulatedGold} 골드 (경기 보상)`, image: '/images/icon/Gold.png' } as InventoryItem);
+            }
             if (itemReward.gold) allObtainedItems.unshift({ name: `${itemReward.gold} 골드`, image: '/images/icon/Gold.png' } as InventoryItem);
             if (itemReward.diamonds) allObtainedItems.unshift({ name: `${itemReward.diamonds} 다이아`, image: '/images/icon/Zem.png' } as InventoryItem);
 
-            return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser }};
+            return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser, tournamentScoreChange: { oldScore: oldScore, newScore: freshUser.tournamentScore, scoreReward: scoreReward } }};
         }
         default:
             return { error: 'Unknown reward action.' };

@@ -339,6 +339,32 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 }
             }
 
+            // 싱글플레이 턴 카운팅 및 자동 계가 트리거
+            if (game.isSinglePlayer && game.stageId) {
+                game.totalTurns = (game.totalTurns || 0) + 1;
+                
+                // 자동 계가 트리거 체크
+                const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
+                const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+                if (stage?.autoScoringTurns && game.totalTurns >= stage.autoScoringTurns) {
+                    const { getGameResult } = await import('../gameModes.js');
+                    getGameResult(game);
+                    await db.saveGame(game);
+                    return {};
+                }
+                
+                // 유단자 1~5 스테이지: 흑돌 개수제한 체크
+                if (stage?.blackTurnLimit && myPlayerEnum === types.Player.Black) {
+                    const blackMovesCount = game.moveHistory.filter(m => m.player === types.Player.Black && m.x !== -1).length;
+                    if (blackMovesCount >= stage.blackTurnLimit) {
+                        // 흑돌 개수제한 도달 시 AI 승리
+                        const { endGame } = await import('../summaryService.js');
+                        await endGame(game, types.Player.White, 'timeout');
+                        return {};
+                    }
+                }
+            }
+            
             game.currentPlayer = opponentPlayerEnum;
             game.missileUsedThisTurn = false;
             

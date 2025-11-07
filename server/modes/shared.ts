@@ -6,6 +6,7 @@ import { ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_SIMULTANEOUS_PLACEMENT_TIME_LIMIT
 import { aiUserId } from '../aiPlayer.js';
 import { updateQuestProgress } from '../questService.js';
 import * as types from '../../types.js';
+import { broadcast } from '../socket.js';
 
 // FIX: Corrected the type definition for `rpsStatusMap`. `Partial` takes one type argument, and the original code provided two. This also fixes a typo with an extra '>' and resolves subsequent parsing errors on the following lines.
 const rpsStatusMap: Partial<Record<types.GameMode, types.GameStatus>> = {
@@ -224,6 +225,10 @@ export const handleSharedAction = async (volatileState: VolatileState, game: Liv
 
             user.mannerScore = Math.max(0, user.mannerScore + scoreChange);
             
+            // 게임의 mannerScoreChanges에 매너 점수 변경 기록
+            if (!game.mannerScoreChanges) game.mannerScoreChanges = {};
+            game.mannerScoreChanges[user.id] = (game.mannerScoreChanges[user.id] || 0) + scoreChange;
+            
             if (!game.actionButtonUses) game.actionButtonUses = {};
             game.actionButtonUses[user.id] = (game.actionButtonUses[user.id] ?? 0) + 1;
             if (!game.actionButtonUsedThisCycle) game.actionButtonUsedThisCycle = {};
@@ -233,7 +238,33 @@ export const handleSharedAction = async (volatileState: VolatileState, game: Liv
 
             await db.updateUser(user);
             await db.saveGame(game);
-            return {};
+            
+            // 채팅 메시지 브로드캐스트
+            broadcast({ 
+                type: 'GAME_CHAT_UPDATE', 
+                payload: { 
+                    [game.id]: volatileState.gameChats[game.id] 
+                } 
+            });
+            
+            // 매너 점수 변경 브로드캐스트
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            broadcast({ 
+                type: 'USER_UPDATE', 
+                payload: { 
+                    [user.id]: updatedUser 
+                } 
+            });
+            
+            // 게임 상태 업데이트 브로드캐스트 (액션 버튼 사용 정보 포함)
+            broadcast({ 
+                type: 'GAME_UPDATE', 
+                payload: { 
+                    [game.id]: game 
+                } 
+            });
+            
+            return { clientResponse: { updatedUser } };
         }
 
         case 'CHOOSE_TURN_PREFERENCE': {

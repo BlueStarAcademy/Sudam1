@@ -66,9 +66,60 @@ export const getOmokLogic = (game: LiveGameSession) => {
     };
 
     const is33 = (x: number, y: number, board: BoardState): boolean => {
-        // The original logic was buggy and preventing valid moves.
-        // As per the request, this check is disabled.
-        return false;
+        // 3-3 금지: 한 수를 두면 두 개의 열린 3(연속된 3개의 돌이 양쪽 끝이 열려있는 상태)를 동시에 만드는 것을 금지
+        // 임시로 돌을 놓아서 확인
+        const tempBoard = board.map(row => [...row]);
+        tempBoard[y][x] = types.Player.Black;
+        
+        const directions = [{ dx: 1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 1, dy: 1 }, { dx: 1, dy: -1 }];
+        let openThreeCount = 0;
+        
+        for (const { dx, dy } of directions) {
+            // 이 방향으로 연속된 돌의 개수 확인
+            let count = 1; // 현재 위치의 돌 포함
+            
+            // 양쪽으로 확장
+            let leftOpen = false;
+            let rightOpen = false;
+            
+            // 오른쪽으로 확인
+            for (let i = 1; i < 5; i++) {
+                const nx = x + i * dx;
+                const ny = y + i * dy;
+                if (nx < 0 || nx >= boardSize || ny < 0 || ny >= boardSize) break;
+                if (tempBoard[ny][nx] === types.Player.Black) {
+                    count++;
+                } else {
+                    if (tempBoard[ny][nx] === types.Player.None) {
+                        rightOpen = true;
+                    }
+                    break;
+                }
+            }
+            
+            // 왼쪽으로 확인
+            for (let i = 1; i < 5; i++) {
+                const nx = x - i * dx;
+                const ny = y - i * dy;
+                if (nx < 0 || nx >= boardSize || ny < 0 || ny >= boardSize) break;
+                if (tempBoard[ny][nx] === types.Player.Black) {
+                    count++;
+                } else {
+                    if (tempBoard[ny][nx] === types.Player.None) {
+                        leftOpen = true;
+                    }
+                    break;
+                }
+            }
+            
+            // 정확히 3개이고 양쪽이 모두 열려있으면 열린 3
+            if (count === 3 && leftOpen && rightOpen) {
+                openThreeCount++;
+            }
+        }
+        
+        // 두 개 이상의 열린 3이 있으면 3-3 금지
+        return openThreeCount >= 2;
     };
 
 

@@ -89,6 +89,7 @@ export const useApp = () => {
     const [isShopOpen, setIsShopOpen] = useState(false);
     const [shopInitialTab, setShopInitialTab] = useState<'equipment' | 'materials' | 'consumables' | 'misc' | undefined>(undefined);
     const [lastUsedItemResult, setLastUsedItemResult] = useState<InventoryItem[] | null>(null);
+    const [tournamentScoreChange, setTournamentScoreChange] = useState<{ oldScore: number; newScore: number; scoreReward: number } | null>(null);
     const [disassemblyResult, setDisassemblyResult] = useState<{ gained: { name: string, amount: number }[], jackpot: boolean } | null>(null);
     const [craftResult, setCraftResult] = useState<{ gained: { name: string; amount: number }[]; used: { name: string; amount: number }[]; craftType: 'upgrade' | 'downgrade'; jackpot?: boolean } | null>(null);
     const [rewardSummary, setRewardSummary] = useState<{ reward: QuestReward; items: InventoryItem[]; title: string } | null>(null);
@@ -346,9 +347,10 @@ export const useApp = () => {
                 }
             } else {
                 const result = await res.json();
-                if (result.error) {
-                    console.error(`[handleAction] ${action.type} - Server returned error:`, result.error);
-                    showError(result.message || '서버 오류가 발생했습니다.');
+                if (result.error || result.message) {
+                    const errorMessage = result.message || result.error || '서버 오류가 발생했습니다.';
+                    console.error(`[handleAction] ${action.type} - Server returned error:`, errorMessage);
+                    showError(errorMessage);
                     return;
                 }
                 console.log(`[handleAction] ${action.type} - Response received:`, {
@@ -396,16 +398,35 @@ export const useApp = () => {
                     // HTTP 응답의 updatedUser가 항상 최신이므로, 이를 기록하여 WebSocket이 오래된 데이터를 덮어쓰지 않도록 함
                     lastActionProcessedTime.current = Date.now();
                     lastActionType.current = action.type;
-                    // 상태 업데이트를 즉시 동기적으로 처리하여 React가 변경을 확실히 감지하도록 함
+                    
+                    // 즉시 상태 업데이트 (동기적으로 처리하여 확실히 반영)
+                    // flushSync를 직접 사용하여 즉시 반영 (비동기 Promise 사용하지 않음)
+                    const newUser = JSON.parse(JSON.stringify(updatedUser));
+                    
+                    // 즉시 동기적으로 상태 업데이트
                     flushSync(() => {
-                        setCurrentUser(() => {
-                            // 매번 새로운 객체를 반환하여 React가 변경을 확실히 감지하도록 함
-                            const newUser = JSON.parse(JSON.stringify(updatedUser));
-                            return newUser;
-                        });
-                        // 강제 리렌더링 트리거
+                        setCurrentUser(newUser);
                         setUpdateTrigger(prev => prev + 1);
                     });
+                    
+                    // 추가 업데이트로 모든 컴포넌트가 변경을 감지하도록 함
+                    requestAnimationFrame(() => {
+                        flushSync(() => {
+                            setCurrentUser(JSON.parse(JSON.stringify(updatedUser)));
+                            setUpdateTrigger(prev => prev + 1);
+                        });
+                    });
+                    
+                    // setTimeout으로 추가 보장
+                    setTimeout(() => {
+                        setCurrentUser(JSON.parse(JSON.stringify(updatedUser)));
+                        setUpdateTrigger(prev => prev + 1);
+                    }, 0);
+                    
+                    setTimeout(() => {
+                        setUpdateTrigger(prev => prev + 1);
+                    }, 10);
+                    
                     // HTTP 응답에서 받은 updatedUser가 최신이므로, WebSocket 업데이트가 이를 덮어쓰지 않도록 보장
                     // (이미 위의 shouldIgnoreWebSocketUpdate 로직과 추가 체크로 처리됨)
                 } else {
@@ -414,9 +435,59 @@ export const useApp = () => {
                         clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
                         resultKeys: Object.keys(result)
                     });
+                    // updatedUser가 없어도 강제 리렌더링하여 상태 동기화 보장
+                    if (currentUser) {
+                        Promise.resolve().then(() => {
+                            flushSync(() => {
+                                setCurrentUser(JSON.parse(JSON.stringify(currentUser)));
+                                setUpdateTrigger(prev => prev + 1);
+                            });
+                        });
+                        requestAnimationFrame(() => {
+                            flushSync(() => {
+                                setCurrentUser(JSON.parse(JSON.stringify(currentUser)));
+                                setUpdateTrigger(prev => prev + 1);
+                            });
+                        });
+                        setTimeout(() => {
+                            setUpdateTrigger(prev => prev + 1);
+                        }, 0);
+                        setTimeout(() => {
+                            setUpdateTrigger(prev => prev + 1);
+                        }, 10);
+                    }
                 }
+                 // 상태 동기화를 위한 추가 업데이트 (모든 액션에 대해)
+                 // 사용자 데이터가 변경될 수 있는 액션들에 대해 강제 리렌더링
+                 const userDataChangingActions = [
+                     'TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'ENHANCE_ITEM', 'COMBINE_ITEMS', 'DISASSEMBLE_ITEM', 
+                     'CRAFT_MATERIAL', 'BUY_SHOP_ITEM', 'BUY_CONDITION_POTION', 'UPDATE_AVATAR', 
+                     'UPDATE_BORDER', 'CHANGE_NICKNAME', 'UPDATE_MBTI', 'ALLOCATE_STAT_POINT',
+                     'SELL_ITEM', 'EXPAND_INVENTORY', 'BUY_BORDER', 'APPLY_PRESET', 'SAVE_PRESET'
+                 ];
+                 
+                 if (userDataChangingActions.includes(action.type)) {
+                     // 추가 강제 리렌더링으로 상태 동기화 보장
+                     setTimeout(() => {
+                         setUpdateTrigger(prev => prev + 1);
+                     }, 50);
+                     setTimeout(() => {
+                         setUpdateTrigger(prev => prev + 1);
+                     }, 100);
+                     // 최종 상태 동기화 확인
+                     setTimeout(() => {
+                         if (updatedUserFromResponse) {
+                             const finalUser = JSON.parse(JSON.stringify(updatedUserFromResponse));
+                             setCurrentUser(finalUser);
+                             setUpdateTrigger(prev => prev + 1);
+                         }
+                     }, 150);
+                 }
+                 
                  const obtainedItemsBulk = result.clientResponse?.obtainedItemsBulk || result.obtainedItemsBulk;
                  if (obtainedItemsBulk) setLastUsedItemResult(obtainedItemsBulk);
+                 const scoreChange = result.clientResponse?.tournamentScoreChange;
+                 if (scoreChange) setTournamentScoreChange(scoreChange);
                  if (result.rewardSummary) setRewardSummary(result.rewardSummary);
                 if (result.claimAllSummary) {
                     setClaimAllSummary(result.claimAllSummary);
@@ -483,32 +554,37 @@ export const useApp = () => {
                 if (result.enhancementAnimationTarget) setEnhancementAnimationTarget(result.enhancementAnimationTarget);
                 const redirectToTournament = result.clientResponse?.redirectToTournament || result.redirectToTournament;
                 if (redirectToTournament) {
-                    console.log(`[handleAction] ${action.type} - Redirecting to tournament:`, redirectToTournament);
-                    // 상태 업데이트가 완료된 후 리다이렉트
-                    // 같은 해시일 경우에도 강제로 리렌더링되도록 해시를 임시로 변경한 후 다시 설정
-                    setTimeout(() => {
-                        const newHash = `#/tournament/${redirectToTournament}`;
-                        const currentHash = window.location.hash;
-                        if (currentHash === newHash) {
-                            // 같은 해시인 경우 임시로 다른 해시로 변경한 후 다시 설정하여 강제 리렌더링
-                            window.location.hash = '#/tournament';
-                            setTimeout(() => {
+                    // USE_CONDITION_POTION의 경우 같은 토너먼트에서 사용하므로 리다이렉트하지 않음
+                    if (action.type !== 'USE_CONDITION_POTION') {
+                        console.log(`[handleAction] ${action.type} - Redirecting to tournament:`, redirectToTournament);
+                        // 상태 업데이트가 완료된 후 리다이렉트
+                        // 같은 해시일 경우에도 강제로 리렌더링되도록 해시를 임시로 변경한 후 다시 설정
+                        setTimeout(() => {
+                            const newHash = `#/tournament/${redirectToTournament}`;
+                            const currentHash = window.location.hash;
+                            if (currentHash === newHash) {
+                                // 같은 해시인 경우 임시로 다른 해시로 변경한 후 다시 설정하여 강제 리렌더링
+                                window.location.hash = '#/tournament';
+                                setTimeout(() => {
+                                    window.location.hash = newHash;
+                                }, 50);
+                            } else {
                                 window.location.hash = newHash;
-                            }, 50);
-                        } else {
-                            window.location.hash = newHash;
-                        }
-                    }, 200);
+                            }
+                        }, 200);
+                    } else {
+                        console.log(`[handleAction] ${action.type} - Skipping redirect (already in tournament)`);
+                    }
                 }
                 // 거절 메시지 표시
                 if (result.declinedMessage) {
                     showError(result.declinedMessage.message);
                 }
                 
-                // ACCEPT_NEGOTIATION 후 게임이 생성되었을 때 라우팅 처리
-                if (result.clientResponse?.gameId && action.type === 'ACCEPT_NEGOTIATION') {
+                // ACCEPT_NEGOTIATION, START_AI_GAME, 또는 START_SINGLE_PLAYER_GAME 후 게임이 생성되었을 때 라우팅 처리
+                if (result.clientResponse?.gameId && (action.type === 'ACCEPT_NEGOTIATION' || action.type === 'START_AI_GAME' || action.type === 'START_SINGLE_PLAYER_GAME')) {
                     const gameId = result.clientResponse.gameId;
-                    console.log('[handleAction] ACCEPT_NEGOTIATION - gameId received:', gameId);
+                    console.log(`[handleAction] ${action.type} - gameId received:`, gameId);
                     
                     // WebSocket 업데이트를 기다리면서 여러 번 시도
                     let attempts = 0;
@@ -878,11 +954,14 @@ export const useApp = () => {
                                 break;
                             case 'USER_UPDATE':
                                 // 사용자 데이터 업데이트 (인벤토리, 장비, 프로필 등)
-                                // HTTP 응답이 최근 3초 이내에 처리되었다면 WebSocket 업데이트를 무시 (HTTP 응답이 더 최신)
+                                // HTTP 응답이 최근 5초 이내에 처리되었다면 WebSocket 업데이트를 무시 (HTTP 응답이 더 최신)
                                 // 그 외의 경우에는 WebSocket 업데이트를 처리 (다른 사용자의 액션이거나, HTTP 응답이 없는 경우)
                                 const now = Date.now();
                                 const timeSinceLastAction = now - lastActionProcessedTime.current;
-                                const shouldIgnoreForCurrentUser = timeSinceLastAction < 3000 && lastActionType.current !== null;
+                                // 사용자 데이터 변경 액션의 경우 더 긴 시간 동안 무시 (상태 동기화 시간 확보)
+                                const userDataChangingActions = ['TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'UPDATE_AVATAR', 'UPDATE_BORDER', 'CHANGE_NICKNAME'];
+                                const ignoreDuration = userDataChangingActions.includes(lastActionType.current || '') ? 5000 : 3000;
+                                const shouldIgnoreForCurrentUser = timeSinceLastAction < ignoreDuration && lastActionType.current !== null;
                                 
                                 setUsersMap(currentUsersMap => {
                                     const updatedUsersMap = { ...currentUsersMap };
@@ -896,29 +975,49 @@ export const useApp = () => {
                                         if (!shouldIgnoreForCurrentUser) {
                                             // HTTP 응답이 없거나 충분한 시간이 지난 경우, WebSocket 업데이트 처리
                                             const updatedCurrentUser = message.payload[currentUser.id];
-                                            flushSync(() => {
-                                                setCurrentUser(prevUser => {
-                                                    if (!prevUser || prevUser.id !== updatedCurrentUser.id) return prevUser;
-                                                    
-                                                    // 깊은 복사로 업데이트하여 React가 변경을 감지하도록 함
-                                                    const newUser = JSON.parse(JSON.stringify(updatedCurrentUser));
-                                                    console.log(`[WebSocket] Updating currentUser from WebSocket:`, {
-                                                        inventoryLength: newUser.inventory?.length,
-                                                        gold: newUser.gold,
-                                                        diamonds: newUser.diamonds,
-                                                        equipment: newUser.equipment,
-                                                        avatarId: newUser.avatarId,
-                                                        borderId: newUser.borderId,
-                                                        nickname: newUser.nickname,
-                                                        blacksmithLevel: newUser.blacksmithLevel,
-                                                        blacksmithXp: newUser.blacksmithXp,
-                                                        timeSinceLastAction,
-                                                        lastActionType: lastActionType.current
-                                                    });
-                                                    return newUser;
+                                            // 현재 사용자와 ID가 일치하는지 확인
+                                            if (updatedCurrentUser.id === currentUser.id) {
+                                                // 상태 업데이트를 즉시 동기적으로 처리
+                                                const newUser = JSON.parse(JSON.stringify(updatedCurrentUser));
+                                                console.log(`[WebSocket] Updating currentUser from WebSocket:`, {
+                                                    inventoryLength: newUser.inventory?.length,
+                                                    gold: newUser.gold,
+                                                    diamonds: newUser.diamonds,
+                                                    equipment: newUser.equipment,
+                                                    avatarId: newUser.avatarId,
+                                                    borderId: newUser.borderId,
+                                                    nickname: newUser.nickname,
+                                                    blacksmithLevel: newUser.blacksmithLevel,
+                                                    blacksmithXp: newUser.blacksmithXp,
+                                                    timeSinceLastAction,
+                                                    lastActionType: lastActionType.current
                                                 });
-                                                setUpdateTrigger(prev => prev + 1);
-                                            });
+                                                
+                                                // 첫 번째 업데이트: flushSync로 즉시 반영 (비동기 Promise 사용하지 않음)
+                                                flushSync(() => {
+                                                    setCurrentUser(newUser);
+                                                    setUpdateTrigger(prev => prev + 1);
+                                                });
+                                                
+                                                // 두 번째 업데이트: requestAnimationFrame으로 다음 프레임에 반영
+                                                requestAnimationFrame(() => {
+                                                    flushSync(() => {
+                                                        setCurrentUser(JSON.parse(JSON.stringify(updatedCurrentUser)));
+                                                        setUpdateTrigger(prev => prev + 1);
+                                                    });
+                                                });
+                                                
+                                                // 세 번째 업데이트: setTimeout으로 추가 보장
+                                                setTimeout(() => {
+                                                    setCurrentUser(JSON.parse(JSON.stringify(updatedCurrentUser)));
+                                                    setUpdateTrigger(prev => prev + 1);
+                                                }, 0);
+                                                
+                                                // 네 번째 업데이트: 추가 지연으로 최종 보장
+                                                setTimeout(() => {
+                                                    setUpdateTrigger(prev => prev + 1);
+                                                }, 10);
+                                            }
                                         } else {
                                             console.log(`[WebSocket] Ignoring USER_UPDATE for ${currentUser.id} - HTTP response was processed ${timeSinceLastAction}ms ago (more recent)`);
                                         }
@@ -1286,15 +1385,20 @@ export const useApp = () => {
             console.log('[useApp] Routing to game:', activeGame.id);
             window.location.hash = `#/game/${activeGame.id}`;
         } else if (!activeGame && isGamePage) {
-            let targetHash = '#/profile';
-            if (currentUserWithStatus?.status === 'waiting' && currentUserWithStatus?.mode) {
-                targetHash = `#/waiting/${encodeURIComponent(currentUserWithStatus.mode)}`;
-            }
-            if (currentHash !== targetHash) {
-                window.location.hash = targetHash;
+            // AI 게임의 경우, 게임이 종료되어도 결과창을 확인할 수 있도록 게임 페이지에 머물 수 있음
+            // 나가기 버튼을 통해 대기실로 이동할 수 있음
+            const isAiGame = currentHash.startsWith('#/game/') && liveGames[currentHash.replace('#/game/', '')]?.isAiGame;
+            if (!isAiGame) {
+                let targetHash = '#/profile';
+                if (currentUserWithStatus?.status === 'waiting' && currentUserWithStatus?.mode) {
+                    targetHash = `#/waiting/${encodeURIComponent(currentUserWithStatus.mode)}`;
+                }
+                if (currentHash !== targetHash) {
+                    window.location.hash = targetHash;
+                }
             }
         }
-    }, [currentUser, activeGame, currentUserWithStatus]);
+    }, [currentUser, activeGame, currentUserWithStatus, liveGames]);
     
     // --- Misc UseEffects ---
     useEffect(() => {
@@ -1483,6 +1587,7 @@ export const useApp = () => {
         presets,
         setCurrentUserAndRoute,
         currentUserWithStatus,
+        updateTrigger,
         currentRoute,
         error,
         allUsers,
@@ -1529,6 +1634,7 @@ export const useApp = () => {
             isBlacksmithHelpOpen,
             enhancingItem,
             isEnhancementResultModalOpen,
+            tournamentScoreChange,
         },
         handlers: {
             handleAction,
@@ -1551,7 +1657,10 @@ export const useApp = () => {
                 setIsShopOpen(false);
                 setShopInitialTab(undefined);
             },
-            closeItemObtained: () => setLastUsedItemResult(null),
+            closeItemObtained: () => {
+                setLastUsedItemResult(null);
+                setTournamentScoreChange(null);
+            },
             closeDisassemblyResult: () => setDisassemblyResult(null),
             closeCraftResult: () => setCraftResult(null),
             closeCombinationResult: () => setCombinationResult(null),

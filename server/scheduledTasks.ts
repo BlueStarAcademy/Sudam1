@@ -2,13 +2,15 @@
 
 import * as db from './db.js';
 import * as types from '../types.js';
-import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, SEASONAL_TIER_BORDERS } from '../constants';
+import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, SEASONAL_TIER_BORDERS, DAILY_QUESTS, WEEKLY_QUESTS, MONTHLY_QUESTS } from '../constants';
 import { randomUUID } from 'crypto';
-import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST, isSameDayKST, getStartOfDayKST } from '../utils/timeUtils.js';
+import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST, isSameDayKST, getStartOfDayKST, isDifferentDayKST, isDifferentMonthKST } from '../utils/timeUtils.js';
+import { resetAndGenerateQuests } from './gameActions.js';
 
 let lastSeasonProcessed: SeasonInfo | null = null;
 let lastWeeklyResetTimestamp: number | null = null;
 let lastDailyRankingUpdateTimestamp: number | null = null;
+let lastDailyQuestResetTimestamp: number | null = null;
 
 const processRewardsForSeason = async (season: SeasonInfo) => {
     console.log(`[Scheduler] Processing rewards for ${season.name}...`);
@@ -392,9 +394,21 @@ export async function processDailyRankings(): Promise<void> {
     
     const allUsers = await db.getAllUsers();
     
-    // 전략바둑 랭킹 계산 (누적 점수 기준)
+    // 전략바둑 랭킹 계산 (누적 점수 기준, 10판 이상 PVP 필수)
     const strategicRankings = allUsers
-        .filter(user => user && user.id && user.cumulativeRankingScore?.['standard'] !== undefined)
+        .filter(user => {
+            if (!user || !user.id) return false;
+            // 전략바둑 모드들의 총 게임 수 계산 (wins + losses)
+            let totalGames = 0;
+            for (const mode of SPECIAL_GAME_MODES) {
+                const gameStats = user.stats?.[mode.mode];
+                if (gameStats) {
+                    totalGames += (gameStats.wins || 0) + (gameStats.losses || 0);
+                }
+            }
+            // 10판 이상 PVP를 한 유저만 랭킹에 포함
+            return totalGames >= 10 && user.cumulativeRankingScore?.['standard'] !== undefined;
+        })
         .map(user => ({
             user,
             score: user.cumulativeRankingScore?.['standard'] || 0
@@ -406,9 +420,21 @@ export async function processDailyRankings(): Promise<void> {
             score: entry.score
         }));
     
-    // 놀이바둑 랭킹 계산 (누적 점수 기준)
+    // 놀이바둑 랭킹 계산 (누적 점수 기준, 10판 이상 PVP 필수)
     const playfulRankings = allUsers
-        .filter(user => user && user.id && user.cumulativeRankingScore?.['playful'] !== undefined)
+        .filter(user => {
+            if (!user || !user.id) return false;
+            // 놀이바둑 모드들의 총 게임 수 계산 (wins + losses)
+            let totalGames = 0;
+            for (const mode of PLAYFUL_GAME_MODES) {
+                const gameStats = user.stats?.[mode.mode];
+                if (gameStats) {
+                    totalGames += (gameStats.wins || 0) + (gameStats.losses || 0);
+                }
+            }
+            // 10판 이상 PVP를 한 유저만 랭킹에 포함
+            return totalGames >= 10 && user.cumulativeRankingScore?.['playful'] !== undefined;
+        })
         .map(user => ({
             user,
             score: user.cumulativeRankingScore?.['playful'] || 0
@@ -420,9 +446,9 @@ export async function processDailyRankings(): Promise<void> {
             score: entry.score
         }));
     
-    // 챔피언십 랭킹 계산 (누적 점수 기준)
+    // 챔피언십 랭킹 계산 (누적 점수 기준) - 모든 사용자 포함 (누적 점수가 0이어도 포함)
     const championshipRankings = allUsers
-        .filter(user => user && user.id && user.cumulativeTournamentScore !== undefined)
+        .filter(user => user && user.id)
         .map(user => ({
             user,
             score: user.cumulativeTournamentScore || 0
@@ -462,12 +488,19 @@ export async function processDailyRankings(): Promise<void> {
             };
         }
         
-        // 챔피언십 순위 저장
+        // 챔피언십 순위 저장 (누적 점수 기준 - 모든 사용자에게 저장)
         const championshipRank = championshipRankings.findIndex(r => r.userId === user.id);
         if (championshipRank !== -1) {
             updatedUser.dailyRankings.championship = {
                 rank: championshipRank + 1,
                 score: user.cumulativeTournamentScore || 0,
+                lastUpdated: now
+            };
+        } else {
+            // 랭킹에 없는 경우에도 0점으로 기록 (누적 점수가 없는 신규 사용자 등)
+            updatedUser.dailyRankings.championship = {
+                rank: allUsers.length, // 마지막 순위
+                score: 0,
                 lastUpdated: now
             };
         }
@@ -477,4 +510,44 @@ export async function processDailyRankings(): Promise<void> {
     
     lastDailyRankingUpdateTimestamp = now;
     console.log(`[DailyRanking] Updated daily rankings for ${allUsers.length} users`);
+}
+
+// 매일 0시 KST에 일일 퀘스트 초기화
+export async function processDailyQuestReset(): Promise<void> {
+    const now = Date.now();
+    const kstNow = getKSTDate(now);
+    const isMidnight = kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
+    
+    if (!isMidnight) {
+        return;
+    }
+    
+    // 이미 오늘 처리했는지 확인
+    if (lastDailyQuestResetTimestamp !== null) {
+        const lastResetKst = getKSTDate(lastDailyQuestResetTimestamp);
+        const todayStart = getStartOfDayKST(now);
+        const lastResetStart = getStartOfDayKST(lastDailyQuestResetTimestamp);
+        
+        if (lastResetStart === todayStart) {
+            return; // Already processed today
+        }
+    }
+    
+    console.log(`[DailyQuestReset] Processing daily quest reset at midnight KST`);
+    
+    const allUsers = await db.getAllUsers();
+    let resetCount = 0;
+    
+    for (const user of allUsers) {
+        const updatedUser = await resetAndGenerateQuests(user);
+        
+        // Check if quests were actually reset
+        if (JSON.stringify(user.quests) !== JSON.stringify(updatedUser.quests)) {
+            await db.updateUser(updatedUser);
+            resetCount++;
+        }
+    }
+    
+    lastDailyQuestResetTimestamp = now;
+    console.log(`[DailyQuestReset] Reset daily quests for ${resetCount} users`);
 }

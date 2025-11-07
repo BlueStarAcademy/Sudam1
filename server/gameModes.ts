@@ -330,7 +330,14 @@ export const updateGameStates = async (games: LiveGameSession[], now: number): P
         const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None && 
                         (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
         
+        // AI 턴일 때는 시간을 멈춤 (turnDeadline과 turnStartTime을 undefined로 설정)
         if (isAiTurn && game.gameStatus !== 'ended' && !['missile_animating', 'hidden_reveal_animating', 'alkkagi_animating', 'curling_animating'].includes(game.gameStatus)) {
+            // AI 턴 시작 시 시간 멈춤
+            if (game.turnDeadline !== undefined || game.turnStartTime !== undefined) {
+                game.turnDeadline = undefined;
+                game.turnStartTime = undefined;
+            }
+            
             if (!game.aiTurnStartTime) {
                  game.aiTurnStartTime = now + (1000 + Math.random() * 1500);
             }

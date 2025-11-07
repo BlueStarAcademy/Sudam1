@@ -52,7 +52,7 @@ const GameRankingBoard: React.FC<GameRankingBoardProps> = ({ isTopmost }) => {
                     return { user, value: sum };
                 })
                 .sort((a, b) => b.value - a.value)
-                .slice(0, 100);
+                .slice(0, 50); // 상위 50위까지만 표시
             console.log('[GameRankingBoard] Combat rankings:', result.length, 'users');
             return result;
         } else {
@@ -60,7 +60,7 @@ const GameRankingBoard: React.FC<GameRankingBoardProps> = ({ isTopmost }) => {
                 .filter(user => user && user.id)
                 .map(user => ({ user, value: user.mannerScore || 0 }))
                 .sort((a, b) => b.value - a.value)
-                .slice(0, 100);
+                .slice(0, 50); // 상위 50위까지만 표시
             console.log('[GameRankingBoard] Manner rankings:', result.length, 'users');
             return result;
         }

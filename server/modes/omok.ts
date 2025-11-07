@@ -5,6 +5,7 @@ import { handleSharedAction, updateSharedGameState } from './shared.js';
 import { initializeNigiri, updateNigiriState, handleNigiriAction } from './nigiri.js';
 // FIX: Changed import path to avoid circular dependency
 import { transitionToPlaying } from './shared.js';
+import { aiUserId } from '../aiPlayer.js';
 
 
 export const initializeOmok = (game: types.LiveGameSession, neg: types.Negotiation, now: number) => {
@@ -29,7 +30,11 @@ export const initializeOmok = (game: types.LiveGameSession, neg: types.Negotiati
 export const updateOmokState = (game: types.LiveGameSession, now: number) => {
     if (updateSharedGameState(game, now)) return;
 
-    if (game.gameStatus === 'playing' && game.turnDeadline && now > game.turnDeadline) {
+    // AI 턴일 때는 타임아웃 체크를 건너뛰기
+    const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None && 
+                    (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
+    
+    if (game.gameStatus === 'playing' && game.turnDeadline && now > game.turnDeadline && !isAiTurn) {
          const timedOutPlayer = game.currentPlayer;
         game.winner = timedOutPlayer === types.Player.Black ? types.Player.White : types.Player.Black;
         game.winReason = 'timeout';

@@ -7,7 +7,7 @@ import * as effectService from '../effectService.js';
 import { endGame } from '../summaryService.js';
 import { aiUserId } from '../aiPlayer.js';
 
-function finishPlacingTurn(game: types.LiveGameSession, playerId: string) {
+export function finishPlacingTurn(game: types.LiveGameSession, playerId: string) {
     const now = Date.now();
     const humanPlayerId = game.player1.id === aiUserId ? game.player2.id : game.player1.id;
     const aiPlayerId = game.player1.id === aiUserId ? game.player1.id : game.player2.id;
@@ -354,7 +354,11 @@ export const updateDiceGoState = (game: types.LiveGameSession, now: number) => {
             }
             break;
         case 'dice_rolling': {
-            if (game.turnDeadline && now > game.turnDeadline) {
+            // AI 턴일 때는 타임아웃 체크를 건너뛰기
+            const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None && 
+                            (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
+            
+            if (game.turnDeadline && now > game.turnDeadline && !isAiTurn) {
                 const timedOutPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
                 const gameEnded = handleTimeoutFoul(game, timedOutPlayerId, now);
                 if (gameEnded) return;
@@ -376,7 +380,11 @@ export const updateDiceGoState = (game: types.LiveGameSession, now: number) => {
             break;
         }
         case 'dice_placing':
-             if (game.turnDeadline && now > game.turnDeadline) {
+            // AI 턴일 때는 타임아웃 체크를 건너뛰기
+            const isAiTurnPlacing = game.isAiGame && game.currentPlayer !== types.Player.None && 
+                                   (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
+            
+            if (game.turnDeadline && now > game.turnDeadline && !isAiTurnPlacing) {
                 const timedOutPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
                 const gameEnded = handleTimeoutFoul(game, timedOutPlayerId, now);
                 if (gameEnded) return;

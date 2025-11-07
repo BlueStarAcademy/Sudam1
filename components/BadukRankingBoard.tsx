@@ -52,7 +52,7 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
                     rank: user.dailyRankings!.championship!.rank
                 }))
                 .sort((a, b) => a.rank - b.rank) // 순위 순으로 정렬
-                .slice(0, 100);
+                .slice(0, 50); // 상위 50위까지만 표시
             console.log('[BadukRankingBoard] Championship rankings (daily):', result.length, 'users');
             return result;
         } else {
@@ -66,7 +66,7 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
                     rank: user.dailyRankings![mode]!.rank
                 }))
                 .sort((a, b) => a.rank - b.rank) // 순위 순으로 정렬
-                .slice(0, 100);
+                .slice(0, 50); // 상위 50위까지만 표시
             console.log('[BadukRankingBoard]', mode, 'rankings (daily):', result.length, 'users');
             return result;
         }

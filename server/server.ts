@@ -14,7 +14,7 @@ import * as types from '../types/index.js';
 import { processGameSummary, endGame } from './summaryService.js';
 // FIX: Correctly import from the placeholder module.
 import * as aiPlayer from './aiPlayer.js';
-import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset, resetAllTournamentScores, processDailyRankings } from './scheduledTasks.js';
+import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset, resetAllTournamentScores, processDailyRankings, processDailyQuestReset } from './scheduledTasks.js';
 import * as tournamentService from './tournamentService.js';
 import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS } from '../constants';
 import { calculateTotalStats } from './statService.js';
@@ -39,25 +39,33 @@ const processSinglePlayerMissions = (user: types.User): types.User => {
         const missionInfo = SINGLE_PLAYER_MISSIONS.find(m => m.id === missionId);
 
         if (missionState && missionInfo && missionState.isStarted) {
-            // Ensure accumulatedAmount is a number
+            // Ensure accumulatedAmount and level are numbers
             if (typeof missionState.accumulatedAmount !== 'number') {
                 missionState.accumulatedAmount = 0;
                 userModified = true;
             }
+            if (typeof missionState.level !== 'number') {
+                missionState.level = 1;
+                userModified = true;
+            }
 
-            if (missionState.accumulatedAmount >= missionInfo.maxCapacity) {
+            const currentLevel = missionState.level || 1;
+            const levelInfo = missionInfo.levels[currentLevel - 1];
+            if (!levelInfo) continue;
+
+            if (missionState.accumulatedAmount >= levelInfo.maxCapacity) {
                 continue; 
             }
 
             const elapsedMs = now - missionState.lastCollectionTime;
-            const productionIntervalMs = missionInfo.productionRateMinutes * 60 * 1000;
+            const productionIntervalMs = levelInfo.productionRateMinutes * 60 * 1000;
             if (productionIntervalMs <= 0) continue;
 
             const cycles = Math.floor(elapsedMs / productionIntervalMs);
 
             if (cycles > 0) {
-                const amountToAdd = cycles * missionInfo.rewardAmount;
-                const newAmount = Math.min(missionInfo.maxCapacity, missionState.accumulatedAmount + amountToAdd);
+                const amountToAdd = cycles * levelInfo.rewardAmount;
+                const newAmount = Math.min(levelInfo.maxCapacity, missionState.accumulatedAmount + amountToAdd);
                 
                 if (newAmount > missionState.accumulatedAmount) {
                     missionState.accumulatedAmount = newAmount;
@@ -196,6 +204,9 @@ const startServer = async () => {
             
             // Handle daily ranking calculations (매일 0시 정산)
             await processDailyRankings();
+            
+            // Handle daily quest reset (매일 0시 KST)
+            await processDailyQuestReset();
 
             // Handle user timeouts and disconnections
             const onlineUserIdsBeforeTimeoutCheck = Object.keys(volatileState.userConnections);

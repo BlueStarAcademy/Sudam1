@@ -121,8 +121,8 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
   
   // 뷰포트 크기에 비례한 창 크기 계산 (80% 너비, 최소 550px, 최대 950px)
   const calculatedWidth = Math.max(550, Math.min(950, windowWidth * 0.8));
-  // 뷰포트 크기에 비례한 창 높이 계산 (70% 높이, 최소 450px, 최대 700px)
-  const calculatedHeight = Math.max(450, Math.min(700, windowHeight * 0.7));
+  // 뷰포트 크기에 비례한 창 높이 계산 (75% 높이, 최소 550px, 최대 850px) - 알까기 설정이 잘리지 않도록 높이 증가
+  const calculatedHeight = Math.max(550, Math.min(850, windowHeight * 0.75));
   
   // 창 크기에 비례한 스케일 팩터 계산 (기준: 900px 너비)
   const baseWidth = 900;

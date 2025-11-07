@@ -339,6 +339,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             const game = await initializeGame(negotiation);
             await db.saveGame(game);
             
+            volatileState.userStatuses[game.player1.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id };
             volatileState.userStatuses[game.player2.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id };
             
             const draftNegId = Object.keys(volatileState.negotiations).find(id => {
@@ -348,7 +349,23 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             if (draftNegId) delete volatileState.negotiations[draftNegId];
             
             await db.updateUser(user);
-            return {};
+            
+            // 깊은 복사로 updatedUser 생성
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (클라이언트가 게임 데이터를 먼저 받을 수 있도록)
+            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 그 다음 사용자 업데이트 브로드캐스트 (actionPoints 변경 반영)
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // 사용자 상태 브로드캐스트
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
+            broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
+            
+            return {
+                clientResponse: {
+                    gameId: game.id
+                }
+            };
         }
         case 'REQUEST_REMATCH': {
             const { opponentId, originalGameId } = payload;

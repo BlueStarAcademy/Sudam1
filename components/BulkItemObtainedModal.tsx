@@ -9,6 +9,7 @@ interface BulkItemObtainedModalProps {
     items: InventoryItem[];
     onClose: () => void;
     isTopmost?: boolean;
+    tournamentScoreChange?: { oldScore: number; newScore: number; scoreReward: number } | null;
 }
 
 const gradeStyles: Record<ItemGrade, { bg: string, text: string, shadow: string, name: string, background: string }> = {
@@ -28,7 +29,7 @@ const gradeBorderStyles: Partial<Record<ItemGrade, string>> = {
 };
 
 
-const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, onClose, isTopmost }) => {
+const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, onClose, isTopmost, tournamentScoreChange }) => {
     useEffect(() => {
         if (items && items.length > 0) {
             const gradeOrder: ItemGrade[] = ['normal', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
@@ -48,14 +49,27 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
     }, [items]);
 
     return (
-        <DraggableWindow title="상자 열기 결과" onClose={onClose} windowId="bulk-item-obtained" initialWidth={600} closeOnOutsideClick={false} isTopmost={isTopmost} zIndex={70}>
+        <DraggableWindow title="보상 수령" onClose={onClose} windowId="bulk-item-obtained" initialWidth={600} closeOnOutsideClick={false} isTopmost={isTopmost} zIndex={70}>
             <div className="text-center">
                 <h2 className="text-xl font-bold mb-4">아이템 {totalItems}개를 획득했습니다!</h2>
+                {tournamentScoreChange && (
+                    <div className="mb-4 p-3 bg-green-900/30 rounded-lg border border-green-700/50">
+                        <div className="flex items-center justify-center gap-2">
+                            <span className="text-lg">🏆</span>
+                            <span className="text-sm font-semibold text-green-300">
+                                리그 점수: {tournamentScoreChange.oldScore.toLocaleString()} → {tournamentScoreChange.newScore.toLocaleString()} 
+                                <span className="text-green-400 ml-1">(+{tournamentScoreChange.scoreReward}점)</span>
+                            </span>
+                        </div>
+                    </div>
+                )}
                 <div className="grid grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto p-2 bg-gray-900/50 rounded-lg">
                     {items.map((item, index) => {
-                        const styles = gradeStyles[item.grade];
-                        const borderClass = gradeBorderStyles[item.grade];
-                        const requiredLevel = item.type === 'equipment' ? GRADE_LEVEL_REQUIREMENTS[item.grade] : null;
+                        // grade가 없는 아이템(골드, 다이아, 재료 등)을 위한 기본 스타일
+                        const itemGrade = item.grade || 'normal';
+                        const styles = gradeStyles[itemGrade] || gradeStyles.normal;
+                        const borderClass = itemGrade ? gradeBorderStyles[itemGrade] : undefined;
+                        const requiredLevel = item.type === 'equipment' && itemGrade ? GRADE_LEVEL_REQUIREMENTS[itemGrade] : null;
                         const titleText = `${item.name}${requiredLevel ? ` (착용 레벨 합: ${requiredLevel})` : ''}`;
                         const isCurrency = item.image === '/images/icon/Gold.png' || item.image === '/images/icon/Zem.png';
 
@@ -63,7 +77,7 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
                             <div key={index} className="relative aspect-square rounded-md overflow-hidden" title={titleText}>
                                 {borderClass && <div className={`absolute -inset-0.5 rounded-md ${borderClass}`}></div>}
                                 <div className={`relative w-full h-full rounded-md flex items-center justify-center border-2 border-black/20 ${styles.bg}`}>
-                                    <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-sm" />
+                                    {styles.background && <img src={styles.background} alt={itemGrade} className="absolute inset-0 w-full h-full object-cover rounded-sm" />}
                                     {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1" />}
                                     
                                     {isCurrency ? (

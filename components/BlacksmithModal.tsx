@@ -238,7 +238,6 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                             </div>
                         </div>
                         <div className="w-full text-left flex-1 overflow-y-auto min-h-0">
-                            <h3 className="font-bold mb-3 text-center text-sm">대장간 효과</h3>
                             <div className="flex justify-between text-xs font-bold text-gray-400 px-2 pb-2 border-b border-gray-600 mb-3">
                                 <span>효과</span>
                                 <span>

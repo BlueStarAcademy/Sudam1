@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import DraggableWindow from '../DraggableWindow.js';
 import Button from '../Button.js';
-import { GameMode, ServerAction, GameSettings } from '../../types.js';
+import { GameMode, ServerAction, GameSettings, Player, AlkkagiPlacementType } from '../../types.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, DEFAULT_GAME_SETTINGS, aiUserId } from '../../constants';
 import { 
   BOARD_SIZES, TIME_LIMITS, BYOYOMI_COUNTS, BYOYOMI_TIMES, CAPTURE_BOARD_SIZES, 
@@ -140,13 +140,17 @@ const AiChallengeModal: React.FC<AiChallengeModalProps> = ({ lobbyType, onClose,
         const showTimeControls = ![GameMode.Alkkagi, GameMode.Curling, GameMode.Dice, GameMode.Thief].includes(selectedGameMode);
         const showCaptureTarget = selectedGameMode === GameMode.Capture;
         const showTtamokCaptureTarget = selectedGameMode === GameMode.Ttamok;
-        const showOmokRules = selectedGameMode === GameMode.Omok || selectedGameMode === GameMode.Ttamok;
         const showBaseStones = selectedGameMode === GameMode.Base;
         const showHiddenStones = selectedGameMode === GameMode.Hidden;
         const showMissileCount = selectedGameMode === GameMode.Missile;
         const showDiceGoSettings = selectedGameMode === GameMode.Dice;
         const showAlkkagiSettings = selectedGameMode === GameMode.Alkkagi;
         const showCurlingSettings = selectedGameMode === GameMode.Curling;
+        const showThiefSettings = selectedGameMode === GameMode.Thief;
+        // 도둑과 경찰은 역할 설정으로 대체되므로 순서 설정에서 제외
+        const showPlayerColor = [GameMode.Dice, GameMode.Alkkagi, GameMode.Curling].includes(selectedGameMode);
+        const showOmokForbiddenRules = selectedGameMode === GameMode.Omok;
+        const showTtamokForbiddenRules = selectedGameMode === GameMode.Ttamok;
 
         return (
             <div className="h-full flex flex-col gap-2 overflow-y-auto pr-2">
@@ -247,16 +251,94 @@ const AiChallengeModal: React.FC<AiChallengeModalProps> = ({ lobbyType, onClose,
                     </div>
                 )}
 
-                {showOmokRules && (
+                {showOmokForbiddenRules && (
+                    <>
+                        <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
+                            <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">삼삼 금지</label>
+                            <input 
+                                type="checkbox" 
+                                checked={settings.has33Forbidden ?? true} 
+                                onChange={e => handleSettingChange('has33Forbidden', e.target.checked)} 
+                                className="w-5 h-5"
+                            />
+                        </div>
+                        <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
+                            <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">육목 이상 금지</label>
+                            <input 
+                                type="checkbox" 
+                                checked={settings.hasOverlineForbidden ?? true} 
+                                onChange={e => handleSettingChange('hasOverlineForbidden', e.target.checked)} 
+                                className="w-5 h-5"
+                            />
+                        </div>
+                    </>
+                )}
+
+                {showTtamokForbiddenRules && (
+                    <>
+                        <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
+                            <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">삼삼 금지</label>
+                            <input 
+                                type="checkbox" 
+                                checked={settings.has33Forbidden ?? true} 
+                                onChange={e => handleSettingChange('has33Forbidden', e.target.checked)} 
+                                className="w-5 h-5"
+                            />
+                        </div>
+                        <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
+                            <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">육목 이상 금지</label>
+                            <input 
+                                type="checkbox" 
+                                checked={settings.hasOverlineForbidden ?? true} 
+                                onChange={e => handleSettingChange('hasOverlineForbidden', e.target.checked)} 
+                                className="w-5 h-5"
+                            />
+                        </div>
+                    </>
+                )}
+
+                {showPlayerColor && (
                     <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
-                        <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">룰</label>
+                        <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">순서</label>
                         <select 
-                            value={settings.omokRules || 'standard'} 
-                            onChange={e => handleSettingChange('omokRules', e.target.value as 'standard' | 'renju')}
+                            value={settings.player1Color === Player.Black ? 'black' : settings.player1Color === Player.White ? 'white' : 'random'} 
+                            onChange={e => {
+                                if (e.target.value === 'black') {
+                                    handleSettingChange('player1Color', Player.Black);
+                                } else if (e.target.value === 'white') {
+                                    handleSettingChange('player1Color', Player.White);
+                                } else {
+                                    handleSettingChange('player1Color', undefined);
+                                }
+                            }}
                             className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
                         >
-                            <option value="standard">표준</option>
-                            <option value="renju">렌주</option>
+                            <option value="random">랜덤</option>
+                            <option value="black">{selectedGameMode === GameMode.Dice ? '선공' : '선공 (흑)'}</option>
+                            <option value="white">{selectedGameMode === GameMode.Dice ? '후공' : '후공 (백)'}</option>
+                        </select>
+                    </div>
+                )}
+
+                {showThiefSettings && (
+                    <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
+                        <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">역할</label>
+                        <select 
+                            value={settings.player1Color === Player.Black ? 'thief' : settings.player1Color === Player.White ? 'police' : 'random'} 
+                            onChange={e => {
+                                if (e.target.value === 'thief') {
+                                    handleSettingChange('player1Color', Player.Black);
+                                } else if (e.target.value === 'police') {
+                                    handleSettingChange('player1Color', Player.White);
+                                } else {
+                                    handleSettingChange('player1Color', undefined);
+                                }
+                            }}
+                            className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                        >
+                            <option value="random">랜덤</option>
+                            <option value="thief">도둑 (흑)</option>
+                            <option value="police">경찰 (백)</option>
                         </select>
                     </div>
                 )}
@@ -315,6 +397,16 @@ const AiChallengeModal: React.FC<AiChallengeModalProps> = ({ lobbyType, onClose,
                 {showDiceGoSettings && (
                     <>
                         <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
+                            <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">라운드 설정</label>
+                            <select 
+                                value={settings.diceGoRounds ?? 3} 
+                                onChange={e => handleSettingChange('diceGoRounds', parseInt(e.target.value, 10) as 1 | 2 | 3)}
+                                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                            >
+                                {[1, 2, 3].map(r => <option key={r} value={r}>{r}라운드</option>)}
+                            </select>
+                        </div>
+                        <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
                             <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">아이템 개수</label>
                             <select 
                                 value={settings.diceGoItemCount || 2} 
@@ -347,6 +439,16 @@ const AiChallengeModal: React.FC<AiChallengeModalProps> = ({ lobbyType, onClose,
                                 className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
                             >
                                 {ALKKAGI_ROUNDS.map(r => <option key={r} value={r}>{r}라운드</option>)}
+                            </select>
+                        </div>
+                        <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
+                            <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">배치 방식</label>
+                            <select 
+                                value={settings.alkkagiPlacementType ?? AlkkagiPlacementType.TurnByTurn} 
+                                onChange={e => handleSettingChange('alkkagiPlacementType', e.target.value as AlkkagiPlacementType)}
+                                className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
+                            >
+                                {Object.values(AlkkagiPlacementType).map(type => <option key={type} value={type}>{type}</option>)}
                             </select>
                         </div>
                         <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">

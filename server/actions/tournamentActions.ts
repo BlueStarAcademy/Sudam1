@@ -734,6 +734,29 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 return { error: `경기 인덱스를 찾을 수 없습니다. (roundIndex: ${roundIndex}, matchIndex: ${matchIndex})` };
             }
 
+            // 경기 시작 전: 유저의 최신 능력치를 계산하여 originalStats 업데이트 및 stats 복구
+            const userPlayer = tournamentState.players.find(p => p.id === freshUser.id);
+            if (userPlayer) {
+                // 유저의 최신 능력치를 계산하여 originalStats와 stats 업데이트
+                const latestStats = calculateTotalStats(freshUser);
+                userPlayer.originalStats = JSON.parse(JSON.stringify(latestStats));
+                userPlayer.stats = JSON.parse(JSON.stringify(latestStats));
+            }
+
+            // 경기 상대방의 능력치도 originalStats로 복구
+            const match = tournamentState.rounds[roundIndex].matches[matchIndex];
+            if (match.players[0] && match.players[1]) {
+                const p1 = tournamentState.players.find(p => p.id === match.players[0]!.id);
+                const p2 = tournamentState.players.find(p => p.id === match.players[1]!.id);
+                
+                if (p1 && p1.originalStats) {
+                    p1.stats = JSON.parse(JSON.stringify(p1.originalStats));
+                }
+                if (p2 && p2.originalStats) {
+                    p2.stats = JSON.parse(JSON.stringify(p2.originalStats));
+                }
+            }
+
             // 경기 시작: 상태를 round_in_progress로 변경
             tournamentState.status = 'round_in_progress';
             tournamentState.currentSimulatingMatch = { roundIndex, matchIndex };

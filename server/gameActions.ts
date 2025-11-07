@@ -184,13 +184,15 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     // Non-Game actions
     if (type.startsWith('ADMIN_')) return handleAdminAction(volatileState, action, user);
     if (type.includes('NEGOTIATION') || type === 'START_AI_GAME' || type === 'REQUEST_REMATCH' || type === 'CHALLENGE_USER' || type === 'SEND_CHALLENGE') return handleNegotiationAction(volatileState, action, user);
-    if (type.startsWith('CLAIM_') || type.startsWith('DELETE_MAIL') || type === 'MARK_MAIL_AS_READ') return handleRewardAction(volatileState, action, user);
+    if (type.startsWith('CLAIM_') || type.startsWith('DELETE_MAIL') || type === 'DELETE_ALL_CLAIMED_MAIL' || type === 'MARK_MAIL_AS_READ') return handleRewardAction(volatileState, action, user);
     if (type.startsWith('BUY_') || type === 'PURCHASE_ACTION_POINTS' || type === 'EXPAND_INVENTORY') return handleShopAction(volatileState, action, user);
     if (type.startsWith('TOURNAMENT') || type.startsWith('START_TOURNAMENT') || type.startsWith('SKIP_TOURNAMENT') || type.startsWith('FORFEIT_TOURNAMENT') || type.startsWith('FORFEIT_CURRENT_MATCH') || type.startsWith('SAVE_TOURNAMENT') || type.startsWith('CLEAR_TOURNAMENT') || type === 'USE_CONDITION_POTION' || type === 'START_TOURNAMENT_MATCH') return handleTournamentAction(volatileState, action, user);
     if (['TOGGLE_EQUIP_ITEM', 'SELL_ITEM', 'ENHANCE_ITEM', 'DISASSEMBLE_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'CRAFT_MATERIAL', 'COMBINE_ITEMS'].includes(type)) return handleInventoryAction(volatileState, action, user);
     if (['UPDATE_AVATAR', 'UPDATE_BORDER', 'CHANGE_NICKNAME', 'RESET_STAT_POINTS', 'CONFIRM_STAT_ALLOCATION', 'UPDATE_MBTI', 'SAVE_PRESET', 'APPLY_PRESET', 'UPDATE_REJECTION_SETTINGS'].includes(type)) return handleUserAction(volatileState, action, user);
     if (type.includes('SINGLE_PLAYER')) return handleSinglePlayerAction(volatileState, action, user);
     if (type === 'MANNER_ACTION') return mannerService.handleMannerAction(volatileState, action, user);
+    // LEAVE_AI_GAME은 gameId를 가지지만 소셜 액션으로 처리해야 함
+    if (type === 'LEAVE_AI_GAME') return handleSocialAction(volatileState, action, user);
     
     // Social actions can be game-related (chat in game) or not (logout)
     const socialResult = await handleSocialAction(volatileState, action, user);

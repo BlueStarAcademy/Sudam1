@@ -9,8 +9,9 @@ import { initializeBase, updateBaseState, handleBaseAction } from './base.js';
 import { initializeCapture, updateCaptureState, handleCaptureAction } from './capture.js';
 import { initializeHidden, updateHiddenState, handleHiddenAction } from './hidden.js';
 import { initializeMissile, updateMissileState, handleMissileAction } from './missile.js';
-import { transitionToPlaying } from './shared.js';
+import { transitionToPlaying, handleSharedAction } from './shared.js';
 import { UserStatus } from '../../types.js';
+import { aiUserId } from '../aiPlayer.js';
 
 
 export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.Negotiation, now: number) => {
@@ -54,7 +55,17 @@ export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.
 
 export const updateStrategicGameState = async (game: types.LiveGameSession, now: number) => {
     // This is the core update logic for all Go-based games.
-    if (game.gameStatus === 'playing' && game.turnDeadline && now > game.turnDeadline) {
+    // AI 턴일 때는 타임아웃 체크를 건너뛰기 (AI는 시간 제한이 없음)
+    const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None && 
+                    (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
+    
+    // AI 턴일 때는 시간을 멈춤
+    if (isAiTurn && game.gameStatus === 'playing') {
+        game.turnDeadline = undefined;
+        game.turnStartTime = undefined;
+    }
+    
+    if (game.gameStatus === 'playing' && game.turnDeadline && now > game.turnDeadline && !isAiTurn) {
         const timedOutPlayer = game.currentPlayer;
         const timeKey = timedOutPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
         const byoyomiKey = timedOutPlayer === types.Player.Black ? 'blackByoyomiPeriodsLeft' : 'whiteByoyomiPeriodsLeft';
@@ -96,6 +107,10 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
 };
 
 export const handleStrategicGameAction = async (volatileState: types.VolatileState, game: types.LiveGameSession, action: types.ServerAction & { userId: string }, user: types.User): Promise<types.HandleActionResult | undefined> => {
+    // Try shared actions first (e.g., USE_ACTION_BUTTON)
+    const sharedResult = await handleSharedAction(volatileState, game, action, user);
+    if (sharedResult) return sharedResult;
+    
     // Try each specific handler. If one returns a result, we're done.
     let result: types.HandleActionResult | null = null;
     
@@ -362,9 +377,23 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
             // After move logic
             if (game.mode === types.GameMode.Capture || game.isSinglePlayer) {
-                const target = game.effectiveCaptureTargets![myPlayerEnum];
-                if (game.captures[myPlayerEnum] >= target) {
-                    await summaryService.endGame(game, myPlayerEnum, 'capture_limit');
+                const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
+                
+                if (isSurvivalMode) {
+                    // 살리기 바둑 모드
+                    // 흑(유저)이 목표점수를 달성하면 유저 승리
+                    if (myPlayerEnum === types.Player.Black) {
+                        const target = game.effectiveCaptureTargets![types.Player.Black];
+                        if (game.captures[types.Player.Black] >= target) {
+                            await summaryService.endGame(game, types.Player.Black, 'capture_limit');
+                        }
+                    }
+                } else {
+                    // 일반 따내기 바둑 모드
+                    const target = game.effectiveCaptureTargets![myPlayerEnum];
+                    if (game.captures[myPlayerEnum] >= target) {
+                        await summaryService.endGame(game, myPlayerEnum, 'capture_limit');
+                    }
                 }
             }
             

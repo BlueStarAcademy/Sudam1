@@ -6,6 +6,7 @@ import { DICE_GO_MAIN_ROLL_TIME, DICE_GO_LAST_CAPTURE_BONUS_BY_TOTAL_ROUNDS, ALK
 import * as types from '../types.js';
 import { analyzeGame } from './kataGoService.js';
 import * as summaryService from './summaryService.js';
+import { makeGoAiBotMove } from './goAiBot.js';
 
 
 export const aiUserId = 'ai-player-01';
@@ -270,6 +271,39 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
     const opponentPlayerEnum = aiPlayerEnum === types.Player.Black ? types.Player.White : types.Player.Black;
     const now = Date.now();
 
+    // 히든바둑 모드에서 AI 히든 아이템 사용 체크
+    const isHiddenMode = game.mode === types.GameMode.Hidden || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Hidden));
+    const aiPlayerId = aiPlayerEnum === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
+    const totalTurns = game.totalTurns || 0;
+    
+    if (isHiddenMode && game.isSinglePlayer && !game.aiHiddenItemUsed && game.aiHiddenItemTurn !== undefined && totalTurns >= game.aiHiddenItemTurn) {
+        // AI 히든 아이템 사용 연출
+        game.aiHiddenItemUsed = true;
+        game.foulInfo = { message: 'AI봇이 히든 아이템을 사용했습니다!', expiry: now + 5000 };
+        
+        // 5초간 생각하는 연출을 위해 게임 상태를 특별한 상태로 설정
+        game.gameStatus = 'playing'; // 상태는 유지하되, 애니메이션으로 표시
+        game.animation = {
+            type: 'ai_thinking',
+            startTime: now,
+            duration: 5000,
+            playerId: aiPlayerId
+        };
+        
+        // 5초 후에 실제 수를 두도록 설정
+        game.aiHiddenItemAnimationEndTime = now + 5000;
+        
+        await db.saveGame(game);
+        return; // 이번 턴은 연출만 하고 실제 수는 다음 업데이트에서
+    }
+    
+    // AI 히든 아이템 연출이 끝났는지 확인
+    if (game.aiHiddenItemAnimationEndTime && now >= game.aiHiddenItemAnimationEndTime) {
+        game.aiHiddenItemAnimationEndTime = undefined;
+        game.animation = null;
+        // 이제 실제 히든 수를 둡니다
+    }
+
     // 1. Get analysis from KataGo
     const maxVisits = KATAGO_LEVEL_TO_MAX_VISITS[game.settings.aiDifficulty || 2] || 10;
     const analysis = await analyzeGame(game, { maxVisits });
@@ -378,10 +412,20 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
     }
     
     // 5. Process the final valid move
+    const isHiddenMove = isHiddenMode && game.aiHiddenItemUsed && game.aiHiddenItemAnimationEndTime === undefined;
+    
     game.boardState = result.newBoardState;
     game.lastMove = { x: move!.x, y: move!.y };
     game.moveHistory.push({ player: aiPlayerEnum, x: move!.x, y: move!.y });
     game.koInfo = result.newKoInfo;
+    
+    // 히든 수인 경우 hiddenMoves에 기록
+    if (isHiddenMove) {
+        if (!game.hiddenMoves) game.hiddenMoves = {};
+        game.hiddenMoves[game.moveHistory.length - 1] = true;
+        const hiddenKey = aiPlayerId === game.player1.id ? 'hidden_stones_used_p1' : 'hidden_stones_used_p2';
+        game[hiddenKey] = (game[hiddenKey] || 0) + 1;
+    }
 
     if (move!.x === -1 && move!.y === -1) {
         game.passCount++;
@@ -419,6 +463,20 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
         game[aiPlayerTimeKey] = timeRemaining;
     }
     
+    // 턴 카운팅 증가
+    if (game.isSinglePlayer) {
+        game.totalTurns = (game.totalTurns || 0) + 1;
+        
+        // 자동 계가 트리거 체크
+        const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+        if (stage?.autoScoringTurns && game.totalTurns >= stage.autoScoringTurns) {
+            const { getGameResult } = await import('./gameModes.js');
+            getGameResult(game);
+            await db.saveGame(game);
+            return;
+        }
+    }
+    
     game.currentPlayer = opponentPlayerEnum;
     if (game.settings.timeLimit > 0) {
         const timeKey = game.currentPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
@@ -438,14 +496,669 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
 };
 
 // FIX: Implement missing AI functions
-const makeDiceGoAiMove = (game: types.LiveGameSession) => {};
-const makeOmokAiMove = (game: types.LiveGameSession) => {};
-const makeThiefAiMove = (game: types.LiveGameSession) => {};
-const makeAlkkagiAiMove = (game: types.LiveGameSession) => {};
-const makeCurlingAiMove = (game: types.LiveGameSession) => {};
+const makeDiceGoAiMove = async (game: types.LiveGameSession) => {
+    const now = Date.now();
+    const aiPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
+    const { getGoLogic, processMove } = await import('./goLogic.js');
+    
+    if (game.gameStatus === 'dice_rolling') {
+        // 주사위 굴리기
+        const logic = getGoLogic(game);
+        const liberties = logic.getAllLibertiesOfPlayer(types.Player.White, game.boardState);
+        const whiteStoneCount = game.boardState.flat().filter(s => s === types.Player.White).length;
+        
+        // 최적의 주사위 선택: 백돌이 많을수록 높은 수를 원함
+        let dice1: number;
+        if (whiteStoneCount > 10 && liberties.length > 6) {
+            // 아이템 사용 고려 (홀수/짝수)
+            const oddItemUses = game.diceGoItemUses?.[aiPlayerId]?.odd || 0;
+            const evenItemUses = game.diceGoItemUses?.[aiPlayerId]?.even || 0;
+            
+            if (oddItemUses > 0 && liberties.length >= 5) {
+                dice1 = [1, 3, 5][Math.floor(Math.random() * 3)];
+                game.diceGoItemUses![aiPlayerId].odd--;
+            } else if (evenItemUses > 0 && liberties.length >= 6) {
+                dice1 = [2, 4, 6][Math.floor(Math.random() * 3)];
+                game.diceGoItemUses![aiPlayerId].even--;
+            } else {
+                dice1 = Math.floor(Math.random() * 6) + 1;
+            }
+        } else {
+            dice1 = Math.floor(Math.random() * 6) + 1;
+        }
+        
+        const isOvershot = liberties.length > 0 && dice1 > liberties.length;
+        
+        game.animation = { type: 'dice_roll_main', dice: { dice1, dice2: 0, dice3: 0 }, startTime: now, duration: 1500 };
+        game.gameStatus = 'dice_rolling_animating';
+        game.turnDeadline = undefined;
+        game.turnStartTime = undefined;
+        game.dice = undefined;
+        game.stonesToPlace = isOvershot ? -1 : dice1;
+        
+        if (!game.diceRollHistory) game.diceRollHistory = {};
+        if (!game.diceRollHistory[aiPlayerId]) game.diceRollHistory[aiPlayerId] = [];
+        game.diceRollHistory[aiPlayerId].push(dice1);
+        
+    } else if (game.gameStatus === 'dice_placing') {
+        // 최적의 위치에 돌 배치
+        const logic = getGoLogic(game);
+        const liberties = logic.getAllLibertiesOfPlayer(types.Player.White, game.boardState);
+        let stonesToPlace = game.stonesToPlace || 0;
+        let totalCaptures = 0;
+        let lastCaptureStones: types.Point[] = [];
+        
+        while (stonesToPlace > 0 && liberties.length > 0) {
+            // 최대한 많은 돌을 따낼 수 있는 위치 선택
+            let bestMove: types.Point | null = null;
+            let maxCaptures = 0;
+            
+            for (const liberty of liberties) {
+                const result = processMove(game.boardState, { ...liberty, player: types.Player.Black }, game.koInfo, game.moveHistory.length, { ignoreSuicide: true });
+                if (result.isValid && result.capturedStones.length > maxCaptures) {
+                    maxCaptures = result.capturedStones.length;
+                    bestMove = liberty;
+                }
+            }
+            
+            // 최선의 수가 없으면 랜덤하게 선택
+            if (!bestMove) {
+                bestMove = liberties[Math.floor(Math.random() * liberties.length)];
+            }
+            
+            const result = processMove(game.boardState, { ...bestMove, player: types.Player.Black }, game.koInfo, game.moveHistory.length, { ignoreSuicide: true });
+            if (result.isValid) {
+                game.boardState = result.newBoardState;
+                game.lastMove = bestMove;
+                game.moveHistory.push({ player: types.Player.Black, x: bestMove.x, y: bestMove.y });
+                game.koInfo = result.newKoInfo;
+                
+                if (result.capturedStones.length > 0) {
+                    totalCaptures += result.capturedStones.length;
+                    lastCaptureStones = result.capturedStones;
+                    if (!game.justCaptured) game.justCaptured = [];
+                    for (const stone of result.capturedStones) {
+                        game.justCaptured.push({ point: stone, player: types.Player.White, wasHidden: false });
+                    }
+                }
+                
+                if (!game.stonesPlacedThisTurn) game.stonesPlacedThisTurn = [];
+                game.stonesPlacedThisTurn.push(bestMove);
+            } else {
+                break;
+            }
+            
+            stonesToPlace--;
+            // 업데이트된 liberties 계산
+            const updatedLogic = getGoLogic(game);
+            const updatedLiberties = updatedLogic.getAllLibertiesOfPlayer(types.Player.White, game.boardState);
+            if (updatedLiberties.length === 0) break;
+        }
+        
+        game.diceCapturesThisTurn = totalCaptures;
+        game.diceLastCaptureStones = lastCaptureStones;
+        
+        // finishPlacingTurn 호출
+        const finishPlacingTurn = (await import('./modes/diceGo.js')).finishPlacingTurn;
+        finishPlacingTurn(game, aiPlayerId);
+    }
+};
+const makeOmokAiMove = (game: types.LiveGameSession) => {
+    const logic = getOmokLogic(game);
+    const now = Date.now();
+    
+    const aiPlayerEnum = game.currentPlayer;
+    const humanPlayerEnum = aiPlayerEnum === types.Player.Black ? types.Player.White : types.Player.Black;
+    const boardSize = game.settings.boardSize;
+    
+    // 가능한 모든 수 찾기
+    const validMoves: types.Point[] = [];
+    for (let y = 0; y < boardSize; y++) {
+        for (let x = 0; x < boardSize; x++) {
+            if (game.boardState[y][x] === types.Player.None) {
+                // 3-3 금지 체크 (흑돌인 경우만)
+                if (game.settings.has33Forbidden && aiPlayerEnum === types.Player.Black && logic.is33(x, y, game.boardState)) {
+                    continue;
+                }
+                validMoves.push({ x, y });
+            }
+        }
+    }
+    
+    if (validMoves.length === 0) {
+        // 수를 둘 곳이 없으면 게임 종료 처리
+        return;
+    }
+    
+    // 임시 보드로 수를 시뮬레이션
+    const evaluateMove = (x: number, y: number, player: types.Player): number => {
+        const tempBoard = game.boardState.map(row => [...row]);
+        tempBoard[y][x] = player;
+        
+        // 승리 체크
+        const winCheck = logic.checkWin(x, y, tempBoard);
+        if (winCheck) return 10000;
+        
+        // 상대방이 다음 수에 승리할 수 있는지 체크 (방어 우선)
+        const opponent = player === types.Player.Black ? types.Player.White : types.Player.Black;
+        for (let oy = 0; oy < boardSize; oy++) {
+            for (let ox = 0; ox < boardSize; ox++) {
+                if (tempBoard[oy][ox] === types.Player.None) {
+                    const opponentTempBoard = tempBoard.map(row => [...row]);
+                    opponentTempBoard[oy][ox] = opponent;
+                    const opponentWin = logic.checkWin(ox, oy, opponentTempBoard);
+                    if (opponentWin) return -5000; // 상대방 승리 수를 막아야 함
+                }
+            }
+        }
+        
+        // 라인 통계로 점수 계산
+        let score = 0;
+        const directions = [{ dx: 1, dy: 0 }, { dx: 0, dy: 1 }, { dx: 1, dy: 1 }, { dx: 1, dy: -1 }];
+        
+        for (const { dx, dy } of directions) {
+            const stats = logic.getLineStats(x, y, player, tempBoard, dx, dy);
+            // 4개 연속 (열린 4) = 높은 점수
+            if (stats.length === 4 && stats.openEnds >= 1) score += 1000;
+            // 3개 연속 (열린 3) = 중간 점수
+            if (stats.length === 3 && stats.openEnds >= 1) score += 100;
+            // 2개 연속 = 낮은 점수
+            if (stats.length === 2 && stats.openEnds >= 1) score += 10;
+        }
+        
+        // 따목 모드인 경우 따내기 점수 추가
+        if (game.mode === types.GameMode.Ttamok) {
+            const capturedCount = logic.checkPotentialCaptures(x, y, player, tempBoard);
+            score += capturedCount * 50;
+        }
+        
+        return score;
+    };
+    
+    // 각 수의 점수 계산
+    const moveScores = validMoves.map(move => ({
+        move,
+        score: evaluateMove(move.x, move.y, aiPlayerEnum)
+    }));
+    
+    // 최고 점수 수 찾기
+    moveScores.sort((a, b) => b.score - a.score);
+    const bestMoves = moveScores.filter(m => m.score === moveScores[0].score);
+    const chosenMove = bestMoves[Math.floor(Math.random() * bestMoves.length)].move;
+    
+    // 수를 둠
+    game.boardState[chosenMove.y][chosenMove.x] = aiPlayerEnum;
+    game.lastMove = chosenMove;
+    game.moveHistory.push({ player: aiPlayerEnum, x: chosenMove.x, y: chosenMove.y });
+    
+    // 따목 모드인 경우 따내기 처리
+    if (game.mode === types.GameMode.Ttamok) {
+        const { capturedCount } = logic.performTtamokCapture(chosenMove.x, chosenMove.y);
+        game.captures[aiPlayerEnum] += capturedCount;
+        if (game.captures[aiPlayerEnum] >= (game.settings.captureTarget || 10)) {
+            game.winner = aiPlayerEnum;
+            game.winReason = 'capture_limit';
+            game.gameStatus = 'ended';
+            return;
+        }
+    }
+    
+    // 승리 체크
+    const winCheck = logic.checkWin(chosenMove.x, chosenMove.y, game.boardState);
+    if (winCheck) {
+        game.winner = aiPlayerEnum;
+        game.winReason = 'omok_win';
+        game.winningLine = winCheck.line;
+        game.gameStatus = 'ended';
+        return;
+    }
+    
+    // 보드가 가득 찬 경우
+    const boardIsFull = game.boardState.flat().every(cell => cell !== types.Player.None);
+    if (boardIsFull) {
+        game.gameStatus = 'ended';
+        game.winReason = 'score';
+        if (game.mode === types.GameMode.Ttamok) {
+            const p1Enum = game.player1.id === game.blackPlayerId ? types.Player.Black : (game.player1.id === game.whitePlayerId ? types.Player.White : types.Player.None);
+            const p2Enum = game.player2.id === game.blackPlayerId ? types.Player.Black : (game.player2.id === game.whitePlayerId ? types.Player.White : types.Player.None);
+            const p1Captures = game.captures[p1Enum];
+            const p2Captures = game.captures[p2Enum];
+            if (p1Captures > p2Captures) {
+                game.winner = p1Enum;
+            } else if (p2Captures > p1Captures) {
+                game.winner = p2Enum;
+            } else {
+                game.winner = Math.random() < 0.5 ? types.Player.Black : types.Player.White;
+            }
+        } else {
+            game.winner = Math.random() < 0.5 ? types.Player.Black : types.Player.White;
+        }
+        return;
+    }
+    
+    // 턴 변경
+    game.currentPlayer = humanPlayerEnum;
+    if (game.settings.timeLimit > 0) {
+        const nextTimeKey = humanPlayerEnum === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
+        game.turnDeadline = now + game[nextTimeKey] * 1000;
+        game.turnStartTime = now;
+    }
+};
+const makeThiefAiMove = async (game: types.LiveGameSession) => {
+    const now = Date.now();
+    const aiPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
+    const { getGoLogic, processMove } = await import('./goLogic.js');
+    const aiUser = game.player1.id === aiPlayerId ? game.player1 : game.player2;
+    const myRole = aiPlayerId === game.thiefPlayerId ? 'thief' : 'police';
+    
+    if (game.gameStatus === 'thief_rolling') {
+        // 주사위 굴리기
+        const dice1 = Math.floor(Math.random() * 6) + 1;
+        let dice2 = 0;
+        let stonesToPlace: number;
+        
+        if (myRole === 'police') {
+            dice2 = Math.floor(Math.random() * 6) + 1;
+            stonesToPlace = dice1 + dice2;
+        } else {
+            stonesToPlace = dice1;
+        }
+        
+        game.stonesToPlace = stonesToPlace;
+        game.animation = { type: 'dice_roll_main', dice: { dice1, dice2, dice3: 0 }, startTime: now, duration: 1500 };
+        game.gameStatus = 'thief_rolling_animating';
+        game.turnDeadline = undefined;
+        game.turnStartTime = undefined;
+        game.dice = undefined;
+        
+        if (!game.thiefDiceRollHistory) game.thiefDiceRollHistory = {};
+        if (!game.thiefDiceRollHistory[aiPlayerId]) game.thiefDiceRollHistory[aiPlayerId] = [];
+        game.thiefDiceRollHistory[aiPlayerId].push(dice1);
+        if (dice2 > 0) game.thiefDiceRollHistory[aiPlayerId].push(dice2);
+        
+    } else if (game.gameStatus === 'thief_placing') {
+        // 최적의 위치에 돌 배치
+        const logic = getGoLogic(game);
+        let stonesToPlace = game.stonesToPlace || 0;
+        
+        while (stonesToPlace > 0) {
+            let bestMove: types.Point | null = null;
+            
+            if (myRole === 'thief') {
+                // 도둑: 기존 돌의 활로에만 배치 가능
+                const noBlackStonesOnBoard = !game.boardState.flat().includes(types.Player.Black);
+                const canPlaceFreely = (game.turnInRound === 1 || noBlackStonesOnBoard);
+                
+                if (canPlaceFreely) {
+                    // 자유 배치: 백돌을 최대한 많이 따낼 수 있는 위치 선택
+                    const allEmpty = [];
+                    for (let y = 0; y < game.settings.boardSize; y++) {
+                        for (let x = 0; x < game.settings.boardSize; x++) {
+                            if (game.boardState[y][x] === types.Player.None) {
+                                allEmpty.push({ x, y });
+                            }
+                        }
+                    }
+                    
+                    let maxCaptures = 0;
+                    for (const pos of allEmpty) {
+                        const result = processMove(game.boardState, { ...pos, player: types.Player.Black }, game.koInfo, game.moveHistory.length, { ignoreSuicide: true });
+                        if (result.isValid && result.capturedStones.length > maxCaptures) {
+                            maxCaptures = result.capturedStones.length;
+                            bestMove = pos;
+                        }
+                    }
+                    
+                    if (!bestMove && allEmpty.length > 0) {
+                        bestMove = allEmpty[Math.floor(Math.random() * allEmpty.length)];
+                    }
+                } else {
+                    // 활로에만 배치
+                    const liberties = logic.getAllLibertiesOfPlayer(types.Player.Black, game.boardState);
+                    if (liberties.length > 0) {
+                        // 백돌을 따낼 수 있는 활로 우선 선택
+                        let maxCaptures = 0;
+                        for (const liberty of liberties) {
+                            const result = processMove(game.boardState, { ...liberty, player: types.Player.Black }, game.koInfo, game.moveHistory.length, { ignoreSuicide: true });
+                            if (result.isValid && result.capturedStones.length > maxCaptures) {
+                                maxCaptures = result.capturedStones.length;
+                                bestMove = liberty;
+                            }
+                        }
+                        
+                        if (!bestMove) {
+                            bestMove = liberties[Math.floor(Math.random() * liberties.length)];
+                        }
+                    }
+                }
+            } else {
+                // 경찰: 도둑 돌의 활로에 배치하여 따내기
+                const blackStonesOnBoard = game.boardState.flat().includes(types.Player.Black);
+                if (blackStonesOnBoard) {
+                    const liberties = logic.getAllLibertiesOfPlayer(types.Player.Black, game.boardState);
+                    if (liberties.length > 0) {
+                        // 최대한 많은 도둑 돌을 따낼 수 있는 위치 선택
+                        let maxCaptures = 0;
+                        for (const liberty of liberties) {
+                            const result = processMove(game.boardState, { ...liberty, player: types.Player.White }, game.koInfo, game.moveHistory.length, { ignoreSuicide: true });
+                            if (result.isValid && result.capturedStones.length > maxCaptures) {
+                                maxCaptures = result.capturedStones.length;
+                                bestMove = liberty;
+                            }
+                        }
+                        
+                        if (!bestMove) {
+                            bestMove = liberties[Math.floor(Math.random() * liberties.length)];
+                        }
+                    }
+                } else {
+                    // 도둑 돌이 없으면 자유 배치
+                    const allEmpty = [];
+                    for (let y = 0; y < game.settings.boardSize; y++) {
+                        for (let x = 0; x < game.settings.boardSize; x++) {
+                            if (game.boardState[y][x] === types.Player.None) {
+                                allEmpty.push({ x, y });
+                            }
+                        }
+                    }
+                    if (allEmpty.length > 0) {
+                        bestMove = allEmpty[Math.floor(Math.random() * allEmpty.length)];
+                    }
+                }
+            }
+            
+            if (bestMove) {
+                const result = processMove(game.boardState, { ...bestMove, player: myRole === 'thief' ? types.Player.Black : types.Player.White }, game.koInfo, game.moveHistory.length, { ignoreSuicide: true });
+                if (result.isValid) {
+                    game.boardState = result.newBoardState;
+                    game.lastMove = bestMove;
+                    game.moveHistory.push({ player: myRole === 'thief' ? types.Player.Black : types.Player.White, x: bestMove.x, y: bestMove.y });
+                    game.koInfo = result.newKoInfo;
+                    
+                    if (!game.stonesPlacedThisTurn) game.stonesPlacedThisTurn = [];
+                    game.stonesPlacedThisTurn.push(bestMove);
+                    
+                    if (result.capturedStones.length > 0) {
+                        if (!game.justCaptured) game.justCaptured = [];
+                        for (const stone of result.capturedStones) {
+                            game.justCaptured.push({ point: stone, player: myRole === 'thief' ? types.Player.White : types.Player.Black, wasHidden: false });
+                        }
+                        
+                        // 경찰이 도둑 돌을 따낼 때 점수 추가
+                        if (myRole === 'police') {
+                            if (!game.thiefCapturesThisRound) game.thiefCapturesThisRound = 0;
+                            game.thiefCapturesThisRound += result.capturedStones.length;
+                        }
+                    }
+                    
+                    game.stonesToPlace = (game.stonesToPlace || 1) - 1;
+                    
+                    // 경찰이 모든 도둑 돌을 따낸 경우
+                    const blackStonesLeft = game.boardState.flat().filter(s => s === types.Player.Black).length;
+                    const allThievesCaptured = blackStonesLeft === 0 && myRole === 'police';
+                    if (allThievesCaptured) {
+                        game.stonesToPlace = 0;
+                    }
+                }
+            } else {
+                break;
+            }
+            
+            if (game.stonesToPlace <= 0) break;
+        }
+        
+        // 턴 종료 처리 (THIEF_PLACE_STONE 로직과 동일)
+        if (game.stonesToPlace <= 0) {
+            if (!game.stonesPlacedThisTurn) game.stonesPlacedThisTurn = [];
+            game.lastTurnStones = game.stonesPlacedThisTurn;
+            game.stonesPlacedThisTurn = [];
+            game.lastMove = null;
+            
+            game.turnInRound = (game.turnInRound || 0) + 1;
+            const totalTurnsInRound = 10;
+            const blackStonesLeft = game.boardState.flat().filter(s => s === types.Player.Black).length;
+            const allThievesCaptured = blackStonesLeft === 0 && myRole === 'police';
+    
+            if (game.turnInRound > totalTurnsInRound || allThievesCaptured) {
+                const finalThiefStonesLeft = game.boardState.flat().filter(s => s === types.Player.Black).length;
+                const capturesThisRound = game.thiefCapturesThisRound || 0;
+                
+                game.scores[game.thiefPlayerId!] = (game.scores[game.thiefPlayerId!] || 0) + finalThiefStonesLeft;
+                game.scores[game.policePlayerId!] = (game.scores[game.policePlayerId!] || 0) + capturesThisRound;
+                
+                const p1Id = game.player1.id;
+                const p1IsThief = p1Id === game.thiefPlayerId;
+    
+                game.thiefRoundSummary = {
+                    round: game.round,
+                    isDeathmatch: !!game.isDeathmatch,
+                    player1: {
+                        id: p1Id,
+                        role: p1IsThief ? 'thief' : 'police',
+                        roundScore: p1IsThief ? finalThiefStonesLeft : capturesThisRound,
+                        cumulativeScore: game.scores[p1Id] ?? 0,
+                    },
+                    player2: {
+                        id: game.player2.id,
+                        role: !p1IsThief ? 'thief' : 'police',
+                        roundScore: !p1IsThief ? finalThiefStonesLeft : capturesThisRound,
+                        cumulativeScore: game.scores[game.player2.id] ?? 0,
+                    }
+                };
+    
+                const p1Score = game.scores[p1Id]!;
+                const p2Score = game.scores[game.player2.id]!;
+                
+                if ((game.round === 2 && p1Score !== p2Score) || game.isDeathmatch) {
+                    const winnerId = p1Score > p2Score ? p1Id : game.player2.id;
+                    const winnerEnum = winnerId === game.blackPlayerId ? types.Player.Black : types.Player.White;
+                    const { endGame } = await import('./summaryService.js');
+                    endGame(game, winnerEnum, 'total_score');
+                    return;
+                }
+                
+                game.gameStatus = 'thief_round_end';
+                game.revealEndTime = now + 20000;
+                if (game.isAiGame) game.roundEndConfirmations = { [aiUserId]: now };
+            } else {
+                game.currentPlayer = game.currentPlayer === types.Player.Black ? types.Player.White : types.Player.Black;
+                game.gameStatus = 'thief_rolling';
+                game.turnDeadline = now + 30000;
+                game.turnStartTime = now;
+            }
+        }
+    }
+};
+
+const makeAlkkagiAiMove = async (game: types.LiveGameSession) => {
+    const now = Date.now();
+    const aiPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
+    const aiPlayerEnum = game.currentPlayer;
+    
+    if (game.gameStatus === 'alkkagi_placement' || game.gameStatus === 'alkkagi_simultaneous_placement') {
+        // 돌 배치: 상대방 돌에 가까운 위치에 배치
+        const targetPlacements = game.settings.alkkagiStoneCount || 5;
+        const placedThisRound = game.alkkagiStonesPlacedThisRound?.[aiPlayerId] || 0;
+        
+        if (placedThisRound >= targetPlacements) return;
+        
+        const boardSizePx = 840;
+        const cellSize = boardSizePx / 19;
+        const opponentStones = (game.alkkagiStones || []).filter(s => s.player !== aiPlayerEnum && s.onBoard);
+        
+        let bestPoint: types.Point | null = null;
+        if (opponentStones.length > 0) {
+            // 상대방 돌 근처에 배치
+            const targetStone = opponentStones[Math.floor(Math.random() * opponentStones.length)];
+            const offsetX = (Math.random() - 0.5) * cellSize * 2;
+            const offsetY = (Math.random() - 0.5) * cellSize * 2;
+            bestPoint = {
+                x: Math.max(cellSize, Math.min(boardSizePx - cellSize, targetStone.x + offsetX)),
+                y: Math.max(cellSize, Math.min(boardSizePx - cellSize, targetStone.y + offsetY))
+            };
+        } else {
+            // 중앙 근처에 배치
+            bestPoint = {
+                x: boardSizePx / 2 + (Math.random() - 0.5) * cellSize * 4,
+                y: boardSizePx / 2 + (Math.random() - 0.5) * cellSize * 4
+            };
+        }
+        
+        const newStone: types.AlkkagiStone = {
+            id: Date.now() + Math.random(),
+            player: aiPlayerEnum,
+            x: bestPoint.x,
+            y: bestPoint.y,
+            vx: 0,
+            vy: 0,
+            radius: (boardSizePx / 19) * 0.47,
+            onBoard: true
+        };
+        
+        if (game.gameStatus === 'alkkagi_simultaneous_placement') {
+            const playerStonesKey = aiPlayerId === game.player1.id ? 'alkkagiStones_p1' : 'alkkagiStones_p2';
+            if (!game[playerStonesKey]) game[playerStonesKey] = [];
+            game[playerStonesKey]!.push(newStone);
+        } else {
+            if (!game.alkkagiStones) game.alkkagiStones = [];
+            game.alkkagiStones.push(newStone);
+        }
+        
+        if (!game.alkkagiStonesPlacedThisRound) game.alkkagiStonesPlacedThisRound = {};
+        game.alkkagiStonesPlacedThisRound[aiPlayerId] = placedThisRound + 1;
+        
+        if (game.gameStatus === 'alkkagi_placement') {
+            game.currentPlayer = game.currentPlayer === types.Player.Black ? types.Player.White : types.Player.Black;
+            game.alkkagiPlacementDeadline = now + 30000;
+        }
+        
+    } else if (game.gameStatus === 'alkkagi_playing') {
+        // 돌 튕기기: 상대방 돌을 최대한 많이 떨어뜨리는 방향으로
+        const myStones = (game.alkkagiStones || []).filter(s => s.player === aiPlayerEnum && s.onBoard);
+        const opponentStones = (game.alkkagiStones || []).filter(s => s.player !== aiPlayerEnum && s.onBoard);
+        
+        if (myStones.length === 0 || opponentStones.length === 0) return;
+        
+        // 가장 가까운 상대방 돌을 향해 튕기기
+        let bestStone: types.AlkkagiStone | null = null;
+        let bestTarget: types.AlkkagiStone | null = null;
+        let minDistance = Infinity;
+        
+        for (const myStone of myStones) {
+            for (const oppStone of opponentStones) {
+                const dist = Math.hypot(oppStone.x - myStone.x, oppStone.y - myStone.y);
+                if (dist < minDistance) {
+                    minDistance = dist;
+                    bestStone = myStone;
+                    bestTarget = oppStone;
+                }
+            }
+        }
+        
+        if (bestStone && bestTarget) {
+            const dx = bestTarget.x - bestStone.x;
+            const dy = bestTarget.y - bestStone.y;
+            const distance = Math.hypot(dx, dy);
+            const speed = Math.min(15, distance / 20); // 적절한 속도
+            const vx = (dx / distance) * speed;
+            const vy = (dy / distance) * speed;
+            
+            game.animation = { type: 'alkkagi_flick', stoneId: bestStone.id, vx, vy, startTime: now, duration: 5000 };
+            game.gameStatus = 'alkkagi_animating';
+            game.alkkagiTurnDeadline = undefined;
+            game.turnStartTime = undefined;
+        }
+    }
+};
+
+const makeCurlingAiMove = async (game: types.LiveGameSession) => {
+    const now = Date.now();
+    const aiPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
+    const aiPlayerEnum = game.currentPlayer;
+    
+    if (game.gameStatus === 'curling_playing') {
+        // 최적의 위치와 속도로 돌 던지기
+        const boardSizePx = 840;
+        const center = { x: boardSizePx / 2, y: boardSizePx / 2 };
+        const cellSize = boardSizePx / 19;
+        
+        // 하우스 중심을 향해 던지기
+        const launchX = boardSizePx * 0.1 + Math.random() * boardSizePx * 0.1; // 하단에서 발사
+        const launchY = boardSizePx * 0.9;
+        
+        const dx = center.x - launchX;
+        const dy = center.y - launchY;
+        const distance = Math.hypot(dx, dy);
+        const speed = Math.min(12, distance / 30); // 적절한 속도
+        const vx = (dx / distance) * speed;
+        const vy = (dy / distance) * speed;
+        
+        const newStone: types.AlkkagiStone = {
+            id: Date.now(),
+            player: aiPlayerEnum,
+            x: launchX,
+            y: launchY,
+            vx: 0,
+            vy: 0,
+            radius: (boardSizePx / 19) * 0.47,
+            onBoard: false,
+        };
+        
+        game.animation = { type: 'curling_flick', stone: newStone, velocity: { x: vx, y: vy }, startTime: now, duration: 8000 };
+        game.gameStatus = 'curling_animating';
+        if (!game.stonesThrownThisRound) game.stonesThrownThisRound = {};
+        game.stonesThrownThisRound[aiPlayerId] = (game.stonesThrownThisRound[aiPlayerId] || 0) + 1;
+        game.curlingTurnDeadline = undefined;
+        game.turnStartTime = undefined;
+    }
+};
 
 
 export const makeAiMove = async (game: LiveGameSession) => {
+    // 새로운 바둑 AI 봇 시스템 사용 여부 확인
+    // 싱글플레이, 도전의탑, 전략바둑에서 사용
+    const useGoAiBot = game.isSinglePlayer || 
+                       (game.settings as any)?.useGoAiBot === true ||
+                       (game.settings as any)?.goAiBotLevel !== undefined;
+    
+    if (useGoAiBot) {
+        // AI 봇 단계 결정
+        let aiLevel = 1; // 기본값
+        
+        if (game.isSinglePlayer) {
+            // 싱글플레이: 스테이지의 katagoLevel을 AI 봇 단계로 사용
+            const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+            if (stage) {
+                // katagoLevel을 1~10 범위로 매핑
+                // katagoLevel 1-2 -> AI 1단계, 3-4 -> AI 2단계, ... 19-20 -> AI 10단계
+                aiLevel = Math.min(10, Math.max(1, Math.ceil(stage.katagoLevel / 2)));
+            } else {
+                aiLevel = (game.settings.aiDifficulty || 1);
+            }
+        } else if ((game.settings as any)?.goAiBotLevel !== undefined) {
+            aiLevel = (game.settings as any).goAiBotLevel;
+        } else {
+            aiLevel = (game.settings.aiDifficulty || 1);
+        }
+
+        // 바둑 모드인 경우에만 새로운 AI 봇 시스템 사용
+        const goModes: GameMode[] = [
+            types.GameMode.Standard,
+            types.GameMode.Capture,
+            types.GameMode.Speed,
+            types.GameMode.Base,
+            types.GameMode.Hidden,
+            types.GameMode.Missile,
+            types.GameMode.Mix
+        ];
+
+        if (goModes.includes(game.mode)) {
+            await makeGoAiBotMove(game, aiLevel);
+            return;
+        }
+    }
+
+    // 기존 로직 유지
     if (game.isSinglePlayer) {
         makeSimpleCaptureAiMove(game);
         return;
@@ -468,20 +1181,20 @@ export const makeAiMove = async (game: LiveGameSession) => {
     
     switch (game.mode) {
         case types.GameMode.Dice:
-            makeDiceGoAiMove(game);
+            await makeDiceGoAiMove(game);
             break;
         case types.GameMode.Omok:
         case types.GameMode.Ttamok:
             makeOmokAiMove(game);
             break;
         case types.GameMode.Alkkagi:
-            makeAlkkagiAiMove(game);
+            await makeAlkkagiAiMove(game);
             break;
         case types.GameMode.Curling:
-            makeCurlingAiMove(game);
+            await makeCurlingAiMove(game);
             break;
         case types.GameMode.Thief:
-            makeThiefAiMove(game);
+            await makeThiefAiMove(game);
             break;
     }
 };

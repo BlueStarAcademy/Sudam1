@@ -215,7 +215,7 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             });
 
             // Equip items that are in the preset but not currently equipped
-            // Also remove equipment slots for items that don't exist in inventory
+            // 데이터 손실 방지를 위해 인벤토리에 없는 장비도 절대 삭제하지 않음
             for (const slot in user.equipment) {
                 const itemId = user.equipment[slot as types.EquipmentSlot];
                 const itemInInventory = user.inventory.find(item => item.id === itemId);
@@ -224,9 +224,10 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
                         itemInInventory.isEquipped = true;
                     }
                 } else {
-                    // 장비가 인벤토리에 없으면 equipment에서 제거
-                    console.warn(`[APPLY_PRESET] Equipment item ${itemId} in slot ${slot} not found in inventory for user ${user.id}, removing from equipment`);
-                    delete user.equipment[slot as types.EquipmentSlot];
+                    // 인벤토리에 없어도 장비는 보존 (데이터 손실 방지)
+                    // 이는 인벤토리 동기화 문제나 버그로 인한 데이터 손실을 방지하기 위함
+                    console.error(`[APPLY_PRESET] CRITICAL: User ${user.id} has equipment ${itemId} in slot ${slot} but not in inventory! PRESERVING equipment to prevent data loss. DO NOT DELETE.`);
+                    // 장비는 그대로 유지하여 나중에 복구 가능하도록 함
                 }
             }
 

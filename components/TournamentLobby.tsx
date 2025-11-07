@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState, useEffect } from 'react';
-import { UserWithStatus, TournamentState, TournamentType, User, LeagueTier } from '../types.js';
-import { TOURNAMENT_DEFINITIONS, AVATAR_POOL, LEAGUE_DATA, BORDER_POOL } from '../constants';
+import { UserWithStatus, TournamentState, TournamentType, User, LeagueTier, EquipmentSlot, InventoryItem, CoreStat } from '../types.js';
+import { TOURNAMENT_DEFINITIONS, AVATAR_POOL, LEAGUE_DATA, BORDER_POOL, GRADE_LEVEL_REQUIREMENTS, emptySlotImages } from '../constants';
 import Avatar from './Avatar.js';
 import { isSameDayKST } from '../utils/timeUtils.js';
 import { useAppContext } from '../hooks/useAppContext.js';
@@ -8,6 +8,8 @@ import LeagueTierInfoModal from './LeagueTierInfoModal.js';
 import QuickAccessSidebar from './QuickAccessSidebar.js';
 import ChatWindow from './waiting-room/ChatWindow.js';
 import PointsInfoPanel from './PointsInfoPanel.js';
+import Button from './Button.js';
+import { calculateUserEffects } from '../services/effectService.js';
 
 const stringToSeed = (str: string): number => {
     let hash = 0;
@@ -87,16 +89,18 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
     
         let competitors = (currentUserWithStatus.weeklyCompetitors).map(competitor => {
             if (competitor.id.startsWith('bot-')) {
+                // 봇들은 월요일 0시에 점수가 0으로 초기화되므로 initialScore를 0으로 사용
+                const botInitialScore = 0;
                 let totalGain = 0;
                 for (let i = 1; i <= daysPassed; i++) {
                     const seedStr = `${competitor.id}-${new Date(startOfWeek.getTime() + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}`;
                     const seed = stringToSeed(seedStr);
                     const randomVal = seededRandom(seed);
-                    const dailyGain = Math.floor(randomVal * 26); // 0-25 random score gain
+                    const dailyGain = Math.floor(randomVal * 51); // 0-50 random score gain (한국시간 0시마다 획득)
                     totalGain += dailyGain;
                 }
-                const liveScore = competitor.initialScore + totalGain;
-                const scoreChange = liveScore - competitor.initialScore;
+                const liveScore = botInitialScore + totalGain;
+                const scoreChange = liveScore - botInitialScore;
                 return { ...competitor, liveScore, scoreChange };
             } else {
                 const liveData = allUsers.find(u => u.id === competitor.id);
@@ -113,7 +117,8 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
             for (let i = 0; i < botsToAdd; i++) {
                 const botId = `bot-${currentKstDayStart}-${i}`; // Use currentKstDayStart for bot ID to make it stable for the day
                 const botSeed = stringToSeed(botId);
-                const randomInitialScore = 1000 + Math.floor(seededRandom(botSeed) * 500); // Random initial score for bots
+                // 봇들은 월요일 0시에 점수가 0으로 초기화되므로 initialScore를 0으로 설정
+                const botInitialScore = 0;
                 const randomAvatar = AVATAR_POOL[Math.floor(seededRandom(botSeed + 1) * AVATAR_POOL.length)];
                 const randomBorder = BORDER_POOL[Math.floor(seededRandom(botSeed + 2) * BORDER_POOL.length)];
 
@@ -122,11 +127,11 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
                     const seedStr = `${botId}-${new Date(startOfWeek.getTime() + j * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}`;
                     const seed = stringToSeed(seedStr);
                     const randomVal = seededRandom(seed);
-                    const dailyGain = Math.floor(randomVal * 26); // 0-25 random score gain
+                    const dailyGain = Math.floor(randomVal * 51); // 0-50 random score gain (한국시간 0시마다 획득)
                     totalGain += dailyGain;
                 }
-                const liveScore = randomInitialScore + totalGain;
-                const scoreChange = liveScore - randomInitialScore;
+                const liveScore = botInitialScore + totalGain;
+                const scoreChange = liveScore - botInitialScore;
 
                 // Static list of possible bot nicknames
                 const botNicknames = [
@@ -154,7 +159,7 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
                     nickname: assignedNickname,
                     avatarId: randomAvatar.id,
                     borderId: randomBorder.id,
-                    initialScore: randomInitialScore,
+                    initialScore: botInitialScore,
                     liveScore: liveScore,
                     scoreChange: scoreChange,
                     league: currentUserWithStatus.league, // Bots should be in the current user's league
@@ -365,24 +370,32 @@ const TournamentCard: React.FC<{
     const hasResultToView = inProgress && (inProgress.status === 'complete' || inProgress.status === 'eliminated');
     const isReadyToContinue = inProgress && (inProgress.status === 'bracket_ready' || inProgress.status === 'round_complete');
 
-    // 참가 횟수 계산
+    // 입장 가능 횟수 계산 (남은 횟수)
     const now = Date.now();
     let playedDateKey: keyof UserWithStatus;
+    let rewardClaimedKey: keyof UserWithStatus;
     switch (type) {
         case 'neighborhood':
             playedDateKey = 'lastNeighborhoodPlayedDate';
+            rewardClaimedKey = 'neighborhoodRewardClaimed';
             break;
         case 'national':
             playedDateKey = 'lastNationalPlayedDate';
+            rewardClaimedKey = 'nationalRewardClaimed';
             break;
         case 'world':
             playedDateKey = 'lastWorldPlayedDate';
+            rewardClaimedKey = 'worldRewardClaimed';
             break;
     }
     const lastPlayedDate = currentUser[playedDateKey as keyof UserWithStatus] as number | null | undefined;
     const hasPlayedToday = lastPlayedDate && isSameDayKST(lastPlayedDate, now);
-    const participationCount = hasPlayedToday ? 1 : 0;
-    const maxParticipation = 1;
+    // 입장 가능 횟수: 오늘 플레이하지 않았으면 1, 플레이했으면 0
+    const availableEntries = hasPlayedToday ? 0 : 1;
+
+    // 보상 미수령 여부 확인 (토너먼트가 완료되었지만 보상을 받지 않은 경우)
+    const rewardClaimed = currentUser[rewardClaimedKey as keyof UserWithStatus] as boolean | undefined;
+    const hasUnclaimedReward = hasResultToView && !rewardClaimed;
 
     let buttonText = '참가하기';
     let action = onClick;
@@ -400,12 +413,16 @@ const TournamentCard: React.FC<{
     
     return (
         <div 
-            className="group bg-gray-800 rounded-lg p-3 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full"
+            className="group bg-gray-800 rounded-lg p-3 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full relative"
             onClick={action}
         >
+            {/* 보상 미수령 표시: 붉은 점 */}
+            {hasUnclaimedReward && (
+                <div className="absolute top-2 right-2 w-3 h-3 bg-red-500 rounded-full z-10 border-2 border-gray-800"></div>
+            )}
             <div className="flex justify-between items-center mb-2">
                 <h2 className="text-lg font-bold">{definition.name}</h2>
-                <span className="text-sm text-gray-400">({participationCount}/{maxParticipation})</span>
+                <span className="text-sm text-gray-400">입장가능횟수({availableEntries}/1)</span>
             </div>
             <div className="w-full aspect-video bg-gray-700 rounded-md flex items-center justify-center text-gray-500 overflow-hidden relative flex-grow">
                 <img src={definition.image} alt={definition.name} className="w-full h-full object-cover" />
@@ -432,14 +449,99 @@ const filterInProgress = (state: TournamentState | null | undefined): Tournament
     return state;
 };
 
+const gradeBackgrounds: Record<string, string> = {
+    normal: '/images/equipments/normalbgi.png',
+    uncommon: '/images/equipments/uncommonbgi.png',
+    rare: '/images/equipments/rarebgi.png',
+    epic: '/images/equipments/epicbgi.png',
+    legendary: '/images/equipments/legendarybgi.png',
+    mythic: '/images/equipments/mythicbgi.png',
+};
+
+const getStarDisplayInfo = (stars: number) => {
+    if (stars >= 10) {
+        return { text: `(★${stars})`, colorClass: "prism-text-effect" };
+    } else if (stars >= 7) {
+        return { text: `(★${stars})`, colorClass: "text-purple-400" };
+    } else if (stars >= 4) {
+        return { text: `(★${stars})`, colorClass: "text-amber-400" };
+    } else if (stars >= 1) {
+        return { text: `(★${stars})`, colorClass: "text-white" };
+    }
+    return { text: "", colorClass: "text-white" };
+};
+
+const coreStatAbbreviations: Record<CoreStat, string> = {
+    [CoreStat.Concentration]: '집중',
+    [CoreStat.ThinkingSpeed]: '사고',
+    [CoreStat.Judgment]: '판단',
+    [CoreStat.Calculation]: '계산',
+    [CoreStat.CombatPower]: '전투',
+    [CoreStat.Stability]: '안정',
+};
+
+const StatsDisplayPanel: React.FC<{ currentUser: UserWithStatus }> = ({ currentUser }) => {
+    const { coreStatBonuses } = useMemo(() => calculateUserEffects(currentUser), [currentUser]);
+    
+    return (
+        <div className="grid grid-cols-2 gap-2">
+            {Object.values(CoreStat).map(stat => {
+                const baseValue = (currentUser.baseStats[stat] || 0) + (currentUser.spentStatPoints?.[stat] || 0);
+                // Align with calculateTotalStats: final = floor((base + flat) * (1 + percent/100))
+                const finalValue = Math.floor((baseValue + coreStatBonuses[stat].flat) * (1 + coreStatBonuses[stat].percent / 100));
+                const bonus = finalValue - baseValue;
+                return (
+                    <div key={stat} className="bg-gray-700/50 p-2 rounded-md flex items-center justify-between text-xs">
+                        <span className="font-semibold text-gray-300">{coreStatAbbreviations[stat]}</span>
+                        <span className="font-mono font-bold" title={`기본: ${baseValue}, 장비: ${bonus}`}>
+                            {finalValue}
+                            {bonus > 0 && <span className="text-green-400 text-xs ml-0.5">(+{bonus})</span>}
+                        </span>
+                    </div>
+                );
+            })}
+        </div>
+    );
+};
+
+const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem; onClick?: () => void; }> = ({ slot, item, onClick }) => {
+    const clickableClass = item && onClick ? 'cursor-pointer hover:scale-105 transition-transform' : '';
+    
+    if (item) {
+        const requiredLevel = GRADE_LEVEL_REQUIREMENTS[item.grade];
+        const titleText = `${item.name} (착용 레벨 합: ${requiredLevel}) - 클릭하여 상세보기`;
+        const starInfo = getStarDisplayInfo(item.stars);
+        return (
+            <div
+                className={`relative w-full aspect-square rounded-lg border-2 border-gray-600/50 bg-gray-700/50 ${clickableClass}`}
+                title={titleText}
+                onClick={onClick}
+            >
+                <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-md" />
+                {item.stars > 0 && (
+                    <div className={`absolute top-1 right-1.5 text-sm font-bold z-10 ${starInfo.colorClass}`} style={{ textShadow: '1px 1px 2px black' }}>
+                        ★{item.stars}
+                    </div>
+                )}
+                {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1.5"/>}
+            </div>
+        );
+    } else {
+         return (
+             <img src={emptySlotImages[slot]} alt={`${slot} empty slot`} className="w-full aspect-square rounded-lg bg-gray-700/50 border-2 border-gray-600/50" />
+        );
+    }
+};
+
 const TournamentLobby: React.FC = () => {
-    const { currentUserWithStatus, allUsers, handlers, waitingRoomChats } = useAppContext();
+    const { currentUserWithStatus, allUsers, handlers, waitingRoomChats, presets } = useAppContext();
     
     const [viewingTournament, setViewingTournament] = useState<TournamentState | null>(null);
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [hasRankChanged, setHasRankChanged] = useState(false);
     const [enrollingIn, setEnrollingIn] = useState<TournamentType | null>(null);
+    const [selectedPreset, setSelectedPreset] = useState(0);
 
     useEffect(() => {
         const checkIsMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -469,6 +571,27 @@ const TournamentLobby: React.FC = () => {
         window.location.hash = `#/tournament/${type}`;
     }, [handlers]);
 
+    const equippedItems = useMemo(() => {
+        if (!currentUserWithStatus?.inventory) return [];
+        return currentUserWithStatus.inventory.filter(item => item.isEquipped);
+    }, [currentUserWithStatus?.inventory]);
+
+    const getItemForSlot = (slot: EquipmentSlot) => {
+        return equippedItems.find(item => item.slot === slot);
+    };
+
+    const handlePresetChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+        const presetIndex = Number(event.target.value);
+        setSelectedPreset(presetIndex);
+        const selectedPresetData = presets?.[presetIndex];
+        // 프리셋이 있으면 적용하고, 없으면(빈 프리셋) 빈 장비 세트를 적용
+        if (selectedPresetData) {
+            handlers.applyPreset(selectedPresetData);
+        } else if (presets) {
+            handlers.applyPreset({ name: `프리셋 ${presetIndex + 1}`, equipment: {} });
+        }
+    };
+
     return (
         <div className="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto flex flex-col h-[calc(100vh-5rem)] relative overflow-hidden">
             <header className="flex justify-between items-center mb-6 flex-shrink-0">
@@ -496,6 +619,58 @@ const TournamentLobby: React.FC = () => {
                         <TournamentCard type="national" onClick={() => handleEnterArena('national')} onContinue={() => handleContinueTournament('national')} inProgress={nationalState || null} currentUser={currentUserWithStatus} />
                         <TournamentCard type="world" onClick={() => handleEnterArena('world')} onContinue={() => handleContinueTournament('world')} inProgress={worldState || null} currentUser={currentUserWithStatus} />
                     </div>
+                    
+                    {/* 장착 장비 패널 */}
+                    <div className="bg-gray-800/50 rounded-lg p-4 shadow-lg flex-shrink-0">
+                        <div className="grid grid-cols-2 gap-4">
+                            {/* 왼쪽: 장착 장비 및 프리셋 */}
+                            <div className="flex flex-col gap-3">
+                                <h3 className="font-semibold text-gray-200 text-sm">장착 장비</h3>
+                                <div className="grid grid-cols-3 gap-2">
+                                    {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
+                                        const item = getItemForSlot(slot);
+                                        return (
+                                            <div key={slot} className="w-full">
+                                                <EquipmentSlotDisplay
+                                                    slot={slot}
+                                                    item={item}
+                                                    onClick={() => item && handlers.openViewingItem(item, true)}
+                                                />
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <div className="flex flex-col gap-2">
+                                    <Button 
+                                        onClick={handlers.openEquipmentEffectsModal} 
+                                        colorScheme="blue" 
+                                        className="!text-xs w-full"
+                                    >
+                                        장비 효과 보기
+                                    </Button>
+                                    <div>
+                                        <label className="block text-xs text-gray-400 mb-1">프리셋</label>
+                                        <select
+                                            value={selectedPreset}
+                                            onChange={handlePresetChange}
+                                            className="bg-gray-700 border border-gray-600 text-xs rounded-md p-2 focus:ring-purple-500 focus:border-purple-500 w-full text-gray-200"
+                                        >
+                                            {presets && presets.map((preset, index) => (
+                                                <option key={index} value={index}>{preset.name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {/* 오른쪽: 6가지 능력치 (한 줄에 2가지씩) */}
+                            <div className="flex flex-col gap-3">
+                                <h3 className="font-semibold text-gray-200 text-sm">능력치</h3>
+                                <StatsDisplayPanel currentUser={currentUserWithStatus} />
+                            </div>
+                        </div>
+                    </div>
+
                     <div className="flex-1 grid grid-cols-12 gap-6 min-h-0 overflow-hidden">
                         <div className="col-span-8 bg-gray-800/50 rounded-lg shadow-lg min-h-0 flex flex-col overflow-hidden">
                             <ChatWindow

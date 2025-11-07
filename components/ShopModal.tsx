@@ -6,9 +6,10 @@ import Button from './Button.js';
 import { ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT } from '../constants';
 import { isDifferentWeekKST } from '../utils/timeUtils.js';
 import PurchaseQuantityModal from './PurchaseQuantityModal.js';
+import { useAppContext } from '../hooks/useAppContext.js';
 
 interface ShopModalProps {
-    currentUser: UserWithStatus;
+    currentUser?: UserWithStatus; // Optional: useAppContext에서 가져올 수 있도록
     onClose: () => void;
     onAction: (action: ServerAction) => void;
     isTopmost?: boolean;
@@ -126,7 +127,15 @@ const ShopItemCard: React.FC<{
     );
 };
 
-const ShopModal: React.FC<ShopModalProps> = ({ currentUser, onClose, onAction, isTopmost, initialTab }) => {
+const ShopModal: React.FC<ShopModalProps> = ({ currentUser: propCurrentUser, onClose, onAction, isTopmost, initialTab }) => {
+    const { currentUserWithStatus } = useAppContext();
+    // prop으로 받은 currentUser가 있으면 사용하고, 없으면 context에서 가져옴
+    const currentUser = propCurrentUser || currentUserWithStatus;
+    
+    if (!currentUser) {
+        return null;
+    }
+    
     const [activeTab, setActiveTab] = useState<ShopTab>(initialTab || 'equipment');
     const [toastMessage, setToastMessage] = useState<string | null>(null);
     const [purchasingItem, setPurchasingItem] = useState<PurchasableItem | null>(null);

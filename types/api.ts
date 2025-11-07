@@ -213,6 +213,7 @@ export type ServerAction =
     | { type: 'SINGLE_PLAYER_REFRESH_PLACEMENT', payload: { gameId: string } }
     | { type: 'START_SINGLE_PLAYER_MISSION', payload: { missionId: string } }
     | { type: 'CLAIM_SINGLE_PLAYER_MISSION_REWARD', payload: { missionId: string } }
+    | { type: 'LEVEL_UP_TRAINING_QUEST', payload: { missionId: string } }
     | { type: 'MANNER_ACTION', payload: { targetUserId: string, actionType: 'up' | 'down' } }
     ;
 

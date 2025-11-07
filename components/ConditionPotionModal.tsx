@@ -43,7 +43,7 @@ const POTION_TYPES: Record<PotionType, PotionInfo> = {
 };
 
 interface ConditionPotionModalProps {
-    currentUser: User;
+    currentUser?: User; // Optional: useAppContext에서 가져올 수 있도록
     currentCondition: number;
     onClose: () => void;
     onConfirm: (potionType: PotionType) => void;
@@ -51,18 +51,34 @@ interface ConditionPotionModalProps {
 }
 
 const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({ 
-    currentUser, 
+    currentUser: propCurrentUser, 
     currentCondition, 
     onClose, 
     onConfirm,
     isTopmost 
 }) => {
-    const { handlers } = useAppContext();
+    const { handlers, currentUserWithStatus, updateTrigger } = useAppContext();
+    // prop으로 받은 currentUser가 있으면 사용하고, 없으면 context에서 가져옴
+    const currentUser = propCurrentUser || currentUserWithStatus;
     const [selectedPotionType, setSelectedPotionType] = useState<PotionType | null>(null);
 
+    if (!currentUser) {
+        return null;
+    }
+
     // 보유 중인 각 컨디션 회복제 개수 계산
+    // inventory 변경을 확실히 감지하기 위해 inventory의 컨디션 회복제 정보를 문자열로 변환하여 의존성으로 사용
+    const inventoryKey = useMemo(() => {
+        if (!currentUser?.inventory) return '';
+        return currentUser.inventory
+            .filter(item => item.type === 'consumable' && item.name.startsWith('컨디션회복제'))
+            .map(item => `${item.id || item.name}:${item.quantity || 1}`)
+            .join(',');
+    }, [currentUser?.inventory, updateTrigger]);
+    
     const potionCounts = useMemo(() => {
         const counts: Record<PotionType, number> = { small: 0, medium: 0, large: 0 };
+        if (!currentUser?.inventory) return counts;
         currentUser.inventory
             .filter(item => item.type === 'consumable' && item.name.startsWith('컨디션회복제'))
             .forEach(item => {
@@ -75,7 +91,7 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
                 }
             });
         return counts;
-    }, [currentUser.inventory]);
+    }, [inventoryKey]);
 
     // 선택한 회복제의 예상 회복량 계산
     const expectedRecovery = useMemo(() => {

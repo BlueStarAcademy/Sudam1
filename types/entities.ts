@@ -187,11 +187,18 @@ export type TournamentState = {
     nextRoundStartTime: number | null;
     timeElapsed: number;
     currentMatchScores?: { player1: number; player2: number } | null;
+    lastScoreIncrement?: { 
+        player1: { base: number; actual: number; isCritical: boolean } | null;
+        player2: { base: number; actual: number; isCritical: boolean } | null;
+    } | null;
     currentMatchResult?: {
         winnerId: string;
         loserId: string;
         rewards?: { gold: number; diamonds: number; };
     } | null;
+    accumulatedGold?: number; // 동네바둑리그 경기별 누적 골드
+    accumulatedMaterials?: Record<string, number>; // 전국바둑대회 경기별 누적 재료 (재료명: 개수)
+    accumulatedEquipmentBoxes?: Record<string, number>; // 월드챔피언십 경기별 누적 장비상자 (상자명: 개수)
 };
 
 export type LeagueOutcome = 'promote' | 'maintain' | 'demote';
@@ -209,23 +216,31 @@ export type UserCredentials = {
     userId: string;
 };
 
+export type SinglePlayerMissionLevelInfo = {
+    level: number;
+    unlockStageId?: string; // 레벨 10 오픈조건 (선택적)
+    productionRateMinutes: number; // 생산속도 (분)
+    rewardAmount: number; // 생산량
+    maxCapacity: number; // 최대생산량
+};
+
 export type SinglePlayerMissionInfo = {
     id: string;
     name: string;
     description: string;
-    unlockStageId: string;
-    productionRateMinutes: number;
+    unlockStageId: string; // 최초 오픈조건 (레벨 1)
     rewardType: 'gold' | 'diamonds';
-    rewardAmount: number;
-    maxCapacity: number;
     image: string;
+    levels: SinglePlayerMissionLevelInfo[]; // 레벨 1-10 정보
 };
 
 export type SinglePlayerMissionState = {
     id: string;
     isStarted: boolean;
+    level: number; // 현재 레벨 (1-10)
     lastCollectionTime: number;
-    accumulatedAmount: number;
+    accumulatedAmount: number; // 현재 누적 생산량
+    accumulatedCollection: number; // 누적 수령액 (레벨업용)
 };
 
 export type User = {
@@ -360,6 +375,17 @@ export type SinglePlayerStageInfo = {
         firstClear: { gold: number; exp: number; items?: { itemId: string; quantity: number }[]; bonus?: string };
         repeatClear: { gold: number; exp: number; items?: { itemId: string; quantity: number }[]; bonus?: string };
     };
+    // 살리기 바둑 모드: AI(백)가 정해진 턴 동안 살아남기
+    survivalTurns?: number; // AI(백)가 살아남아야 하는 턴 수 (백의 턴 수 제한)
+    // 자동 계가 턴 수: 정해진 턴 수에 도달하면 자동으로 계가 진행
+    autoScoringTurns?: number; // 총 턴 수 (유저+AI 합산)
+    // 미사일바둑 모드: 미사일 아이템 개수
+    missileCount?: number; // 미사일 아이템 개수
+    // 히든바둑 모드: 히든/스캔 아이템 개수
+    hiddenCount?: number; // 히든 아이템 개수
+    scanCount?: number; // 스캔 아이템 개수
+    // AI 히든 아이템 사용 턴 범위 (유단자 히든바둑용)
+    aiHiddenItemTurnRange?: { min: number; max: number }; // AI가 히든 아이템을 사용할 턴 수 범위
 };
 
 
@@ -691,7 +717,11 @@ export type LiveGameSession = {
   stageId?: string;
   blackPatternStones?: Point[];
   whitePatternStones?: Point[];
+  whiteTurnsPlayed?: number; // 살리기 바둑 모드: 백(AI)이 둔 턴 수
   singlePlayerPlacementRefreshesUsed?: number;
+  totalTurns?: number; // 총 턴 수 (유저 + AI 합산), 자동 계가 트리거용
+  aiHiddenItemTurn?: number; // AI가 히든 아이템을 사용할 턴 수 (10~30 사이)
+  aiHiddenItemUsed?: boolean; // AI가 히든 아이템을 사용했는지 여부
 };
 
 export type Negotiation = {

@@ -218,7 +218,11 @@ export const updateCurlingState = (game: types.LiveGameSession, now: number) => 
             break;
         }
         case 'curling_playing': {
-            if (game.curlingTurnDeadline && now > game.curlingTurnDeadline) {
+            // AI 턴일 때는 타임아웃 체크를 건너뛰기
+            const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None && 
+                            (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
+            
+            if (game.curlingTurnDeadline && now > game.curlingTurnDeadline && !isAiTurn) {
                 const timedOutPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
                 const gameEnded = handleTimeoutFoul(game, timedOutPlayerId, now);
                 if (gameEnded) return;

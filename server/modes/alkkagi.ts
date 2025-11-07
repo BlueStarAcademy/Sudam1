@@ -262,7 +262,11 @@ export const updateAlkkagiState = (game: types.LiveGameSession, now: number) => 
         case 'alkkagi_placement':
         case 'alkkagi_simultaneous_placement': {
             if (!game.alkkagiStonesPlacedThisRound) game.alkkagiStonesPlacedThisRound = {};
-            if (game.alkkagiPlacementDeadline && now > game.alkkagiPlacementDeadline) {
+            // AI 턴일 때는 타임아웃 체크를 건너뛰기
+            const isAiTurnPlacement = game.isAiGame && game.currentPlayer !== types.Player.None && 
+                                     (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
+            
+            if (game.alkkagiPlacementDeadline && now > game.alkkagiPlacementDeadline && !isAiTurnPlacement) {
                  const targetStones = game.settings.alkkagiStoneCount || 5;
 
                 if (game.gameStatus === 'alkkagi_placement') {
@@ -347,7 +351,11 @@ export const updateAlkkagiState = (game: types.LiveGameSession, now: number) => 
             break;
         }
         case 'alkkagi_playing':
-            if (game.alkkagiTurnDeadline && now > game.alkkagiTurnDeadline) {
+            // AI 턴일 때는 타임아웃 체크를 건너뛰기
+            const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None && 
+                            (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
+            
+            if (game.alkkagiTurnDeadline && now > game.alkkagiTurnDeadline && !isAiTurn) {
                 const timedOutPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
                 
                 if (!game.timeoutFouls) game.timeoutFouls = {};

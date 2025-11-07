@@ -3,6 +3,7 @@ import React, { useMemo } from 'react';
 import { Player, GameProps, GameMode, User, AlkkagiPlacementType, GameSettings, GameStatus, UserWithStatus } from '../../types/index.js';
 import Avatar from '../Avatar.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, ALKKAGI_TURN_TIME_LIMIT, CURLING_TURN_TIME_LIMIT, DICE_GO_MAIN_PLACE_TIME, DICE_GO_MAIN_ROLL_TIME, ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_SIMULTANEOUS_PLACEMENT_TIME_LIMIT, aiUserId, AVATAR_POOL, BORDER_POOL, PLAYFUL_MODE_FOUL_LIMIT } from '../../constants';
+import { SINGLE_PLAYER_STAGES } from '../../constants/singlePlayerConstants.js';
 
 const formatTime = (seconds: number) => {
     if (seconds < 0) seconds = 0;
@@ -311,6 +312,52 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
     
     const turnDuration = getTurnDuration(mode, session.gameStatus, settings);
 
+    // 싱글플레이 턴 안내 패널 계산
+    const turnInfo = useMemo(() => {
+        if (!isSinglePlayer || !session.stageId) return null;
+        
+        const stage = SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
+        if (!stage) return null;
+        
+        // 따내기바둑: 흑의 남은 턴
+        if (stage.blackTurnLimit) {
+            const blackMovesCount = session.moveHistory.filter(m => m.player === Player.Black && m.x !== -1).length;
+            const remainingTurns = Math.max(0, stage.blackTurnLimit - blackMovesCount);
+            return {
+                type: 'capture' as const,
+                label: '흑 남은 턴',
+                remaining: remainingTurns,
+                total: stage.blackTurnLimit
+            };
+        }
+        
+        // 살리기바둑: 백의 남은 턴
+        if (stage.survivalTurns && session.settings.isSurvivalMode) {
+            const whiteTurnsPlayed = session.whiteTurnsPlayed || 0;
+            const remainingTurns = Math.max(0, stage.survivalTurns - whiteTurnsPlayed);
+            return {
+                type: 'survival' as const,
+                label: '백 남은 턴',
+                remaining: remainingTurns,
+                total: stage.survivalTurns
+            };
+        }
+        
+        // 자동계가: 자동계가까지 남은 턴
+        if (stage.autoScoringTurns) {
+            const totalTurns = session.totalTurns || 0;
+            const remainingTurns = Math.max(0, stage.autoScoringTurns - totalTurns);
+            return {
+                type: 'auto_scoring' as const,
+                label: '자동계가까지',
+                remaining: remainingTurns,
+                total: stage.autoScoringTurns
+            };
+        }
+        
+        return null;
+    }, [isSinglePlayer, session.stageId, session.moveHistory, session.whiteTurnsPlayed, session.totalTurns, session.settings]);
+    
     return (
         <div className="flex justify-between items-start gap-2 flex-shrink-0 h-full">
             <SinglePlayerPanel
@@ -332,6 +379,17 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
                 mode={mode}
                 isSinglePlayer={isSinglePlayer}
             />
+            {isSinglePlayer && turnInfo && (
+                <div className="flex items-center justify-center w-20 h-20 flex-shrink-0 bg-stone-800/90 rounded-lg border-2 border-stone-600 shadow-lg">
+                    <div className="flex flex-col items-center justify-center text-center px-2">
+                        <span className="text-[10px] text-stone-400 mb-0.5 leading-tight">{turnInfo.label}</span>
+                        <div className="flex items-baseline justify-center gap-0.5">
+                            <span className="text-xl font-bold text-stone-100">{turnInfo.remaining}</span>
+                            <span className="text-xs text-stone-500">/{turnInfo.total}</span>
+                        </div>
+                    </div>
+                </div>
+            )}
              <SinglePlayerPanel
                 user={rightPlayerUser}
                 playerEnum={rightPlayerEnum}

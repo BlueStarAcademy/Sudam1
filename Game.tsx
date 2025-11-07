@@ -286,6 +286,8 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     const globalChat = useMemo(() => waitingRoomChats['global'] || [], [waitingRoomChats]);
     
     const handleCloseResults = useCallback(() => {
+        // AI 게임의 경우 결과창 확인 시 모달만 닫고, 홈화면으로 이동하지 않음
+        // 나가기 버튼을 통해 대기실로 이동할 수 있음
         setShowResultModal(false);
         setShowFinalTerritory(false);
     }, []);

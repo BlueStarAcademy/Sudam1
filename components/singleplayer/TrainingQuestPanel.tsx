@@ -16,39 +16,92 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
         return clearedStages.includes(unlockStageId);
     };
 
-    // 사용자의 수련 과제 상태 (나중에 currentUser에서 가져올 수 있음)
+    // 사용자의 수련 과제 상태
     const trainingQuests = useMemo(() => {
-        const userQuests = (currentUser as any).trainingQuests || [];
+        const userMissions = (currentUser as any).singlePlayerMissions || {};
         const clearedStages = (currentUser as any).clearedSinglePlayerStages || [];
         return SINGLE_PLAYER_MISSIONS.map(mission => {
-            const userQuest = userQuests.find((q: any) => q.missionId === mission.id);
+            const missionState = userMissions[mission.id];
+            const currentLevel = missionState?.level || 0;
+            const levelInfo = currentLevel > 0 && currentLevel <= mission.levels.length 
+                ? mission.levels[currentLevel - 1] 
+                : null;
+            const isUnlocked = isMissionUnlocked(mission.unlockStageId, clearedStages);
+            
             return {
                 ...mission,
-                level: userQuest?.level || 0,
-                accumulatedReward: userQuest?.accumulatedReward || 0,
-                lastProductionTime: userQuest?.lastProductionTime || Date.now(),
-                isUnlocked: isMissionUnlocked(mission.unlockStageId, clearedStages)
+                missionState,
+                currentLevel,
+                levelInfo,
+                isUnlocked,
+                isStarted: missionState?.isStarted || false,
             };
         });
     }, [currentUser]);
 
     // 재화 수령 계산
-    const calculateReward = (mission: any) => {
-        if (!mission.isUnlocked) return 0;
+    const calculateReward = (quest: any) => {
+        if (!quest.isUnlocked || !quest.isStarted || !quest.levelInfo) return 0;
         
-        const productionRateMs = mission.productionRateMinutes * 60 * 1000;
+        const productionRateMs = quest.levelInfo.productionRateMinutes * 60 * 1000;
         const now = Date.now();
-        const elapsed = now - mission.lastProductionTime;
+        const lastCollectionTime = quest.missionState?.lastCollectionTime || now;
+        const elapsed = now - lastCollectionTime;
         const cycles = Math.floor(elapsed / productionRateMs);
-        const productionPerCycle = mission.rewardAmount * (1 + mission.level * 0.1); // 레벨당 10% 증가
+        const accumulatedAmount = quest.missionState?.accumulatedAmount || 0;
         
-        return Math.min(cycles * productionPerCycle, mission.maxCapacity);
+        if (cycles > 0) {
+            const generatedAmount = cycles * quest.levelInfo.rewardAmount;
+            return Math.min(quest.levelInfo.maxCapacity, accumulatedAmount + generatedAmount);
+        }
+        
+        return accumulatedAmount;
+    };
+    
+    // 레벨업 조건 계산
+    const getLevelUpInfo = (quest: any) => {
+        if (!quest.isStarted || !quest.levelInfo || quest.currentLevel >= 10) return null;
+        
+        const requiredCollection = quest.levelInfo.maxCapacity * quest.currentLevel * 10;
+        const accumulatedCollection = quest.missionState?.accumulatedCollection || 0;
+        const progress = Math.min(100, (accumulatedCollection / requiredCollection) * 100);
+        
+        // 레벨업 비용
+        let upgradeCost: number;
+        if (quest.rewardType === 'gold') {
+            upgradeCost = quest.levelInfo.maxCapacity * 5;
+        } else {
+            upgradeCost = quest.levelInfo.maxCapacity * 1000;
+        }
+        
+        // 다음 레벨 오픈조건 확인
+        const nextLevelInfo = quest.levels[quest.currentLevel];
+        const clearedStages = (currentUser as any).clearedSinglePlayerStages || [];
+        const canLevelUp = accumulatedCollection >= requiredCollection && 
+            (!nextLevelInfo?.unlockStageId || clearedStages.includes(nextLevelInfo.unlockStageId));
+        
+        return {
+            requiredCollection,
+            accumulatedCollection,
+            progress,
+            upgradeCost,
+            canLevelUp,
+            nextLevelUnlockStage: nextLevelInfo?.unlockStageId,
+        };
+    };
+
+    // 미션 시작
+    const handleStartMission = (missionId: string) => {
+        handlers.handleAction({
+            type: 'START_SINGLE_PLAYER_MISSION',
+            payload: { missionId }
+        });
     };
 
     // 재화 수령
     const handleCollectReward = (missionId: string) => {
         handlers.handleAction({
-            type: 'COLLECT_TRAINING_QUEST_REWARD',
+            type: 'CLAIM_SINGLE_PLAYER_MISSION_REWARD',
             payload: { missionId }
         });
     };
@@ -67,19 +120,20 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
             
             <div className="flex-1 overflow-y-auto space-y-3">
                 {trainingQuests.map((quest, index) => {
-                    const reward = calculateReward(quest);
-                    const isMaxLevel = quest.level >= 10; // 최대 레벨 (설정 가능)
+                    const reward = quest.isStarted ? calculateReward(quest) : 0;
+                    const isMaxLevel = quest.currentLevel >= 10;
+                    const levelUpInfo = getLevelUpInfo(quest);
 
                     return (
                         <div
                             key={quest.id}
                             className={`
-                                bg-tertiary rounded-lg p-3 border-2
+                                relative bg-tertiary rounded-lg p-3 border-2
                                 ${quest.isUnlocked ? 'border-primary' : 'border-gray-600 opacity-50'}
                             `}
                         >
                             {!quest.isUnlocked && (
-                                <div className="absolute inset-0 bg-black/30 rounded-lg flex items-center justify-center z-10">
+                                <div className="absolute inset-0 bg-black/30 rounded-lg flex items-center justify-center z-10 pointer-events-none">
                                     <span className="text-white font-bold text-xs">
                                         {quest.unlockStageId} 클리어 필요
                                     </span>
@@ -107,7 +161,7 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
                                             {quest.name}
                                         </h3>
                                         <span className="text-xs text-tertiary ml-2">
-                                            Lv.{quest.level}
+                                            Lv.{quest.currentLevel || 0}/10
                                         </span>
                                     </div>
                                     <p className="text-xs text-on-panel mb-2 line-clamp-2">
@@ -115,7 +169,7 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
                                     </p>
 
                                     {/* 재화 정보 */}
-                                    {quest.isUnlocked && (
+                                    {quest.isUnlocked && quest.isStarted && quest.levelInfo && (
                                         <div className="space-y-1">
                                             <div className="flex items-center justify-between text-xs">
                                                 <span className="text-tertiary">수령 가능:</span>
@@ -133,8 +187,32 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
                                             <div className="flex items-center justify-between text-xs">
                                                 <span className="text-tertiary">생산 주기:</span>
                                                 <span className="text-on-panel">
-                                                    {quest.productionRateMinutes}분
+                                                    {quest.levelInfo.productionRateMinutes}분
                                                 </span>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-tertiary">최대 생산량:</span>
+                                                <span className="text-on-panel">
+                                                    {quest.levelInfo.maxCapacity}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* 레벨업 진행도 */}
+                                    {quest.isUnlocked && quest.isStarted && levelUpInfo && !isMaxLevel && (
+                                        <div className="mt-2 space-y-1">
+                                            <div className="flex items-center justify-between text-xs">
+                                                <span className="text-tertiary">레벨업 진행도:</span>
+                                                <span className="text-on-panel">
+                                                    {levelUpInfo.accumulatedCollection}/{levelUpInfo.requiredCollection} ({levelUpInfo.progress.toFixed(1)}%)
+                                                </span>
+                                            </div>
+                                            <div className="w-full bg-gray-700 rounded-full h-1.5">
+                                                <div 
+                                                    className="bg-blue-500 h-1.5 rounded-full transition-all"
+                                                    style={{ width: `${levelUpInfo.progress}%` }}
+                                                />
                                             </div>
                                         </div>
                                     )}
@@ -143,24 +221,43 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
 
                             {/* 버튼 */}
                             {quest.isUnlocked && (
-                                <div className="flex gap-2 mt-2">
-                                    <Button
-                                        onClick={() => handleCollectReward(quest.id)}
-                                        colorScheme="green"
-                                        className="flex-1 !text-xs !py-1"
-                                        disabled={reward === 0}
-                                    >
-                                        수령 ({reward > 0 ? reward : 0})
-                                    </Button>
-                                    <Button
-                                        onClick={() => handleLevelUp(quest.id)}
-                                        colorScheme="blue"
-                                        className="!text-xs !py-1 px-2"
-                                        disabled={isMaxLevel}
-                                        title={isMaxLevel ? '최대 레벨' : '레벨업'}
-                                    >
-                                        ⬆
-                                    </Button>
+                                <div className="flex flex-col gap-2 mt-2">
+                                    {!quest.isStarted ? (
+                                        <Button
+                                            onClick={() => handleStartMission(quest.id)}
+                                            colorScheme="blue"
+                                            className="w-full !text-xs !py-1"
+                                        >
+                                            시작
+                                        </Button>
+                                    ) : (
+                                        <>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    onClick={() => handleCollectReward(quest.id)}
+                                                    colorScheme="green"
+                                                    className="flex-1 !text-xs !py-1"
+                                                    disabled={reward === 0}
+                                                >
+                                                    수령 ({reward > 0 ? reward : 0})
+                                                </Button>
+                                                <Button
+                                                    onClick={() => handleLevelUp(quest.id)}
+                                                    colorScheme="blue"
+                                                    className="!text-xs !py-1 px-2"
+                                                    disabled={isMaxLevel || !levelUpInfo?.canLevelUp || (currentUser.gold < levelUpInfo.upgradeCost)}
+                                                    title={isMaxLevel ? '최대 레벨' : levelUpInfo?.nextLevelUnlockStage ? `${levelUpInfo.nextLevelUnlockStage} 클리어 필요` : `레벨업 (비용: ${levelUpInfo?.upgradeCost || 0}골드)`}
+                                                >
+                                                    ⬆
+                                                </Button>
+                                            </div>
+                                            {levelUpInfo && !isMaxLevel && (
+                                                <div className="text-xs text-gray-400 text-center">
+                                                    레벨업 비용: {levelUpInfo.upgradeCost.toLocaleString()}골드
+                                                </div>
+                                            )}
+                                        </>
+                                    )}
                                 </div>
                             )}
                         </div>

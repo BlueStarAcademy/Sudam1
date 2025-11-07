@@ -153,14 +153,17 @@ export const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot): Inventor
 };
 
 // 장비 일관성 검증 및 수정 헬퍼 함수
+// 데이터 손실 방지를 위해 인벤토리에 없는 장비도 절대 삭제하지 않음
 export const validateAndFixEquipmentConsistency = (user: User): void => {
     // user.equipment에 있는 모든 장비가 인벤토리에 존재하는지 확인
     for (const slot in user.equipment) {
         const itemId = user.equipment[slot as EquipmentSlot];
         const itemInInventory = user.inventory.find(item => item.id === itemId);
         if (!itemInInventory) {
-            console.warn(`[Equipment Consistency] Equipment item ${itemId} in slot ${slot} not found in inventory for user ${user.id}, removing from equipment`);
-            delete user.equipment[slot as EquipmentSlot];
+            // 인벤토리에 없어도 장비는 보존 (데이터 손실 방지)
+            // 이는 인벤토리 동기화 문제나 버그로 인한 데이터 손실을 방지하기 위함
+            console.error(`[Equipment Consistency] CRITICAL: User ${user.id} has equipment ${itemId} in slot ${slot} but not in inventory! PRESERVING equipment to prevent data loss. DO NOT DELETE.`);
+            // 장비는 그대로 유지하여 나중에 복구 가능하도록 함
         } else if (!itemInInventory.isEquipped) {
             // 인벤토리에 있지만 isEquipped가 false인 경우 수정
             console.warn(`[Equipment Consistency] Equipment item ${itemId} in slot ${slot} exists in inventory but isEquipped is false for user ${user.id}, fixing`);
