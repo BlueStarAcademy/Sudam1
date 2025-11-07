@@ -242,8 +242,8 @@ const AiChallengeModal: React.FC<AiChallengeModalProps> = ({ lobbyType, onClose,
                     <div className="flex flex-row lg:grid lg:grid-cols-2 gap-2 items-center">
                         <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">포획 목표</label>
                         <select 
-                            value={settings.ttamokCaptureTarget || 5} 
-                            onChange={e => handleSettingChange('ttamokCaptureTarget', parseInt(e.target.value))}
+                            value={settings.captureTarget || 5} 
+                            onChange={e => handleSettingChange('captureTarget', parseInt(e.target.value))}
                             className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
                         >
                             {TTAMOK_CAPTURE_TARGETS.map(t => <option key={t} value={t}>{t}점</option>)}

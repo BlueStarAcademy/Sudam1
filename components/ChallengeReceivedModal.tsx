@@ -84,18 +84,18 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
   }, [selectedMode, challenger.stats]);
 
   const getBoardSizeLabel = (size: number) => {
-    const hiddenBoard = HIDDEN_BOARD_SIZES.find(b => b.size === size);
-    return hiddenBoard ? hiddenBoard.label : `${size}x${size}`;
+    // HIDDEN_BOARD_SIZES는 number 배열이므로 단순히 size를 반환
+    return `${size}x${size}`;
   };
 
   const getStoneCountLabel = (count: number) => {
-    const hiddenStone = HIDDEN_STONE_COUNTS.find(s => s.count === count);
-    return hiddenStone ? hiddenStone.label : `${count}개`;
+    // HIDDEN_STONE_COUNTS는 number 배열이므로 단순히 count를 반환
+    return `${count}개`;
   };
 
-  const isGoGame = ['standard', 'speed', 'capture', 'omok', 'thief', 'missile'].includes(selectedMode);
-  const isAlkkagiGame = selectedMode === 'alkkagi';
-  const isCurlingGame = selectedMode === 'curling';
+  const isGoGame = [GameMode.Standard, GameMode.Speed, GameMode.Capture, GameMode.Omok, GameMode.Thief, GameMode.Missile].includes(selectedMode);
+  const isAlkkagiGame = selectedMode === GameMode.Alkkagi;
+  const isCurlingGame = selectedMode === GameMode.Curling;
   
   const showBoardSize = ![GameMode.Alkkagi, GameMode.Curling, GameMode.Dice].includes(selectedMode);
   const showKomi = ![GameMode.Capture, GameMode.Omok, GameMode.Ttamok, GameMode.Alkkagi, GameMode.Curling, GameMode.Dice, GameMode.Thief, GameMode.Base].includes(selectedMode);
@@ -435,8 +435,8 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
                 <div className="flex flex-row lg:grid lg:grid-cols-2 gap-1 lg:gap-2 items-center">
                   <label className="font-semibold text-gray-300 text-xs lg:text-sm flex-shrink-0">도둑말 개수</label>
                   <select 
-                    value={settings.thiefStoneCount} 
-                    onChange={e => handleSettingChange('thiefStoneCount', parseInt(e.target.value))}
+                    value={settings.hiddenStoneCount ?? 3} 
+                    onChange={e => handleSettingChange('hiddenStoneCount', parseInt(e.target.value))}
                     className="w-full bg-gray-700 border border-gray-600 text-white text-xs lg:text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 p-1.5 lg:p-2"
                   >
                     {[1, 2, 3, 4, 5].map(c => <option key={c} value={c}>{c}개</option>)}
@@ -660,10 +660,9 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
 
             {/* 하단 버튼 */}
             <div className="mt-2 lg:mt-4 border-t border-gray-700 pt-2 lg:pt-4 flex justify-between gap-2 lg:gap-3">
-              <Button onClick={onDecline} variant="secondary" colorScheme="red" className="!text-sm !py-1.5 flex-1">거절</Button>
+              <Button onClick={onDecline} colorScheme="red" className="!text-sm !py-1.5 flex-1">거절</Button>
               <Button 
                 onClick={() => onProposeModification(settings)}
-                variant="secondary" 
                 colorScheme="yellow" 
                 className="!text-sm !py-1.5 flex-1"
                 disabled={!settingsHaveChanged}
@@ -672,7 +671,6 @@ const ChallengeReceivedModal: React.FC<ChallengeReceivedModalProps> = ({
               </Button>
               <Button 
                 onClick={() => onAccept(negotiation.settings)} 
-                variant="primary" 
                 colorScheme="green" 
                 className="!text-sm !py-1.5 flex-1"
                 disabled={settingsHaveChanged}

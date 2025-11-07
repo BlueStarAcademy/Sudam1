@@ -77,7 +77,7 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
+          proxy.on('error', (err: any, _req, _res) => {
             // 서버가 아직 시작되지 않았을 때 발생하는 ECONNREFUSED 에러는 조용히 무시
             if (err.code === 'ECONNREFUSED' || err.code === 'ECONNABORTED') {
               // 개발 환경에서만 조용히 무시
@@ -96,7 +96,7 @@ export default defineConfig({
         changeOrigin: true,
         secure: false,
         configure: (proxy, _options) => {
-          proxy.on('error', (err, _req, _res) => {
+          proxy.on('error', (err: any, _req, _res) => {
             // 서버가 아직 시작되지 않았을 때 발생하는 ECONNREFUSED 에러는 조용히 무시
             if (err.code === 'ECONNREFUSED' || err.code === 'ECONNABORTED') {
               // 개발 환경에서만 조용히 무시
@@ -109,7 +109,7 @@ export default defineConfig({
           });
           proxy.on('proxyReqWs', (proxyReq, req, socket) => {
             // WebSocket 연결 시도 시 재연결 로직
-            socket.on('error', (err) => {
+            socket.on('error', (err: any) => {
               if (err.code === 'ECONNREFUSED' || err.code === 'ECONNABORTED') {
                 // 조용히 무시
                 return;

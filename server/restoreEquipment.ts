@@ -33,7 +33,8 @@ const restoreEquipmentFromDatabase = async () => {
     
     try {
         // 모든 사용자의 장비 정보 확인
-        const users = await db.all<UserRow>('SELECT id, username, nickname, equipment, inventory FROM users');
+        const usersResult = await db.all<UserRow>('SELECT id, username, nickname, equipment, inventory FROM users');
+        const users: UserRow[] = Array.isArray(usersResult) ? usersResult : [];
         console.log(`[Restore] Found ${users.length} users in database`);
         
         let restoredCount = 0;

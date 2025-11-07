@@ -2,11 +2,13 @@ import { randomUUID } from 'crypto';
 import * as db from './db.js';
 // FIX: Import the full namespace to access enums and types.
 import * as types from './../types.js';
+import { GameMode } from './../types.js';
 import { updateQuestProgress } from './questService.js';
 import { containsProfanity } from './../profanity.js';
 // FIX: Imported the tournament service to handle forfeits on logout.
 import * as tournamentService from './tournamentService.js';
 import * as summaryService from './summaryService.js';
+import { broadcast } from './socket.js';
 
 
 type HandleActionResult = { 
@@ -159,7 +161,13 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
         }
         case 'ENTER_WAITING_ROOM': {
             const { mode } = payload;
-            volatileState.userStatuses[user.id] = { status: types.UserStatus.Waiting, mode };
+            // strategic/playful은 GameMode가 아니므로 mode를 undefined로 설정
+            if (mode === 'strategic' || mode === 'playful') {
+                volatileState.userStatuses[user.id] = { status: types.UserStatus.Waiting };
+            } else {
+                volatileState.userStatuses[user.id] = { status: types.UserStatus.Waiting, mode: mode as GameMode };
+            }
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             return {};
         }
         case 'LEAVE_WAITING_ROOM': {

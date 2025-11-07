@@ -18,10 +18,13 @@ const ActionPointTimer: React.FC<{ user: UserWithStatus }> = ({ user }) => {
     const { actionPoints, lastActionPointUpdate } = user;
     const [timeLeft, setTimeLeft] = useState('');
     
+    // actionPoints가 없으면 타이머 표시 안 함
+    if (!actionPoints) return null;
+    
     const regenInterval = useMemo(() => getMannerEffects(user).actionPointRegenInterval, [user]);
 
     useEffect(() => {
-        if (actionPoints.current >= actionPoints.max) {
+        if (!actionPoints || actionPoints.current >= actionPoints.max) {
             setTimeLeft('');
             return;
         }
@@ -54,6 +57,12 @@ const Header: React.FC = () => {
     const { handleLogout, openShop, openSettingsModal, openProfileEditModal, openMailbox } = handlers;
     const { actionPoints, gold, diamonds, isAdmin, avatarId, borderId, mbti } = currentUserWithStatus;
     
+    // actionPoints가 없으면 기본값 사용
+    const safeActionPoints = actionPoints || { current: 0, max: 30 };
+    // gold와 diamonds가 없으면 기본값 사용
+    const safeGold = (gold !== undefined && gold !== null) ? gold : 0;
+    const safeDiamonds = (diamonds !== undefined && diamonds !== null) ? diamonds : 0;
+    
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === avatarId)?.url, [avatarId]);
     const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === borderId)?.url, [borderId]);
 
@@ -73,12 +82,12 @@ const Header: React.FC = () => {
 
                 <div className="flex items-center justify-end flex-nowrap gap-1 sm:gap-2 flex-shrink-0">
                     <div className="flex items-center flex-shrink-0">
-                        <ResourceDisplay icon="⚡" value={`${actionPoints.current}/${actionPoints.max}`} className="flex-shrink-0" />
+                        <ResourceDisplay icon="⚡" value={`${safeActionPoints.current}/${safeActionPoints.max}`} className="flex-shrink-0" />
                         <ActionPointTimer user={currentUserWithStatus} />
-                        <button onClick={openShop} className="ml-1 w-6 h-6 flex-shrink-0 rounded-full bg-green-600 hover:bg-green-500 text-white font-bold flex items-center justify-center text-lg shadow-md transition-transform hover:scale-110 active:scale-95" title="행동력 구매">+</button>
+                        <button onClick={() => openShop()} className="ml-1 w-6 h-6 flex-shrink-0 rounded-full bg-green-600 hover:bg-green-500 text-white font-bold flex items-center justify-center text-lg shadow-md transition-transform hover:scale-110 active:scale-95" title="행동력 구매">+</button>
                     </div>
-                    <ResourceDisplay icon={<img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 object-contain" />} value={gold.toLocaleString()} className="flex-shrink-0" />
-                    <ResourceDisplay icon={<img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 object-contain" />} value={diamonds.toLocaleString()} className="flex-shrink-0" />
+                    <ResourceDisplay icon={<img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 object-contain" />} value={safeGold.toLocaleString()} className="flex-shrink-0" />
+                    <ResourceDisplay icon={<img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 object-contain" />} value={safeDiamonds.toLocaleString()} className="flex-shrink-0" />
                     
                     <div className="h-9 w-px bg-border-color mx-1 sm:mx-2 flex-shrink-0"></div>
                     

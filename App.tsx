@@ -220,7 +220,7 @@ const AppContent: React.FC = () => {
                     {modals.lastUsedItemResult && modals.lastUsedItemResult.length === 1 && <ItemObtainedModal item={modals.lastUsedItemResult[0]} onClose={handlers.closeItemObtained} isTopmost={topmostModalId === 'itemObtained'} />}
                     {modals.lastUsedItemResult && modals.lastUsedItemResult.length > 1 && <BulkItemObtainedModal items={modals.lastUsedItemResult} onClose={handlers.closeItemObtained} isTopmost={topmostModalId === 'itemObtained'} tournamentScoreChange={modals.tournamentScoreChange} />}
 
-                    {modals.disassemblyResult && <DisassemblyResultModal result={modals.disassemblyResult} onClose={handlers.closeDisassemblyResult} isTopmost={topmostModalId === 'disassemblyResult'} />}
+                    {modals.disassemblyResult && <DisassemblyResultModal result={modals.disassemblyResult} onClose={handlers.closeDisassemblyResult} isTopmost={topmostModalId === 'disassemblyResult'} isOpen={true} />}
                     {modals.craftResult && (() => {
                         console.log('[App] Rendering CraftingResultModal:', {
                             craftResult: modals.craftResult,
@@ -246,7 +246,7 @@ const AppContent: React.FC = () => {
                                                        activeNegotiation.proposerId === activeNegotiation.opponent.id) ||
                                                       (activeNegotiation.challenger.id === currentUserWithStatus.id && 
                                                        activeNegotiation.proposerId === activeNegotiation.challenger.id &&
-                                                       activeNegotiation.turnCount > 0));
+                                                       (activeNegotiation.turnCount ?? 0) > 0));
                         
                         // 발신자가 보는 초기 negotiation은 ChallengeSelectionModal에서 처리하므로 제외
                         const isChallengerWaiting = activeNegotiation.challenger.id === currentUserWithStatus.id && 

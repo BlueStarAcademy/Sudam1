@@ -431,6 +431,7 @@ export type GameSettings = {
   diceGoRounds?: 1 | 2 | 3;
   oddDiceCount?: number;
   evenDiceCount?: number;
+  diceGoItemCount?: number;
   
   // Alkkagi settings
   alkkagiPlacementType?: AlkkagiPlacementType;
@@ -439,6 +440,7 @@ export type GameSettings = {
   alkkagiGaugeSpeed?: number;
   alkkagiSlowItemCount?: number;
   alkkagiAimingLineItemCount?: number;
+  alkkagiItemCount?: number;
   alkkagiRounds?: 1 | 2 | 3;
 
   // Curling settings
@@ -505,7 +507,8 @@ export type AnimationData =
   | { type: 'hidden_reveal'; stones: { point: Point; player: Player }[]; startTime: number; duration: number }
   | { type: 'hidden_missile'; from: Point; to: Point; player: Player; startTime: number; duration: number }
   | { type: 'bonus_text'; text: string; point: Point; player: Player; startTime: number; duration: number }
-  | { type: 'bonus_score'; playerId: string; bonus: number; startTime: number; duration: number };
+  | { type: 'bonus_score'; playerId: string; bonus: number; startTime: number; duration: number }
+  | { type: 'ai_thinking'; startTime: number; duration: number; playerId: string };
 
 // --- Analysis & Summary ---
 export type RecommendedMove = {
@@ -725,6 +728,7 @@ export type LiveGameSession = {
   singlePlayerPlacementRefreshesUsed?: number;
   totalTurns?: number; // 총 턴 수 (유저 + AI 합산), 자동 계가 트리거용
   aiHiddenItemTurn?: number; // AI가 히든 아이템을 사용할 턴 수 (10~30 사이)
+  aiHiddenItemAnimationEndTime?: number; // AI 히든 아이템 사용 연출 종료 시간
   aiHiddenItemUsed?: boolean; // AI가 히든 아이템을 사용했는지 여부
 };
 
@@ -754,7 +758,7 @@ export type AdminLog = {
   adminNickname: string;
   targetUserId: string;
   targetNickname: string;
-  action: 'reset_stats' | 'reset_full' | 'delete_user' | 'force_logout' | 'force_delete_game' | 'send_mail' | 'set_game_description' | 'update_user_details' | 'apply_sanction' | 'lift_sanction' | 'force_win';
+  action: 'reset_stats' | 'reset_full' | 'delete_user' | 'force_logout' | 'force_delete_game' | 'send_mail' | 'set_game_description' | 'update_user_details' | 'apply_sanction' | 'lift_sanction' | 'force_win' | 'reset_tournament_session';
   backupData: Partial<User> | { status: UserStatusInfo } | LiveGameSession | { mailTitle: string } | SanctionLogData | { gameId: string, winnerId: string };
 };
 

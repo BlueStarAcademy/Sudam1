@@ -1,5 +1,3 @@
-import { randomUUID } from 'crypto';
-import { User, ServerActionHandler, InventoryItem, ItemGrade, Action, ChatMessage } from '../../types.js';
-import { broadcast } from '../server.js';
-import db from '../db/index.js';
-import { 
+// This file is currently empty. Blacksmith actions are handled in inventoryActions.ts
+// Placeholder file to prevent import errors
+export {};

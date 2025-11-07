@@ -5,17 +5,18 @@ import { InventoryItem } from '../types.js';
 import { MATERIAL_ITEMS } from '../constants';
 
 interface DisassemblyResultModalProps {
-    isOpen: boolean;
+    isOpen?: boolean;
     onClose: () => void;
     result: {
         gained: { name: string; amount: number }[];
         jackpot: boolean;
         xpGained?: number;
     } | null;
+    isTopmost?: boolean;
 }
 
-const DisassemblyResultModal: React.FC<DisassemblyResultModalProps> = ({ isOpen, onClose, result }) => {
-    if (!isOpen || !result) return null;
+const DisassemblyResultModal: React.FC<DisassemblyResultModalProps> = ({ isOpen = true, onClose, result, isTopmost }) => {
+    if (!result) return null;
 
     return (
         <DraggableWindow title="분해 결과" onClose={onClose} windowId="disassemblyResult" isTopmost zIndex={60}>

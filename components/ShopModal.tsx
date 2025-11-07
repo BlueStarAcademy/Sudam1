@@ -129,8 +129,8 @@ const ShopItemCard: React.FC<{
 
 const ShopModal: React.FC<ShopModalProps> = ({ currentUser: propCurrentUser, onClose, onAction, isTopmost, initialTab }) => {
     const { currentUserWithStatus } = useAppContext();
-    // prop으로 받은 currentUser가 있으면 사용하고, 없으면 context에서 가져옴
-    const currentUser = propCurrentUser || currentUserWithStatus;
+    // useAppContext의 currentUserWithStatus를 우선 사용 (최신 상태 보장)
+    const currentUser = currentUserWithStatus || propCurrentUser;
     
     if (!currentUser) {
         return null;

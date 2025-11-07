@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, AdminLog, Announcement, OverrideAnnouncement, GameMode, LiveGameSession, UserStatusInfo, InventoryItem, InventoryItemType, UserStatus, TournamentType } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, AdminLog, Announcement, OverrideAnnouncement, GameMode, LiveGameSession, UserStatusInfo, InventoryItem, InventoryItemType, UserStatus, TournamentType, CoreStat } from '../../types.js';
 import * as types from '../../types.js';
 import { defaultStats, createDefaultBaseStats, createDefaultSpentStatPoints, createDefaultInventory, createDefaultQuests, createDefaultUser } from '../initialData.js';
 import * as summaryService from '../summaryService.js';
@@ -11,6 +11,7 @@ import { containsProfanity } from '../../profanity.js';
 import { broadcast } from '../socket.js';
 import { calculateTotalStats } from '../statService.js';
 import * as tournamentService from '../tournamentService.js';
+import { getStartOfDayKST } from '../../utils/timeUtils.js';
 
 type HandleActionResult = { 
     clientResponse?: any;
@@ -70,7 +71,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                         if (volatileState.userStatuses[opponentId]) {
                             const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === activeGame.mode);
                             const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === activeGame.mode);
-                            const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : activeGame.mode;
+                            const lobbyMode: GameMode | undefined = isStrategic ? undefined : isPlayful ? undefined : activeGame.mode;
                             volatileState.userStatuses[opponentId].status = UserStatus.Waiting;
                             volatileState.userStatuses[opponentId].mode = lobbyMode;
                             delete volatileState.userStatuses[opponentId].gameId;
@@ -164,7 +165,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                     if (volatileState.userStatuses[opponentId]) {
                         const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === activeGame.mode);
                         const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === activeGame.mode);
-                        const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : activeGame.mode;
+                        const lobbyMode: GameMode | undefined = isStrategic ? undefined : isPlayful ? undefined : activeGame.mode;
                         volatileState.userStatuses[opponentId].status = UserStatus.Waiting;
                         volatileState.userStatuses[opponentId].mode = lobbyMode;
                         delete volatileState.userStatuses[opponentId].gameId;
@@ -223,7 +224,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                     if (volatileState.userStatuses[opponentId]) {
                         const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === activeGame.mode);
                         const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === activeGame.mode);
-                        const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : activeGame.mode;
+                        const lobbyMode: GameMode | undefined = isStrategic ? undefined : isPlayful ? undefined : activeGame.mode;
                         volatileState.userStatuses[opponentId].status = UserStatus.Waiting;
                         volatileState.userStatuses[opponentId].mode = lobbyMode;
                         delete volatileState.userStatuses[opponentId].gameId;
@@ -387,7 +388,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             // 사용자 상태 업데이트 및 로비 모드 결정
             const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === game.mode);
             const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === game.mode);
-            const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : game.mode;
+            const lobbyMode: GameMode | undefined = isStrategic ? undefined : isPlayful ? undefined : game.mode;
 
             // 플레이어 상태 업데이트
             if (volatileState.userStatuses[game.player1.id]) {
@@ -436,7 +437,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             // 사용자 상태 업데이트 및 로비 모드 결정
             const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === game.mode);
             const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === game.mode);
-            const lobbyMode = isStrategic ? GameMode.Strategic : isPlayful ? GameMode.Playful : game.mode;
+            const lobbyMode: GameMode | undefined = isStrategic ? undefined : isPlayful ? undefined : game.mode;
 
             // 플레이어 상태 업데이트
             if (volatileState.userStatuses[game.player1.id]) {
@@ -588,7 +589,6 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             
             // 봇 생성 함수 import
             const { createBotUser } = await import('./tournamentActions.js');
-            const { CoreStat } = await import('../../types/index.js');
             
             const botUsers: types.User[] = [];
             for (let i = 0; i < botsToCreate; i++) {
@@ -610,13 +610,19 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                 } as any);
             }
             
+            // 오늘 0시 기준 타임스탬프 (능력치 고정용)
+            const now = Date.now();
+            const todayStartKST = getStartOfDayKST(now);
+            
             const participants: types.PlayerForTournament[] = [freshUser, ...selectedOpponents].map(p => {
                 let initialStats: Record<CoreStat, number>;
                 if (p.id.startsWith('bot-')) {
                     const botUser = botUsers.find(b => b.id === p.id);
                     if (botUser) {
-                        initialStats = botUser.stats;
+                        // calculateTotalStats로 봇의 최종 능력치 계산
+                        initialStats = calculateTotalStats(botUser);
                     } else {
+                        // 폴백: 기본 능력치 생성
                         const baseStatValue = 100;
                         const stats: Partial<Record<CoreStat, number>> = {};
                         for (const key of Object.values(CoreStat)) {
@@ -625,7 +631,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                         initialStats = stats as Record<CoreStat, number>;
                     }
                 } else {
-                    const realUser = allUsers.find(u => u.id === p.id);
+                    const realUser = allUsers.find((u: any) => u.id === p.id);
                     if (realUser) {
                         initialStats = calculateTotalStats(realUser);
                     } else {
@@ -649,6 +655,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                     wins: 0,
                     losses: 0,
                     condition: 1000,
+                    statsTimestamp: todayStartKST, // 오늘 0시 기준 타임스탬프 저장
                 };
             });
             
@@ -665,7 +672,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             
             const newState = tournamentService.createTournament(tournamentType, freshUser, allParticipantsShuffled);
             (freshUser as any)[stateKey] = newState;
-            (freshUser as any)[playedDateKey] = Date.now();
+            (freshUser as any)[playedDateKey] = now;
             
             await db.updateUser(freshUser);
 

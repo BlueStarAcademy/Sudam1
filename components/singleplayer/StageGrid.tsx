@@ -136,7 +136,7 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
                                 {!isLocked && (
                                     <Button
                                         onClick={(e) => {
-                                            e.stopPropagation();
+                                            e?.stopPropagation();
                                             handleStageEnter(stage.id);
                                         }}
                                         colorScheme="blue"

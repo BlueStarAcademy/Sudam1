@@ -179,7 +179,12 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
         }
         case 'ENTER_WAITING_ROOM': {
             const { mode } = payload;
-            volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode };
+            // strategic/playful은 GameMode가 아니므로 mode를 undefined로 설정
+            if (mode === 'strategic' || mode === 'playful') {
+                volatileState.userStatuses[user.id] = { status: UserStatus.Waiting };
+            } else {
+                volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: mode as GameMode };
+            }
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             return {};
         }
@@ -226,7 +231,12 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                     delete volatileState.userStatuses[user.id].mode;
                     delete volatileState.userStatuses[user.id].gameId;
                 } else {
-                    volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: lobbyMode };
+                    // strategic/playful은 GameMode가 아니므로 mode를 undefined로 설정
+                    if (lobbyMode === 'strategic' || lobbyMode === 'playful') {
+                        volatileState.userStatuses[user.id] = { status: UserStatus.Waiting };
+                    } else {
+                        volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: lobbyMode as GameMode };
+                    }
                 }
             }
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
@@ -304,7 +314,12 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                     delete volatileState.userStatuses[user.id].mode;
                     delete volatileState.userStatuses[user.id].gameId;
                 } else {
-                    volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: lobbyMode };
+                    // strategic/playful은 GameMode가 아니므로 mode를 undefined로 설정
+                    if (lobbyMode === 'strategic' || lobbyMode === 'playful') {
+                        volatileState.userStatuses[user.id] = { status: UserStatus.Waiting };
+                    } else {
+                        volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: lobbyMode as GameMode };
+                    }
                 }
             }
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });

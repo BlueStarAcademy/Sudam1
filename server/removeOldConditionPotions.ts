@@ -27,7 +27,8 @@ const removeOldConditionPotions = async () => {
     });
     
     try {
-        const users = await db.all<UserRow>('SELECT id, username, nickname, inventory FROM users');
+        const usersResult = await db.all<UserRow>('SELECT id, username, nickname, inventory FROM users');
+        const users: UserRow[] = Array.isArray(usersResult) ? usersResult : [];
         console.log(`[Remove Old Potions] Found ${users.length} users in database\n`);
         
         let totalRemoved = 0;
@@ -144,7 +145,8 @@ const checkAndRemove = async () => {
     });
     
     try {
-        const users = await db.all<UserRow>('SELECT id, username, nickname, inventory FROM users');
+        const usersResult = await db.all<UserRow>('SELECT id, username, nickname, inventory FROM users');
+        const users: UserRow[] = Array.isArray(usersResult) ? usersResult : [];
         
         let foundCount = 0;
         const foundItems: Array<{ user: string; items: any[] }> = [];

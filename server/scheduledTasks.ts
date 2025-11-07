@@ -2,10 +2,15 @@
 
 import * as db from './db.js';
 import * as types from '../types.js';
-import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, SEASONAL_TIER_BORDERS, DAILY_QUESTS, WEEKLY_QUESTS, MONTHLY_QUESTS } from '../constants';
+import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, SEASONAL_TIER_BORDERS, DAILY_QUESTS, WEEKLY_QUESTS, MONTHLY_QUESTS, TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL } from '../constants';
 import { randomUUID } from 'crypto';
 import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST, isSameDayKST, getStartOfDayKST, isDifferentDayKST, isDifferentMonthKST } from '../utils/timeUtils.js';
 import { resetAndGenerateQuests } from './gameActions.js';
+import * as tournamentService from './tournamentService.js';
+import { calculateTotalStats } from './statService.js';
+import { TournamentType } from '../types.js';
+import { startTournamentSessionForUser } from './actions/tournamentActions.js';
+import { broadcast } from './socket.js';
 
 let lastSeasonProcessed: SeasonInfo | null = null;
 let lastWeeklyResetTimestamp: number | null = null;
@@ -512,7 +517,7 @@ export async function processDailyRankings(): Promise<void> {
     console.log(`[DailyRanking] Updated daily rankings for ${allUsers.length} users`);
 }
 
-// 매일 0시 KST에 일일 퀘스트 초기화
+// 매일 0시 KST에 일일 퀘스트 초기화 및 토너먼트 상태 리셋
 export async function processDailyQuestReset(): Promise<void> {
     const now = Date.now();
     const kstNow = getKSTDate(now);
@@ -533,21 +538,70 @@ export async function processDailyQuestReset(): Promise<void> {
         }
     }
     
-    console.log(`[DailyQuestReset] Processing daily quest reset at midnight KST`);
-    
+    console.log(`[DailyQuestReset] Processing daily quest reset and tournament state reset at midnight KST`);
+
     const allUsers = await db.getAllUsers();
     let resetCount = 0;
-    
+    let tournamentResetCount = 0;
+    let tournamentSessionStartedCount = 0;
+
+    // 모든 사용자에게 토너먼트 세션 자동 시작
+    const tournamentTypes: TournamentType[] = ['neighborhood', 'national', 'world'];
+    const updatedUsersMap = new Map<string, types.User>();
+
     for (const user of allUsers) {
-        const updatedUser = await resetAndGenerateQuests(user);
+        let updatedUser = await resetAndGenerateQuests(user);
         
-        // Check if quests were actually reset
-        if (JSON.stringify(user.quests) !== JSON.stringify(updatedUser.quests)) {
+        // Check if quests or tournament states were actually reset
+        const questsChanged = JSON.stringify(user.quests) !== JSON.stringify(updatedUser.quests);
+        const tournamentStatesChanged = 
+            user.lastNeighborhoodTournament !== updatedUser.lastNeighborhoodTournament ||
+            user.lastNationalTournament !== updatedUser.lastNationalTournament ||
+            user.lastWorldTournament !== updatedUser.lastWorldTournament ||
+            user.lastNeighborhoodPlayedDate !== updatedUser.lastNeighborhoodPlayedDate ||
+            user.lastNationalPlayedDate !== updatedUser.lastNationalPlayedDate ||
+            user.lastWorldPlayedDate !== updatedUser.lastWorldPlayedDate;
+        
+        if (questsChanged || tournamentStatesChanged) {
             await db.updateUser(updatedUser);
             resetCount++;
+            if (tournamentStatesChanged) {
+                tournamentResetCount++;
+            }
+        }
+
+        // 각 토너먼트 타입에 대해 세션 시작 시도
+        // 매일 0시에 토너먼트 상태가 리셋되었으므로, 모든 사용자에게 새로운 토너먼트 세션을 시작
+        for (const tournamentType of tournamentTypes) {
+            try {
+                // 최신 유저 데이터 가져오기
+                const freshUser = await db.getUser(user.id);
+                if (!freshUser) continue;
+
+                // forceNew = true: 매일 0시 자동 시작이므로 무조건 새 토너먼트 시작
+                const result = await startTournamentSessionForUser(freshUser, tournamentType, true, true);
+                if (result.success && result.updatedUser) {
+                    updatedUser = result.updatedUser;
+                    updatedUsersMap.set(user.id, updatedUser);
+                    tournamentSessionStartedCount++;
+                } else if (result.error) {
+                    console.warn(`[DailyQuestReset] Failed to start tournament session for user ${freshUser.id}, type ${tournamentType}: ${result.error}`);
+                }
+            } catch (error) {
+                console.error(`[DailyQuestReset] Failed to start tournament session for user ${user.id}, type ${tournamentType}:`, error);
+            }
         }
     }
-    
+
+    // 모든 사용자 업데이트를 일괄 브로드캐스트
+    if (updatedUsersMap.size > 0) {
+        const usersToBroadcast: Record<string, types.User> = {};
+        for (const [userId, updatedUser] of updatedUsersMap) {
+            usersToBroadcast[userId] = updatedUser;
+        }
+        broadcast({ type: 'USER_UPDATE', payload: usersToBroadcast });
+    }
+
     lastDailyQuestResetTimestamp = now;
-    console.log(`[DailyQuestReset] Reset daily quests for ${resetCount} users`);
+    console.log(`[DailyQuestReset] Reset daily quests for ${resetCount} users, tournament states for ${tournamentResetCount} users, started tournament sessions for ${tournamentSessionStartedCount} user-tournament combinations`);
 }

@@ -29,10 +29,10 @@ const checkDatabaseStatus = async () => {
     });
     
     try {
-        const users = await db.all<UserRow>('SELECT id, username, nickname, isAdmin, equipment, inventory FROM users');
+        const users: UserRow[] = await db.all<UserRow>('SELECT id, username, nickname, isAdmin, equipment, inventory FROM users');
         console.log(`[Check Status] Found ${users.length} users in database\n`);
         
-        const adminUsers = users.filter(u => u.isAdmin);
+        const adminUsers = users.filter((u: UserRow) => u.isAdmin);
         console.log(`[Check Status] Admin users: ${adminUsers.length}\n`);
         
         for (const user of adminUsers) {
@@ -84,7 +84,7 @@ const checkDatabaseStatus = async () => {
         let emptyEquipment = 0;
         let emptyInventory = 0;
         
-        for (const user of users) {
+        for (const user of users as UserRow[]) {
             if (user.equipment && user.equipment.trim() !== '' && user.equipment !== 'null') {
                 try {
                     const eq = JSON.parse(user.equipment);

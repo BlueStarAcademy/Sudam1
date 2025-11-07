@@ -14,6 +14,7 @@ import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, aiUserId } from './../constants
 import QuickAccessSidebar from './QuickAccessSidebar.js';
 import Button from './Button.js';
 import GameApplicationModal from './GameApplicationModal.js';
+import AiChallengeModal from './waiting-room/AiChallengeModal.js';
 
 interface WaitingRoomComponentProps {
     mode: GameMode;
@@ -29,10 +30,10 @@ function usePrevious<T>(value: T): T | undefined {
   return ref.current;
 }
 
-const AiChallengePanel: React.FC<{ mode: GameMode }> = ({ mode }) => {
+const AiChallengePanel: React.FC<{ mode: GameMode | 'strategic' | 'playful'; onOpenModal: () => void }> = ({ mode, onOpenModal }) => {
     const { handlers } = useAppContext();
-    const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === mode);
-    const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === mode);
+    const isStrategic = mode === 'strategic' || SPECIAL_GAME_MODES.some(m => m.mode === mode);
+    const isPlayful = mode === 'playful' || PLAYFUL_GAME_MODES.some(m => m.mode === mode);
 
     if (!isStrategic && !isPlayful) return null;
     
@@ -47,7 +48,7 @@ const AiChallengePanel: React.FC<{ mode: GameMode }> = ({ mode }) => {
                     <p className="text-sm text-tertiary">{botName}와(과) 즉시 대국을 시작합니다.</p>
                  </div>
             </div>
-            <Button onClick={() => setIsGameApplicationModalOpen(true)} colorScheme="purple">설정 및 시작</Button>
+            <Button onClick={onOpenModal} colorScheme="purple">설정 및 시작</Button>
         </div>
     );
 };
@@ -118,6 +119,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   const [isTierInfoModalOpen, setIsTierInfoModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isGameApplicationModalOpen, setIsGameApplicationModalOpen] = useState(false);
+  const [isAiChallengeModalOpen, setIsAiChallengeModalOpen] = useState(false);
   const desktopContainerRef = useRef<HTMLDivElement>(null);
 
   const chatMessages = waitingRoomChats['global'] || [];
@@ -167,8 +169,10 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   }, [onlineUsers, mode, currentUserWithStatus.id, liveGames]);
 
   const isStrategic = useMemo(() => SPECIAL_GAME_MODES.some(m => m.mode === mode), [mode]);
-  const lobbyType = isStrategic ? '전략' : '놀이';
-  const locationPrefix = `[${lobbyType}:${mode}]`;
+  const isPlayful = useMemo(() => PLAYFUL_GAME_MODES.some(m => m.mode === mode), [mode]);
+  const lobbyType: 'strategic' | 'playful' = isStrategic ? 'strategic' : isPlayful ? 'playful' : 'strategic';
+  const lobbyTypeName = isStrategic ? '전략' : '놀이';
+  const locationPrefix = `[${lobbyTypeName}:${mode}]`;
     
   return (
     <div className="bg-primary text-primary flex flex-col flex-1 p-2 sm:p-4 lg:p-6 max-w-full mx-auto">
@@ -198,7 +202,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
           <>
             <div className="flex flex-col h-full gap-4">
                 <div className="flex-shrink-0"><AnnouncementBoard mode={mode} /></div>
-                <div className="flex-shrink-0"><AiChallengePanel mode={mode} /></div>
+                <div className="flex-shrink-0"><AiChallengePanel mode={mode} onOpenModal={() => setIsAiChallengeModalOpen(true)} /></div>
                 <div className="flex-1 flex flex-row gap-4 items-stretch min-h-0">
                     <div className="flex-1 min-w-0">
                         <GameList games={ongoingGames} onAction={handlers.handleAction} currentUser={currentUserWithStatus} />
@@ -226,8 +230,8 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
                 <div className="flex-shrink-0 p-2 border-b border-color">
                     <QuickAccessSidebar mobile={true} />
                 </div>
-                <div className="flex-1 min-h-0"><PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} /></div>
-                <div className="flex-1 min-h-0 border-t border-color"><RankingList mode={mode} onShowTierInfo={() => setIsTierInfoModalOpen(true)} currentUser={currentUserWithStatus} onViewUser={handlers.openViewingUser} onShowPastRankings={handlers.openPastRankings} /></div>
+                <div className="flex-1 min-h-0"><PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={lobbyType} /></div>
+                <div className="flex-1 min-h-0 border-t border-color"><RankingList mode={mode} onShowTierInfo={() => setIsTierInfoModalOpen(true)} currentUser={currentUserWithStatus} onViewUser={handlers.openViewingUser} onShowPastRankings={handlers.openPastRankings} lobbyType={lobbyType} /></div>
             </div>
             {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}
           </>
@@ -239,7 +243,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
                     <AnnouncementBoard mode={mode} />
                 </div>
                  <div className="flex-shrink-0">
-                    <AiChallengePanel mode={mode} />
+                    <AiChallengePanel mode={mode} onOpenModal={() => setIsAiChallengeModalOpen(true)} />
                 </div>
                 <div className="grid grid-rows-2 gap-4 flex-1 min-h-0">
                     <div className="min-h-0">
@@ -255,7 +259,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
             <div className="lg:col-span-2 grid grid-rows-2 gap-4">
               <div className="flex flex-row gap-4 items-stretch min-h-0">
                 <div className="flex-1 bg-panel border border-color rounded-lg shadow-lg min-w-0">
-                  <PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} />
+                  <PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={lobbyType} />
                 </div>
                 <div className="w-24 flex-shrink-0">
                   <QuickAccessSidebar />
@@ -263,13 +267,14 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
               </div>
 
               <div className="bg-panel border border-color rounded-lg shadow-lg min-h-0">
-                <RankingList currentUser={currentUserWithStatus} mode={mode} onViewUser={handlers.openViewingUser} onShowTierInfo={() => setIsTierInfoModalOpen(true)} onShowPastRankings={handlers.openPastRankings} />
+                <RankingList currentUser={currentUserWithStatus} mode={mode} onViewUser={handlers.openViewingUser} onShowTierInfo={() => setIsTierInfoModalOpen(true)} onShowPastRankings={handlers.openPastRankings} lobbyType={lobbyType} />
               </div>
             </div>
           </div>
         )}
       </div>
       {isGameApplicationModalOpen && <GameApplicationModal onClose={() => setIsGameApplicationModalOpen(false)} />}
+      {isAiChallengeModalOpen && <AiChallengeModal lobbyType={lobbyType} onClose={() => setIsAiChallengeModalOpen(false)} onAction={handlers.handleAction} />}
       {isTierInfoModalOpen && <TierInfoModal onClose={() => setIsTierInfoModalOpen(false)} />}
       {isHelpModalOpen && <HelpModal mode={mode} onClose={() => setIsHelpModalOpen(false)} />}
     </div>

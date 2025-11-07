@@ -38,14 +38,15 @@ const syncEquipmentInventory = async () => {
     
     try {
         // 모든 사용자의 장비 및 인벤토리 정보 확인
-        const users = await db.all<UserRow>('SELECT id, username, nickname, equipment, inventory FROM users');
+        const usersResult = await db.all<UserRow>('SELECT id, username, nickname, equipment, inventory FROM users');
+        const users: UserRow[] = Array.isArray(usersResult) ? usersResult : [];
         console.log(`[Sync] Found ${users.length} users in database\n`);
         
         let syncedCount = 0;
         let fixedCount = 0;
         let noEquipmentCount = 0;
         
-        for (const user of users) {
+        for (const user of users as UserRow[]) {
             try {
                 console.log(`\n[Sync] Processing user: ${user.username} (${user.id})`);
                 

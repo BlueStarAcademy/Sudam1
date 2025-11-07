@@ -1,4 +1,4 @@
-import { TournamentState, PlayerForTournament, CoreStat, CommentaryLine, Match, User, Round, TournamentType } from '../types.js';
+import { TournamentState, PlayerForTournament, CoreStat, CommentaryLine, Match, User, Round, TournamentType, TournamentSimulationStatus } from '../types.js';
 import { calculateTotalStats } from './statService.js';
 import { randomUUID } from 'crypto';
 import { TOURNAMENT_DEFINITIONS, NEIGHBORHOOD_MATCH_REWARDS, NATIONAL_MATCH_REWARDS, WORLD_MATCH_REWARDS } from '../constants';
@@ -440,7 +440,7 @@ const processMatchCompletion = (state: TournamentState, user: User, completedMat
                                 state.rounds.push({ id: state.rounds.length + 1, name: roundName, matches: nextRoundMatches });
                                 nextRoundPrepared = true;
                                 break;
-                            } else if (round.name === '4강' && state.type !== 'neighborhood') {
+                            } else if (round.name === '4강' && (state.type === 'national' || state.type === 'world')) {
                                 // 4강이 완료되었으면 3/4위전과 결승전 준비
                                 // 먼저 3/4위전이 있는지 확인
                                 const hasThirdPlaceMatch = state.rounds.some(r => r.name === '3,4위전');
@@ -686,20 +686,19 @@ export const startNextRound = (state: TournamentState, user: User) => {
         }
         
         // 다음 회차로 넘어갈 때 컨디션을 새롭게 부여 (40~100 사이 랜덤)
-        // 유저의 능력치를 DB에서 다시 불러와서 업데이트 (장비 변경 등이 반영되도록)
+        // 능력치는 토너먼트 생성 시점(0시)의 originalStats로 고정되어 있으므로 업데이트하지 않음
+        // PVE처럼 클론과 대결하는 구조이므로, 토너먼트 중 능력치 변경은 반영되지 않음
         const userPlayer = state.players.find(p => p.id === user.id);
-        if (userPlayer) {
-            // 유저의 최신 능력치를 계산하여 originalStats와 stats 업데이트
-            const latestStats = calculateTotalStats(user);
-            userPlayer.originalStats = JSON.parse(JSON.stringify(latestStats));
-            userPlayer.stats = JSON.parse(JSON.stringify(latestStats));
+        if (userPlayer && userPlayer.originalStats) {
+            // originalStats로 능력치 리셋 (토너먼트 생성 시점의 고정 능력치)
+            userPlayer.stats = JSON.parse(JSON.stringify(userPlayer.originalStats));
         }
         
         // 모든 플레이어의 컨디션을 새롭게 부여 (40~100 사이 랜덤)
         state.players.forEach(p => {
             p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-            // 유저가 아닌 플레이어의 능력치는 originalStats로 리셋
-            if (p.id !== user.id && p.originalStats) {
+            // 모든 플레이어의 능력치는 originalStats로 리셋 (토너먼트 생성 시점의 고정 능력치)
+            if (p.originalStats) {
                 p.stats = JSON.parse(JSON.stringify(p.originalStats));
             }
         });
@@ -740,20 +739,19 @@ export const startNextRound = (state: TournamentState, user: User) => {
     // 유저가 직접 경기 시작 버튼을 눌러야 함 (START_TOURNAMENT_ROUND 액션으로 처리)
     
     // 다음 라운드로 넘어갈 때 컨디션을 새롭게 부여 (40~100 사이 랜덤)
-    // 유저의 능력치를 DB에서 다시 불러와서 업데이트 (장비 변경 등이 반영되도록)
+    // 능력치는 토너먼트 생성 시점(0시)의 originalStats로 고정되어 있으므로 업데이트하지 않음
+    // PVE처럼 클론과 대결하는 구조이므로, 토너먼트 중 능력치 변경은 반영되지 않음
     const userPlayer = state.players.find(p => p.id === user.id);
-    if (userPlayer) {
-        // 유저의 최신 능력치를 계산하여 originalStats와 stats 업데이트
-        const latestStats = calculateTotalStats(user);
-        userPlayer.originalStats = JSON.parse(JSON.stringify(latestStats));
-        userPlayer.stats = JSON.parse(JSON.stringify(latestStats));
+    if (userPlayer && userPlayer.originalStats) {
+        // originalStats로 능력치 리셋 (토너먼트 생성 시점의 고정 능력치)
+        userPlayer.stats = JSON.parse(JSON.stringify(userPlayer.originalStats));
     }
     
     // 모든 플레이어의 컨디션을 새롭게 부여 (40~100 사이 랜덤)
     state.players.forEach(p => {
         p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-        // 유저가 아닌 플레이어의 능력치는 originalStats로 리셋
-        if (p.id !== user.id && p.originalStats) {
+        // 모든 플레이어의 능력치는 originalStats로 리셋 (토너먼트 생성 시점의 고정 능력치)
+        if (p.originalStats) {
             p.stats = JSON.parse(JSON.stringify(p.originalStats));
         }
     });

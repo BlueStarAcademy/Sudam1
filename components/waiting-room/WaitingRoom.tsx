@@ -1,5 +1,5 @@
 import React, { useMemo, useRef, useEffect, useState, useCallback } from 'react';
-import { GameMode, ServerAction, Announcement, OverrideAnnouncement, UserWithStatus, LiveGameSession } from '../../types.js';
+import { GameMode, ServerAction, Announcement, OverrideAnnouncement, UserWithStatus, LiveGameSession, UserStatus } from '../../types.js';
 import Avatar from '../Avatar.js';
 import HelpModal from '../HelpModal.js';
 import { useAppContext } from '../../hooks/useAppContext.js';
@@ -129,8 +129,13 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   useEffect(() => {
     if (currentUserWithStatus && mode) {
       // 현재 유저가 이미 대기실에 있는지 확인
-      const isAlreadyInWaitingRoom = currentUserWithStatus.status === 'waiting' || currentUserWithStatus.status === 'resting';
-      const modeMatches = currentUserWithStatus.mode === mode;
+      const isAlreadyInWaitingRoom = currentUserWithStatus.status === UserStatus.Waiting || currentUserWithStatus.status === UserStatus.Resting;
+      // 전략/놀이바둑 대기실의 경우 mode 매칭 체크를 다르게 처리
+      const modeMatches = mode === 'strategic' || mode === 'playful' 
+        ? (!currentUserWithStatus.mode || 
+           (mode === 'strategic' && SPECIAL_GAME_MODES.some(m => m.mode === currentUserWithStatus.mode)) ||
+           (mode === 'playful' && PLAYFUL_GAME_MODES.some(m => m.mode === currentUserWithStatus.mode)))
+        : currentUserWithStatus.mode === mode;
       
       // 대기 상태가 아니거나 모드가 일치하지 않으면 대기실 입장
       if (!isAlreadyInWaitingRoom || !modeMatches) {
@@ -181,8 +186,9 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
         // 단일 게임 모드 대기실의 경우: mode가 정확히 일치하는 유저만 포함
         const all = onlineUsers.filter(u => {
             if (isStrategicLobby || isPlayfulLobby) {
-                // 전략/놀이바둑 대기실: mode가 정확히 일치하고 waiting 또는 resting 상태인 유저만 포함
-                return (u.mode === mode) && (u.status === 'waiting' || u.status === 'resting');
+                // 전략/놀이바둑 대기실: mode가 undefined이거나 해당 카테고리의 게임 모드이고 waiting 또는 resting 상태인 유저만 포함
+                return (!u.mode || (isStrategicLobby && SPECIAL_GAME_MODES.some(m => m.mode === u.mode)) || (isPlayfulLobby && PLAYFUL_GAME_MODES.some(m => m.mode === u.mode))) && 
+                       (u.status === UserStatus.Waiting || u.status === UserStatus.Resting);
             }
             // 단일 게임 모드 대기실: mode가 정확히 일치하는 유저만 포함
             return u.mode === mode;
@@ -196,8 +202,8 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
             // 단일 게임 모드 대기실의 경우 mode를 그대로 사용
             const currentUserInRoom: UserWithStatus = {
                 ...currentUserWithStatus,
-                status: 'waiting' as const,
-                mode: (isStrategicLobby || isPlayfulLobby) ? (mode as 'strategic' | 'playful') : (mode as GameMode)
+                status: UserStatus.Waiting,
+                mode: (isStrategicLobby || isPlayfulLobby) ? undefined : (mode as GameMode)
             };
             return [currentUserInRoom, ...all];
         }

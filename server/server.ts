@@ -151,8 +151,21 @@ const startServer = async () => {
             // --- START NEW OFFLINE AP REGEN LOGIC ---
             // Fetch all users to regenerate AP even for those offline.
             const allUsers = await db.getAllUsers();
+            
+            // 매일 0시에 토너먼트 상태 자동 리셋 확인 (processDailyQuestReset에서 처리되지만, 
+            // 메인 루프에서도 날짜 변경 시 체크하여 오프라인 사용자도 리셋되도록 보장)
+            const kstNowForReset = getKSTDate(now);
+            const isMidnightForReset = kstNowForReset.getUTCHours() === 0 && kstNowForReset.getUTCMinutes() < 5;
+            
             for (const user of allUsers) {
-                let updatedUser = await regenerateActionPoints(user);
+                let updatedUser = user;
+                
+                // 매일 0시에만 토너먼트 상태 리셋 (로그인하지 않은 사용자도 포함)
+                if (isMidnightForReset) {
+                    updatedUser = await resetAndGenerateQuests(updatedUser);
+                }
+                
+                updatedUser = await regenerateActionPoints(updatedUser);
                 updatedUser = processSinglePlayerMissions(updatedUser);
 
 
@@ -509,6 +522,12 @@ const startServer = async () => {
             }
             console.log('[/api/auth/login] User details retrieved for userId:', credentials.userId);
 
+            if (!user) {
+                console.error('[/api/auth/login] User not found after creation');
+                res.status(500).json({ error: 'User creation failed' });
+                return;
+            }
+
             const defaultBaseStats = createDefaultBaseStats();
             if (!user.baseStats) {
                 user.baseStats = defaultBaseStats;
@@ -516,9 +535,9 @@ const startServer = async () => {
             } else {
                 // Check if baseStats needs to be reset
                 const coreStats = Object.values(types.CoreStat || {});
-                if (coreStats.length > 0 && (
+                if (coreStats.length > 0 && user && (
                     Object.keys(user.baseStats).length !== Object.keys(defaultBaseStats).length ||
-                    !coreStats.every(stat => (user.baseStats as Record<types.CoreStat, number>)[stat] === 100)
+                    !coreStats.every(stat => user && (user.baseStats as Record<types.CoreStat, number>)[stat] === 100)
                 )) {
                     user.baseStats = defaultBaseStats;
                     await db.updateUser(user);

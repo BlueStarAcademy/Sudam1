@@ -2,7 +2,8 @@ import { Database } from 'sqlite';
 import { open } from 'sqlite';
 import sqlite3 from 'sqlite3';
 import path from 'path';
-import { User } from '../types.ts';
+import { User, CoreStat, LeagueTier } from '../types.ts';
+import { createDefaultBaseStats, createDefaultSpentStatPoints, createDefaultQuests } from './initialData.ts';
 
 // OLD_DB_PATH: 기존 데이터베이스 파일 경로 (백업 파일이 있다면 경로를 변경하세요)
 // 예: const OLD_DB_PATH = path.resolve('database_backup.sqlite');
@@ -47,7 +48,8 @@ const migrateFromOldDatabase = async () => {
     
     try {
         // 기존 데이터베이스에서 모든 사용자 가져오기
-        const oldUsers = await oldDb.all<OldUserRow>('SELECT * FROM users');
+        const oldUsersResult = await oldDb.all<OldUserRow>('SELECT * FROM users');
+        const oldUsers: OldUserRow[] = Array.isArray(oldUsersResult) ? oldUsersResult : [];
         console.log(`[Migration] Found ${oldUsers.length} users in old database`);
         
         let migratedCount = 0;
@@ -63,7 +65,7 @@ const migrateFromOldDatabase = async () => {
                     console.log(`[Migration] User ${oldUser.username} (${oldUser.id}) already exists in new database, updating...`);
                     
                     // 기존 데이터베이스에서 현재 장비 정보 확인 (장비가 비어있지 않은 경우에만 업데이트)
-                    let equipmentToUpdate = oldUser.equipment;
+                    let equipmentToUpdate: string | null = oldUser.equipment || null;
                     if (equipmentToUpdate) {
                         try {
                             // JSON 유효성 검사
@@ -184,24 +186,20 @@ const migrateFromOldDatabase = async () => {
                         lastActionPointUpdate: Date.now(),
                         mannerScore: 1000,
                         mail: [],
-                        quests: {
-                            daily: { progress: {}, completed: [], lastReset: Date.now() },
-                            weekly: { progress: {}, completed: [], lastReset: Date.now() },
-                            monthly: { progress: {}, completed: [], lastReset: Date.now() }
-                        },
+                        quests: createDefaultQuests(),
                         chatBanUntil: null,
                         connectionBanUntil: null,
                         avatarId: 'default',
                         borderId: 'default',
                         previousSeasonTier: null,
-                        seasonHistory: [],
-                        baseStats: {},
-                        spentStatPoints: {},
+                        seasonHistory: {},
+                        baseStats: createDefaultBaseStats(),
+                        spentStatPoints: createDefaultSpentStatPoints(),
                         actionPointPurchasesToday: 0,
-                        lastActionPointPurchaseDate: null,
+                        lastActionPointPurchaseDate: undefined,
                         dailyShopPurchases: {},
                         tournamentScore: 0,
-                        league: 'bronze',
+                        league: LeagueTier.Sprout,
                         mannerMasteryApplied: false,
                         pendingPenaltyNotification: null,
                         lastNeighborhoodPlayedDate: null,
@@ -217,8 +215,8 @@ const migrateFromOldDatabase = async () => {
                         worldRewardClaimed: false,
                         lastWorldTournament: null,
                         weeklyCompetitors: [],
-                        lastWeeklyCompetitorsUpdate: null,
-                        lastLeagueUpdate: null,
+                        lastWeeklyCompetitorsUpdate: undefined,
+                        lastLeagueUpdate: undefined,
                         ownedBorders: [],
                         equipmentPresets: [],
                         mbti: null,

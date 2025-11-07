@@ -499,7 +499,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
         }
         case 'RESIGN_GAME': {
             const winner = myPlayerEnum === types.Player.Black ? types.Player.White : types.Player.Black;
-            await summaryService.endGame(game, winner, 'resignation');
+            await summaryService.endGame(game, winner, 'resign');
             return {};
         }
     }

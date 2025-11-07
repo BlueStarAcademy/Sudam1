@@ -451,6 +451,12 @@ maxVisits = ${KATAGO_MAX_VISITS}
             return Promise.reject(new Error('KataGo process is not ready.'));
         }
 
+        // stdin을 변수에 미리 저장 (null 체크 완료)
+        const stdin = this.process.stdin;
+        if (!stdin) {
+            return Promise.reject(new Error('KataGo stdin is not available.'));
+        }
+
         return new Promise((resolve, reject) => {
             const id = analysisQuery.id;
             console.log(`[KataGo] Sending query ${id}...`);
@@ -465,7 +471,7 @@ maxVisits = ${KATAGO_MAX_VISITS}
             
             try {
                 const queryString = JSON.stringify(analysisQuery) + '\n';
-                const written = this.process.stdin!.write(queryString, (err) => {
+                const written = stdin.write(queryString, (err) => {
                     if (err) {
                         console.error('[KataGo] Write to stdin error:', err);
                         clearTimeout(timeout);
@@ -479,7 +485,7 @@ maxVisits = ${KATAGO_MAX_VISITS}
                 if (!written) {
                     // 버퍼가 가득 찬 경우
                     console.log('[KataGo] stdin buffer full, waiting for drain...');
-                    this.process.stdin!.once('drain', () => {
+                    stdin.once('drain', () => {
                         console.log('[KataGo] stdin buffer drained');
                     });
                 }

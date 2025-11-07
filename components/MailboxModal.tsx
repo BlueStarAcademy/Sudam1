@@ -3,6 +3,7 @@ import { UserWithStatus, Mail, ServerAction, InventoryItem } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import { audioService } from '../services/audioService.js';
+import { useAppContext } from '../hooks/useAppContext.js';
 
 interface MailboxModalProps {
     currentUser: UserWithStatus;
@@ -25,7 +26,12 @@ const formatRemainingTime = (expiresAt: number): string => {
 };
 
 
-const MailboxModal: React.FC<MailboxModalProps> = ({ currentUser, onClose, onAction, isTopmost }) => {
+const MailboxModal: React.FC<MailboxModalProps> = ({ currentUser: propCurrentUser, onClose, onAction, isTopmost }) => {
+    const { currentUserWithStatus } = useAppContext();
+    
+    // useAppContext의 currentUserWithStatus를 우선 사용 (최신 상태 보장)
+    const currentUser = currentUserWithStatus || propCurrentUser;
+    
     const { mail } = currentUser;
     const [selectedMail, setSelectedMail] = useState<Mail | null>(mail.length > 0 ? mail[0] : null);
     const [remainingTime, setRemainingTime] = useState<string | null>(null);

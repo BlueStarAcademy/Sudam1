@@ -29,12 +29,13 @@ const syncAdminEquipment = async () => {
     });
     
     try {
-        const adminUsers = await db.all<UserRow>('SELECT id, username, nickname, isAdmin, equipment, inventory FROM users WHERE isAdmin = 1');
+        const adminUsersResult = await db.all<UserRow>('SELECT id, username, nickname, isAdmin, equipment, inventory FROM users WHERE isAdmin = 1');
+        const adminUsers: UserRow[] = Array.isArray(adminUsersResult) ? adminUsersResult : [];
         console.log(`[Sync Admin] Found ${adminUsers.length} admin user(s)\n`);
         
         let syncedCount = 0;
         
-        for (const admin of adminUsers) {
+        for (const admin of adminUsers as UserRow[]) {
             try {
                 console.log(`\n[Sync Admin] Processing admin: ${admin.username} (${admin.nickname})`);
                 

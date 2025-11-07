@@ -469,15 +469,18 @@ const Profile: React.FC<ProfileProps> = () => {
                 </div>
                 <div className="grid grid-cols-2 gap-x-4 gap-y-1">
                     {Object.values(CoreStat).map(stat => {
-						const baseValue = (currentUserWithStatus.baseStats[stat] || 0) + (currentUserWithStatus.spentStatPoints?.[stat] || 0);
+						const baseStats = currentUserWithStatus.baseStats || {};
+						const spentStatPoints = currentUserWithStatus.spentStatPoints || {};
+						const baseValue = (baseStats[stat] || 0) + (spentStatPoints[stat] || 0);
 						// Align with calculateTotalStats: final = floor((base + flat) * (1 + percent/100))
-						const finalValue = Math.floor((baseValue + coreStatBonuses[stat].flat) * (1 + coreStatBonuses[stat].percent / 100));
+						const bonusInfo = coreStatBonuses[stat] || { percent: 0, flat: 0 };
+						const finalValue = Math.floor((baseValue + bonusInfo.flat) * (1 + bonusInfo.percent / 100));
 						const bonus = finalValue - baseValue;
                         return (
                             <div key={stat} className="bg-tertiary/40 p-1 rounded-md flex items-center justify-between text-xs">
                                 <span className="font-semibold text-secondary">{stat}</span>
                                 <span className="font-mono font-bold" title={`기본: ${baseValue}, 장비: ${bonus}`}>
-                                    {finalValue}
+                                    {isNaN(finalValue) ? 0 : finalValue}
                                     {bonus > 0 && <span className="text-green-400 text-xs ml-0.5">(+{bonus})</span>}
                                 </span>
                             </div>
@@ -505,7 +508,7 @@ const Profile: React.FC<ProfileProps> = () => {
                         <img src={TOURNAMENT_LOBBY_IMG} alt="챔피언십" className="w-full h-full object-cover" />
                     </div>
                     <div className="w-full bg-tertiary/50 rounded-md p-0.5 lg:p-1 text-[10px] lg:text-xs mt-1 lg:mt-2" title="챔피언십 정보">
-                         <span>점수: {currentUserWithStatus.tournamentScore.toLocaleString()} / 리그: {currentUserWithStatus.league}</span>
+                         <span>점수: {(currentUserWithStatus.tournamentScore ?? 0).toLocaleString()} / 리그: {currentUserWithStatus.league || '없음'}</span>
                         </div>
                     </div>
                 </div>

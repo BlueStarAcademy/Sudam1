@@ -50,6 +50,10 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
         sessionStorage.setItem('postGameRedirect', '#/singleplayer');
         onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } });
         onClose();
+        // 즉시 싱글플레이 로비로 이동 (WebSocket 업데이트를 기다리지 않음)
+        setTimeout(() => {
+            window.location.hash = '#/singleplayer';
+        }, 100);
     };
 
     return (
@@ -69,7 +73,6 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
 
                 {summary && (
                     <div className="bg-black/30 backdrop-blur-sm p-4 rounded-lg my-4 space-y-3 border border-gray-700/50">
-                        <h2 className="font-bold text-lg text-gray-200">결산</h2>
                         <div className="flex justify-center items-center gap-6 text-lg">
                             {summary.xp && summary.xp.change > 0 && 
                                 <div>

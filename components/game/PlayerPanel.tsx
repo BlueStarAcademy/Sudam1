@@ -332,7 +332,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
         }
         
         // 살리기바둑: 백의 남은 턴
-        if (stage.survivalTurns && session.settings.isSurvivalMode) {
+        if (stage.survivalTurns) {
             const whiteTurnsPlayed = session.whiteTurnsPlayed || 0;
             const remainingTurns = Math.max(0, stage.survivalTurns - whiteTurnsPlayed);
             return {

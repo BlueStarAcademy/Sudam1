@@ -47,6 +47,7 @@ interface ConditionPotionModalProps {
     currentCondition: number;
     onClose: () => void;
     onConfirm: (potionType: PotionType) => void;
+    onAction?: (action: any) => void;
     isTopmost?: boolean;
 }
 
@@ -67,15 +68,7 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
     }
 
     // 보유 중인 각 컨디션 회복제 개수 계산
-    // inventory 변경을 확실히 감지하기 위해 inventory의 컨디션 회복제 정보를 문자열로 변환하여 의존성으로 사용
-    const inventoryKey = useMemo(() => {
-        if (!currentUser?.inventory) return '';
-        return currentUser.inventory
-            .filter(item => item.type === 'consumable' && item.name.startsWith('컨디션회복제'))
-            .map(item => `${item.id || item.name}:${item.quantity || 1}`)
-            .join(',');
-    }, [currentUser?.inventory, updateTrigger]);
-    
+    // inventory 변경을 확실히 감지하기 위해 inventory를 직접 의존성으로 사용하고 updateTrigger도 함께 사용
     const potionCounts = useMemo(() => {
         const counts: Record<PotionType, number> = { small: 0, medium: 0, large: 0 };
         if (!currentUser?.inventory) return counts;
@@ -91,7 +84,7 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
                 }
             });
         return counts;
-    }, [inventoryKey]);
+    }, [currentUser?.inventory, updateTrigger]);
 
     // 선택한 회복제의 예상 회복량 계산
     const expectedRecovery = useMemo(() => {

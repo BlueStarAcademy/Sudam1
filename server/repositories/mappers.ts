@@ -72,7 +72,20 @@ export const rowToUser = (row: any): types.User | null => {
             avatarId: row.avatarId || 'profile_1',
             borderId: row.borderId || 'default',
             ownedBorders: safeParse(row.ownedBorders, ['default'], row.id, 'ownedBorders'),
-            equipmentPresets: safeParse(row.equipmentPresets, [], row.id, 'equipmentPresets'),
+            equipmentPresets: (() => {
+                const parsed = safeParse(row.equipmentPresets, [], row.id, 'equipmentPresets');
+                // 프리셋이 없거나 빈 배열이면 기본 프리셋 생성
+                if (!parsed || parsed.length === 0) {
+                    return [
+                        { name: '프리셋 1', equipment: {} },
+                        { name: '프리셋 2', equipment: {} },
+                        { name: '프리셋 3', equipment: {} },
+                        { name: '프리셋 4', equipment: {} },
+                        { name: '프리셋 5', equipment: {} },
+                    ];
+                }
+                return parsed;
+            })(),
             tournamentScore: row.tournamentScore ?? 1200,
             league: row.league || types.LeagueTier.Sprout,
             mannerMasteryApplied: !!row.mannerMasteryApplied,

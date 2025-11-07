@@ -50,7 +50,7 @@ const StageSelectionModal: React.FC<StageSelectionModalProps> = ({ currentUser, 
                                     <h3 className="font-bold text-lg">{stage.name}</h3>
                                     {/* FIX: The 'stage.targetScore' object is formatted as a string to be properly rendered as a ReactNode. */}
                                     <p className="text-xs text-gray-400 mt-1">목표 점수: 흑{stage.targetScore.black}/백{stage.targetScore.white}집</p>
-                                    <p className="text-xs text-gray-400 mt-1">AI 레벨: {stage.katagoLevel}</p>
+                                    {/* AI 레벨은 단계별로 고정되어 있음 */}
                                 </div>
                                 <div className="mt-4 pt-2 border-t border-gray-600 w-full flex-shrink-0">
                                     <p className="text-xs font-semibold text-yellow-300">최초 보상</p>

@@ -88,7 +88,16 @@ export const createWebSocketServer = (server: Server) => {
                 
                 // 데이터를 청크로 나누어 전송 (큰 메시지 문제 해결)
                 const MAX_CHUNK_SIZE = 256 * 1024; // 256KB 청크로 더 작게 설정
-                const payload = { ...allData, onlineUsers };
+                const payload = { 
+                    ...allData, 
+                    onlineUsers,
+                    negotiations: volatileState.negotiations,
+                    waitingRoomChats: volatileState.waitingRoomChats,
+                    gameChats: volatileState.gameChats,
+                    userConnections: volatileState.userConnections,
+                    userStatuses: volatileState.userStatuses,
+                    userLastChatMessage: volatileState.userLastChatMessage
+                };
                 
                 // 전체 메시지 크기 추정
                 const testMessage = JSON.stringify({ type: 'INITIAL_STATE', payload });
@@ -219,7 +228,7 @@ export const createWebSocketServer = (server: Server) => {
                 }
             } catch (error) {
                 console.error('[WebSocket] Error sending initial state:', error);
-                if (checkConnection && !isClosed && ws.readyState === WebSocket.OPEN) {
+                if (!isClosed && ws.readyState === WebSocket.OPEN) {
                     try {
                         ws.send(JSON.stringify({ type: 'ERROR', payload: { message: 'Failed to load initial state' } }));
                     } catch (sendError) {

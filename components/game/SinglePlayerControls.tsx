@@ -24,6 +24,10 @@ const SinglePlayerControls: React.FC<SinglePlayerControlsProps> = ({ session, on
         const handleExitToLobby = () => {
             sessionStorage.setItem('postGameRedirect', '#/singleplayer');
             onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } });
+            // 즉시 싱글플레이 로비로 이동 (WebSocket 업데이트를 기다리지 않음)
+            setTimeout(() => {
+                window.location.hash = '#/singleplayer';
+            }, 100);
         };
 
         return (

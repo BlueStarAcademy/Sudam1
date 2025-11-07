@@ -4,7 +4,7 @@ import DraggableWindow from '../DraggableWindow.js';
 import { RANKING_TIERS } from '../../constants';
 
 interface PastRankingsModalProps {
-    info: { user: UserWithStatus; mode: GameMode; };
+    info: { user: UserWithStatus; mode: GameMode | 'strategic' | 'playful'; };
     onClose: () => void;
     isTopmost?: boolean;
 }
@@ -14,6 +14,22 @@ const PastRankingsModal: React.FC<PastRankingsModalProps> = ({ info, onClose, is
     const history = user.seasonHistory || {};
     const seasonNames = Object.keys(history).sort((a, b) => b.localeCompare(a));
 
+    // strategic/playful 모드인 경우 개별 게임 모드 랭킹을 표시할 수 없음
+    if (mode === 'strategic' || mode === 'playful') {
+        return (
+            <DraggableWindow title="지난 시즌 랭킹" onClose={onClose} windowId="past-rankings" initialWidth={450} isTopmost={isTopmost}>
+                <div className="max-h-[calc(var(--vh,1vh)*60)] overflow-y-auto pr-2">
+                    <h3 className="text-lg font-bold text-center mb-4">{mode === 'strategic' ? '전략 게임' : '놀이 게임'}</h3>
+                    <p className="text-center text-gray-500 mt-4">통합 로비에서는 개별 게임 모드의 지난 시즌 랭킹을 확인할 수 없습니다.</p>
+                    <p className="text-center text-gray-500 text-sm mt-2">개별 게임 모드에서 지난 시즌 랭킹을 확인하세요.</p>
+                </div>
+            </DraggableWindow>
+        );
+    }
+
+    // GameMode인 경우에만 seasonHistory에서 랭킹 정보를 가져올 수 있음
+    const gameMode = mode as GameMode;
+
     return (
         <DraggableWindow title="지난 시즌 랭킹" onClose={onClose} windowId="past-rankings" initialWidth={450} isTopmost={isTopmost}>
             <div className="max-h-[calc(var(--vh,1vh)*60)] overflow-y-auto pr-2">
@@ -21,7 +37,7 @@ const PastRankingsModal: React.FC<PastRankingsModalProps> = ({ info, onClose, is
                 {seasonNames.length > 0 ? (
                     <ul className="space-y-2">
                         {seasonNames.map(seasonName => {
-                            const tier = history[seasonName]?.[mode];
+                            const tier = history[seasonName]?.[gameMode];
                             const tierInfo = RANKING_TIERS.find(t => t.name === tier);
                             return (
                                 <li key={seasonName} className="flex items-center justify-between p-3 bg-gray-900/50 rounded-lg">

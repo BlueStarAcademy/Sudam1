@@ -64,6 +64,7 @@ interface TournamentBracketProps {
     onStartNextRound: () => void;
     onReset: () => void;
     onSkip: () => void;
+    onOpenShop?: () => void;
     isMobile: boolean;
 }
 
@@ -265,7 +266,7 @@ const PlayerProfilePanel: React.FC<{
                                 <span className={`font-mono text-white ${isStatHighlighted(stat) ? 'text-yellow-400 font-bold' : ''} min-w-[30px] md:min-w-[40px] text-right text-[10px] md:text-xs`}>{displayStats[stat]}</span>
                                 {/* [N]: 항상 보이는 누적된 변화값 (초기값 대비 현재까지 누적된 변화) */}
                                 <span className="ml-0.5 md:ml-1 font-bold text-[9px] md:text-xs min-w-[35px] md:min-w-[45px] text-right">
-                                    {initialPlayer && change !== 0 && tournamentStatus === 'round_in_progress' ? (
+                                    {initialPlayer && change !== 0 ? (
                                         <span className={`${change > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                             [{change > 0 ? '+' : ''}{change}]
                                         </span>
@@ -687,87 +688,93 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
     };
     
     return (
-        <div className="h-full flex flex-col min-h-0" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-            <h4 className="text-center font-bold text-sm mb-2 text-gray-400 py-1 flex-shrink-0">획득 보상</h4>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 p-2 bg-gray-900/40 rounded-md" style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', flex: '1 1 0', minHeight: 0 }}>
+        <div className="h-full flex flex-col min-h-0" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+            <h4 className="text-center font-bold text-base mb-2 text-gray-400 py-1 flex-shrink-0">획득 보상</h4>
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 p-2 bg-gray-900/40 rounded-md" style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', flex: '1 1 0', minHeight: 0, maxHeight: '100%' }}>
             {/* 수령 완료 메시지 */}
             {isClaimed && (
-                <div className="mb-3 px-3 py-2 bg-green-900/30 rounded-lg border border-green-700/50">
+                <div className="mb-2 px-2 py-1.5 bg-green-900/30 rounded-lg border border-green-700/50">
                     <p className="text-xs text-green-400 text-center font-semibold">✓ 보상을 수령했습니다.</p>
                 </div>
             )}
             
             {/* 경기 진행 중 안내 */}
             {isInProgress && (
-                <div className="mb-3 px-3 py-2 bg-blue-900/30 rounded-lg border border-blue-700/50">
+                <div className="mb-2 px-2 py-1.5 bg-blue-900/30 rounded-lg border border-blue-700/50">
                     <p className="text-xs text-blue-400 text-center">경기 진행 중 - 누적 보상 표시</p>
                 </div>
             )}
             
             {/* 랭킹 점수 (경기 진행 중에도 표시) */}
             {scoreReward > 0 && (
-                <div className={`mb-2 flex items-center gap-2 bg-green-900/30 px-3 py-2 rounded-lg border border-green-700/50 ${isClaimed ? 'opacity-75' : ''}`}>
-                    <span className="text-lg">🏆</span>
-                    <div className="flex-1">
-                        <span className="text-sm font-semibold text-green-300">랭킹 점수: +{scoreReward}점</span>
-                        {userRank > 0 && (
-                            <span className="text-xs text-gray-400 ml-2">(현재 순위: {userRank}위)</span>
-                        )}
+                <div className={`mb-2 bg-green-900/30 px-2 py-2 rounded-lg border border-green-700/50 ${isClaimed ? 'opacity-75' : ''}`}>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xl">🏆</span>
+                        <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-green-300">랭킹 점수: +{scoreReward}점</div>
+                            {userRank > 0 && (
+                                <div className="text-xs text-gray-400">(현재 순위: {userRank}위)</div>
+                            )}
+                        </div>
                     </div>
-                    {isClaimed && <span className="text-xs text-green-400">(수령 완료)</span>}
-                    {!canClaimReward && !isClaimed && <span className="text-xs text-gray-500">(경기 종료 후 수령)</span>}
                 </div>
             )}
             
             {/* 누적 골드 (동네바둑리그, 경기 진행 중에도 표시) */}
             {accumulatedGold > 0 && (
-                <div className={`mb-2 flex items-center gap-2 bg-yellow-900/30 px-3 py-2 rounded-lg border border-yellow-700/50 ${isClaimed ? 'opacity-75' : ''}`}>
-                    <img src="/images/icon/Gold.png" alt="골드" className="w-6 h-6" />
-                    <span className="text-sm font-semibold text-yellow-300">경기 보상: {accumulatedGold.toLocaleString()} 골드</span>
-                    {isClaimed && <span className="text-xs text-yellow-400 ml-1">(수령 완료)</span>}
-                    {!canClaimReward && !isClaimed && <span className="text-xs text-gray-500 ml-1">(경기 종료 후 수령)</span>}
+                <div className={`mb-2 bg-yellow-900/30 px-2 py-2 rounded-lg border border-yellow-700/50 ${isClaimed ? 'opacity-75' : ''}`}>
+                    <div className="flex items-center gap-2">
+                        <img src="/images/icon/Gold.png" alt="골드" className="w-6 h-6 flex-shrink-0" />
+                        <div className="flex-1 min-w-0">
+                            <div className="text-sm font-semibold text-yellow-300">경기 보상: {accumulatedGold.toLocaleString()} 골드</div>
+                        </div>
+                    </div>
                 </div>
             )}
             
             {/* 누적 재료 (전국바둑대회, 경기 진행 중에도 표시) */}
             {Object.keys(accumulatedMaterials).length > 0 && (
-                <div className={`mb-2 flex flex-col gap-2 w-full ${isClaimed ? 'opacity-75' : ''}`}>
-                    <div className="text-xs font-semibold text-blue-300 mb-1">
+                <div className={`mb-2 ${isClaimed ? 'opacity-75' : ''}`}>
+                    <div className="text-sm font-semibold text-blue-300 mb-1.5">
                         경기 보상 (재료):
-                        {isClaimed && <span className="text-blue-400 ml-1">(수령 완료)</span>}
-                        {!canClaimReward && !isClaimed && <span className="text-gray-500 ml-1">(경기 종료 후 수령)</span>}
                     </div>
-                    {Object.entries(accumulatedMaterials).map(([materialName, quantity]) => {
-                        const materialTemplate = MATERIAL_ITEMS[materialName];
-                        const imageUrl = materialTemplate?.image || '';
-                        return (
-                            <div key={materialName} className="flex items-center gap-2 bg-blue-900/30 px-3 py-2 rounded-lg border border-blue-700/50">
-                                <img src={imageUrl} alt={materialName} className="w-6 h-6" />
-                                <span className="text-sm font-semibold text-blue-300">{materialName} x{quantity}</span>
-                            </div>
-                        );
-                    })}
+                    <div className="flex flex-col gap-1.5">
+                        {Object.entries(accumulatedMaterials).map(([materialName, quantity]) => {
+                            const materialTemplate = MATERIAL_ITEMS[materialName];
+                            const imageUrl = materialTemplate?.image || '';
+                            return (
+                                <div key={materialName} className="flex items-center gap-2 bg-blue-900/30 px-2 py-1.5 rounded-lg border border-blue-700/50">
+                                    <img src={imageUrl} alt={materialName} className="w-6 h-6 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-semibold text-blue-300 truncate">{materialName} x{quantity}</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
             
             {/* 누적 장비상자 (월드챔피언십, 경기 진행 중에도 표시) */}
             {Object.keys(accumulatedEquipmentBoxes).length > 0 && (
-                <div className={`mb-2 flex flex-col gap-2 w-full ${isClaimed ? 'opacity-75' : ''}`}>
-                    <div className="text-xs font-semibold text-purple-300 mb-1">
+                <div className={`mb-2 ${isClaimed ? 'opacity-75' : ''}`}>
+                    <div className="text-sm font-semibold text-purple-300 mb-1.5">
                         경기 보상 (장비상자):
-                        {isClaimed && <span className="text-purple-400 ml-1">(수령 완료)</span>}
-                        {!canClaimReward && !isClaimed && <span className="text-gray-500 ml-1">(경기 종료 후 수령)</span>}
                     </div>
-                    {Object.entries(accumulatedEquipmentBoxes).map(([boxName, quantity]) => {
-                        const boxTemplate = CONSUMABLE_ITEMS.find(i => i.name === boxName);
-                        const imageUrl = boxTemplate?.image || '';
-                        return (
-                            <div key={boxName} className="flex items-center gap-2 bg-purple-900/30 px-3 py-2 rounded-lg border border-purple-700/50">
-                                <img src={imageUrl} alt={boxName} className="w-6 h-6" />
-                                <span className="text-sm font-semibold text-purple-300">{boxName} x{quantity}</span>
-                            </div>
-                        );
-                    })}
+                    <div className="flex flex-col gap-1.5">
+                        {Object.entries(accumulatedEquipmentBoxes).map(([boxName, quantity]) => {
+                            const boxTemplate = CONSUMABLE_ITEMS.find(i => i.name === boxName);
+                            const imageUrl = boxTemplate?.image || '';
+                            return (
+                                <div key={boxName} className="flex items-center gap-2 bg-purple-900/30 px-2 py-1.5 rounded-lg border border-purple-700/50">
+                                    <img src={imageUrl} alt={boxName} className="w-6 h-6 flex-shrink-0" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-sm font-semibold text-purple-300 truncate">{boxName} x{quantity}</div>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             )}
             
@@ -775,14 +782,14 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
             {(isTournamentFullyComplete || isUserEliminated) && reward && (
                 <>
                     <div className="mt-3 pt-3 border-t border-gray-700">
-                        <div className="text-xs font-semibold text-gray-300 mb-2 text-center">최종 순위 보상</div>
-                        <div className="flex flex-row items-center justify-center gap-4 flex-wrap">
+                        <div className="text-sm font-semibold text-gray-300 mb-2 text-center">최종 순위 보상</div>
+                        <div className="flex flex-row items-center justify-center gap-2 flex-wrap">
                             {(reward.items || []).map((item, index) => {
                                 const itemName = 'itemId' in item ? item.itemId : (item as any).name;
                                 const itemTemplate = CONSUMABLE_ITEMS.find(i => i.name === itemName);
                                 const imageUrl = itemTemplate?.image || '';
                                 return (
-                                    <div key={index} className="flex flex-col items-center gap-2">
+                                    <div key={index} className="flex flex-col items-center gap-1">
                                         <button
                                             onClick={handleClaim}
                                             disabled={isClaimed || !canClaimReward}
@@ -795,10 +802,11 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
                                                 className={`w-full h-full object-contain ${isClaimed || !canClaimReward ? 'filter grayscale' : ''}`} 
                                             />
                                             {isClaimed && (
-                                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-3xl text-green-400">✓</div>
+                                                <div className="absolute inset-0 bg-black/50 flex items-center justify-center text-2xl text-green-400">✓</div>
                                             )}
                                         </button>
-                                        <span className="text-xs text-center">{itemName} x{item.quantity}</span>
+                                        <div className="text-xs text-center max-w-[80px] truncate" title={itemName}>{itemName}</div>
+                                        <div className="text-xs text-gray-400">x{item.quantity}</div>
                                     </div>
                                 );
                             })}
@@ -1333,7 +1341,9 @@ const TournamentRoundViewer: React.FC<{
         return tabData;
     }, [rounds, tournamentType]);
 
-    const initialTabIndex = useMemo(() => {
+    // 초기 탭 인덱스 계산 (컴포넌트 마운트 시 한 번만 사용)
+    // useState의 초기값 함수는 첫 렌더링 시에만 실행되므로 안전함
+    const getInitialTabIndex = () => {
         if (!getRoundsForTabs) return 0;
         
         // 경기가 완료된 경우(complete 또는 eliminated) 마지막 탭을 선택
@@ -1341,26 +1351,17 @@ const TournamentRoundViewer: React.FC<{
             return Math.max(0, getRoundsForTabs.length - 1);
         }
         
-        // 진행 중인 경기가 있는 탭을 찾음
+        // 진행 중인 경기가 있는 탭을 찾음 (초기 입장 시에만)
         const inProgressIndex = getRoundsForTabs.findIndex(tab => tab.isInProgress);
         if (inProgressIndex !== -1) {
             return inProgressIndex;
         }
         
-        // 그 외의 경우 마지막 탭 선택
-        return Math.max(0, getRoundsForTabs.length - 1);
-    }, [getRoundsForTabs, tournamentState]);
+        // 그 외의 경우 첫 번째 탭 선택
+        return 0;
+    };
 
-    const [activeTab, setActiveTab] = useState(initialTabIndex);
-    const isInitialMount = useRef(true);
-
-    // 초기 마운트 시에만 탭을 자동으로 변경
-    useEffect(() => {
-        if (isInitialMount.current) {
-            setActiveTab(initialTabIndex);
-            isInitialMount.current = false;
-        }
-    }, [initialTabIndex]);
+    const [activeTab, setActiveTab] = useState(getInitialTabIndex);
 
     // nextRoundTrigger가 변경되면 다음 탭으로 이동
     const prevNextRoundTrigger = useRef(nextRoundTrigger || 0);
@@ -1878,9 +1879,9 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         if (!p1Stats || !p2Stats || Object.keys(p1Stats).length === 0 || Object.keys(p2Stats).length === 0) {
             return 200; // A reasonable default
         }
-        const allStats = [
-            ...Object.values(p1Stats),
-            ...Object.values(p2Stats)
+        const allStats: number[] = [
+            ...(Object.values(p1Stats) as number[]),
+            ...(Object.values(p2Stats) as number[])
         ];
         const maxStat = Math.max(...allStats, 0);
         return Math.ceil((maxStat + 50) / 50) * 50; // Round up to nearest 50
@@ -2193,17 +2194,17 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                             className={`${isMobile ? 'flex-col' : 'flex-row'} ${isMobile ? 'w-full' : 'flex-1 min-h-0'} gap-2 ${isMobile ? '' : 'overflow-hidden'}`}
                             style={isMobile ? {} : { display: 'flex' }}
                         >
-                            {/* 왼쪽: 실시간 중계 */}
+                            {/* 왼쪽: 실시간 중계 (넓은 패널) */}
                             <div 
-                                className={`${isMobile ? 'w-full' : 'flex-1 min-w-0'} bg-gray-800/50 rounded-lg p-1 md:p-2 flex flex-col ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}
-                                style={isMobile ? { minHeight: '400px', maxHeight: '500px' } : {}}
+                                className={`${isMobile ? 'w-full' : 'flex-[2] min-w-0'} bg-gray-800/50 rounded-lg p-1 md:p-2 flex flex-col ${isMobile ? '' : 'overflow-hidden'}`}
+                                style={isMobile ? { height: '400px', minHeight: '400px', maxHeight: '500px', display: 'flex', flexDirection: 'column' } : { display: 'flex', flexDirection: 'column' }}
                             >
                                 <CommentaryPanel commentary={tournament.currentMatchCommentary} isSimulating={tournament.status === 'round_in_progress'} />
                             </div>
-                            {/* 오른쪽: 획득 보상 */}
+                            {/* 오른쪽: 획득 보상 (좁은 패널) */}
                             <div 
-                                className={`${isMobile ? 'w-full' : 'flex-1 min-w-0'} bg-gray-800/50 rounded-lg p-1 md:p-2 flex flex-col ${isMobile ? 'overflow-y-auto' : 'overflow-hidden'}`}
-                                style={isMobile ? { minHeight: '400px', maxHeight: '500px' } : {}}
+                                className={`${isMobile ? 'w-full' : 'flex-[1] min-w-0'} bg-gray-800/50 rounded-lg p-1 md:p-2 flex flex-col ${isMobile ? '' : 'overflow-hidden'}`}
+                                style={isMobile ? { height: '400px', minHeight: '400px', maxHeight: '500px', display: 'flex', flexDirection: 'column' } : { display: 'flex', flexDirection: 'column' }}
                             >
                                 <FinalRewardPanel tournamentState={tournament} currentUser={currentUser} onAction={onAction} />
                             </div>
@@ -2262,7 +2263,6 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                     onConfirm={(potionType) => {
                         onAction({ type: 'USE_CONDITION_POTION', payload: { tournamentType: tournament.type, potionType } });
                     }}
-                    onAction={onAction}
                     isTopmost={true}
                 />
             )}

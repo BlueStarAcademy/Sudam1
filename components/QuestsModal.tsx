@@ -4,6 +4,7 @@ import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import { DAILY_MILESTONE_THRESHOLDS, WEEKLY_MILESTONE_THRESHOLDS, MONTHLY_MILESTONE_THRESHOLDS, DAILY_MILESTONE_REWARDS, WEEKLY_MILESTONE_REWARDS, MONTHLY_MILESTONE_REWARDS, CONSUMABLE_ITEMS } from '../constants';
 import { audioService } from '../services/audioService.js';
+import { useAppContext } from '../hooks/useAppContext.js';
 
 interface QuestsModalProps {
     currentUser: UserWithStatus;
@@ -128,7 +129,12 @@ const ActivityPanel: React.FC<{
 };
 
 
-const QuestsModal: React.FC<QuestsModalProps> = ({ currentUser, onClose, onAction, isTopmost }) => {
+const QuestsModal: React.FC<QuestsModalProps> = ({ currentUser: propCurrentUser, onClose, onAction, isTopmost }) => {
+    const { currentUserWithStatus } = useAppContext();
+    
+    // useAppContext의 currentUserWithStatus를 우선 사용 (최신 상태 보장)
+    const currentUser = currentUserWithStatus || propCurrentUser;
+    
     const [activeTab, setActiveTab] = useState<QuestTab>('daily');
     const { quests } = currentUser;
 

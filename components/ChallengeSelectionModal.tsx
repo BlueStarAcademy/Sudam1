@@ -133,19 +133,20 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
     '--scale-factor': scaleFactor,
   } as React.CSSProperties;
   
-  // 현재 negotiation 상태 확인
+  // 현재 negotiation 상태 확인 (모든 상태 포함)
   const currentNegotiation = useMemo(() => {
     if (!currentUser || !negotiations) return null;
     // negotiations가 배열인지 객체인지 확인
     const negotiationsArray = Array.isArray(negotiations) ? negotiations : Object.values(negotiations);
-    return negotiationsArray.find(n => 
-      n.challenger.id === currentUser.id && 
-      n.opponent.id === opponent.id && 
-      (n.status === 'pending' || n.status === 'draft')
-    ) || null;
+    return negotiationsArray.find((n: any) => {
+      const neg = n as Negotiation;
+      return neg.challenger.id === currentUser.id && neg.opponent.id === opponent.id;
+    }) as Negotiation | undefined || null;
   }, [currentUser, opponent.id, negotiations]);
   
-  const isWaitingForResponse = currentNegotiation?.status === 'pending' && currentNegotiation.proposerId === opponent.id;
+  // pending 또는 draft 상태인지 확인
+  const isPendingOrDraft = currentNegotiation && (currentNegotiation.status === 'pending' || currentNegotiation.status === 'draft');
+  const isWaitingForResponse = currentNegotiation?.status === 'pending' && currentNegotiation?.proposerId === opponent.id;
 
   const availableGames = lobbyType === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
 
@@ -158,26 +159,21 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
     }
   }, [onlineUsers, opponent.id, onClose]);
 
-  // negotiation이 종료되면 모달 닫기 (수락/거절/게임 시작/타임아웃)
+    // negotiation이 종료되면 모달 닫기 (수락/거절/게임 시작/타임아웃)
   useEffect(() => {
     // negotiation이 사라졌거나 상태가 변경되었으면 모달 닫기
-    if (currentNegotiation && isWaitingForResponse) {
-      // negotiation이 pending 상태이고 proposerId가 opponent인 경우는 계속 기다림
-      // negotiation이 accepted 되었거나 declined 되었을 때만 닫기
-      if (currentNegotiation.status === 'accepted' || currentNegotiation.status === 'declined') {
-        onClose();
-      }
-      // 타임아웃은 timeRemaining이 0이 되었을 때 처리됨
-    } else if (!currentNegotiation && isWaitingForResponse) {
+    // negotiation이 accepted되면 게임이 시작되고 negotiation이 사라지므로,
+    // negotiation이 없어지면 모달을 닫음
+    if (!currentNegotiation && isWaitingForResponse) {
       // negotiation이 없는데 이전에 응답을 기다리고 있었으면 종료된 것 (타임아웃 또는 수락/거절)
       // 약간의 지연을 두고 확인하여 WebSocket 업데이트 지연을 고려
       const timeout = setTimeout(() => {
         // negotiations를 다시 확인
         const negotiationsArray = Array.isArray(negotiations) ? negotiations : Object.values(negotiations || {});
-        const stillNoNegotiation = !negotiationsArray.find(n => 
-          n.challenger.id === currentUser?.id && 
-          n.opponent.id === opponent.id && 
-          (n.status === 'pending' || n.status === 'draft')
+        const stillNoNegotiation = !negotiationsArray.find((n: any) => 
+          (n as Negotiation).challenger.id === currentUser?.id && 
+          (n as Negotiation).opponent.id === opponent.id && 
+          ((n as Negotiation).status === 'pending' || (n as Negotiation).status === 'draft')
         );
         if (stillNoNegotiation) {
           console.log('[ChallengeSelectionModal] Negotiation disappeared, closing modal');
@@ -818,7 +814,7 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
                   >
                     <img 
                       src={selectedGameDefinition.image} 
-                      alt={selectedMode} 
+                      alt={selectedMode || ''} 
                       className="w-full h-full object-contain"
                     />
                   </div>
@@ -998,7 +994,7 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
             >
               <Button 
                 onClick={onClose} 
-                variant="secondary" 
+                className="!text-sm"
                 style={{ 
                   fontSize: `${Math.max(11, Math.round(14 * scaleFactor))}px`,
                   padding: `${Math.max(6, Math.round(8 * scaleFactor))}px ${Math.max(12, Math.round(16 * scaleFactor))}px`
@@ -1008,8 +1004,8 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
               </Button>
               {isWaitingForResponse ? (
                 <Button 
-                  variant="primary" 
                   disabled
+                  className="!text-sm"
                   style={{ 
                     fontSize: `${Math.max(11, Math.round(14 * scaleFactor))}px`,
                     padding: `${Math.max(6, Math.round(8 * scaleFactor))}px ${Math.max(12, Math.round(16 * scaleFactor))}px`
@@ -1020,8 +1016,8 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
               ) : (
                 <Button 
                   onClick={handleChallenge} 
-                  variant="primary" 
                   disabled={!selectedMode}
+                  className="!text-sm"
                   style={{ 
                     fontSize: `${Math.max(11, Math.round(14 * scaleFactor))}px`,
                     padding: `${Math.max(6, Math.round(8 * scaleFactor))}px ${Math.max(12, Math.round(16 * scaleFactor))}px`

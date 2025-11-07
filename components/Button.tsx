@@ -1,7 +1,7 @@
 
 import React from 'react';
 
-type ColorScheme = 'blue' | 'red' | 'gray' | 'green' | 'yellow' | 'purple' | 'orange' | 'accent';
+type ColorScheme = 'blue' | 'red' | 'gray' | 'green' | 'yellow' | 'purple' | 'orange' | 'accent' | 'none';
 
 interface ButtonProps {
   children: React.ReactNode;
@@ -11,6 +11,7 @@ interface ButtonProps {
   className?: string;
   type?: 'button' | 'submit' | 'reset';
   title?: string;
+  style?: React.CSSProperties;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -20,7 +21,8 @@ const Button: React.FC<ButtonProps> = ({
   disabled = false,
   className = '',
   type = 'button',
-  title
+  title,
+  style
 }) => {
   const baseClasses = "px-4 py-2 font-bold rounded-lg transition-all duration-150 ease-in-out border border-color shadow-lg active:translate-y-0.5 active:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary disabled:bg-secondary disabled:opacity-70 disabled:cursor-not-allowed";
 
@@ -33,6 +35,7 @@ const Button: React.FC<ButtonProps> = ({
     yellow: 'bg-yellow-500 hover:bg-yellow-400 text-black focus:ring-yellow-300',
     purple: 'bg-purple-600 hover:bg-purple-500 text-white focus:ring-purple-400',
     orange: 'bg-orange-500 hover:bg-orange-400 text-white focus:ring-orange-300',
+    none: '', // 'none'은 className으로 스타일을 직접 지정할 때 사용
   };
 
   return (
@@ -42,6 +45,7 @@ const Button: React.FC<ButtonProps> = ({
       disabled={disabled}
       className={`${baseClasses} ${colorClasses[colorScheme]} ${className}`}
       title={title}
+      style={style}
     >
       {children}
     </button>

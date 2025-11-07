@@ -34,7 +34,8 @@ const restoreAdminEquipment = async () => {
     
     try {
         // 관리자 계정 찾기
-        const adminUsers = await db.all<UserRow>('SELECT id, username, nickname, isAdmin, equipment, inventory FROM users WHERE isAdmin = 1');
+        const adminUsersResult = await db.all<UserRow>('SELECT id, username, nickname, isAdmin, equipment, inventory FROM users WHERE isAdmin = 1');
+        const adminUsers: UserRow[] = Array.isArray(adminUsersResult) ? adminUsersResult : [];
         console.log(`[Restore Admin] Found ${adminUsers.length} admin user(s) in database\n`);
         
         if (adminUsers.length === 0) {
@@ -47,7 +48,7 @@ const restoreAdminEquipment = async () => {
         let emptyEquipmentCount = 0;
         let hasEquipmentCount = 0;
         
-        for (const admin of adminUsers) {
+        for (const admin of adminUsers as UserRow[]) {
             try {
                 console.log(`\n[Restore Admin] Processing admin: ${admin.username} (${admin.nickname}) - ${admin.id}`);
                 

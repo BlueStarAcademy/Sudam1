@@ -48,7 +48,7 @@ const QuickAccessSidebar: React.FC<QuickAccessSidebarProps> = ({ mobile = false,
     const renderButton = (btn: typeof allButtons[0]) => (
         <button
             key={btn.label}
-            onClick={btn.handler}
+            onClick={(e) => { e.preventDefault(); btn.handler(); }}
             disabled={btn.disabled}
             className={`relative flex-1 ${buttonClass} disabled:opacity-50 disabled:cursor-not-allowed transition-colors`}
             title={btn.label}

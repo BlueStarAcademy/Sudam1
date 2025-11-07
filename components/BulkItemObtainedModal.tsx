@@ -53,13 +53,23 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
             <div className="text-center">
                 <h2 className="text-xl font-bold mb-4">아이템 {totalItems}개를 획득했습니다!</h2>
                 {tournamentScoreChange && (
-                    <div className="mb-4 p-3 bg-green-900/30 rounded-lg border border-green-700/50">
-                        <div className="flex items-center justify-center gap-2">
-                            <span className="text-lg">🏆</span>
-                            <span className="text-sm font-semibold text-green-300">
-                                리그 점수: {tournamentScoreChange.oldScore.toLocaleString()} → {tournamentScoreChange.newScore.toLocaleString()} 
-                                <span className="text-green-400 ml-1">(+{tournamentScoreChange.scoreReward}점)</span>
-                            </span>
+                    <div className="mb-4 p-4 bg-gradient-to-r from-green-900/40 to-green-800/40 rounded-lg border-2 border-green-600/60 shadow-lg">
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="text-2xl">🏆</span>
+                                <span className="text-base font-bold text-green-200">랭킹 점수 변화</span>
+                            </div>
+                            <div className="flex items-center gap-3 text-lg">
+                                <span className="text-gray-300 font-mono">{tournamentScoreChange.oldScore.toLocaleString()}</span>
+                                <span className="text-gray-400">→</span>
+                                <span className="text-green-300 font-bold font-mono">{tournamentScoreChange.newScore.toLocaleString()}</span>
+                                <span className="text-green-400 font-semibold">(+{tournamentScoreChange.scoreReward.toLocaleString()}점)</span>
+                            </div>
+                            {tournamentScoreChange.scoreReward > 0 && tournamentScoreChange.oldScore > 0 && (
+                                <div className="text-xs text-green-400/80 mt-1">
+                                    {((tournamentScoreChange.scoreReward / tournamentScoreChange.oldScore) * 100).toFixed(1)}% 증가
+                                </div>
+                            )}
                         </div>
                     </div>
                 )}

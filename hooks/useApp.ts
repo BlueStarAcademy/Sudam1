@@ -104,7 +104,7 @@ export const useApp = () => {
     const [enhancementResult, setEnhancementResult] = useState<{ message: string; success: boolean } | null>(null);
     const [enhancementOutcome, setEnhancementOutcome] = useState<{ message: string; success: boolean; itemBefore: InventoryItem; itemAfter: InventoryItem; } | null>(null);
     const [enhancementAnimationTarget, setEnhancementAnimationTarget] = useState<{ itemId: string; stars: number } | null>(null);
-    const [pastRankingsInfo, setPastRankingsInfo] = useState<{ user: UserWithStatus; mode: GameMode; } | null>(null);
+    const [pastRankingsInfo, setPastRankingsInfo] = useState<{ user: UserWithStatus; mode: GameMode | 'strategic' | 'playful'; } | null>(null);
     const [enhancingItem, setEnhancingItem] = useState<InventoryItem | null>(null);
     const [viewingItem, setViewingItem] = useState<{ item: InventoryItem; isOwnedByCurrentUser: boolean; } | null>(null);
     const [showExitToast, setShowExitToast] = useState(false);
@@ -190,7 +190,8 @@ export const useApp = () => {
     const currentUserWithStatus: UserWithStatus | null = useMemo(() => {
         // updateTrigger를 dependency에 포함시켜 강제 리렌더링 보장
         if (!currentUser) return null;
-        const statusInfo = onlineUsers.find(u => u.id === currentUser.id);
+        if (!Array.isArray(onlineUsers)) return { ...currentUser, status: 'online' as UserStatus };
+        const statusInfo = onlineUsers.find(u => u && u.id === currentUser.id);
         return { ...currentUser, ...(statusInfo || { status: 'online' as UserStatus }) };
     }, [currentUser, onlineUsers, updateTrigger]);
 
@@ -250,7 +251,12 @@ export const useApp = () => {
         }
     }, [currentUserWithStatus, negotiations]);
 
-    const unreadMailCount = useMemo(() => currentUser?.mail.filter(m => !m.isRead).length || 0, [currentUser?.mail]);
+    const unreadMailCount = useMemo(() => {
+        if (!currentUser || !currentUser.mail || !Array.isArray(currentUser.mail)) {
+            return 0;
+        }
+        return currentUser.mail.filter(m => m && !m.isRead).length;
+    }, [currentUser?.mail]);
 
     const hasClaimableQuest = useMemo(() => {
         if (!currentUser?.quests) return false;
@@ -320,7 +326,7 @@ export const useApp = () => {
             setCurrentUser(prevUser => {
                 if (!prevUser) return null;
                 const { preset, index } = action.payload;
-                const newPresets = [...prevUser.equipmentPresets];
+                const newPresets = [...(prevUser.equipmentPresets || [])];
                 newPresets[index] = preset;
                 return { ...prevUser, equipmentPresets: newPresets };
             });
@@ -380,7 +386,33 @@ export const useApp = () => {
                 
                 if (updatedUserFromResponse) {
                     // 깊은 복사를 수행하여 React가 변경을 감지하도록 함
-                    const updatedUser = JSON.parse(JSON.stringify(updatedUserFromResponse));
+                    const partialUpdate = JSON.parse(JSON.stringify(updatedUserFromResponse));
+                    
+                    // 부분 업데이트인 경우 기존 currentUser와 병합
+                    // 배열이나 객체 필드는 완전히 교체 (부분 병합하지 않음)
+                    const updatedUser = currentUser ? {
+                        ...currentUser,
+                        ...partialUpdate,
+                        // 배열 필드들은 완전히 교체
+                        inventory: partialUpdate.inventory !== undefined ? partialUpdate.inventory : currentUser.inventory,
+                        mail: partialUpdate.mail !== undefined ? partialUpdate.mail : currentUser.mail,
+                        ownedBorders: partialUpdate.ownedBorders !== undefined ? partialUpdate.ownedBorders : currentUser.ownedBorders,
+                        equipmentPresets: partialUpdate.equipmentPresets !== undefined ? partialUpdate.equipmentPresets : currentUser.equipmentPresets,
+                        // 객체 필드들도 완전히 교체
+                        equipment: partialUpdate.equipment !== undefined ? partialUpdate.equipment : currentUser.equipment,
+                        quests: partialUpdate.quests !== undefined ? partialUpdate.quests : currentUser.quests,
+                        inventorySlots: partialUpdate.inventorySlots !== undefined ? partialUpdate.inventorySlots : currentUser.inventorySlots,
+                        actionPoints: partialUpdate.actionPoints !== undefined ? partialUpdate.actionPoints : currentUser.actionPoints,
+                        spentStatPoints: partialUpdate.spentStatPoints !== undefined ? partialUpdate.spentStatPoints : currentUser.spentStatPoints,
+                        baseStats: partialUpdate.baseStats !== undefined ? partialUpdate.baseStats : currentUser.baseStats,
+                        stats: partialUpdate.stats !== undefined ? partialUpdate.stats : currentUser.stats,
+                        dailyShopPurchases: partialUpdate.dailyShopPurchases !== undefined ? partialUpdate.dailyShopPurchases : currentUser.dailyShopPurchases,
+                        lastNeighborhoodTournament: partialUpdate.lastNeighborhoodTournament !== undefined ? partialUpdate.lastNeighborhoodTournament : currentUser.lastNeighborhoodTournament,
+                        lastNationalTournament: partialUpdate.lastNationalTournament !== undefined ? partialUpdate.lastNationalTournament : currentUser.lastNationalTournament,
+                        lastWorldTournament: partialUpdate.lastWorldTournament !== undefined ? partialUpdate.lastWorldTournament : currentUser.lastWorldTournament,
+                        singlePlayerProgress: partialUpdate.singlePlayerProgress !== undefined ? partialUpdate.singlePlayerProgress : currentUser.singlePlayerProgress,
+                    } : partialUpdate;
+                    
                     console.log(`[handleAction] ${action.type} - Setting updatedUser:`, {
                         inventoryLength: updatedUser.inventory?.length,
                         gold: updatedUser.gold,
@@ -411,8 +443,8 @@ export const useApp = () => {
                         console.log(`[handleAction] ${action.type} - Force updating inventory state`, {
                             oldInventoryLength: currentUser?.inventory?.length,
                             newInventoryLength: newUser.inventory?.length,
-                            oldInventory: currentUser?.inventory?.map(i => ({ id: i.id, name: i.name, quantity: i.quantity })),
-                            newInventory: newUser.inventory?.map(i => ({ id: i.id, name: i.name, quantity: i.quantity }))
+                            oldInventory: currentUser?.inventory?.map((i: any) => ({ id: i.id, name: i.name, quantity: i.quantity })),
+                            newInventory: newUser.inventory?.map((i: any) => ({ id: i.id, name: i.name, quantity: i.quantity }))
                         });
                     }
                     
@@ -445,7 +477,7 @@ export const useApp = () => {
                     }, 10);
                     
                     // 인벤토리 관련 액션의 경우 추가로 한 번 더 업데이트하여 확실히 반영
-                    if (action.type === 'USE_ITEM' || action.type === 'USE_ALL_ITEMS_OF_TYPE' || action.type === 'TOGGLE_EQUIP_ITEM' || action.type === 'SELL_ITEM') {
+                    if (action.type === 'USE_ITEM' || action.type === 'USE_ALL_ITEMS_OF_TYPE' || action.type === 'TOGGLE_EQUIP_ITEM' || action.type === 'SELL_ITEM' || action.type === 'USE_CONDITION_POTION' || action.type === 'BUY_CONDITION_POTION') {
                         setTimeout(() => {
                             const freshUser = JSON.parse(JSON.stringify(updatedUser));
                             setCurrentUser(freshUser);
@@ -456,31 +488,25 @@ export const useApp = () => {
                     // HTTP 응답에서 받은 updatedUser가 최신이므로, WebSocket 업데이트가 이를 덮어쓰지 않도록 보장
                     // (이미 위의 shouldIgnoreWebSocketUpdate 로직과 추가 체크로 처리됨)
                 } else {
-                    console.warn(`[handleAction] ${action.type} - No updatedUser in response!`, {
-                        hasClientResponse: !!result.clientResponse,
-                        clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
-                        resultKeys: Object.keys(result)
-                    });
-                    // updatedUser가 없어도 강제 리렌더링하여 상태 동기화 보장
-                    if (currentUser) {
-                        Promise.resolve().then(() => {
-                            flushSync(() => {
-                                setCurrentUser(JSON.parse(JSON.stringify(currentUser)));
-                                setUpdateTrigger(prev => prev + 1);
-                            });
+                    // updatedUser가 없는 것은 정상입니다 (일부 액션만 updatedUser를 반환)
+                    // 경고는 updatedUser를 반환해야 하는 액션에서만 표시
+                    const actionsThatShouldHaveUpdatedUser = [
+                        'TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'ENHANCE_ITEM', 
+                        'COMBINE_ITEMS', 'DISASSEMBLE_ITEM', 'CRAFT_MATERIAL', 'BUY_SHOP_ITEM', 
+                        'BUY_CONDITION_POTION', 'USE_CONDITION_POTION', 'UPDATE_AVATAR', 
+                        'UPDATE_BORDER', 'CHANGE_NICKNAME', 'UPDATE_MBTI', 'ALLOCATE_STAT_POINT',
+                        'SELL_ITEM', 'EXPAND_INVENTORY', 'BUY_BORDER', 'APPLY_PRESET', 'SAVE_PRESET',
+                        'DELETE_MAIL', 'DELETE_ALL_CLAIMED_MAIL', 'CLAIM_MAIL_ATTACHMENTS', 
+                        'CLAIM_ALL_MAIL_ATTACHMENTS', 'MARK_MAIL_AS_READ',
+                        'CLAIM_QUEST_REWARD', 'CLAIM_ACTIVITY_MILESTONE',
+                        'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST'
+                    ];
+                    if (actionsThatShouldHaveUpdatedUser.includes(action.type)) {
+                        console.warn(`[handleAction] ${action.type} - No updatedUser in response!`, {
+                            hasClientResponse: !!result.clientResponse,
+                            clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
+                            resultKeys: Object.keys(result)
                         });
-                        requestAnimationFrame(() => {
-                            flushSync(() => {
-                                setCurrentUser(JSON.parse(JSON.stringify(currentUser)));
-                                setUpdateTrigger(prev => prev + 1);
-                            });
-                        });
-                        setTimeout(() => {
-                            setUpdateTrigger(prev => prev + 1);
-                        }, 0);
-                        setTimeout(() => {
-                            setUpdateTrigger(prev => prev + 1);
-                        }, 10);
                     }
                 }
                  // 사용자 데이터가 변경될 수 있는 모든 액션 목록
@@ -591,12 +617,17 @@ export const useApp = () => {
                     // 추가 디버깅: 상태가 설정되었는지 확인
                     console.log(`[handleAction] ${action.type} - craftResult state set, should trigger modal`);
                 } else {
-                    console.warn(`[handleAction] ${action.type} - No craftResult in response!`, {
-                        hasClientResponse: !!result.clientResponse,
-                        hasCraftResult: !!result.craftResult,
-                        clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
-                        resultKeys: Object.keys(result)
-                    });
+                    // craftResult가 없는 것은 정상입니다 (일부 액션만 craftResult를 반환)
+                    // 경고는 craftResult를 반환해야 하는 액션에서만 표시
+                    const actionsThatShouldHaveCraftResult = ['CRAFT_MATERIAL', 'CONVERT_MATERIAL'];
+                    if (actionsThatShouldHaveCraftResult.includes(action.type)) {
+                        console.warn(`[handleAction] ${action.type} - No craftResult in response!`, {
+                            hasClientResponse: !!result.clientResponse,
+                            hasCraftResult: !!result.craftResult,
+                            clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
+                            resultKeys: Object.keys(result)
+                        });
+                    }
                 }
                 const combinationResult = result.clientResponse?.combinationResult || result.combinationResult;
                 if (combinationResult) {
@@ -626,24 +657,31 @@ export const useApp = () => {
                 if (result.enhancementAnimationTarget) setEnhancementAnimationTarget(result.enhancementAnimationTarget);
                 const redirectToTournament = result.clientResponse?.redirectToTournament || result.redirectToTournament;
                 if (redirectToTournament) {
-                    // USE_CONDITION_POTION의 경우 같은 토너먼트에서 사용하므로 리다이렉트하지 않음
-                    if (action.type !== 'USE_CONDITION_POTION') {
-                        console.log(`[handleAction] ${action.type} - Redirecting to tournament:`, redirectToTournament);
-                        // 상태 업데이트가 완료된 후 리다이렉트
-                        // 같은 해시일 경우에도 강제로 리렌더링되도록 해시를 임시로 변경한 후 다시 설정
-                        setTimeout(() => {
-                            const newHash = `#/tournament/${redirectToTournament}`;
-                            const currentHash = window.location.hash;
-                            if (currentHash === newHash) {
-                                // 같은 해시인 경우 임시로 다른 해시로 변경한 후 다시 설정하여 강제 리렌더링
-                                window.location.hash = '#/tournament';
-                                setTimeout(() => {
+                    // USE_CONDITION_POTION과 BUY_CONDITION_POTION의 경우 같은 토너먼트에서 사용하므로 리다이렉트하지 않음
+                    if (action.type !== 'USE_CONDITION_POTION' && action.type !== 'BUY_CONDITION_POTION') {
+                        // START_TOURNAMENT_SESSION의 경우, 이미 같은 토너먼트에 있으면 리다이렉트하지 않음 (무한 루프 방지)
+                        const shouldSkipRedirect = action.type === 'START_TOURNAMENT_SESSION' && window.location.hash === `#/tournament/${redirectToTournament}`;
+                        
+                        if (shouldSkipRedirect) {
+                            console.log(`[handleAction] ${action.type} - Skipping redirect (already at #/tournament/${redirectToTournament})`);
+                        } else {
+                            console.log(`[handleAction] ${action.type} - Redirecting to tournament:`, redirectToTournament);
+                            // 상태 업데이트가 완료된 후 리다이렉트
+                            // 같은 해시일 경우에도 강제로 리렌더링되도록 해시를 임시로 변경한 후 다시 설정
+                            setTimeout(() => {
+                                const newHash = `#/tournament/${redirectToTournament}`;
+                                const currentHash = window.location.hash;
+                                if (currentHash === newHash) {
+                                    // 같은 해시인 경우 임시로 다른 해시로 변경한 후 다시 설정하여 강제 리렌더링
+                                    window.location.hash = '#/tournament';
+                                    setTimeout(() => {
+                                        window.location.hash = newHash;
+                                    }, 50);
+                                } else {
                                     window.location.hash = newHash;
-                                }, 50);
-                            } else {
-                                window.location.hash = newHash;
-                            }
-                        }, 200);
+                                }
+                            }, 200);
+                        }
                     } else {
                         console.log(`[handleAction] ${action.type} - Skipping redirect (already in tournament)`);
                     }
@@ -825,6 +863,8 @@ export const useApp = () => {
         const processInitialState = (users: Record<string, any>, otherData: {
             onlineUsers?: any[];
             liveGames?: Record<string, any>;
+            singlePlayerGames?: Record<string, any>;
+            towerGames?: Record<string, any>;
             negotiations?: Record<string, any>;
             waitingRoomChats?: Record<string, any>;
             gameChats?: Record<string, any>;
@@ -1153,11 +1193,11 @@ export const useApp = () => {
                                     // usersMap에 있는 유저를 찾고, 없으면 allUsers에서 찾아서 추가
                                     const updatedUsersMap = { ...currentUsersMap };
                                     const onlineStatuses = Object.entries(message.payload).map(([id, statusInfo]: [string, any]) => {
-                                        let user = currentUsersMap[id];
+                                        let user: User | undefined = currentUsersMap[id];
                                         // usersMap에 없으면 allUsers에서 찾기
                                         if (!user) {
                                             const allUsersArray = Object.values(currentUsersMap);
-                                            user = allUsersArray.find(u => u?.id === id);
+                                            user = allUsersArray.find((u: any) => u?.id === id) as User | undefined;
                                             // allUsers에서도 찾지 못했으면 undefined 반환 (나중에 INITIAL_STATE에서 받을 것)
                                             if (!user) {
                                                 console.warn(`[WebSocket] User ${id} not found in usersMap or allUsers`);
@@ -1227,18 +1267,18 @@ export const useApp = () => {
                                                         }, 100);
                                                     } else {
                                                         // 개별 게임 모드가 아닌 strategic/playful만 허용
+                                                        // strategic/playful 대기실에서는 mode가 undefined일 수 있음
                                                         const mode = currentUserStatus.mode;
-                                                        if (mode === 'strategic' || mode === 'playful') {
-                                                            console.log('[WebSocket] Current user status updated to waiting, routing to waiting room:', mode);
-                                                            setTimeout(() => {
-                                                                window.location.hash = `#/waiting/${mode}`;
-                                                            }, 100);
-                                                        } else {
+                                                        if (!mode && (currentUserStatus.status === UserStatus.Waiting || currentUserStatus.status === UserStatus.Resting)) {
+                                                            // mode가 undefined이고 waiting/resting 상태인 경우, strategic/playful 대기실에 있을 가능성이 높음
+                                                            // 라우팅은 하지 않음 (이미 대기실에 있을 가능성이 높음)
+                                                            console.log('[WebSocket] Current user status updated to waiting without mode (likely in strategic/playful lobby)');
+                                                        } else if (mode) {
                                                             // 개별 게임 모드인 경우 프로필로 이동 (통합 대기실 외에는 접근 불가)
                                                             console.warn('[WebSocket] Individual game mode detected, redirecting to profile:', mode);
                                                             setTimeout(() => {
                                                                 window.location.hash = '#/profile';
-                                                    }, 100);
+                                                            }, 100);
                                                         }
                                                     }
                                                 }
@@ -1679,18 +1719,20 @@ export const useApp = () => {
     };
     
     const handleViewUser = useCallback((userId: string) => {
-        const userToView = onlineUsers.find(u => u.id === userId) || allUsers.find(u => u.id === userId);
+        if (!Array.isArray(onlineUsers) || !Array.isArray(allUsers)) return;
+        const userToView = onlineUsers.find(u => u && u.id === userId) || allUsers.find(u => u && u.id === userId);
         if (userToView) {
-            const statusInfo = onlineUsers.find(u => u.id === userId);
-            setViewingUser({ ...userToView, ...(statusInfo || { status: 'online'}) });
+            const statusInfo = onlineUsers.find(u => u && u.id === userId);
+            setViewingUser({ ...userToView, ...(statusInfo || { status: UserStatus.Online }) });
         }
     }, [onlineUsers, allUsers]);
 
     const openModerationModal = useCallback((userId: string) => {
-        const userToView = onlineUsers.find(u => u.id === userId) || allUsers.find(u => u.id === userId);
+        if (!Array.isArray(onlineUsers) || !Array.isArray(allUsers)) return;
+        const userToView = onlineUsers.find(u => u && u.id === userId) || allUsers.find(u => u && u.id === userId);
         if (userToView) {
-            const statusInfo = onlineUsers.find(u => u.id === userId);
-            setModeratingUser({ ...userToView, ...(statusInfo || { status: 'online'}) });
+            const statusInfo = onlineUsers.find(u => u && u.id === userId);
+            setModeratingUser({ ...userToView, ...(statusInfo || { status: UserStatus.Online }) });
         }
     }, [onlineUsers, allUsers]);
 
@@ -1779,12 +1821,12 @@ export const useApp = () => {
             aggregatedMythicStats: {} as Record<MythicStat, { count: number, totalValue: number }>,
         };
 
-        if (!currentUserWithStatus || !currentUserWithStatus.equipment || !currentUserWithStatus.inventory) {
+        if (!currentUserWithStatus || !currentUserWithStatus.equipment || !currentUserWithStatus.inventory || !Array.isArray(currentUserWithStatus.inventory)) {
             return initialBonuses;
         }
 
         const equippedItems = currentUserWithStatus.inventory.filter(item =>
-            currentUserWithStatus.equipment && Object.values(currentUserWithStatus.equipment).includes(item.id)
+            item && currentUserWithStatus.equipment && Object.values(currentUserWithStatus.equipment).includes(item.id)
         );
 
         const aggregated = equippedItems.reduce((acc, item) => {

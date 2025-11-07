@@ -12,6 +12,7 @@ import { calculateTotalStats } from '../statService.js';
 import { handleRewardAction } from './rewardActions.js';
 import { generateNewItem } from './inventoryActions.js';
 import { broadcast } from '../socket.js';
+import { createDefaultQuests } from '../initialData.js';
 
 
 type HandleActionResult = { 
@@ -178,15 +179,8 @@ export const createBotUser = (league: LeagueTier, tournamentType: TournamentType
         diamonds: 0,
         mannerScore: 100,
         mail: [],
-        quests: {
-            daily: [],
-            weekly: [],
-            monthly: [],
-            completedDaily: [],
-            completedWeekly: [],
-            completedMonthly: [],
-        },
-        stats: {} as any, // calculateTotalStats로 계산됨
+        quests: createDefaultQuests(),
+        stats: {}, // 게임 모드별 전적 정보 (봇은 빈 객체)
         avatarId: botAvatar.id,
         borderId: botBorder.id,
         ownedBorders: [botBorder.id],
@@ -194,12 +188,182 @@ export const createBotUser = (league: LeagueTier, tournamentType: TournamentType
         league,
     };
     
-    // 최종 능력치 계산
-    botUser.stats = calculateTotalStats(botUser);
-    
     return botUser;
 };
 
+
+// 토너먼트 세션을 시작하는 헬퍼 함수 (재사용 가능)
+export const startTournamentSessionForUser = async (user: User, tournamentType: TournamentType, skipBroadcast = false, forceNew = false): Promise<{ success: boolean; error?: string; updatedUser?: User }> => {
+    const definition = TOURNAMENT_DEFINITIONS[tournamentType];
+    if (!definition) return { success: false, error: '유효하지 않은 토너먼트 타입입니다.' };
+    
+    let stateKey: keyof User;
+    let playedDateKey: keyof User;
+    switch (tournamentType) {
+        case 'neighborhood':
+            stateKey = 'lastNeighborhoodTournament';
+            playedDateKey = 'lastNeighborhoodPlayedDate';
+            break;
+        case 'national':
+            stateKey = 'lastNationalTournament';
+            playedDateKey = 'lastNationalPlayedDate';
+            break;
+        case 'world':
+            stateKey = 'lastWorldTournament';
+            playedDateKey = 'lastWorldPlayedDate';
+            break;
+        default:
+            return { success: false, error: 'Invalid tournament type.' };
+    }
+
+    const now = Date.now();
+    const existingState = (user as any)[stateKey] as TournamentState | null;
+
+    // forceNew가 false이고 이미 토너먼트가 있으면 업데이트만 하고 반환
+    // forceNew가 true이면 (매일 0시 자동 시작) 무조건 새 토너먼트 시작
+    if (!forceNew && existingState) {
+        const userInTournament = existingState.players.find(p => p.id === user.id);
+        if (userInTournament) {
+            // 능력치는 토너먼트 생성 시점(0시)의 originalStats로 고정되어 있으므로 업데이트하지 않음
+            // PVE처럼 클론과 대결하는 구조이므로, 토너먼트 중 능력치 변경은 반영되지 않음
+            // 아바타와 테두리만 업데이트 (시각적 정보만 최신 상태로 유지)
+            userInTournament.avatarId = user.avatarId;
+            userInTournament.borderId = user.borderId;
+        }
+        (user as any)[stateKey] = existingState;
+        await db.updateUser(user);
+        return { success: true, updatedUser: user };
+    }
+
+    // forceNew가 true인 경우, 기존 토너먼트가 완료되지 않았어도 새로 시작
+    // (매일 0시에 리셋 후 자동 시작하는 경우)
+    
+    // 최신 유저 데이터 가져오기 (능력치가 최신 상태인지 확인)
+    const freshUser = await db.getUser(user.id);
+    if (!freshUser) return { success: false, error: 'User not found in DB.' };
+    
+    const allUsers = await db.getAllUsers();
+    // allUsers에 현재 유저가 최신 상태로 포함되도록 업데이트
+    const currentUserIndex = allUsers.findIndex(u => u.id === freshUser.id);
+    if (currentUserIndex !== -1) {
+        allUsers[currentUserIndex] = freshUser;
+    } else {
+        allUsers.push(freshUser);
+    }
+    
+    const myLeague = freshUser.league;
+    const myId = freshUser.id;
+
+    // 각 경기장 매칭: 같은 리그에 있는 모든 유저(온라인/오프라인 포함) 중에서 완전 랜덤으로 선택
+    // 주간 경쟁 상대(weeklyCompetitors)와는 별개이며, 매칭될 수도 있고 안될 수도 있음 (완전 랜덤)
+    // 오프라인 사용자도 포함되어 있으며, 매칭 시점(0시)의 능력치로 고정되어 PVE처럼 클론과 대결하는 구조
+    const potentialOpponents = allUsers
+        .filter(u => u.id !== myId && u.league === myLeague)
+        .sort(() => 0.5 - Math.random()); // 완전 랜덤 셔플
+    
+    const neededOpponents = definition.players - 1;
+    const selectedOpponents = potentialOpponents.slice(0, neededOpponents);
+    
+    // 같은 리그에 인원이 부족한 경우 봇으로 보완
+
+    const botsToCreate = neededOpponents - selectedOpponents.length;
+    const botNames = [...BOT_NAMES].sort(() => 0.5 - Math.random());
+    const botUsers: User[] = [];
+
+    for (let i = 0; i < botsToCreate; i++) {
+        const botName = botNames[i % botNames.length];
+        const botAvatar = AVATAR_POOL[Math.floor(Math.random() * AVATAR_POOL.length)];
+        const botBorder = BORDER_POOL[Math.floor(Math.random() * BORDER_POOL.length)];
+        const botId = `bot-${botName}-${i}`;
+        
+        // 랜덤 레벨, 장비, 능력치로 봇 생성
+        const botUser = createBotUser(myLeague, tournamentType, botId, botName, botAvatar, botBorder);
+        botUsers.push(botUser);
+        
+        selectedOpponents.push({
+            id: botId,
+            nickname: botName,
+            avatarId: botAvatar.id,
+            borderId: botBorder.id,
+            league: myLeague,
+        } as any);
+    }
+    
+    // 오늘 0시 기준 타임스탬프 (능력치 고정용)
+    const todayStartKST = getStartOfDayKST(now);
+    
+    // 현재 유저를 포함한 모든 참가자 생성
+    const allParticipants = [{ id: freshUser.id, nickname: freshUser.nickname, avatarId: freshUser.avatarId, borderId: freshUser.borderId, league: freshUser.league }, ...selectedOpponents];
+    
+    const participants: PlayerForTournament[] = allParticipants.map(p => {
+        let initialStats: Record<CoreStat, number>;
+        if (p.id.startsWith('bot-')) {
+            // 봇의 경우 생성된 User 객체에서 능력치 가져오기 (고정값)
+            const botUser = botUsers.find(b => b.id === p.id);
+            if (botUser) {
+                // calculateTotalStats로 봇의 최종 능력치 계산
+                initialStats = calculateTotalStats(botUser);
+            } else {
+                // 폴백: 기본 능력치 생성
+                const baseStatValue = 100;
+                const stats: Partial<Record<CoreStat, number>> = {};
+                for (const key of Object.values(CoreStat)) {
+                    stats[key] = baseStatValue;
+                }
+                initialStats = stats as Record<CoreStat, number>;
+            }
+        } else {
+            // 실제 유저의 경우 - allUsers에서 찾아서 매칭 시점(0시)의 능력치로 고정
+            // 오프라인/온라인 모두 포함되며, 이 시점의 능력치가 토너먼트 전체에서 사용됨 (PVE 클론 구조)
+            const realUser = allUsers.find(u => u.id === p.id);
+            if (realUser) {
+                // calculateTotalStats는 baseStats + spentStatPoints + 장비 보너스를 모두 계산
+                // 이 능력치는 originalStats에 저장되어 토너먼트 전체에서 고정됨
+                initialStats = calculateTotalStats(realUser);
+            } else {
+                // 폴백: 기본 능력치 생성
+                const baseStatValue = 100;
+                const stats: Partial<Record<CoreStat, number>> = {};
+                for (const key of Object.values(CoreStat)) {
+                    stats[key] = baseStatValue;
+                }
+                initialStats = stats as Record<CoreStat, number>;
+            }
+        }
+        
+        return {
+            id: p.id,
+            nickname: p.nickname,
+            avatarId: p.avatarId,
+            borderId: p.borderId,
+            league: p.league,
+            stats: JSON.parse(JSON.stringify(initialStats)), // Mutable copy for simulation
+            originalStats: initialStats, // Store the original stats (오늘 0시 기준 고정값)
+            wins: 0,
+            losses: 0,
+            condition: 1000, // Initialize with a magic number for "not set"
+            statsTimestamp: todayStartKST, // 오늘 0시 기준 타임스탬프 저장
+        };
+    });
+    
+    const shuffledParticipants = [participants[0], ...participants.slice(1).sort(() => 0.5 - Math.random())];
+
+    const newState = tournamentService.createTournament(tournamentType, freshUser, shuffledParticipants);
+    (freshUser as any)[stateKey] = newState;
+    (freshUser as any)[playedDateKey] = now;
+    
+    await db.updateUser(freshUser);
+    
+    // 깊은 복사로 updatedUser 생성
+    const updatedUser = JSON.parse(JSON.stringify(freshUser));
+    
+    // WebSocket으로 사용자 업데이트 브로드캐스트 (옵션)
+    if (!skipBroadcast) {
+        broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUser } });
+    }
+    
+    return { success: true, updatedUser };
+};
 
 export const handleTournamentAction = async (volatileState: VolatileState, action: ServerAction & { userId: string }, user: User): Promise<HandleActionResult> => {
     const { type, payload } = action;
@@ -255,127 +419,13 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 return { error: '이미 오늘 참가한 토너먼트입니다.' };
             }
             
-            // 최신 유저 데이터 가져오기 (능력치가 최신 상태인지 확인)
-            const freshUser = await db.getUser(user.id);
-            if (!freshUser) return { error: 'User not found in DB.' };
-            
-            const allUsers = await db.getAllUsers();
-            // allUsers에 현재 유저가 최신 상태로 포함되도록 업데이트
-            const currentUserIndex = allUsers.findIndex(u => u.id === freshUser.id);
-            if (currentUserIndex !== -1) {
-                allUsers[currentUserIndex] = freshUser;
-            } else {
-                allUsers.push(freshUser);
+            // 헬퍼 함수 사용
+            const result = await startTournamentSessionForUser(user, type, false);
+            if (!result.success) {
+                return { error: result.error || '토너먼트 세션 시작 실패' };
             }
             
-            const myLeague = freshUser.league;
-            const myId = freshUser.id;
-        
-            const potentialOpponents = allUsers
-                .filter(u => u.id !== myId && u.league === myLeague)
-                .sort(() => 0.5 - Math.random());
-            
-            const neededOpponents = definition.players - 1;
-            const selectedOpponents = potentialOpponents.slice(0, neededOpponents);
-        
-            const botsToCreate = neededOpponents - selectedOpponents.length;
-            const botNames = [...BOT_NAMES].sort(() => 0.5 - Math.random());
-            const botUsers: User[] = [];
-        
-            for (let i = 0; i < botsToCreate; i++) {
-                const botName = botNames[i % botNames.length];
-                const botAvatar = AVATAR_POOL[Math.floor(Math.random() * AVATAR_POOL.length)];
-                const botBorder = BORDER_POOL[Math.floor(Math.random() * BORDER_POOL.length)];
-                const botId = `bot-${botName}-${i}`;
-                
-                // 랜덤 레벨, 장비, 능력치로 봇 생성
-                const botUser = createBotUser(myLeague, type, botId, botName, botAvatar, botBorder);
-                botUsers.push(botUser);
-                
-                selectedOpponents.push({
-                    id: botId,
-                    nickname: botName,
-                    avatarId: botAvatar.id,
-                    borderId: botBorder.id,
-                    league: myLeague,
-                } as any);
-            }
-            
-            // 오늘 0시 기준 타임스탬프 (능력치 고정용)
-            const todayStartKST = getStartOfDayKST(now);
-            
-            // 오늘 0시 기준으로 유저들의 능력치를 미리 계산 (고정용)
-            // 실제 유저들의 경우 오늘 0시 기준 능력치를 사용하기 위해 별도 저장 필요
-            // 하지만 현재 구조에서는 토너먼트 생성 시점의 능력치를 사용하되,
-            // 봇의 경우 생성 시점의 능력치를 고정값으로 사용
-            
-            // 현재 유저를 포함한 모든 참가자 생성
-            const allParticipants = [{ id: freshUser.id, nickname: freshUser.nickname, avatarId: freshUser.avatarId, borderId: freshUser.borderId, league: freshUser.league }, ...selectedOpponents];
-            
-            const participants: PlayerForTournament[] = allParticipants.map(p => {
-                let initialStats: Record<CoreStat, number>;
-                if (p.id.startsWith('bot-')) {
-                    // 봇의 경우 생성된 User 객체에서 능력치 가져오기 (고정값)
-                    const botUser = botUsers.find(b => b.id === p.id);
-                    if (botUser) {
-                        initialStats = botUser.stats;
-                    } else {
-                        // 폴백: 기본 능력치 생성
-                        const baseStatValue = 100;
-                        const stats: Partial<Record<CoreStat, number>> = {};
-                        for (const key of Object.values(CoreStat)) {
-                            stats[key] = baseStatValue;
-                        }
-                        initialStats = stats as Record<CoreStat, number>;
-                    }
-                } else {
-                    // 실제 유저의 경우 - allUsers에서 찾아서 calculateTotalStats로 최신 능력치 계산
-                    // 관리자 포함 모든 유저는 홈화면의 6가지 현재 능력치를 사용
-                    const realUser = allUsers.find(u => u.id === p.id);
-                    if (realUser) {
-                        // calculateTotalStats는 baseStats + spentStatPoints + 장비 보너스를 모두 계산
-                        initialStats = calculateTotalStats(realUser);
-                    } else {
-                        // 폴백: 기본 능력치 생성
-                        const baseStatValue = 100;
-                        const stats: Partial<Record<CoreStat, number>> = {};
-                        for (const key of Object.values(CoreStat)) {
-                            stats[key] = baseStatValue;
-                        }
-                        initialStats = stats as Record<CoreStat, number>;
-                    }
-                }
-                
-                return {
-                    id: p.id,
-                    nickname: p.nickname,
-                    avatarId: p.avatarId,
-                    borderId: p.borderId,
-                    league: p.league,
-                    stats: JSON.parse(JSON.stringify(initialStats)), // Mutable copy for simulation
-                    originalStats: initialStats, // Store the original stats (오늘 0시 기준 고정값)
-                    wins: 0,
-                    losses: 0,
-                    condition: 1000, // Initialize with a magic number for "not set"
-                    statsTimestamp: todayStartKST, // 오늘 0시 기준 타임스탬프 저장
-                };
-            });
-            
-            const shuffledParticipants = [participants[0], ...participants.slice(1).sort(() => 0.5 - Math.random())];
-
-            const newState = tournamentService.createTournament(type, freshUser, shuffledParticipants);
-            (freshUser as any)[stateKey] = newState;
-            (freshUser as any)[playedDateKey] = now;
-            
-            await db.updateUser(freshUser);
-            
-            // 깊은 복사로 updatedUser 생성
-            const updatedUser = JSON.parse(JSON.stringify(freshUser));
-            
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUser } });
-            
-            return { clientResponse: { redirectToTournament: type, updatedUser } };
+            return { clientResponse: { redirectToTournament: type, updatedUser: result.updatedUser } };
         }
 
         case 'START_TOURNAMENT_ROUND': {
@@ -655,7 +705,23 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             userPlayer.condition = newCondition;
 
             // Save tournament state and user
-            await db.updateUser(user);
+            try {
+                await db.updateUser(user);
+                
+                // 저장 후 DB에서 다시 읽어서 검증 (인벤토리 변경사항이 확실히 반영되었는지 확인)
+                const savedUser = await db.getUser(user.id);
+                if (!savedUser) {
+                    console.error(`[USE_CONDITION_POTION] User not found after save: ${user.id}`);
+                    return { error: '저장 후 사용자를 찾을 수 없습니다.' };
+                }
+                
+                // 저장된 사용자 데이터 사용 (DB에 실제로 저장된 것)
+                user = savedUser;
+            } catch (error: any) {
+                console.error(`[USE_CONDITION_POTION] Error updating user ${user.id}:`, error);
+                console.error(`[USE_CONDITION_POTION] Error stack:`, error.stack);
+                return { error: '데이터 저장 중 오류가 발생했습니다.' };
+            }
 
             // 깊은 복사로 updatedUser 생성
             const updatedUser = JSON.parse(JSON.stringify(user));

@@ -362,8 +362,11 @@ const LocalItemDetailDisplay: React.FC<{
 
 const EQUIPMENT_SLOTS: EquipmentSlot[] = ['fan', 'board', 'top', 'bottom', 'bowl', 'stones'];
 
-const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, onAction, onStartEnhance, enhancementAnimationTarget, onAnimationComplete, isTopmost }) => {
-    const { presets, handlers } = useAppContext();
+const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurrentUser, onClose, onAction, onStartEnhance, enhancementAnimationTarget, onAnimationComplete, isTopmost }) => {
+    const { presets, handlers, currentUserWithStatus, updateTrigger } = useAppContext();
+    
+    // useAppContext의 currentUserWithStatus를 우선 사용 (최신 상태 보장)
+    const currentUser = currentUserWithStatus || propCurrentUser;
 
     const { inventorySlots = { equipment: 30, consumable: 10, material: 10 } } = currentUser;
     const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
@@ -428,7 +431,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
             setTimeout(() => setSelectedItemId(null), 0);
         }
         return found || null;
-    }, [selectedItemId, currentUser.inventory]);
+    }, [selectedItemId, currentUser.inventory, updateTrigger]);
 
     const expansionCost = useMemo(() => {
         if (activeTab === 'all') return 0;
@@ -535,7 +538,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
             return 0;
         });
         return items;
-    }, [currentUser.inventory, activeTab, sortKey]);
+    }, [currentUser.inventory, activeTab, sortKey, updateTrigger]);
 
     const currentSlots = useMemo(() => {
         const slots = inventorySlots || {};
@@ -566,7 +569,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
         const itemId = currentUser.equipment[slot];
         if (!itemId) return undefined;
         return currentUser.inventory.find(item => item.id === itemId);
-    }, [currentUser.equipment, currentUser.inventory]);
+    }, [currentUser.equipment, currentUser.inventory, updateTrigger]);
 
     const correspondingEquippedItem = useMemo(() => {
         if (!selectedItem || !selectedItem.slot) return null;
@@ -651,14 +654,17 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser, onClose, o
                         <div className="mt-4">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2">
                                 {Object.values(CoreStat).map(stat => {
-                                    const baseValue = (currentUser.baseStats[stat] || 0) + (currentUser.spentStatPoints?.[stat] || 0);
-                                    const bonus = Math.floor(baseValue * (coreStatBonuses[stat].percent / 100)) + coreStatBonuses[stat].flat;
+                                    const baseStats = currentUser.baseStats || {};
+                                    const spentStatPoints = currentUser.spentStatPoints || {};
+                                    const baseValue = (baseStats[stat] || 0) + (spentStatPoints[stat] || 0);
+                                    const bonusInfo = coreStatBonuses[stat] || { percent: 0, flat: 0 };
+                                    const bonus = Math.floor(baseValue * (bonusInfo.percent / 100)) + bonusInfo.flat;
                                     const finalValue = baseValue + bonus;
                                     return (
                                         <div key={stat} className="bg-tertiary/40 p-1 rounded-md flex items-center justify-between text-xs">
                                             <span className="font-semibold text-secondary whitespace-nowrap">{stat}</span>
                                             <span className="font-mono font-bold whitespace-nowrap" title={`기본: ${baseValue}, 장비: ${bonus}`}>
-                                                {finalValue}
+                                                {isNaN(finalValue) ? 0 : finalValue}
                                                 {bonus > 0 && <span className="text-green-400 text-xs ml-0.5">(+{bonus})</span>}
                                             </span>
                                         </div>

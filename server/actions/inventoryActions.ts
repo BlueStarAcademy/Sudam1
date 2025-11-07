@@ -399,11 +399,13 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                     grade: bundleInfo.type === 'gold' ? 'uncommon' as const : 'rare' as const
                 }));
 
-                // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
-                const updatedUser = JSON.parse(JSON.stringify(user));
+                // 선택적 필드만 반환 (메시지 크기 최적화)
+                // 하지만 bundle 처리의 경우에도 getSelectiveUserUpdate를 사용하여 일관성 유지
+                const updatedUser = getSelectiveUserUpdate(user, 'USE_ITEM');
                 
-                // WebSocket으로 사용자 업데이트 브로드캐스트
-                broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+                // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+                const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+                broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
                 
                 return { clientResponse: { obtainedItemsBulk: obtainedItems, updatedUser } };
             }

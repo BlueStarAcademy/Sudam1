@@ -39,8 +39,8 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
     // 승리 목표 설명
     const getWinCondition = (): string => {
         // 살리기 바둑 모드
-        if (session.settings.isSurvivalMode) {
-            return `흑(유저)이 ${session.settings.survivalTurns}턴 이내에 백(AI)의 돌을 ${stage.targetScore.black}개 이상 따내면 승리`;
+        if (stage.survivalTurns) {
+            return `흑(유저)이 ${stage.survivalTurns}턴 이내에 백(AI)의 돌을 ${stage.targetScore.black}개 이상 따내면 승리`;
         }
         
         // 따내기 바둑: 턴 제한과 목표 점수가 모두 있는 경우
@@ -148,7 +148,7 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
                         )}
 
                         {/* 살리기 바둑 모드 */}
-                        {session.settings.isSurvivalMode && session.settings.survivalTurns && (
+                        {stage.survivalTurns && (
                             <div>
                                 <h3 className="text-lg font-semibold text-yellow-400 mb-2 flex items-center gap-2">
                                     <span>⚔️</span>
@@ -156,7 +156,7 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
                                 </h3>
                                 <div className="bg-gray-700/50 rounded-lg p-3">
                                     <p className="text-gray-200">
-                                        AI(백)가 <span className="text-red-400 font-bold">{session.settings.survivalTurns}턴</span> 동안 살아남아야 합니다.
+                                        AI(백)가 <span className="text-red-400 font-bold">{stage.survivalTurns}턴</span> 동안 살아남아야 합니다.
                                         <br />
                                         <span className="text-blue-400">유저(흑)는 이 시간 내에 AI의 돌을 잡아 승리해야 합니다.</span>
                                     </p>

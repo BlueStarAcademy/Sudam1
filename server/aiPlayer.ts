@@ -7,6 +7,7 @@ import * as types from '../types.js';
 import { analyzeGame } from './kataGoService.js';
 import * as summaryService from './summaryService.js';
 import { makeGoAiBotMove } from './goAiBot.js';
+import * as db from './db.js';
 
 
 export const aiUserId = 'ai-player-01';
@@ -907,11 +908,11 @@ const makeThiefAiMove = async (game: types.LiveGameSession) => {
                 break;
             }
             
-            if (game.stonesToPlace <= 0) break;
+            if (game.stonesToPlace === undefined || game.stonesToPlace <= 0) break;
         }
         
         // 턴 종료 처리 (THIEF_PLACE_STONE 로직과 동일)
-        if (game.stonesToPlace <= 0) {
+        if (game.stonesToPlace === undefined || game.stonesToPlace <= 0) {
             if (!game.stonesPlacedThisTurn) game.stonesPlacedThisTurn = [];
             game.lastTurnStones = game.stonesPlacedThisTurn;
             game.stonesPlacedThisTurn = [];
