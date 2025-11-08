@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 // FIX: The main types barrel file now exports settings types. Use it for consistency.
-import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset } from '../types.js';
+import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset } from '../types.js';
 import { audioService } from '../services/audioService.js';
 import { stableStringify, parseHash } from '../utils/appUtils.js';
 import { 
@@ -10,7 +10,7 @@ import {
     MONTHLY_MILESTONE_THRESHOLDS
 } from '../constants.js';
 import { defaultSettings, SETTINGS_STORAGE_KEY } from './useAppSettings.js';
-
+import { getPanelEdgeImages } from '../constants/panelEdges.js';
 
 export const useApp = () => {
     // --- State Management ---
@@ -33,8 +33,39 @@ export const useApp = () => {
     const lastActionType = useRef<string | null>(null);
     // 강제 리렌더링을 위한 카운터
     const [updateTrigger, setUpdateTrigger] = useState(0);
+    const currentUserRef = useRef<User | null>(null);
 
+    useEffect(() => {
+        currentUserRef.current = currentUser;
+    }, [currentUser]);
 
+    const mergeUserState = useCallback((prev: User | null, updates: Partial<User>) => {
+        const base = prev ? JSON.parse(JSON.stringify(prev)) as Partial<User> : {};
+        const patch = JSON.parse(JSON.stringify(updates)) as Partial<User>;
+        const merged = { ...base, ...patch } as User;
+        if (!merged.id && prev?.id) {
+            merged.id = prev.id;
+        }
+        return merged;
+    }, []);
+
+    const applyUserUpdate = useCallback((updates: Partial<User>, source: string) => {
+        const mergedUser = mergeUserState(currentUserRef.current, updates);
+        currentUserRef.current = mergedUser;
+        flushSync(() => {
+            setCurrentUser(mergedUser);
+            setUpdateTrigger(prev => prev + 1);
+        });
+        if (mergedUser.id) {
+            setUsersMap(prevMap => ({ ...prevMap, [mergedUser.id]: mergedUser }));
+        }
+        try {
+            sessionStorage.setItem('currentUser', JSON.stringify(mergedUser));
+        } catch (e) {
+            console.error(`[applyUserUpdate] Failed to persist user (${source})`, e);
+        }
+        return mergedUser;
+    }, [mergeUserState]);
     
     // --- App Settings State ---
     const [settings, setSettings] = useState<AppSettings>(() => {
@@ -136,6 +167,12 @@ export const useApp = () => {
         } else {
             root.style.removeProperty('--custom-text-color');
         }
+        const edgeStyle = settings.graphics.panelEdgeStyle ?? 'default';
+        const edgeImages = getPanelEdgeImages(edgeStyle);
+        root.style.setProperty('--panel-edge-top-left', edgeImages.topLeft ?? 'none');
+        root.style.setProperty('--panel-edge-top-right', edgeImages.topRight ?? 'none');
+        root.style.setProperty('--panel-edge-bottom-left', edgeImages.bottomLeft ?? 'none');
+        root.style.setProperty('--panel-edge-bottom-right', edgeImages.bottomRight ?? 'none');
 
     }, [settings]);
 
@@ -169,8 +206,12 @@ export const useApp = () => {
         setSettings(s => ({ ...s, graphics: { ...s.graphics, textColor: color }}));
     }, []);
     
+    const updatePanelEdgeStyle = useCallback((edgeStyle: PanelEdgeStyle) => {
+        setSettings(s => ({ ...s, graphics: { ...s.graphics, panelEdgeStyle: edgeStyle }}));
+    }, []);
+    
     const resetGraphicsToDefault = useCallback(() => {
-        setSettings(s => ({ ...s, graphics: { ...s.graphics, panelColor: undefined, textColor: undefined } }));
+        setSettings(s => ({ ...s, graphics: { ...s.graphics, panelColor: undefined, textColor: undefined, panelEdgeStyle: 'default' } }));
     }, []);
 
     const updateSoundSetting = useCallback(<K extends keyof SoundSettings>(key: K, value: SoundSettings[K]) => {
@@ -309,27 +350,23 @@ export const useApp = () => {
 
     // --- Action Handler ---
     const handleAction = useCallback(async (action: ServerAction) => {
-        if (action.type === 'CLEAR_TOURNAMENT_SESSION') {
-            setCurrentUser(prev => {
-                if (!prev) return null;
-                return {
-                    ...prev,
+        if (action.type === 'CLEAR_TOURNAMENT_SESSION' && currentUserRef.current) {
+            applyUserUpdate({
                     lastNeighborhoodTournament: null,
                     lastNationalTournament: null,
                     lastWorldTournament: null,
-                };
-            });
+            }, 'CLEAR_TOURNAMENT_SESSION-local');
         }
         // Optimistic update는 제거 - 서버 응답에만 의존
         // TOGGLE_EQUIP_ITEM의 optimistic update는 서버 응답과 충돌할 수 있으므로 제거
         if (action.type === 'SAVE_PRESET') {
-            setCurrentUser(prevUser => {
-                if (!prevUser) return null;
+            const prevUser = currentUserRef.current;
+            if (prevUser) {
                 const { preset, index } = action.payload;
                 const newPresets = [...(prevUser.equipmentPresets || [])];
                 newPresets[index] = preset;
-                return { ...prevUser, equipmentPresets: newPresets };
-            });
+                applyUserUpdate({ equipmentPresets: newPresets }, 'SAVE_PRESET-local');
+            }
         }
 
         try {
@@ -337,7 +374,7 @@ export const useApp = () => {
             const res = await fetch('/api/action', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...action, userId: currentUser?.id }),
+                body: JSON.stringify({ ...action, userId: currentUserRef.current?.id }),
             });
 
             if (!res.ok) {
@@ -352,7 +389,7 @@ export const useApp = () => {
                 }
                 showError(errorMessage);
                 if (action.type === 'TOGGLE_EQUIP_ITEM' || action.type === 'USE_ITEM') {
-                    setCurrentUser(prevUser => prevUser ? { ...prevUser } : null);
+                    setUpdateTrigger(prev => prev + 1);
                 }
             } else {
                 const result = await res.json();
@@ -385,111 +422,16 @@ export const useApp = () => {
                 const updatedUserFromResponse = result.updatedUser || result.clientResponse?.updatedUser;
                 
                 if (updatedUserFromResponse) {
-                    // 깊은 복사를 수행하여 React가 변경을 감지하도록 함
-                    const partialUpdate = JSON.parse(JSON.stringify(updatedUserFromResponse));
-                    
-                    // 부분 업데이트인 경우 기존 currentUser와 병합
-                    // 배열이나 객체 필드는 완전히 교체 (부분 병합하지 않음)
-                    const updatedUser = currentUser ? {
-                        ...currentUser,
-                        ...partialUpdate,
-                        // 배열 필드들은 완전히 교체
-                        inventory: partialUpdate.inventory !== undefined ? partialUpdate.inventory : currentUser.inventory,
-                        mail: partialUpdate.mail !== undefined ? partialUpdate.mail : currentUser.mail,
-                        ownedBorders: partialUpdate.ownedBorders !== undefined ? partialUpdate.ownedBorders : currentUser.ownedBorders,
-                        equipmentPresets: partialUpdate.equipmentPresets !== undefined ? partialUpdate.equipmentPresets : currentUser.equipmentPresets,
-                        // 객체 필드들도 완전히 교체
-                        equipment: partialUpdate.equipment !== undefined ? partialUpdate.equipment : currentUser.equipment,
-                        quests: partialUpdate.quests !== undefined ? partialUpdate.quests : currentUser.quests,
-                        inventorySlots: partialUpdate.inventorySlots !== undefined ? partialUpdate.inventorySlots : currentUser.inventorySlots,
-                        actionPoints: partialUpdate.actionPoints !== undefined ? partialUpdate.actionPoints : currentUser.actionPoints,
-                        spentStatPoints: partialUpdate.spentStatPoints !== undefined ? partialUpdate.spentStatPoints : currentUser.spentStatPoints,
-                        baseStats: partialUpdate.baseStats !== undefined ? partialUpdate.baseStats : currentUser.baseStats,
-                        stats: partialUpdate.stats !== undefined ? partialUpdate.stats : currentUser.stats,
-                        dailyShopPurchases: partialUpdate.dailyShopPurchases !== undefined ? partialUpdate.dailyShopPurchases : currentUser.dailyShopPurchases,
-                        lastNeighborhoodTournament: partialUpdate.lastNeighborhoodTournament !== undefined ? partialUpdate.lastNeighborhoodTournament : currentUser.lastNeighborhoodTournament,
-                        lastNationalTournament: partialUpdate.lastNationalTournament !== undefined ? partialUpdate.lastNationalTournament : currentUser.lastNationalTournament,
-                        lastWorldTournament: partialUpdate.lastWorldTournament !== undefined ? partialUpdate.lastWorldTournament : currentUser.lastWorldTournament,
-                        singlePlayerProgress: partialUpdate.singlePlayerProgress !== undefined ? partialUpdate.singlePlayerProgress : currentUser.singlePlayerProgress,
-                    } : partialUpdate;
-                    
-                    console.log(`[handleAction] ${action.type} - Setting updatedUser:`, {
-                        inventoryLength: updatedUser.inventory?.length,
-                        gold: updatedUser.gold,
-                        diamonds: updatedUser.diamonds,
-                        equipment: updatedUser.equipment,
-                        avatarId: updatedUser.avatarId,
-                        borderId: updatedUser.borderId,
-                        nickname: updatedUser.nickname,
-                        blacksmithLevel: updatedUser.blacksmithLevel,
-                        blacksmithXp: updatedUser.blacksmithXp,
-                        beforeInventoryLength: currentUser?.inventory?.length,
-                        hasInventoryChanged: JSON.stringify(currentUser?.inventory) !== JSON.stringify(updatedUser.inventory),
-                        hasEquipmentChanged: JSON.stringify(currentUser?.equipment) !== JSON.stringify(updatedUser.equipment),
-                        hasProfileChanged: currentUser?.avatarId !== updatedUser.avatarId || currentUser?.borderId !== updatedUser.borderId || currentUser?.nickname !== updatedUser.nickname,
-                        hasBlacksmithChanged: currentUser?.blacksmithLevel !== updatedUser.blacksmithLevel || currentUser?.blacksmithXp !== updatedUser.blacksmithXp
-                    });
-                    // 최근 액션 처리 시간 기록 (WebSocket 업데이트 무시를 위해)
-                    // HTTP 응답의 updatedUser가 항상 최신이므로, 이를 기록하여 WebSocket이 오래된 데이터를 덮어쓰지 않도록 함
                     lastActionProcessedTime.current = Date.now();
                     lastActionType.current = action.type;
-                    
-                    // 즉시 상태 업데이트 (동기적으로 처리하여 확실히 반영)
-                    // flushSync를 직접 사용하여 즉시 반영 (비동기 Promise 사용하지 않음)
-                    const newUser = JSON.parse(JSON.stringify(updatedUser));
-                    
-                    // USE_ITEM 액션의 경우 인벤토리 변경이 확실히 반영되도록 추가 처리
-                    if (action.type === 'USE_ITEM' || action.type === 'USE_ALL_ITEMS_OF_TYPE') {
-                        console.log(`[handleAction] ${action.type} - Force updating inventory state`, {
-                            oldInventoryLength: currentUser?.inventory?.length,
-                            newInventoryLength: newUser.inventory?.length,
-                            oldInventory: currentUser?.inventory?.map((i: any) => ({ id: i.id, name: i.name, quantity: i.quantity })),
-                            newInventory: newUser.inventory?.map((i: any) => ({ id: i.id, name: i.name, quantity: i.quantity }))
-                        });
-                    }
-                    
-                    // 즉시 동기적으로 상태 업데이트
-                    flushSync(() => {
-                        setCurrentUser(newUser);
-                        setUpdateTrigger(prev => prev + 1);
+                    const mergedUser = applyUserUpdate(updatedUserFromResponse, `${action.type}-http`);
+                    console.log(`[handleAction] ${action.type} - applied HTTP updatedUser`, {
+                        inventoryLength: mergedUser?.inventory?.length,
+                        equipment: mergedUser?.equipment,
+                        gold: mergedUser?.gold,
+                        diamonds: mergedUser?.diamonds
                     });
-                    
-                    // 추가 업데이트로 모든 컴포넌트가 변경을 감지하도록 함
-                    requestAnimationFrame(() => {
-                        flushSync(() => {
-                            // 깊은 복사로 새로운 객체 생성하여 React가 변경을 확실히 감지
-                            const freshUser = JSON.parse(JSON.stringify(updatedUser));
-                            setCurrentUser(freshUser);
-                            setUpdateTrigger(prev => prev + 1);
-                        });
-                    });
-                    
-                    // setTimeout으로 추가 보장 (인벤토리 모달 등이 열려있을 경우 대비)
-                    setTimeout(() => {
-                        const freshUser = JSON.parse(JSON.stringify(updatedUser));
-                        setCurrentUser(freshUser);
-                        setUpdateTrigger(prev => prev + 1);
-                    }, 0);
-                    
-                    // 추가 리렌더링 트리거 (특히 인벤토리 모달)
-                    setTimeout(() => {
-                        setUpdateTrigger(prev => prev + 1);
-                    }, 10);
-                    
-                    // 인벤토리 관련 액션의 경우 추가로 한 번 더 업데이트하여 확실히 반영
-                    if (action.type === 'USE_ITEM' || action.type === 'USE_ALL_ITEMS_OF_TYPE' || action.type === 'TOGGLE_EQUIP_ITEM' || action.type === 'SELL_ITEM' || action.type === 'USE_CONDITION_POTION' || action.type === 'BUY_CONDITION_POTION') {
-                        setTimeout(() => {
-                            const freshUser = JSON.parse(JSON.stringify(updatedUser));
-                            setCurrentUser(freshUser);
-                            setUpdateTrigger(prev => prev + 1);
-                        }, 50);
-                    }
-                    
-                    // HTTP 응답에서 받은 updatedUser가 최신이므로, WebSocket 업데이트가 이를 덮어쓰지 않도록 보장
-                    // (이미 위의 shouldIgnoreWebSocketUpdate 로직과 추가 체크로 처리됨)
                 } else {
-                    // updatedUser가 없는 것은 정상입니다 (일부 액션만 updatedUser를 반환)
-                    // 경고는 updatedUser를 반환해야 하는 액션에서만 표시
                     const actionsThatShouldHaveUpdatedUser = [
                         'TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'ENHANCE_ITEM', 
                         'COMBINE_ITEMS', 'DISASSEMBLE_ITEM', 'CRAFT_MATERIAL', 'BUY_SHOP_ITEM', 
@@ -507,75 +449,29 @@ export const useApp = () => {
                             clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
                             resultKeys: Object.keys(result)
                         });
-                    }
-                }
-                 // 사용자 데이터가 변경될 수 있는 모든 액션 목록
-                const userDataChangingActions = [
-                    'TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'ENHANCE_ITEM', 'COMBINE_ITEMS', 'DISASSEMBLE_ITEM', 
-                    'CRAFT_MATERIAL', 'BUY_SHOP_ITEM', 'BUY_CONDITION_POTION', 'USE_CONDITION_POTION', 'UPDATE_AVATAR', 
-                    'UPDATE_BORDER', 'CHANGE_NICKNAME', 'UPDATE_MBTI', 'ALLOCATE_STAT_POINT',
-                    'SELL_ITEM', 'EXPAND_INVENTORY', 'BUY_BORDER', 'APPLY_PRESET', 'SAVE_PRESET',
-                    'DELETE_MAIL', 'DELETE_ALL_CLAIMED_MAIL', 'CLAIM_MAIL_ATTACHMENTS', 'CLAIM_ALL_MAIL_ATTACHMENTS', 'MARK_MAIL_AS_READ',
-                    'CLAIM_QUEST_REWARD', 'CLAIM_ACTIVITY_MILESTONE',
-                    'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST',
-                    'ADMIN_RESET_TOURNAMENT_SESSION'
-                ];
-                 
-                // 업데이트된 사용자 데이터 처리 - 모든 사용자 데이터 변경 액션에 대해 즉시 동기 처리
-                 const updatedUser = result.clientResponse?.updatedUser;
-                 if (updatedUser) {
-                     // HTTP 응답의 updatedUser를 항상 최우선으로 처리 (userDataChangingActions 체크 제거)
-                     // flushSync를 사용하여 React가 즉시 상태를 업데이트하도록 보장
-                     console.log(`[handleAction] ${action.type} - Immediately updating currentUser from HTTP response:`, {
-                         inventoryLength: updatedUser.inventory?.length,
-                         gold: updatedUser.gold,
-                         diamonds: updatedUser.diamonds,
-                         equipment: updatedUser.equipment,
-                         actionType: action.type,
-                         hasUpdatedUser: !!updatedUser
-                     });
-                     
-                     // 즉시 동기 업데이트 (여러 번 수행하여 확실히 반영)
-                     const deepCopiedUser = JSON.parse(JSON.stringify(updatedUser));
-                     
-                     // 첫 번째: flushSync로 즉시 반영
-                     flushSync(() => {
-                         setCurrentUser(deepCopiedUser);
-                         setUpdateTrigger(prev => prev + 1);
-                     });
-                     
-                     // 두 번째: requestAnimationFrame으로 다음 프레임에 재확인
-                     requestAnimationFrame(() => {
-                         flushSync(() => {
-                             setCurrentUser(JSON.parse(JSON.stringify(updatedUser)));
-                         setUpdateTrigger(prev => prev + 1);
-                         });
-                     });
-                     
-                     // 세 번째: 추가 보장을 위한 업데이트
-                     setTimeout(() => {
-                         setCurrentUser(JSON.parse(JSON.stringify(updatedUser)));
-                             setUpdateTrigger(prev => prev + 1);
-                     }, 0);
-                     
-                     // WebSocket 업데이트와의 충돌을 방지하기 위해 액션 타입과 시간 기록
-                     lastActionProcessedTime.current = Date.now();
-                     lastActionType.current = action.type;
-                     
-                     // sessionStorage에도 저장하여 페이지 새로고침 시에도 상태 유지
-                     try {
-                         sessionStorage.setItem('currentUser', JSON.stringify(updatedUser));
-                     } catch (e) {
-                         console.error('Failed to save user to sessionStorage', e);
                      }
                  }
                  
                  const obtainedItemsBulk = result.clientResponse?.obtainedItemsBulk || result.obtainedItemsBulk;
-                 if (obtainedItemsBulk) setLastUsedItemResult(obtainedItemsBulk);
+                 if (obtainedItemsBulk) {
+                     const stampedItems = obtainedItemsBulk.map((item: any) => ({
+                         ...item,
+                         id: item.id || `reward-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+                         quantity: item.quantity ?? 1,
+                     }));
+                     setLastUsedItemResult(stampedItems);
+                 }
                  const scoreChange = result.clientResponse?.tournamentScoreChange;
                  if (scoreChange) setTournamentScoreChange(scoreChange);
                 
                  if (result.rewardSummary) setRewardSummary(result.rewardSummary);
+                if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' && result.clientResponse?.reward) {
+                    setRewardSummary({
+                        reward: result.clientResponse.reward,
+                        items: [],
+                        title: '수련과제 보상 수령'
+                    });
+                }
                 
                 // 싱글플레이 수련과제 보상 수령 모달
                 if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' && result.clientResponse?.reward) {
@@ -657,30 +553,15 @@ export const useApp = () => {
                 if (result.enhancementAnimationTarget) setEnhancementAnimationTarget(result.enhancementAnimationTarget);
                 const redirectToTournament = result.clientResponse?.redirectToTournament || result.redirectToTournament;
                 if (redirectToTournament) {
-                    // USE_CONDITION_POTION과 BUY_CONDITION_POTION의 경우 같은 토너먼트에서 사용하므로 리다이렉트하지 않음
                     if (action.type !== 'USE_CONDITION_POTION' && action.type !== 'BUY_CONDITION_POTION') {
-                        // START_TOURNAMENT_SESSION의 경우, 이미 같은 토너먼트에 있으면 리다이렉트하지 않음 (무한 루프 방지)
-                        const shouldSkipRedirect = action.type === 'START_TOURNAMENT_SESSION' && window.location.hash === `#/tournament/${redirectToTournament}`;
-                        
-                        if (shouldSkipRedirect) {
-                            console.log(`[handleAction] ${action.type} - Skipping redirect (already at #/tournament/${redirectToTournament})`);
-                        } else {
+                        const targetHash = `#/tournament/${redirectToTournament}`;
+                        if (window.location.hash !== targetHash) {
                             console.log(`[handleAction] ${action.type} - Redirecting to tournament:`, redirectToTournament);
-                            // 상태 업데이트가 완료된 후 리다이렉트
-                            // 같은 해시일 경우에도 강제로 리렌더링되도록 해시를 임시로 변경한 후 다시 설정
                             setTimeout(() => {
-                                const newHash = `#/tournament/${redirectToTournament}`;
-                                const currentHash = window.location.hash;
-                                if (currentHash === newHash) {
-                                    // 같은 해시인 경우 임시로 다른 해시로 변경한 후 다시 설정하여 강제 리렌더링
-                                    window.location.hash = '#/tournament';
-                                    setTimeout(() => {
-                                        window.location.hash = newHash;
-                                    }, 50);
-                                } else {
-                                    window.location.hash = newHash;
-                                }
+                                window.location.hash = targetHash;
                             }, 200);
+                                } else {
+                            console.log(`[handleAction] ${action.type} - Already at ${targetHash}, skipping redirect`);
                         }
                     } else {
                         console.log(`[handleAction] ${action.type} - Skipping redirect (already in tournament)`);
@@ -880,19 +761,16 @@ export const useApp = () => {
                 console.log('[WebSocket] usersMap updated with', Object.keys(users).length, 'users');
                 
                 // 현재 사용자의 데이터가 초기 상태에 포함되어 있으면 업데이트
-                if (currentUser && users[currentUser.id]) {
-                    const initialUserData = users[currentUser.id];
+                const currentUserSnapshot = currentUserRef.current;
+                if (currentUserSnapshot && users[currentUserSnapshot.id]) {
+                    const initialUserData = users[currentUserSnapshot.id];
                     if (initialUserData) {
-                        setCurrentUser(prev => prev ? {
-                            ...prev,
+                        const sanitizedUpdate: Partial<User> = {
                             ...initialUserData,
-                            // inventory와 equipment는 서버에서 받은 최신 값으로 업데이트 (전투력 계산 및 장비 표시를 위해)
-                            inventory: initialUserData.inventory || prev.inventory,
-                            equipment: initialUserData.equipment || prev.equipment,
-                            // mail과 quests는 개인 정보이므로 이전 값 유지 (서버에서 전송하지 않음)
-                            mail: prev.mail,
-                            quests: prev.quests
-                        } : null);
+                            inventory: initialUserData.inventory ?? currentUserSnapshot.inventory,
+                            equipment: initialUserData.equipment ?? currentUserSnapshot.equipment,
+                        };
+                        applyUserUpdate(sanitizedUpdate, 'INITIAL_STATE');
                     }
                 }
             } else {
@@ -1156,28 +1034,15 @@ export const useApp = () => {
                                             // 현재 사용자와 ID가 일치하는지 확인
                                             if (updatedCurrentUser.id === currentUser.id) {
                                                 // 상태 업데이트를 즉시 동기적으로 처리 (HTTP 응답이 없는 경우에만)
-                                                const newUser = JSON.parse(JSON.stringify(updatedCurrentUser));
+                                                const mergedUser = applyUserUpdate(updatedCurrentUser, 'USER_UPDATE-websocket');
                                                 console.log(`[WebSocket] Updating currentUser from WebSocket (HTTP response not available):`, {
-                                                    inventoryLength: newUser.inventory?.length,
-                                                    gold: newUser.gold,
-                                                    diamonds: newUser.diamonds,
-                                                    equipment: newUser.equipment,
+                                                    inventoryLength: mergedUser.inventory?.length,
+                                                    gold: mergedUser.gold,
+                                                    diamonds: mergedUser.diamonds,
+                                                    equipment: mergedUser.equipment,
                                                     timeSinceLastAction,
                                                     lastActionType: lastActionType.current
                                                 });
-                                                
-                                                // 단일 동기 업데이트 (불필요한 중복 제거)
-                                                flushSync(() => {
-                                                    setCurrentUser(newUser);
-                                                    setUpdateTrigger(prev => prev + 1);
-                                                });
-                                                
-                                                // sessionStorage에도 저장
-                                                try {
-                                                    sessionStorage.setItem('currentUser', JSON.stringify(updatedCurrentUser));
-                                                } catch (e) {
-                                                    console.error('Failed to save user to sessionStorage', e);
-                                                }
                                             }
                                         } else {
                                             console.log(`[WebSocket] Ignoring USER_UPDATE for ${currentUser.id} - HTTP response was processed ${timeSinceLastAction}ms ago (more recent)`);
@@ -1739,20 +1604,16 @@ export const useApp = () => {
     const closeModerationModal = useCallback(() => setModeratingUser(null), []);
 
     const setCurrentUserAndRoute = useCallback((user: User) => {
-        // 깊은 복사를 수행하여 React가 변경을 감지하도록 함
-        const userCopy = JSON.parse(JSON.stringify(user));
-        setCurrentUser(userCopy);
-        // usersMap에 현재 유저 추가 (실시간 업데이트를 위해)
-        setUsersMap(prev => ({ ...prev, [user.id]: userCopy }));
+        const mergedUser = applyUserUpdate(user, 'setCurrentUserAndRoute');
         console.log('[setCurrentUserAndRoute] User set:', {
-            id: userCopy.id,
-            inventoryLength: userCopy.inventory?.length,
-            equipmentSlots: Object.keys(userCopy.equipment || {}).length,
-            hasInventory: !!userCopy.inventory,
-            hasEquipment: !!userCopy.equipment
+            id: mergedUser.id,
+            inventoryLength: mergedUser.inventory?.length,
+            equipmentSlots: Object.keys(mergedUser.equipment || {}).length,
+            hasInventory: !!mergedUser.inventory,
+            hasEquipment: !!mergedUser.equipment
         });
         window.location.hash = '#/profile';
-    }, []);
+    }, [applyUserUpdate]);
     
     const openEnhancingItem = useCallback((item: InventoryItem) => {
         setBlacksmithSelectedItemForEnhancement(item);
@@ -1779,18 +1640,16 @@ export const useApp = () => {
                 }
                 return currentItem;
             });
-            setCurrentUser(prevUser => {
-                if (!prevUser) return null;
-                return {
-                    ...prevUser,
-                    inventory: prevUser.inventory.map(invItem => 
+            const snapshot = currentUserRef.current;
+            if (snapshot && Array.isArray(snapshot.inventory)) {
+                const nextInventory = snapshot.inventory.map(invItem =>
                         invItem.id === enhancedItem.id ? enhancedItem : invItem
-                    ),
-                };
-            });
+                );
+                applyUserUpdate({ inventory: nextInventory }, 'clearEnhancementOutcome');
+            }
         }
         setEnhancementOutcome(null);
-    }, [enhancementOutcome]);
+    }, [enhancementOutcome, applyUserUpdate]);
     
     const closeEnhancementModal = useCallback(() => {
         setIsEnhancementResultModalOpen(false);
@@ -1911,6 +1770,7 @@ export const useApp = () => {
         updateFeatureSetting,
         updatePanelColor,
         updateTextColor,
+        updatePanelEdgeStyle,
         resetGraphicsToDefault,
         mainOptionBonuses,
         combatSubOptionBonuses,

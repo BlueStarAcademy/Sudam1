@@ -54,7 +54,13 @@ const getStarDisplayInfo = (stars: number) => {
     return { text: "", colorClass: "text-white" };
 };
 
-const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem; scaleFactor?: number }> = ({ slot, item, scaleFactor = 1 }) => {
+const EquipmentSlotDisplay: React.FC<{ 
+    slot: EquipmentSlot; 
+    item?: InventoryItem; 
+    scaleFactor?: number;
+    onClick?: () => void;
+    isSelected?: boolean;
+}> = ({ slot, item, scaleFactor = 1, onClick, isSelected = false }) => {
     const renderStarDisplay = (stars: number) => {
         if (stars === 0) return null;
 
@@ -102,8 +108,9 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem
         const borderWidth = Math.max(1, Math.round(2 * scaleFactor));
         return (
             <div
-                className={`relative aspect-square rounded-lg bg-tertiary/50`}
+                className={`relative aspect-square rounded-lg bg-tertiary/50 ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-accent/70' : ''} ${isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent'}`}
                 title={item.name}
+                onClick={onClick}
                 style={{ 
                     width: '100%', 
                     height: '100%', 
@@ -152,7 +159,7 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem
              <img 
                  src={emptySlotImages[slot]} 
                  alt={`${slot} empty slot`} 
-                 className="aspect-square rounded-lg bg-tertiary/50" 
+                className="aspect-square rounded-lg bg-tertiary/50" 
                  style={{ 
                      width: '100%', 
                      height: '100%', 
@@ -172,7 +179,8 @@ const LocalItemDetailDisplay: React.FC<{
     title: string;
     comparisonItem?: InventoryItem | null;
     scaleFactor?: number;
-}> = ({ item, title, comparisonItem, scaleFactor = 1 }) => {
+    userLevelSum?: number;
+}> = ({ item, title, comparisonItem, scaleFactor = 1, userLevelSum = 0 }) => {
     if (!item) {
         return <div className="h-full flex items-center justify-center text-tertiary text-sm">{title}</div>;
     }
@@ -222,6 +230,8 @@ const LocalItemDetailDisplay: React.FC<{
     };
 
     const requiredLevel = GRADE_LEVEL_REQUIREMENTS[item.grade];
+    const showRequirement = item.type === 'equipment';
+    const levelRequirementMet = !showRequirement || userLevelSum >= requiredLevel;
 
     const getAllOptions = (invItem: InventoryItem | null | undefined): ItemOption[] => {
         if (!invItem || !invItem.options) return [];
@@ -281,8 +291,14 @@ const LocalItemDetailDisplay: React.FC<{
                     <div className="flex items-baseline justify-end gap-0.5">
                         <h3 className={`text-lg font-bold ${styles.color}`}>{item.name}</h3>
                     </div>
-                    <p className="text-gray-400 text-xs">[{styles.name}]</p>
-                    <p className={`text-[10px] text-gray-500`}> (착용레벨: {requiredLevel})</p>
+                    <div className="flex items-center justify-end gap-2 text-xs mt-0.5">
+                        <span className="text-gray-400">[{styles.name}]</span>
+                        {showRequirement && (
+                            <span className={`text-[11px] ${levelRequirementMet ? 'text-gray-300' : 'text-red-400'} whitespace-nowrap`}>
+                                착용 레벨 {requiredLevel}
+                            </span>
+                        )}
+                    </div>
                     {item.options?.main && ( // Only display main option if it exists
                         <p className="font-semibold text-yellow-300 text-xs flex justify-between items-center">
                             <span>
@@ -645,11 +661,19 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
                                 gap: `${Math.max(6, Math.round(8 * scaleFactor))}px`
                             }}
                         >
-                            {EQUIPMENT_SLOTS.map(slot => (
+                            {EQUIPMENT_SLOTS.map(slot => {
+                                const equippedItem = getItemForSlot(slot);
+                                return (
                                 <div key={slot} style={{ width: '100%', minWidth: 0 }}>
-                                    <EquipmentSlotDisplay slot={slot} item={getItemForSlot(slot)} scaleFactor={scaleFactor} />
+                                    <EquipmentSlotDisplay 
+                                        slot={slot} 
+                                        item={equippedItem} 
+                                        scaleFactor={scaleFactor} 
+                                        onClick={equippedItem ? () => setSelectedItemId(equippedItem.id) : undefined}
+                                        isSelected={equippedItem ? selectedItemId === equippedItem.id : false}
+                                    />
                                 </div>
-                            ))}
+                            )})}
                         </div>
                         <div className="mt-4">
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 mb-2">

@@ -282,7 +282,7 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 return { error: '새로고침 횟수를 모두 사용했습니다.' };
             }
 
-            const costs = [0, 50, 100, 200, 300];
+            const costs = [0, 50, 75, 100, 200];
             const cost = costs[refreshesUsed];
 
             if (user.gold < cost && !user.isAdmin) {
@@ -307,7 +307,9 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             await db.updateUser(user);
             await db.saveGame(game);
 
-            return { clientResponse: { updatedUser: user } };
+            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+
+            return { clientResponse: { updatedUser: user, game } };
         }
         case 'START_SINGLE_PLAYER_MISSION': {
             const { missionId } = payload;
@@ -318,7 +320,8 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             if (user.singlePlayerMissions[missionId]?.isStarted) return { error: '이미 시작된 미션입니다.' };
 
             const unlockStageIndex = SINGLE_PLAYER_STAGES.findIndex(s => s.id === missionInfo.unlockStageId);
-            if ((user.singlePlayerProgress ?? 0) <= unlockStageIndex) return { error: '미션이 아직 잠겨있습니다.' };
+            // unlockStageIndex is 0-based; user.singlePlayerProgress tracks highest cleared index (0-based).
+            if ((user.singlePlayerProgress ?? -1) < unlockStageIndex) return { error: '미션이 아직 잠겨있습니다.' };
 
             // 레벨 1로 시작
             const level1Info = missionInfo.levels[0];
@@ -375,44 +378,55 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             }
         
             // 미션 상태 초기화 (없는 필드 보완)
-            if (typeof missionState.accumulatedAmount !== 'number') {
-                missionState.accumulatedAmount = 0;
+            let missionAccumulated = missionState.accumulatedAmount;
+            if (typeof missionAccumulated !== 'number') {
+                const parsed = Number(missionAccumulated);
+                missionAccumulated = Number.isFinite(parsed) ? parsed : 0;
             }
-            if (!missionState.lastCollectionTime || typeof missionState.lastCollectionTime !== 'number') {
-                missionState.lastCollectionTime = now;
+            let lastCollectionTime = missionState.lastCollectionTime;
+            if (!lastCollectionTime || typeof lastCollectionTime !== 'number') {
+                const parsed = Number(lastCollectionTime);
+                lastCollectionTime = Number.isFinite(parsed) ? parsed : now;
             }
-            
-            // Recalculate amount accumulated since last server tick, before claiming
-            const elapsedMs = now - missionState.lastCollectionTime;
-            const productionIntervalMs = levelInfo.productionRateMinutes * 60 * 1000;
-            let finalAmountToClaim = missionState.accumulatedAmount || 0;
 
-            if (productionIntervalMs > 0 && elapsedMs > 0) {
+            const productionIntervalMs = levelInfo.productionRateMinutes * 60 * 1000;
+            const baseAccumulated = missionAccumulated || 0;
+            let generatedAmount = 0;
+            let remainderMs = 0;
+
+            if (productionIntervalMs > 0) {
+                const elapsedMs = Math.max(0, now - lastCollectionTime);
                 const cycles = Math.floor(elapsedMs / productionIntervalMs);
-                if (cycles > 0) {
-                    const generatedAmount = cycles * levelInfo.rewardAmount;
-                    finalAmountToClaim = Math.min(levelInfo.maxCapacity, missionState.accumulatedAmount + generatedAmount);
-                }
+                generatedAmount = cycles * levelInfo.rewardAmount;
+                remainderMs = elapsedMs % productionIntervalMs;
             }
+
+            const availableAmount = Math.min(levelInfo.maxCapacity, baseAccumulated + generatedAmount);
         
-            if (finalAmountToClaim < 1) {
+            if (availableAmount < 1) {
                 return { error: '수령할 보상이 없습니다.' };
             }
         
             // 보상 지급 전 값 저장 (모달 표시용)
-            const rewardAmount = finalAmountToClaim;
+            const rewardAmount = availableAmount;
             const rewardType = missionInfo.rewardType;
         
             if (rewardType === 'gold') {
-                user.gold += finalAmountToClaim;
+                user.gold += rewardAmount;
             } else {
-                user.diamonds += finalAmountToClaim;
+                user.diamonds += rewardAmount;
             }
         
             // 누적 수령액 증가 (레벨업용)
-            missionState.accumulatedCollection = (missionState.accumulatedCollection || 0) + finalAmountToClaim;
+            const currentAccumulatedCollection = typeof missionState.accumulatedCollection === 'number'
+                ? missionState.accumulatedCollection
+                : Number(missionState.accumulatedCollection) || 0;
+            missionState.accumulatedCollection = currentAccumulatedCollection + rewardAmount;
             missionState.accumulatedAmount = 0;
-            missionState.lastCollectionTime = now; // Reset production timer to now
+            missionState.lastCollectionTime = productionIntervalMs > 0 ? now - remainderMs : now;
+            if (productionIntervalMs > 0 && availableAmount >= levelInfo.maxCapacity) {
+                missionState.lastCollectionTime = now;
+            }
         
             await db.updateUser(user);
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });

@@ -61,13 +61,20 @@ const ActionPointCard: React.FC<{ currentUser: UserWithStatus, onBuy: () => void
             <h3 className="text-lg font-bold text-white">행동력 충전</h3>
             <p className="text-xs text-gray-400 mt-1 flex-grow h-10">행동력 {ACTION_POINT_PURCHASE_REFILL_AMOUNT}개를 즉시 충전합니다. (최대치 초과 가능)</p>
             <div className="flex flex-col items-center justify-center gap-2 my-3 w-full">
-                <Button onClick={handlePurchase} disabled={!canPurchase} colorScheme="green" className="w-full">
-                    {canPurchase ? (
-                        <span className="flex items-center justify-center gap-1"><img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" /> {cost.toLocaleString()}</span>
-                    ) : (
-                        '오늘 구매 한도 초과'
-                    )}
+                <Button
+                    onClick={handlePurchase}
+                    disabled={!canPurchase}
+                    colorScheme="green"
+                    className="w-full"
+                >
+                    <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                        <span>구매</span>
+                        <div className="flex items-center gap-1">(<img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" /> {cost.toLocaleString()})</div>
+                    </div>
                 </Button>
+                {!canPurchase && (
+                    <span className="text-xs text-gray-200">오늘 구매 한도 초과</span>
+                )}
             </div>
              <p className="text-xs text-gray-400">오늘 구매 횟수: {purchasesToday}/{MAX_ACTION_POINT_PURCHASES_PER_DAY}</p>
         </div>

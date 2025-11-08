@@ -19,17 +19,22 @@ export const getMannerScore = (user: User): number => {
     return user.mannerScore ?? 200;
 };
 
+const RANK_COLORS: Record<string, string> = {
+    '최악': 'text-red-700',
+    '매우 나쁨': 'text-red-500',
+    '나쁨': 'text-orange-400',
+    '주의': 'text-yellow-400',
+    '보통': 'text-gray-300',
+    '좋음': 'text-green-400',
+    '매우 좋음': 'text-teal-400',
+    '품격': 'text-cyan-400',
+    '프로': 'text-blue-400',
+    '마스터': 'text-purple-400',
+};
+
 export const getMannerRank = (score: number): { rank: string, color: string } => {
-    if (score >= 2000) return { rank: '마스터', color: 'text-purple-400' };
-    if (score >= 1600) return { rank: '프로', color: 'text-blue-400' };
-    if (score >= 1100) return { rank: '품격', color: 'text-cyan-400' };
-    if (score >= 800) return { rank: '매우 좋음', color: 'text-teal-400' };
-    if (score >= 400) return { rank: '좋음', color: 'text-green-400' };
-    if (score >= 200) return { rank: '보통', color: 'text-gray-300' };
-    if (score >= 100) return { rank: '주의', color: 'text-yellow-400' };
-    if (score >= 50) return { rank: '나쁨', color: 'text-orange-400' };
-    if (score >= 1) return { rank: '매우 나쁨', color: 'text-red-500' };
-    return { rank: '최악', color: 'text-red-700' };
+    const rank = [...MANNER_RANKS].reverse().find(tier => score >= tier.min) ?? MANNER_RANKS[0];
+    return { rank: rank.name, color: RANK_COLORS[rank.name] ?? 'text-gray-300' };
 };
 
 export const getMannerStyle = (score: number): { percentage: number, colorClass: string } => {
@@ -37,7 +42,7 @@ export const getMannerStyle = (score: number): { percentage: number, colorClass:
     let colorClass = 'bg-red-700';
     if (score >= 2000) colorClass = 'bg-purple-400';
     else if (score >= 1600) colorClass = 'bg-blue-400';
-    else if (score >= 1100) colorClass = 'bg-cyan-400';
+    else if (score >= 1200) colorClass = 'bg-cyan-400';
     else if (score >= 800) colorClass = 'bg-teal-400';
     else if (score >= 400) colorClass = 'bg-green-400';
     else if (score >= 200) colorClass = 'bg-gray-300';

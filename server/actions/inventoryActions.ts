@@ -454,7 +454,7 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             }
             
             // 선택적 필드만 반환 (메시지 크기 최적화)
-            const updatedUser = getSelectiveUserUpdate(user, 'USE_ITEM');
+            const updatedUser = getSelectiveUserUpdate(user, 'USE_ITEM', { includeAll: true });
             
             // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
             const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
@@ -531,7 +531,7 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             if (totalDiamondsGained > 0) clientResponseItems.push({ name: '다이아', quantity: totalDiamondsGained, image: '/images/icon/Zem.png', type: 'material', grade: 'rare' } as any);
 
             // 선택적 필드만 반환 (메시지 크기 최적화)
-            const updatedUser = getSelectiveUserUpdate(user, 'USE_ALL_ITEMS_OF_TYPE');
+            const updatedUser = getSelectiveUserUpdate(user, 'USE_ALL_ITEMS_OF_TYPE', { includeAll: true });
 
             // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
             const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
@@ -596,7 +596,7 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             }
             
             // 선택적 필드만 반환 (메시지 크기 최적화)
-            const updatedUser = getSelectiveUserUpdate(user, 'TOGGLE_EQUIP_ITEM');
+            const updatedUser = getSelectiveUserUpdate(user, 'TOGGLE_EQUIP_ITEM', { includeAll: true });
             
             // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
             const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
@@ -925,7 +925,10 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
             if (itemsToRemove.length === 0) return { error: '분해할 수 있는 아이템이 없습니다.' };
 
-            const isJackpot = Math.random() * 100 < (BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[user.blacksmithLevel - 1] ?? 0);
+            const baseJackpotRate = BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[user.blacksmithLevel - 1] ?? 0;
+            const mannerEffects = effectService.getMannerEffects(user);
+            const jackpotRate = Math.min(100, baseJackpotRate + (mannerEffects.disassemblyJackpotBonusPercent ?? 0));
+            const isJackpot = Math.random() * 100 < jackpotRate;
             if (isJackpot) {
                 for (const key in gainedMaterials) {
                     gainedMaterials[key] *= 2;
@@ -999,7 +1002,9 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
         
             // 대장간 레벨에 따른 대박 확률 적용 (장비 분해와 동일)
             const blacksmithLevel = user.blacksmithLevel ?? 1;
-            const jackpotRate = BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[blacksmithLevel - 1] ?? 0;
+            const baseJackpotRate = BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[blacksmithLevel - 1] ?? 0;
+            const mannerEffects = effectService.getMannerEffects(user);
+            const jackpotRate = Math.min(100, baseJackpotRate + (mannerEffects.disassemblyJackpotBonusPercent ?? 0));
             const isJackpot = Math.random() * 100 < jackpotRate;
             
             if (craftType === 'upgrade') {
@@ -1068,7 +1073,7 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             }
             
             // 선택적 필드만 반환 (메시지 크기 최적화)
-            const updatedUser = getSelectiveUserUpdate(user, 'CRAFT_MATERIAL');
+            const updatedUser = getSelectiveUserUpdate(user, 'CRAFT_MATERIAL', { includeAll: true });
 
             // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
             const fullUserForBroadcast = JSON.parse(JSON.stringify(user));

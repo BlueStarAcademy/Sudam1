@@ -6,6 +6,7 @@ export const defaultSettings: AppSettings = {
         theme: 'black',
         panelColor: undefined,
         textColor: undefined,
+        panelEdgeStyle: 'default',
     },
     sound: {
         masterVolume: 0.5,

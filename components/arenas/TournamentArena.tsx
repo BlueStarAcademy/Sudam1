@@ -30,6 +30,20 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
     }
 
     const tournamentState = currentUserWithStatus?.[stateKey] as any;
+    const latestTournamentStateRef = React.useRef<typeof tournamentState | null>(tournamentState ?? null);
+
+    React.useEffect(() => {
+        latestTournamentStateRef.current = tournamentState ?? null;
+    }, [tournamentState]);
+
+    React.useEffect(() => {
+        return () => {
+            const latestState = latestTournamentStateRef.current;
+            if (!latestState || latestState.status === 'round_in_progress') return;
+            handlers.handleAction({ type: 'SAVE_TOURNAMENT_PROGRESS', payload: { type } })
+                .catch(error => console.error('[TournamentArena] Failed to save tournament progress on unmount:', error));
+        };
+    }, [handlers, type]);
     const tournamentDefinition = TOURNAMENT_DEFINITIONS[type];
 
     // 토너먼트 상태가 있으면 최신 상태로 업데이트 (자동 시작하지 않음 - 사용자가 직접 경기 시작 버튼을 눌러야 함)
@@ -117,13 +131,21 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
     return (
         <div className="p-4 sm:p-6 lg:p-8 w-full flex flex-col h-[calc(100vh-5rem)] relative overflow-hidden">
             <header className="flex justify-between items-center mb-6 flex-shrink-0">
-                <button onClick={() => {
+                <button onClick={async () => {
                     if (tournamentState && tournamentState.status === 'round_in_progress') {
                         if (window.confirm('경기가 진행 중입니다. 현재 경기를 기권하시겠습니까? 현재 경기는 패배 처리됩니다.')) {
-                            handlers.handleAction({ type: 'FORFEIT_CURRENT_MATCH', payload: { type: type } });
+                            handlers.handleAction({ type: 'FORFEIT_CURRENT_MATCH', payload: { type } });
                         }
                     } else {
-                        window.location.hash = '#/tournament';
+                        try {
+                            if (tournamentState) {
+                                await handlers.handleAction({ type: 'SAVE_TOURNAMENT_PROGRESS', payload: { type } });
+                            }
+                        } catch (error) {
+                            console.error('[TournamentArena] Failed to save tournament progress on exit:', error);
+                        } finally {
+                            window.location.hash = '#/tournament';
+                        }
                     }
                 }} className="transition-transform active:scale-90 filter hover:drop-shadow-lg">
                     <img src="/images/button/back.png" alt="Back" className="w-10 h-10" />

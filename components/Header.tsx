@@ -81,10 +81,16 @@ const Header: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-end flex-nowrap gap-1 sm:gap-2 flex-shrink-0">
-                    <div className="flex items-center flex-shrink-0">
+                    <div className="flex items-center flex-shrink-0 gap-1">
                         <ResourceDisplay icon="⚡" value={`${safeActionPoints.current}/${safeActionPoints.max}`} className="flex-shrink-0" />
                         <ActionPointTimer user={currentUserWithStatus} />
-                        <button onClick={() => openShop()} className="ml-1 w-6 h-6 flex-shrink-0 rounded-full bg-green-600 hover:bg-green-500 text-white font-bold flex items-center justify-center text-lg shadow-md transition-transform hover:scale-110 active:scale-95" title="행동력 구매">+</button>
+                        <button
+                            onClick={() => openShop('misc')}
+                            className="ml-1 flex-shrink-0 transition-transform hover:scale-110 active:scale-95"
+                            title="행동력 충전 (상점)"
+                        >
+                            <img src="/images/icon/applus.png" alt="행동력 충전" className="w-7 h-7 object-contain" />
+                        </button>
                     </div>
                     <ResourceDisplay icon={<img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 object-contain" />} value={safeGold.toLocaleString()} className="flex-shrink-0" />
                     <ResourceDisplay icon={<img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 object-contain" />} value={safeDiamonds.toLocaleString()} className="flex-shrink-0" />

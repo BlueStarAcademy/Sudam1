@@ -93,21 +93,21 @@ const InfoModal: React.FC<InfoModalProps> = ({ onClose, isTopmost }) => {
                     <div className="space-y-4">
                         <div>
                             <h3 className="font-bold text-lg text-gray-200">매너 등급 시스템</h3>
-                            <p className="text-sm">매너 점수는 모든 게임 모드에서 통합 관리됩니다. '보통' 등급을 기준으로, 매너 플레이 시 점수가 오르고 비매너 행동(접속 종료, 시간 초과 등) 시 점수가 하락합니다. 등급에 따라 다양한 혜택 또는 페널티가 적용됩니다.</p>
+                            <p className="text-sm">매너 점수는 모든 게임 모드에서 통합 관리됩니다. '보통' 등급을 기준으로, 매너 플레이 시 점수가 오르고 비매너 행동(접속 종료, 시간 초과 등) 시 점수가 하락합니다. 등급이 오를수록 좋은 효과가 누적되며, 등급이 내려가면 나쁜 효과가 단계별로 쌓입니다. 다시 등급을 올리면 가장 최근에 쌓인 페널티부터 하나씩 제거됩니다.</p>
                         </div>
                         <div>
                             <h3 className="font-bold text-lg text-gray-200">등급별 점수 및 효과</h3>
                             <ul className="list-disc list-inside text-sm space-y-2 pl-2">
-                                <li><span className="text-purple-400 font-semibold">마스터 (2000점 이상):</span> 능력치 보너스 포인트 +20 (등급 하락 시 회수)</li>
-                                <li><span className="text-blue-400 font-semibold">프로 (1600점 ~ 1999점):</span> 장비 강화 성공 확률 +10%</li>
-                                <li><span className="text-cyan-400 font-semibold">품격 (1200점 ~ 1599점):</span> 경기 승리 시 장비 상자 획득 확률 +10%</li>
-                                <li><span className="text-teal-400 font-semibold">매우 좋음 (800점 ~ 1199점):</span> 경기 승리 시 골드 보상 +10%</li>
+                                <li><span className="text-purple-400 font-semibold">마스터 (2000점 이상):</span> 모든 능력치 +10</li>
+                                <li><span className="text-blue-400 font-semibold">프로 (1600점 ~ 1999점):</span> 장비 분해 시 대박 확률 +20%</li>
+                                <li><span className="text-cyan-400 font-semibold">품격 (1200점 ~ 1599점):</span> 경기 승리 시 보상 상자 획득 확률 +20%</li>
+                                <li><span className="text-teal-400 font-semibold">매우 좋음 (800점 ~ 1199점):</span> 경기 승리 시 골드 보상 +20%</li>
                                 <li><span className="text-green-400 font-semibold">좋음 (400점 ~ 799점):</span> 최대 행동력 +10</li>
                                 <li className="border-t border-gray-600 pt-2"><span className="text-gray-300 font-semibold">보통 (200점 ~ 399점):</span> 기본 상태</li>
-                                <li className="border-t border-gray-600 pt-2"><span className="text-yellow-400 font-semibold">주의 (100점 ~ 199점):</span> 매너 액션 버튼 사용 시 매너 점수 +1 추가 회복</li>
-                                <li><span className="text-orange-400 font-semibold">나쁨 (50점 ~ 99점):</span> 대국 보상 50% 감소</li>
-                                <li><span className="text-red-500 font-semibold">매우 나쁨 (1점 ~ 49점):</span> 행동력 회복 속도 감소 (20분에 1)</li>
-                                <li><span className="text-red-700 font-semibold">최악 (0점):</span> 최대 행동력 10%로 감소</li>
+                                <li className="border-t border-gray-600 pt-2"><span className="text-yellow-400 font-semibold">주의 (100점 ~ 199점):</span> 경기 보상 상자 획득 확률 50% 감소</li>
+                                <li><span className="text-orange-400 font-semibold">나쁨 (50점 ~ 99점):</span> 경기 보상 골드 50% 감소</li>
+                                <li><span className="text-red-500 font-semibold">매우 나쁨 (1점 ~ 49점):</span> 행동력 회복 속도 감소 (20분마다 1 회복)</li>
+                                <li><span className="text-red-700 font-semibold">최악 (0점):</span> 최대 행동력 20 감소</li>
                             </ul>
                         </div>
                     </div>

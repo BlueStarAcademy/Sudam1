@@ -2,7 +2,11 @@ import { useState, useEffect } from 'react';
 // FIX: Import missing types from the centralized types file.
 import { LiveGameSession, Player } from '../types/index.js';
 
-export const useClientTimer = (session: LiveGameSession) => {
+interface ClientTimerOptions {
+    isPaused?: boolean;
+}
+
+export const useClientTimer = (session: LiveGameSession, options: ClientTimerOptions = {}) => {
     const [clientTimes, setClientTimes] = useState({ black: session.blackTimeLeft, white: session.whiteTimeLeft });
 
     useEffect(() => {
@@ -12,19 +16,32 @@ export const useClientTimer = (session: LiveGameSession) => {
             return;
         }
 
+        if (options.isPaused) {
+            // Keep the current displayed times while paused
+            return;
+        }
+
         // pending 상태의 게임은 시간이 흐르지 않도록 함
         if (session.gameStatus === 'pending') {
             setClientTimes({ black: session.blackTimeLeft, white: session.whiteTimeLeft });
             return;
         }
 
-        const deadline = session.turnDeadline || session.alkkagiTurnDeadline || session.curlingTurnDeadline || session.alkkagiPlacementDeadline || session.turnChoiceDeadline || session.guessDeadline || session.basePlacementDeadline || session.captureBidDeadline || session.itemUseDeadline;
+        const baseDeadline = session.turnDeadline
+            || session.alkkagiTurnDeadline
+            || session.curlingTurnDeadline
+            || session.alkkagiPlacementDeadline
+            || session.turnChoiceDeadline
+            || session.guessDeadline
+            || session.basePlacementDeadline
+            || session.captureBidDeadline
+            || session.itemUseDeadline;
 
-        if (!deadline) {
+        if (!baseDeadline) {
             setClientTimes({ black: session.blackTimeLeft, white: session.whiteTimeLeft });
             return;
         }
-        
+
         const isSharedDeadlinePhase = [
             'base_placement',
             'komi_bidding',
@@ -35,7 +52,7 @@ export const useClientTimer = (session: LiveGameSession) => {
         let animationFrameId: number;
 
         const updateTimer = () => {
-            const newTimeLeft = Math.max(0, (deadline - Date.now()) / 1000);
+            const newTimeLeft = Math.max(0, (baseDeadline - Date.now()) / 1000);
             
             if (isSharedDeadlinePhase) {
                 setClientTimes({ black: newTimeLeft, white: newTimeLeft });
@@ -48,10 +65,26 @@ export const useClientTimer = (session: LiveGameSession) => {
             }
             animationFrameId = requestAnimationFrame(updateTimer);
         };
-        
+
         animationFrameId = requestAnimationFrame(updateTimer);
         return () => cancelAnimationFrame(animationFrameId);
-    }, [session.turnDeadline, session.alkkagiTurnDeadline, session.curlingTurnDeadline, session.alkkagiPlacementDeadline, session.turnChoiceDeadline, session.guessDeadline, session.basePlacementDeadline, session.captureBidDeadline, session.itemUseDeadline, session.currentPlayer, session.blackTimeLeft, session.whiteTimeLeft, session.gameStatus, session.id]);
+    }, [
+        session.turnDeadline,
+        session.alkkagiTurnDeadline,
+        session.curlingTurnDeadline,
+        session.alkkagiPlacementDeadline,
+        session.turnChoiceDeadline,
+        session.guessDeadline,
+        session.basePlacementDeadline,
+        session.captureBidDeadline,
+        session.itemUseDeadline,
+        session.currentPlayer,
+        session.blackTimeLeft,
+        session.whiteTimeLeft,
+        session.gameStatus,
+        session.id,
+        options.isPaused,
+    ]);
 
     return { clientTimes };
 };

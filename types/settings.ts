@@ -2,10 +2,13 @@
 export type Theme = 'black' | 'white' | 'blue' | 'sky' | 'green';
 export type SoundCategory = 'stone' | 'notification' | 'item' | 'countdown' | 'turn';
 
+export type PanelEdgeStyle = 'none' | 'default' | 'style1' | 'style2' | 'style3' | 'style4' | 'style5';
+
 export interface GraphicsSettings {
     theme: Theme;
     panelColor?: string;
     textColor?: string;
+    panelEdgeStyle?: PanelEdgeStyle;
 }
 
 export interface SoundSettings {

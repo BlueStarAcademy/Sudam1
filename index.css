@@ -2,6 +2,15 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --panel-edge-top-left: none;
+  --panel-edge-top-right: none;
+  --panel-edge-bottom-left: none;
+  --panel-edge-bottom-right: none;
+  --panel-edge-size: 38px;
+  --button-edge-size: 24px;
+}
+
 :root, html[data-theme="black"] {
   /* Slate Theme (Default) */
   --bg-primary: 15 23 42; /* slate-900 */
@@ -107,6 +116,36 @@ html[data-theme="green"] {
     --text-on-panel: var(--custom-text-color, rgb(20 83 45));
 }
 
+
+@layer components {
+  .panel-surface,
+  .bg-panel,
+  .bg-panel-secondary,
+  .bg-panel-tertiary {
+    position: relative;
+    border: 1.5px solid rgba(var(--border-color), 0.75);
+    border-radius: 0.75rem;
+    background-origin: border-box;
+    background-image: var(--panel-edge-top-left), var(--panel-edge-top-right), var(--panel-edge-bottom-left), var(--panel-edge-bottom-right), linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.15));
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat;
+    background-position: top left, top right, bottom left, bottom right, center;
+    background-size: calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), auto;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.4);
+  }
+
+  .panel-surface::after,
+  .bg-panel::after,
+  .bg-panel-secondary::after,
+  .bg-panel-tertiary::after {
+    content: '';
+    position: absolute;
+    inset: 1px;
+    pointer-events: none;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+    mix-blend-mode: screen;
+  }
+}
 
 html {
   font-size: 0.8vw; /* Base font size scales with viewport width */

@@ -52,12 +52,17 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     }
 
     const [confirmModalType, setConfirmModalType] = useState<'resign' | null>(null);
-    const clientTimes = useClientTimer(session);
     const [showResultModal, setShowResultModal] = useState(false);
     const [showFinalTerritory, setShowFinalTerritory] = useState(false);
     const [justScanned, setJustScanned] = useState(false);
     const [pendingMove, setPendingMove] = useState<Point | null>(null);
     const [isAnalysisActive, setIsAnalysisActive] = useState(false);
+    const [isPaused, setIsPaused] = useState(false);
+    const [resumeCountdown, setResumeCountdown] = useState(0);
+    const pauseStartedAtRef = useRef<number | null>(null);
+    const pauseCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const [pauseButtonCooldown, setPauseButtonCooldown] = useState(0);
+    const clientTimes = useClientTimer(session, session.isSinglePlayer ? { isPaused } : {});
     
     const prevGameStatus = usePrevious(gameStatus);
     const prevCurrentPlayer = usePrevious(currentPlayer);
@@ -211,6 +216,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     const handleBoardClick = useCallback((x: number, y: number) => {
         audioService.stopTimerWarning();
         if (isSpectator || gameStatus === 'missile_animating') return;
+        if (session.isSinglePlayer && isPaused) return;
 
         if (isMobile && settings.features.mobileConfirm && isMyTurn && !isItemModeActive) {
             if (pendingMove && pendingMove.x === x && pendingMove.y === y) return;
@@ -236,7 +242,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         }
 
         if (actionType) handlers.handleAction({ type: actionType, payload } as ServerAction);
-    }, [isSpectator, gameStatus, isMyTurn, gameId, handlers.handleAction, currentUser.id, player1.id, session.baseStones_p1, session.baseStones_p2, session.settings.baseStones, mode, isMobile, settings.features.mobileConfirm, pendingMove, isItemModeActive]);
+    }, [isSpectator, gameStatus, isMyTurn, gameId, handlers.handleAction, currentUser.id, player1.id, session.baseStones_p1, session.baseStones_p2, session.settings.baseStones, mode, isMobile, settings.features.mobileConfirm, pendingMove, isItemModeActive, session.isSinglePlayer, isPaused]);
 
     const handleConfirmMove = useCallback(() => {
         audioService.stopTimerWarning();
@@ -258,6 +264,76 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     }, [pendingMove, gameId, handlers, gameStatus, isMyTurn, mode]);
 
     const handleCancelMove = useCallback(() => setPendingMove(null), []);
+
+    const clearPauseCountdown = useCallback(() => {
+        if (pauseCountdownIntervalRef.current) {
+            clearInterval(pauseCountdownIntervalRef.current);
+            pauseCountdownIntervalRef.current = null;
+        }
+    }, []);
+
+    const resumeFromPause = useCallback(() => {
+        if (!isPaused) return;
+        if (resumeCountdown > 0) return;
+
+        setIsPaused(false);
+        setResumeCountdown(0);
+        setPauseButtonCooldown(5);
+        if (pauseStartedAtRef.current) {
+            const pausedDuration = Date.now() - pauseStartedAtRef.current;
+            pauseStartedAtRef.current = null;
+            const newTurnDeadline = session.turnDeadline ? session.turnDeadline + pausedDuration : undefined;
+            const newItemDeadline = session.itemUseDeadline ? session.itemUseDeadline + pausedDuration : undefined;
+            const newSharedDeadline = session.basePlacementDeadline ? session.basePlacementDeadline + pausedDuration : undefined;
+            if (newTurnDeadline || newItemDeadline || newSharedDeadline) {
+                session.turnDeadline = newTurnDeadline ?? session.turnDeadline;
+                session.itemUseDeadline = newItemDeadline ?? session.itemUseDeadline;
+                session.basePlacementDeadline = newSharedDeadline ?? session.basePlacementDeadline;
+            }
+        }
+        clearPauseCountdown();
+    }, [isPaused, resumeCountdown, clearPauseCountdown, session]);
+
+    const initiatePause = useCallback(() => {
+        if (isPaused || pauseButtonCooldown > 0) return;
+        audioService.stopTimerWarning();
+        pauseStartedAtRef.current = Date.now();
+        setIsPaused(true);
+        setResumeCountdown(5);
+        clearPauseCountdown();
+        pauseCountdownIntervalRef.current = setInterval(() => {
+            setResumeCountdown(prev => {
+                if (prev <= 1) {
+                    clearPauseCountdown();
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+    }, [isPaused, pauseButtonCooldown, clearPauseCountdown]);
+
+    const handlePauseToggle = useCallback(() => {
+        if (!session.isSinglePlayer) return;
+        if (!isPaused) {
+            initiatePause();
+        } else {
+            resumeFromPause();
+        }
+    }, [isPaused, initiatePause, resumeFromPause, session.isSinglePlayer]);
+
+    useEffect(() => {
+        if (pauseButtonCooldown <= 0) return;
+        const interval = setInterval(() => {
+            setPauseButtonCooldown(prev => {
+                if (prev <= 1) {
+                    clearInterval(interval);
+                    return 0;
+                }
+                return prev - 1;
+            });
+        }, 1000);
+        return () => clearInterval(interval);
+    }, [pauseButtonCooldown]);
 
     const analysisResult = useMemo(() => session.analysisResult?.[currentUser.id] ?? (['ended','no_contest'].includes(gameStatus) ? session.analysisResult?.['system'] : null), [session.analysisResult, currentUser.id, gameStatus]);
 
@@ -288,6 +364,27 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
             setConfirmModalType('resign');
         }
     }, [isSpectator, handlers.handleAction, session.isAiGame, session.isSinglePlayer, gameId, gameStatus, isNoContestLeaveAvailable]);
+
+    useEffect(() => {
+        return () => {
+            clearPauseCountdown();
+        };
+    }, [clearPauseCountdown]);
+
+    useEffect(() => {
+        if (!session.isSinglePlayer) return;
+        if (isPaused && ['ended', 'no_contest'].includes(gameStatus)) {
+            resumeFromPause();
+        }
+    }, [session.isSinglePlayer, isPaused, gameStatus, resumeFromPause]);
+
+    useEffect(() => {
+        setIsPaused(false);
+        setResumeCountdown(0);
+        setPauseButtonCooldown(0);
+        pauseStartedAtRef.current = null;
+        clearPauseCountdown();
+    }, [session.id, clearPauseCountdown]);
     
     const globalChat = useMemo(() => waitingRoomChats['global'] || [], [waitingRoomChats]);
     
@@ -365,25 +462,30 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                         isMobile={isMobile}
                                         myRevealedMoves={session.revealedHiddenMoves?.[currentUser.id] || []}
                                         showLastMoveMarker={settings.features.lastMoveMarker}
+                                        isSinglePlayerPaused={isPaused}
+                                        resumeCountdown={resumeCountdown}
                                     />
                                 </div>
                             </div>
                             <div className="flex-shrink-0 w-full flex flex-col gap-1">
-                                <TurnDisplay session={session} />
-                                <GameControls {...gameControlsProps} isSinglePlayer={true} />
+                                <TurnDisplay session={session} isPaused={isPaused} />
+                                <GameControls {...gameControlsProps} isSinglePlayer={true} isSinglePlayerPaused={isPaused} />
                             </div>
                         </div>
                     </main>
                     
                     {!isMobile && (
                         <div className="w-full lg:w-[320px] xl:w-[360px] flex-shrink-0">
-                            <SinglePlayerSidebar 
-                                session={session}
-                                gameChat={gameChat}
-                                onAction={handlers.handleAction}
-                                currentUser={currentUserWithStatus}
-                                onLeaveOrResign={handleLeaveOrResignClick}
-                            />
+                                <SinglePlayerSidebar 
+                                    session={session}
+                                    gameChat={gameChat}
+                                    onAction={handlers.handleAction}
+                                    currentUser={currentUserWithStatus}
+                                    isPaused={isPaused}
+                                    resumeCountdown={resumeCountdown}
+                                    pauseButtonCooldown={pauseButtonCooldown}
+                                    onTogglePause={handlePauseToggle}
+                                />
                         </div>
                     )}
                     
@@ -407,8 +509,11 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                     gameChat={gameChat}
                                     onAction={handlers.handleAction}
                                     currentUser={currentUserWithStatus}
-                                    onLeaveOrResign={handleLeaveOrResignClick}
                                     onClose={() => setIsMobileSidebarOpen(false)}
+                                    isPaused={isPaused}
+                                    resumeCountdown={resumeCountdown}
+                                    pauseButtonCooldown={pauseButtonCooldown}
+                                    onTogglePause={handlePauseToggle}
                                 />
                             </div>
                             {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}

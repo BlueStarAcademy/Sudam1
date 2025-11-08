@@ -102,7 +102,7 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 }
 
                 // 선택적 필드만 반환 (메시지 크기 최적화)
-                const updatedUser = getSelectiveUserUpdate(user, 'BUY_SHOP_ITEM');
+                const updatedUser = getSelectiveUserUpdate(user, 'BUY_SHOP_ITEM', { includeAll: true });
 
                 // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
                 const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
@@ -221,7 +221,7 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             }
             
             // 선택적 필드만 반환 (메시지 크기 최적화)
-            const updatedUser = getSelectiveUserUpdate(user, 'BUY_MATERIAL_BOX');
+            const updatedUser = getSelectiveUserUpdate(user, 'BUY_MATERIAL_BOX', { includeAll: true });
 
             // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
             const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
@@ -423,7 +423,7 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             }
 
             // 선택적 필드만 반환 (메시지 크기 최적화)
-            const updatedUser = getSelectiveUserUpdate(user, 'BUY_CONDITION_POTION');
+            const updatedUser = getSelectiveUserUpdate(user, 'BUY_CONDITION_POTION', { includeAll: true });
 
             // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
             const fullUserForBroadcast = JSON.parse(JSON.stringify(user));

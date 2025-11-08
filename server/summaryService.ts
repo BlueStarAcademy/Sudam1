@@ -226,7 +226,8 @@ const calculateGameRewards = (
     isDraw: boolean,
     itemDropBonus: number,
     materialDropBonus: number,
-    rewardMultiplier: number
+    rewardMultiplier: number,
+    effects: effectService.CalculatedEffects
 ): { gold: number; items: InventoryItem[] } => {
     const { mode, settings, isAiGame } = game;
 
@@ -266,18 +267,25 @@ const calculateGameRewards = (
     // Apply reward multiplier for all games
     goldReward = Math.round(goldReward * rewardMultiplier);
 
+    // Apply manner penalties and bonuses
+    goldReward = Math.round(goldReward * effects.goldRewardMultiplier);
+    if (isWinner && effects.winGoldBonusPercent !== 0) {
+        goldReward = Math.round(goldReward * (1 + effects.winGoldBonusPercent / 100));
+    }
+
     // Determine item drop logic
     const itemsDropped: InventoryItem[] = [];
     // No items from AI games
     const canDropItem = (isWinner || !isDraw) && !isAiGame; 
     
     if (canDropItem && lootTable.length > 0) {
-        const dropChanceMultiplier = (isWinner ? 1.0 : 0.5) * rewardMultiplier;
+        const dropChanceMultiplier = (isWinner ? 1.0 : 0.5) * rewardMultiplier * effects.dropChanceMultiplier;
 
         for (const loot of lootTable) {
             const bonus = loot.type === 'equipment' ? itemDropBonus : materialDropBonus;
             const baseChance = loot.chance * dropChanceMultiplier;
-            const effectiveChance = baseChance * (1 + bonus / 100);
+            const additionalPercent = bonus + (isWinner ? effects.winDropBonusPercent : 0) + effects.itemDropRateBonus;
+            const effectiveChance = baseChance * (1 + additionalPercent / 100);
             
             if (Math.random() * 100 < effectiveChance) {
                 const droppedItem = createConsumableItemInstance(loot.name);
@@ -446,7 +454,9 @@ const processPlayerSummary = async (
     // Apply rewards
     const itemDropBonus = effects.specialStatBonuses[SpecialStat.ItemDropRate].percent;
     const materialDropBonus = effects.specialStatBonuses[SpecialStat.MaterialDropRate].percent;
-    const rewards = isNoContest ? { gold: 0, items: [] } : calculateGameRewards(game, updatedPlayer, isWinner, isDraw, itemDropBonus, materialDropBonus, rewardMultiplier);
+    const rewards = isNoContest
+        ? { gold: 0, items: [] }
+        : calculateGameRewards(game, updatedPlayer, isWinner, isDraw, itemDropBonus, materialDropBonus, rewardMultiplier, effects);
 
     updatedPlayer.gold += rewards.gold;
 

@@ -74,8 +74,14 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
                  selectedClass === SinglePlayerLevel.고급 ? '고급반' : '유단자'} 스테이지
             </h2>
             
-            <div className="flex-1 overflow-y-auto">
-                <div className="grid grid-cols-4 lg:grid-cols-5 gap-3">
+            <div className="flex-1 overflow-hidden">
+                <div
+                    className="grid gap-2 h-full"
+                    style={{
+                        gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+                        gridTemplateRows: 'repeat(4, minmax(0, 1fr))'
+                    }}
+                >
                     {stages.map((stage, index) => {
                         const isCleared = isStageCleared(stage.id);
                         const isLocked = isStageLocked(index);
@@ -87,65 +93,65 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
                             <div
                                 key={stage.id}
                                 className={`
-                                    relative bg-tertiary rounded-lg p-3 flex flex-col items-center justify-between
-                                    transition-all duration-200 min-h-[140px]
+                                    relative bg-tertiary/90 rounded-lg border border-color/40 px-2.5 py-3 flex flex-col items-center justify-between min-h-0 min-w-0
+                                    transition-transform duration-150
                                     ${isLocked 
-                                        ? 'opacity-50 cursor-not-allowed' 
+                                        ? 'opacity-50 cursor-not-allowed'
                                         : isCleared
-                                        ? 'ring-2 ring-green-500 cursor-pointer hover:shadow-lg'
-                                        : 'cursor-pointer hover:shadow-lg hover:scale-105'
+                                            ? 'cursor-pointer ring-1 ring-green-500/70 hover:scale-[1.02]'
+                                            : 'cursor-pointer hover:scale-[1.03] hover:shadow-md'
                                     }
                                 `}
                                 onClick={() => !isLocked && handleStageEnter(stage.id)}
                             >
                                 {isLocked && (
-                                    <div className="absolute inset-0 bg-black/50 rounded-lg flex items-center justify-center z-10">
-                                        <span className="text-white font-bold text-xl">🔒</span>
-                                    </div>
-                                )}
-                                
-                                {isCleared && (
-                                    <div className="absolute top-2 right-2 bg-green-500 rounded-full w-6 h-6 flex items-center justify-center z-20 shadow-lg">
-                                        <span className="text-white text-sm font-bold">✓</span>
+                                    <div className="absolute inset-0 bg-black/60 rounded-lg flex items-center justify-center z-10">
+                                        <span className="text-white font-bold text-lg">🔒</span>
                                     </div>
                                 )}
 
-                                {/* 스테이지 번호 */}
-                                <div className="text-center w-full mb-2">
-                                    <div className="text-3xl sm:text-4xl font-black text-primary mb-1 drop-shadow-lg">
+                                {isCleared && (
+                                    <div className="absolute top-1.5 right-1.5 bg-green-500/90 rounded-full w-5 h-5 flex items-center justify-center z-20 shadow text-[11px] font-bold text-white">
+                                        ✓
+                                    </div>
+                                )}
+
+                                <div className="text-center w-full mb-1">
+                                    <div className="text-xl font-black text-primary drop-shadow">
                                         {stageNumber}
                                     </div>
                                 </div>
 
-                                {/* 바둑 종류 */}
-                                <div className="w-full mb-3">
-                                    <div className="bg-gray-700/60 rounded-lg px-2 py-1.5 border border-gray-600/50">
-                                        <div className="text-xs sm:text-sm font-semibold text-center text-yellow-300">
+                                <div className="w-full mb-1.5">
+                                    <div className="bg-gray-700/60 rounded-md px-2 py-1 border border-gray-600/50">
+                                        <div className="text-[11px] font-semibold text-center text-yellow-300 truncate">
                                             {gameModeName}
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* 클리어 표시 */}
                                 {isCleared && (
-                                    <div className="text-green-400 text-xs font-semibold mb-2">
+                                    <div className="text-green-400 text-[10px] font-semibold mb-1">
                                         클리어 완료
                                     </div>
                                 )}
 
-                                {!isLocked && (
+                                {!isLocked ? (
                                     <Button
                                         onClick={(e) => {
                                             e?.stopPropagation();
                                             handleStageEnter(stage.id);
                                         }}
                                         colorScheme="blue"
-                                        className="w-full mt-auto !text-xs sm:!text-sm !py-2 flex items-center justify-center gap-1.5"
+                                        className="w-full mt-auto !text-[10px] !py-1.5"
                                         disabled={!hasEnoughAP}
                                     >
-                                        <span>⚡</span>
-                                        <span>입장 ({stage.actionPointCost})</span>
+                                        입장 (⚡{stage.actionPointCost})
                                     </Button>
+                                ) : (
+                                    <div className="mt-auto text-[10px] text-gray-400 text-center">
+                                        이전 스테이지 클리어 필요
+                                    </div>
                                 )}
                             </div>
                         );

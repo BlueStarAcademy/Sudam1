@@ -153,8 +153,12 @@ const simulateAndFinishMatch = (match: Match, players: PlayerForTournament[], us
         p2.stats = JSON.parse(JSON.stringify(p2.originalStats));
     }
 
-    p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-    p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+    if (p1.condition === undefined || p1.condition === null || p1.condition === 1000) {
+        p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+    }
+    if (p2.condition === undefined || p2.condition === null || p2.condition === 1000) {
+        p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+    }
 
     let p1CumulativeScore = 0;
     let p2CumulativeScore = 0;

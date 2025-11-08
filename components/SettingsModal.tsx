@@ -5,10 +5,11 @@ import React, { useState } from 'react';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import { useAppContext } from '../hooks/useAppContext.js';
-import { Theme, SoundCategory } from '../types.js';
+import { Theme, SoundCategory, PanelEdgeStyle } from '../types.js';
 import ToggleSwitch from './ui/ToggleSwitch.js';
 import Slider from './ui/Slider.js';
 import ColorSwatch from './ui/ColorSwatch.js';
+import { getPanelEdgeImages } from '../constants/panelEdges.js';
 
 interface SettingsModalProps {
     onClose: () => void;
@@ -26,7 +27,7 @@ const THEMES: { id: Theme; name: string; colors: string[] }[] = [
 ];
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => {
-    const { settings, updateTheme, updateSoundSetting, updateFeatureSetting, updatePanelColor, updateTextColor, resetGraphicsToDefault } = useAppContext();
+    const { settings, updateTheme, updateSoundSetting, updateFeatureSetting, updatePanelColor, updateTextColor, updatePanelEdgeStyle, resetGraphicsToDefault } = useAppContext();
     const [activeTab, setActiveTab] = useState<SettingsTab>('graphics');
     
     const tabs: { id: SettingsTab; label: string }[] = [
@@ -42,6 +43,34 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => 
         { key: 'countdown', label: '초읽기/카운트다운 소리' },
         { key: 'turn', label: '내 턴 알림 소리' },
     ];
+
+    const PANEL_EDGE_OPTIONS: { id: PanelEdgeStyle; label: string; description?: string }[] = [
+        { id: 'none', label: '엣지 없음' },
+        { id: 'default', label: '클래식 엣지' },
+        { id: 'style1', label: '에메랄드' },
+        { id: 'style2', label: '코발트' },
+        { id: 'style3', label: '크림슨' },
+        { id: 'style4', label: '자수정' },
+        { id: 'style5', label: '황금' },
+    ];
+
+    const renderEdgePreview = (style: PanelEdgeStyle) => {
+        const edges = getPanelEdgeImages(style);
+        const backgroundImage = [edges.topLeft, edges.topRight, edges.bottomLeft, edges.bottomRight]
+            .map(img => img ?? 'none')
+            .join(', ');
+        return (
+            <div
+                className="w-20 h-14 rounded-lg border border-color bg-panel"
+                style={{
+                    backgroundImage,
+                    backgroundRepeat: 'no-repeat, no-repeat, no-repeat, no-repeat',
+                    backgroundPosition: 'top left, top right, bottom left, bottom right',
+                    backgroundSize: '28px 28px',
+                }}
+            />
+        );
+    };
 
     const renderContent = () => {
         switch (activeTab) {
@@ -66,6 +95,35 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => 
                                             {theme.colors.map((color, i) => (
                                                 <div key={i} style={{ backgroundColor: color }} className="w-6 h-6 rounded-full border-2 border-primary"></div>
                                             ))}
+                                        </div>
+                                    </label>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="pt-4 border-t border-color">
+                            <h3 className="text-lg font-semibold text-text-secondary mb-3">패널 엣지 스타일</h3>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {PANEL_EDGE_OPTIONS.map(option => (
+                                    <label
+                                        key={option.id}
+                                        className="flex items-center gap-3 p-3 bg-tertiary/50 rounded-lg cursor-pointer border-2 border-transparent has-[:checked]:border-accent has-[:checked]:ring-2 has-[:checked]:ring-accent"
+                                    >
+                                        <input
+                                            type="radio"
+                                            name="panelEdgeStyle"
+                                            value={option.id}
+                                            checked={(settings.graphics.panelEdgeStyle ?? 'default') === option.id}
+                                            onChange={() => updatePanelEdgeStyle(option.id)}
+                                            className="w-5 h-5 text-accent bg-secondary border-color focus:ring-accent"
+                                        />
+                                        <div className="flex flex-col gap-1">
+                                            <span className="text-text-primary text-sm font-semibold">{option.label}</span>
+                                            {option.description && (
+                                                <span className="text-xs text-text-secondary">{option.description}</span>
+                                            )}
+                                        </div>
+                                        <div className="ml-auto">
+                                            {renderEdgePreview(option.id)}
                                         </div>
                                     </label>
                                 ))}

@@ -2,6 +2,19 @@ import { randomUUID } from 'crypto';
 import { InventoryItem, InventoryItemType } from '../types.js';
 import { CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../constants';
 
+const CONSUMABLE_TEMPLATE_MAP: Record<string, Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'|'enhancementFails'>> = CONSUMABLE_ITEMS.reduce((map, item) => {
+    map[item.name] = item;
+    return map;
+}, {} as Record<string, Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'|'enhancementFails'>>);
+
+const MATERIAL_TEMPLATE_MAP: Record<string, Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'|'enhancementFails'>> = { ...MATERIAL_ITEMS };
+
+export const getItemTemplateByName = (itemName: string) => {
+    const trimmedName = itemName?.trim();
+    if (!trimmedName) return null;
+    return CONSUMABLE_TEMPLATE_MAP[trimmedName] || MATERIAL_TEMPLATE_MAP[trimmedName] || null;
+};
+
 export const addItemsToInventory = (currentInventory: InventoryItem[], inventorySlots: { equipment: number; consumable: number; material: number; }, itemsToAdd: InventoryItem[]): { success: boolean, finalItemsToAdd: InventoryItem[], updatedInventory: InventoryItem[] } => {
     const tempInventory = JSON.parse(JSON.stringify(currentInventory));
     const finalItemsToAdd: InventoryItem[] = [];
@@ -89,9 +102,25 @@ export const addItemsToInventory = (currentInventory: InventoryItem[], inventory
                 // If still quantity left, add as new items
                 while (quantityLeft > 0) {
                     const toAdd = Math.min(quantityLeft, 100);
-                    const template = [...Object.values(CONSUMABLE_ITEMS), ...Object.values(MATERIAL_ITEMS)].find(t => t.name === name) as Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'>;
+                    const template = getItemTemplateByName(name);
                     if (template) {
                         finalItemsToAdd.push({ ...template, id: `item-${randomUUID()}`, quantity: toAdd, createdAt: Date.now(), isEquipped: false, stars: 0, level: 1 });
+                    } else {
+                        console.error(`[addItemsToInventory] Unable to find template for stackable item '${name}'.`);
+                        finalItemsToAdd.push({
+                            name,
+                            description: '보상 아이템',
+                            type: 'consumable',
+                            slot: null,
+                            image: '/images/icon/Reward.png',
+                            grade: 'normal',
+                            id: `item-${randomUUID()}`,
+                            quantity: toAdd,
+                            createdAt: Date.now(),
+                            isEquipped: false,
+                            stars: 0,
+                            level: 1,
+                        } as InventoryItem);
                     }
                     quantityLeft -= toAdd;
                 }
@@ -131,7 +160,7 @@ export const createItemInstancesFromReward = (itemRefs: (InventoryItem | { itemI
         
         // This logic finds the item template and creates an instance, which is correct for granting a reward item.
         // It avoids the previous issue of "opening" the item via shop logic.
-        const template = [...CONSUMABLE_ITEMS, ...Object.values(MATERIAL_ITEMS)].find(t => t.name === itemId);
+        const template = getItemTemplateByName(itemId);
 
         if (template) {
             const newItem: InventoryItem = {
@@ -147,6 +176,21 @@ export const createItemInstancesFromReward = (itemRefs: (InventoryItem | { itemI
             createdItems.push(newItem);
         } else {
             console.error(`[Reward] Could not find consumable/material item template for: ${itemId}`);
+            createdItems.push({
+                name: itemId,
+                description: '보상 아이템',
+                type: 'consumable',
+                slot: null,
+                image: '/images/icon/Reward.png',
+                grade: 'normal',
+                id: `item-${randomUUID()}`,
+                createdAt: Date.now(),
+                quantity,
+                isEquipped: false,
+                stars: 0,
+                level: 1,
+                options: undefined,
+            });
         }
     }
     return createdItems;

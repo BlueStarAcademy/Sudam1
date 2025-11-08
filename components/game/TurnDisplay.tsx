@@ -5,6 +5,7 @@ import { audioService } from '../../services/audioService.js';
 
 interface TurnDisplayProps {
     session: LiveGameSession;
+    isPaused?: boolean;
 }
 
 function usePrevious<T>(value: T): T | undefined {
@@ -107,7 +108,7 @@ const getGameStatusText = (session: LiveGameSession): string => {
     }
 };
 
-const TurnDisplay: React.FC<TurnDisplayProps> = ({ session }) => {
+const TurnDisplay: React.FC<TurnDisplayProps> = ({ session, isPaused = false }) => {
     const [timeLeft, setTimeLeft] = useState(30);
     const [percentage, setPercentage] = useState(100);
     const [foulMessage, setFoulMessage] = useState<string | null>(null);
@@ -127,6 +128,10 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({ session }) => {
             return;
         }
 
+        if (isPaused) {
+            return;
+        }
+
         const totalDuration = session.turnDeadline! - session.turnStartTime!;
         if (totalDuration <= 0) return;
 
@@ -139,7 +144,7 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({ session }) => {
         updateBar();
         const interval = setInterval(updateBar, 100);
         return () => clearInterval(interval);
-    }, [isPlayfulTurn, session.turnDeadline, session.turnStartTime]);
+    }, [isPlayfulTurn, session.turnDeadline, session.turnStartTime, isPaused]);
 
 
     useEffect(() => {
@@ -178,7 +183,7 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({ session }) => {
     const isItemMode = ['hidden_placing', 'scanning', 'missile_selecting'].includes(session.gameStatus);
 
     useEffect(() => {
-        if (!isItemMode || !session.itemUseDeadline) {
+        if (!isItemMode || !session.itemUseDeadline || isPaused) {
             return;
         }
 
@@ -191,7 +196,7 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({ session }) => {
         const timerId = setInterval(updateTimer, 500);
 
         return () => clearInterval(timerId);
-    }, [isItemMode, session.itemUseDeadline]);
+    }, [isItemMode, session.itemUseDeadline, isPaused]);
 
     const isSinglePlayer = session.isSinglePlayer;
     const baseClasses = "flex-shrink-0 rounded-lg flex flex-col items-center justify-center shadow-inner py-1 h-12 border";

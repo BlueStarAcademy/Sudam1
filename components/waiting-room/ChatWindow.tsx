@@ -47,11 +47,27 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onAction, mode, onVie
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const getLocationPrefix = () => {
+        if (locationPrefix && locationPrefix.trim().length > 0) {
+            return locationPrefix;
+        }
+        switch (mode) {
+            case 'strategic':
+                return '[전략바둑]';
+            case 'playful':
+                return '[놀이바둑]';
+            case 'global':
+                return '[홈]';
+            default:
+                return `[${mode}]`;
+        }
+    };
+
     const handleSend = (message: { text?: string, emoji?: string }) => {
         if (cooldown > 0) return;
         // mode가 'strategic' 또는 'playful'이면 해당 채널 사용, 그 외에는 'global'
         const channel = (mode === 'strategic' || mode === 'playful') ? mode : 'global';
-        const payload = { channel, ...message, location: locationPrefix };
+        const payload = { channel, ...message, location: getLocationPrefix() };
         onAction({ type: 'SEND_CHAT_MESSAGE', payload });
         setShowQuickChat(false);
         setChatInput('');

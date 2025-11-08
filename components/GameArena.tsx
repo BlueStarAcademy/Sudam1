@@ -18,26 +18,29 @@ interface GameArenaProps extends GameProps {
     isMobile: boolean;
     myRevealedMoves: number[];
     showLastMoveMarker: boolean;
+    isSinglePlayerPaused?: boolean;
+    resumeCountdown?: number;
 }
 
 const GameArena: React.FC<GameArenaProps> = (props) => {
-    const { session } = props;
+    const { session, isSinglePlayerPaused, resumeCountdown, ...restProps } = props;
+    const sharedProps = { ...restProps, session };
     const { mode, isSinglePlayer } = session;
     
     if (isSinglePlayer) {
-        return <SinglePlayerArena {...props} />;
+        return <SinglePlayerArena {...sharedProps} isPaused={isSinglePlayerPaused} resumeCountdown={resumeCountdown} />;
     }
 
     // This component is now a simple dispatcher.
     switch(mode) {
         case GameMode.Alkkagi: 
-            return <AlkkagiArena {...props} />;
+            return <AlkkagiArena {...sharedProps} />;
         case GameMode.Curling: 
-            return <CurlingArena {...props} />;
+            return <CurlingArena {...sharedProps} />;
         case GameMode.Dice: 
-            return <DiceGoArena {...props} />;
+            return <DiceGoArena {...sharedProps} />;
         case GameMode.Thief: 
-            return <ThiefGoArena {...props} />;
+            return <ThiefGoArena {...sharedProps} />;
         
         // All other Go-based games are handled by the GoGameArena
         case GameMode.Standard:
@@ -50,7 +53,7 @@ const GameArena: React.FC<GameArenaProps> = (props) => {
         case GameMode.Omok:
         case GameMode.Ttamok:
         default:
-            return <GoGameArena {...props} />;
+            return <GoGameArena {...sharedProps} />;
     }
 }
 

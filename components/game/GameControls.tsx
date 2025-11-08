@@ -1,9 +1,37 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { GameMode, LiveGameSession, ServerAction, GameProps, Player, User, Point, GameStatus, AppSettings } from '../../types.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants';
+import { SINGLE_PLAYER_STAGES } from '../../constants/singlePlayerConstants.js';
 import Button from '../Button.js';
 import Dice from '../Dice.js';
 import { audioService } from '../../services/audioService.js';
+
+interface ImageButtonProps {
+    src: string;
+    alt: string;
+    onClick?: () => void;
+    disabled?: boolean;
+    title?: string;
+    variant?: 'primary' | 'danger';
+}
+
+const ImageButton: React.FC<ImageButtonProps> = ({ src, alt, onClick, disabled = false, title, variant = 'primary' }) => {
+    const variantClasses = variant === 'danger'
+        ? 'border-red-400 shadow-red-500/40 focus:ring-red-400'
+        : 'border-amber-400 shadow-amber-500/30 focus:ring-amber-300';
+
+    return (
+        <button
+            type="button"
+            onClick={disabled ? undefined : onClick}
+            disabled={disabled}
+            title={title}
+            className={`relative w-16 h-16 md:w-20 md:h-20 rounded-xl border-2 transition-transform duration-200 ease-out overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 ${variantClasses} ${disabled ? 'opacity-40 cursor-not-allowed border-gray-700 shadow-none' : 'hover:scale-105 active:scale-95 shadow-lg'}`}
+        >
+            <img src={src} alt={alt} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+        </button>
+    );
+};
 
 interface GameControlsProps {
     session: LiveGameSession;
@@ -20,6 +48,7 @@ interface GameControlsProps {
     isMobile: boolean;
     settings: AppSettings;
     isSinglePlayer?: boolean;
+    isSinglePlayerPaused?: boolean;
 }
 
 const formatCooldown = (ms: number) => {
@@ -336,7 +365,7 @@ const CurlingItemPanel: React.FC<{ session: LiveGameSession; isMyTurn: boolean; 
 
 
 const GameControls: React.FC<GameControlsProps> = (props) => {
-    const { session, isMyTurn, isSpectator, onAction, setShowResultModal, setConfirmModalType, currentUser, onlineUsers, pendingMove, onConfirmMove, onCancelMove, isMobile, settings, isSinglePlayer } = props;
+    const { session, isMyTurn, isSpectator, onAction, setShowResultModal, setConfirmModalType, currentUser, onlineUsers, pendingMove, onConfirmMove, onCancelMove, isMobile, settings, isSinglePlayer, isSinglePlayerPaused = false } = props;
     const { id: gameId, mode, gameStatus, blackPlayerId, whitePlayerId, player1, player2 } = session;
     const isMixMode = mode === GameMode.Mix;
     const isGameEnded = ['ended', 'no_contest', 'rematch_pending'].includes(gameStatus);
@@ -400,6 +429,145 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
     const usesLeftText = (typeof usesLeft === 'number' && typeof maxUses === 'number') ? `(${usesLeft})` : '';
     
     const isRequestingAnalysis = session.isAnalyzing;
+
+    if (isSinglePlayer) {
+        const stageId = session.stageId;
+        const currentStageIndex = stageId ? SINGLE_PLAYER_STAGES.findIndex(s => s.id === stageId) : -1;
+        const nextStage = currentStageIndex >= 0 ? SINGLE_PLAYER_STAGES[currentStageIndex + 1] : undefined;
+        const highestClearedStageIndex = currentUser.singlePlayerProgress ?? -1;
+        const isWinner = session.winner === Player.Black;
+        const canTryNextStage = !!nextStage && isWinner && highestClearedStageIndex >= currentStageIndex;
+
+        const refreshCosts = [0, 50, 75, 100, 200];
+        const refreshesUsed = session.singlePlayerPlacementRefreshesUsed ?? 0;
+        const remainingRefreshes = Math.max(0, 5 - refreshesUsed);
+        const costIndex = Math.min(refreshesUsed, refreshCosts.length - 1);
+        const nextCost = refreshCosts[costIndex] ?? refreshCosts[refreshCosts.length - 1];
+        const moveCount = session.moveHistory?.length ?? 0;
+        const isPlayingState = gameStatus === 'playing';
+        const currentGold = currentUser.gold ?? 0;
+        const canRefreshNow = !isGameEnded && isPlayingState && moveCount === 0 && remainingRefreshes > 0;
+        const canAffordRefresh = currentGold >= nextCost;
+        const isPaused = isSinglePlayerPaused;
+        const refreshDisabled = !canRefreshNow || !canAffordRefresh || isPaused;
+
+        let refreshHelperMessage = '';
+        if (remainingRefreshes <= 0) {
+            refreshHelperMessage = '재배치 횟수를 모두 사용했습니다.';
+        } else if (!isPlayingState) {
+            refreshHelperMessage = '게임이 시작되면 재배치할 수 있습니다.';
+        } else if (moveCount > 0) {
+            refreshHelperMessage = '첫 수를 두기 전에만 재배치할 수 있습니다.';
+        } else if (!canAffordRefresh) {
+            refreshHelperMessage = '골드가 부족합니다.';
+        } else if (isPaused) {
+            refreshHelperMessage = '일시 정지 상태에서는 재배치할 수 없습니다.';
+        }
+
+        const handleRefreshClick = () => {
+            if (refreshDisabled) {
+                if (refreshHelperMessage) window.alert(refreshHelperMessage);
+                return;
+            }
+            const confirmationMessage = nextCost > 0
+                ? `${nextCost.toLocaleString()} 골드를 사용하여 배치를 다시 섞으시겠습니까? (남은 재배치 ${remainingRefreshes}/5)`
+                : '첫 재배치는 무료입니다. 배치를 다시 섞으시겠습니까?';
+            if (window.confirm(confirmationMessage)) {
+                onAction({ type: 'SINGLE_PLAYER_REFRESH_PLACEMENT', payload: { gameId } } as ServerAction);
+            }
+        };
+
+        const canResign = isGameActive && !isSpectator && !isGameEnded && !isPaused;
+        const handleResignClick = () => {
+            if (!canResign) {
+                if (isPaused) {
+                    window.alert('일시 정지 상태에서는 기권할 수 없습니다.');
+                } else if (!isGameActive && !isGameEnded) {
+                    window.alert('게임이 시작된 후에만 기권할 수 있습니다.');
+                }
+                return;
+            }
+            if (window.confirm('기권하시겠습니까? (스테이지 실패)')) {
+                onAction({ type: 'RESIGN_GAME', payload: { gameId } } as ServerAction);
+            }
+        };
+
+        const handleRetry = () => {
+            if (stageId) {
+                onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId } });
+            }
+        };
+
+        const handleNextStage = () => {
+            if (canTryNextStage && nextStage) {
+                onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } });
+            }
+        };
+
+        const handleCloseResults = () => {
+            setShowResultModal(false);
+            sessionStorage.setItem('postGameRedirect', '#/singleplayer');
+            onAction({ type: 'LEAVE_AI_GAME', payload: { gameId } });
+        };
+
+        if (isGameEnded) {
+            return (
+                <footer className="responsive-controls flex-shrink-0 bg-gray-800 rounded-lg p-2 flex flex-col items-stretch justify-center gap-2 w-full min-h-[148px]">
+                    {isMobile && settings.features.mobileConfirm && pendingMove && (
+                        <div className="flex gap-4 p-2 justify-center">
+                            <Button onClick={onCancelMove} colorScheme="red" className="!py-3 !px-6">취소</Button>
+                            <Button onClick={onConfirmMove} colorScheme="green" className="!py-3 !px-6 animate-pulse">착수</Button>
+                        </div>
+                    )}
+                    <div className="bg-gray-900/70 border border-stone-700 rounded-xl px-4 py-3 flex flex-wrap items-center justify-center gap-3">
+                        <Button onClick={handleRetry} colorScheme="yellow" className="min-w-[120px]">재도전</Button>
+                        <Button onClick={handleNextStage} colorScheme="accent" className="min-w-[120px]" disabled={!canTryNextStage}>
+                            다음 단계{canTryNextStage && nextStage ? `: ${nextStage.name}` : ''}
+                        </Button>
+                        <Button onClick={handleCloseResults} colorScheme="green" className="min-w-[120px]">
+                            나가기
+                        </Button>
+                    </div>
+                </footer>
+            );
+        }
+
+        return (
+            <footer className="responsive-controls flex-shrink-0 bg-gray-800 rounded-lg p-2 flex flex-col items-stretch justify-center gap-2 w-full min-h-[148px]">
+                {isMobile && settings.features.mobileConfirm && pendingMove && (
+                    <div className="flex gap-4 p-2 justify-center">
+                        <Button onClick={onCancelMove} colorScheme="red" className="!py-3 !px-6">취소</Button>
+                        <Button onClick={onConfirmMove} colorScheme="green" className="!py-3 !px-6 animate-pulse">착수</Button>
+                    </div>
+                )}
+                <div className="bg-gray-900/60 border border-stone-700 rounded-xl px-4 py-3 flex flex-col lg:flex-row items-center justify-center gap-6 w-full">
+                    <div className="flex flex-col items-center gap-2">
+                        <ImageButton
+                            src="/images/button/giveup.png"
+                            alt="기권"
+                            title="기권하기"
+                            onClick={handleResignClick}
+                            disabled={!canResign}
+                            variant="danger"
+                        />
+                        <span className="text-[10px] text-red-300 font-semibold tracking-wide">기권</span>
+                    </div>
+                    <div className="flex flex-col items-center gap-2">
+                        <ImageButton
+                            src="/images/button/reflesh.png"
+                            alt="돌 재배치"
+                            title="돌 재배치"
+                            onClick={handleRefreshClick}
+                            disabled={refreshDisabled}
+                        />
+                        <span className="text-[10px] text-amber-200 font-semibold tracking-wide">
+                            {remainingRefreshes}/5 · {nextCost === 0 ? '무료' : `${nextCost.toLocaleString()}G`}
+                        </span>
+                    </div>
+                </div>
+            </footer>
+        );
+    }
 
     return (
         <footer className="responsive-controls flex-shrink-0 bg-gray-800 rounded-lg p-1 flex flex-col items-stretch justify-center gap-1 w-full">

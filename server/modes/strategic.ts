@@ -314,9 +314,12 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
                     if (game.isSinglePlayer) {
                         const patternStones = capturedPlayerEnum === types.Player.Black ? game.blackPatternStones : game.whitePatternStones;
-                        const wasPatternStone = patternStones?.some(p => p.x === stone.x && p.y === stone.y);
-                        if (wasPatternStone) {
-                            points = 2; // Pattern stones are worth 2 points
+                        if (patternStones) {
+                            const patternIndex = patternStones.findIndex(p => p.x === stone.x && p.y === stone.y);
+                            if (patternIndex !== -1) {
+                                points = 2; // Pattern stones are worth 2 points
+                                patternStones.splice(patternIndex, 1); // consume the pattern
+                            }
                         }
                     } else { // PvP logic
                         const isBaseStone = game.baseStones?.some(bs => bs.x === stone.x && bs.y === stone.y);

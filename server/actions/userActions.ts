@@ -146,9 +146,8 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             const { newStatPoints } = payload as { newStatPoints: Record<types.CoreStat, number> };
 
             const levelPoints = (user.strategyLevel - 1) * 2 + (user.playfulLevel - 1) * 2;
-            const masteryBonus = user.mannerMasteryApplied ? 20 : 0;
             const bonusPoints = user.bonusStatPoints || 0;
-            const totalAvailablePoints = levelPoints + masteryBonus + bonusPoints;
+            const totalAvailablePoints = levelPoints + bonusPoints;
 
             const totalSpent = Object.values(newStatPoints).reduce((sum, points) => sum + points, 0);
 

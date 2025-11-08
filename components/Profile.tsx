@@ -304,9 +304,8 @@ const Profile: React.FC<ProfileProps> = () => {
     }, [equippedItems]);
 
     const levelPoints = (currentUserWithStatus.strategyLevel - 1) * 2 + (currentUserWithStatus.playfulLevel - 1) * 2;
-    const masteryBonus = currentUserWithStatus.mannerMasteryApplied ? 20 : 0;
     const bonusPoints = currentUserWithStatus.bonusStatPoints || 0;
-    const totalPoints = levelPoints + masteryBonus + bonusPoints;
+    const totalPoints = levelPoints + bonusPoints;
 
     const spentPoints = useMemo(() => {
         return Object.values(currentUserWithStatus.spentStatPoints || {}).reduce((sum, points) => sum + points, 0);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { UserWithStatus, TournamentState, PlayerForTournament, ServerAction, User, CoreStat, Match, Round, CommentaryLine, TournamentType, LeagueTier } from '../types.js';
 import Button from './Button.js';
-import { TOURNAMENT_DEFINITIONS, BASE_TOURNAMENT_REWARDS, TOURNAMENT_SCORE_REWARDS, CONSUMABLE_ITEMS, MATERIAL_ITEMS, AVATAR_POOL, BORDER_POOL, CORE_STATS_DATA } from '../constants';
+import { TOURNAMENT_DEFINITIONS, BASE_TOURNAMENT_REWARDS, TOURNAMENT_SCORE_REWARDS, CONSUMABLE_ITEMS, MATERIAL_ITEMS, AVATAR_POOL, BORDER_POOL, CORE_STATS_DATA, LEAGUE_DATA } from '../constants';
 import Avatar from './Avatar.js';
 import RadarChart from './RadarChart.js';
 import SgfViewer from './SgfViewer.js';
@@ -85,6 +85,7 @@ const PlayerProfilePanel: React.FC<{
     if (!player) return <div className="p-2 text-center text-gray-500 flex items-center justify-center h-full bg-gray-900/50 rounded-lg">선수 대기 중...</div>;
 
     const fullUserData = useMemo(() => allUsers.find(u => u.id === player.id), [allUsers, player.id]);
+    const leagueInfo = useMemo(() => LEAGUE_DATA.find(league => league.tier === player.league), [player.league]);
 
     const cumulativeStats = useMemo(() => {
         const result = { wins: 0, losses: 0 };
@@ -164,15 +165,20 @@ const PlayerProfilePanel: React.FC<{
         if (tournamentStatus === 'round_in_progress') {
             // 경기 중에는 현재 능력치 사용 (컨디션 변화 반영)
             return player.stats;
-        } else {
-            // 경기 시작 전에는 홈 화면과 동일한 능력치 계산
+        }
+
+        if (player.originalStats) {
+            // 토너먼트 생성 시점의 고정 능력치 사용
+            return player.originalStats;
+        }
+
             if (fullUserData) {
+            // 유저 정보가 있으면 최신 능력치 계산
                 return calculateTotalStats(fullUserData);
             }
-            // fullUserData가 없으면 player.stats 사용 (봇 등)
+
             return player.stats;
-        }
-    }, [player.stats, fullUserData, tournamentStatus]);
+    }, [player.stats, player.originalStats, fullUserData, tournamentStatus]);
     
     // 바둑능력 점수 계산 (모든 능력치의 합계, 정수로 반올림)
     const totalAbilityScore = useMemo(() => {
@@ -182,6 +188,12 @@ const PlayerProfilePanel: React.FC<{
     // 초반/중반/종반 능력치 계산 (서버의 calculatePower와 동일한 로직)
     // 각 능력치에 가중치를 곱한 후 합산
     const phaseStats = useMemo(() => {
+        const conditionModifier = (() => {
+            if (player.condition === undefined || player.condition === null) return 1;
+            if (player.condition === 1000) return 1; // 1000은 최대 컨디션을 의미
+            return player.condition / 100;
+        })();
+
         const calculatePhasePower = (phase: 'early' | 'mid' | 'end') => {
             const weights = STAT_WEIGHTS[phase];
             let power = 0;
@@ -190,7 +202,7 @@ const PlayerProfilePanel: React.FC<{
                 const weight = weights[statKey]!;
                 power += (displayStats[statKey] || 0) * weight;
             }
-            return power;
+            return power * conditionModifier;
         };
         
         return {
@@ -198,11 +210,18 @@ const PlayerProfilePanel: React.FC<{
             mid: Math.round(calculatePhasePower('mid')),
             end: Math.round(calculatePhasePower('end'))
         };
-    }, [displayStats]);
+    }, [displayStats, player.condition]);
     
     return (
         <div className={`bg-gray-900/50 p-2 md:p-3 rounded-lg flex flex-col items-center gap-1 md:gap-2 h-full ${isClickable ? 'cursor-pointer hover:bg-gray-700/50' : ''}`} onClick={isClickable ? () => onViewUser(player.id) : undefined} title={isClickable ? `${player.nickname} 프로필 보기` : ''}>
-            <div className="flex items-center gap-1 md:gap-2 w-full">
+            <div className="flex items-center gap-1.5 md:gap-3 w-full">
+                {leagueInfo && (
+                    <img
+                        src={leagueInfo.icon}
+                        alt={leagueInfo.name}
+                        className="w-6 h-6 md:w-9 md:h-9 object-contain drop-shadow-lg"
+                    />
+                )}
                  <Avatar userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={32} className="md:w-10 md:h-10 flex-shrink-0" />
                  <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1 md:gap-1.5 flex-wrap">
@@ -1847,28 +1866,30 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     const p1Stats = useMemo(() => {
         if (tournament.status === 'round_in_progress') {
             return p1?.stats || {};
-        } else {
-            // 경기 시작 전에는 홈 화면과 동일한 능력치 계산
+        }
+        if (p1?.originalStats) {
+            return p1.originalStats;
+        }
             const p1User = allUsersForRanking.find(u => u.id === p1?.id);
             if (p1User) {
                 return calculateTotalStats(p1User);
             }
             return p1?.stats || {};
-        }
-    }, [p1?.stats, p1?.id, tournament.status, allUsersForRanking]);
+    }, [p1?.stats, p1?.originalStats, p1?.id, tournament.status, allUsersForRanking]);
 
     const p2Stats = useMemo(() => {
         if (tournament.status === 'round_in_progress') {
             return p2?.stats || {};
-        } else {
-            // 경기 시작 전에는 홈 화면과 동일한 능력치 계산
+        }
+        if (p2?.originalStats) {
+            return p2.originalStats;
+        }
             const p2User = allUsersForRanking.find(u => u.id === p2?.id);
             if (p2User) {
                 return calculateTotalStats(p2User);
             }
             return p2?.stats || {};
-        }
-    }, [p2?.stats, p2?.id, tournament.status, allUsersForRanking]);
+    }, [p2?.stats, p2?.originalStats, p2?.id, tournament.status, allUsersForRanking]);
 
     const radarDatasets = useMemo(() => [
         { stats: p1Stats, color: '#60a5fa', fill: 'rgba(59, 130, 246, 0.4)' },

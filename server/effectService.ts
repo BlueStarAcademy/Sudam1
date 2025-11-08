@@ -1,16 +1,18 @@
 
 
-import { User, CoreStat, SpecialStat, MythicStat, ItemOptionType, InventoryItem } from '../types.js';
+import { User, CoreStat, SpecialStat, MythicStat } from '../types.js';
 import { ACTION_POINT_REGEN_INTERVAL_MS } from '../constants';
 
 export interface MannerEffects {
     maxActionPoints: number;
     actionPointRegenInterval: number;
-    goldBonusPercent: number;
+    goldRewardMultiplier: number;
+    winGoldBonusPercent: number;
+    dropChanceMultiplier: number;
+    winDropBonusPercent: number;
     itemDropRateBonus: number;
-    mannerActionButtonBonus: number;
-    rewardMultiplier: number;
-    enhancementSuccessRateBonus: number;
+    disassemblyJackpotBonusPercent: number;
+    allStatsFlatBonus: number;
 }
 
 // This function was moved from mannerService to break a circular dependency
@@ -19,40 +21,44 @@ export const getMannerEffects = (user: User): MannerEffects => {
     const effects: MannerEffects = {
         maxActionPoints: 30,
         actionPointRegenInterval: ACTION_POINT_REGEN_INTERVAL_MS,
-        goldBonusPercent: 0,
+        goldRewardMultiplier: 1,
+        winGoldBonusPercent: 0,
+        dropChanceMultiplier: 1,
+        winDropBonusPercent: 0,
         itemDropRateBonus: 0,
-        mannerActionButtonBonus: 0,
-        rewardMultiplier: 1,
-        enhancementSuccessRateBonus: 0,
+        disassemblyJackpotBonusPercent: 0,
+        allStatsFlatBonus: 0,
     };
 
-    // Apply cumulative positive effects
+    // Apply cumulative positive effects (higher ranks include lower bonuses)
     if (score >= 400) { // 좋음
         effects.maxActionPoints += 10;
     }
     if (score >= 800) { // 매우 좋음
-        effects.goldBonusPercent += 10;
+        effects.winGoldBonusPercent += 20;
     }
     if (score >= 1200) { // 품격
-        effects.itemDropRateBonus += 10;
+        effects.winDropBonusPercent += 20;
     }
     if (score >= 1600) { // 프로
-        effects.enhancementSuccessRateBonus += 10;
+        effects.disassemblyJackpotBonusPercent += 20;
     }
-    // 마스터 (2000+) is handled via mannerMasteryApplied flag for stat points
+    if (score >= 2000) { // 마스터
+        effects.allStatsFlatBonus += 10;
+    }
 
-    // Apply cumulative negative effects
+    // Apply cumulative negative effects (lower ranks include higher penalties)
     if (score <= 199) { // 주의
-        effects.mannerActionButtonBonus += 1;
+        effects.dropChanceMultiplier *= 0.5;
     }
     if (score <= 99) { // 나쁨
-        effects.rewardMultiplier *= 0.5;
+        effects.goldRewardMultiplier *= 0.5;
     }
     if (score <= 49) { // 매우 나쁨
-        effects.actionPointRegenInterval = 20 * 60 * 1000; // 20 minutes
+        effects.actionPointRegenInterval = Math.max(effects.actionPointRegenInterval, 20 * 60 * 1000); // 20 minutes
     }
     if (score <= 0) { // 최악
-        effects.maxActionPoints = Math.floor(effects.maxActionPoints * 0.1);
+        effects.maxActionPoints = Math.max(0, effects.maxActionPoints - 20);
     }
     
     return effects;
@@ -115,6 +121,12 @@ export const calculateUserEffects = (user: User): CalculatedEffects => {
         }
     }
     
+    if (effects.allStatsFlatBonus !== 0) {
+        for (const key of Object.values(CoreStat)) {
+            calculatedEffects.coreStatBonuses[key].flat += effects.allStatsFlatBonus;
+        }
+    }
+
     // Update manner effects based on equipment bonuses
     calculatedEffects.maxActionPoints += calculatedEffects.specialStatBonuses[SpecialStat.ActionPointMax].flat;
     const regenBonusPercent = calculatedEffects.specialStatBonuses[SpecialStat.ActionPointRegen].percent;

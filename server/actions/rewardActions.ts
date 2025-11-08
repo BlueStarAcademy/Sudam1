@@ -586,12 +586,72 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             const { broadcast } = await import('../socket.js');
             broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUser } });
 
-            const allObtainedItems = [...itemsToCreate];
+            const allObtainedItems: InventoryItem[] = itemsToCreate.map(item => ({
+                ...item,
+                id: `display-${item.id}`,
+                createdAt: Date.now(),
+                isEquipped: false,
+                stars: item.stars || 0,
+                level: item.level || 1,
+            }));
+
             if (accumulatedGold > 0) {
-                allObtainedItems.unshift({ name: `${accumulatedGold} 골드 (경기 보상)`, image: '/images/icon/Gold.png' } as InventoryItem);
+                allObtainedItems.unshift({
+                    id: `display-gold-${Date.now()}`,
+                    name: `${accumulatedGold} 골드 (경기 보상)`,
+                    description: '경기에서 획득한 골드입니다.',
+                    type: 'consumable',
+                    slot: null,
+                    image: '/images/icon/Gold.png',
+                    grade: 'rare',
+                    quantity: accumulatedGold,
+                    createdAt: Date.now(),
+                    isEquipped: false,
+                    level: 1,
+                    stars: 0,
+                } as InventoryItem);
             }
-            if (itemReward.gold) allObtainedItems.unshift({ name: `${itemReward.gold} 골드`, image: '/images/icon/Gold.png' } as InventoryItem);
-            if (itemReward.diamonds) allObtainedItems.unshift({ name: `${itemReward.diamonds} 다이아`, image: '/images/icon/Zem.png' } as InventoryItem);
+
+            if (itemReward.gold) {
+                allObtainedItems.unshift({
+                    id: `display-gold-direct-${Date.now()}`,
+                    name: `${itemReward.gold} 골드`,
+                    description: '순위 보상으로 획득한 골드입니다.',
+                    type: 'consumable',
+                    slot: null,
+                    image: '/images/icon/Gold.png',
+                    grade: 'rare',
+                    quantity: itemReward.gold,
+                    createdAt: Date.now(),
+                    isEquipped: false,
+                    level: 1,
+                    stars: 0,
+                } as InventoryItem);
+            }
+            if (itemReward.diamonds) {
+                allObtainedItems.unshift({
+                    id: `display-diamond-direct-${Date.now()}`,
+                    name: `${itemReward.diamonds} 다이아`,
+                    description: '순위 보상으로 획득한 다이아입니다.',
+                    type: 'consumable',
+                    slot: null,
+                    image: '/images/icon/Zem.png',
+                    grade: 'epic',
+                    quantity: itemReward.diamonds,
+                    createdAt: Date.now(),
+                    isEquipped: false,
+                    level: 1,
+                    stars: 0,
+                } as InventoryItem);
+            }
+
+            if (allObtainedItems.length === 0 && itemReward.items?.length) {
+                const fallbackDisplayItems = createItemInstancesFromReward(itemReward.items as { itemId: string; quantity: number }[]).map(item => ({
+                    ...item,
+                    id: `display-fallback-${item.id}`,
+                }));
+                allObtainedItems.push(...fallbackDisplayItems);
+            }
 
             return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser, tournamentScoreChange: { oldScore: oldScore, newScore: freshUser.tournamentScore, scoreReward: scoreReward } }};
         }

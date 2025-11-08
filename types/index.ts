@@ -8,4 +8,4 @@ export * from './navigation';
 export * from './settings';
 export * from './singlePlayer';
 export * from './types';
-export type { Theme, SoundCategory, GraphicsSettings, SoundSettings, FeatureSettings, AppSettings } from './settings.js';
+export type { Theme, SoundCategory, GraphicsSettings, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle } from './settings.js';

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 type ColorScheme = 'blue' | 'red' | 'gray' | 'green' | 'yellow' | 'purple' | 'orange' | 'accent' | 'none';
 
@@ -12,6 +12,7 @@ interface ButtonProps {
   type?: 'button' | 'submit' | 'reset';
   title?: string;
   style?: React.CSSProperties;
+  cooldownMs?: number;
 }
 
 const Button: React.FC<ButtonProps> = ({
@@ -22,9 +23,45 @@ const Button: React.FC<ButtonProps> = ({
   className = '',
   type = 'button',
   title,
-  style
+  style,
+  cooldownMs = 400
 }) => {
   const baseClasses = "px-4 py-2 font-bold rounded-lg transition-all duration-150 ease-in-out border border-color shadow-lg active:translate-y-0.5 active:shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-primary disabled:bg-secondary disabled:opacity-70 disabled:cursor-not-allowed";
+
+  const [isCoolingDown, setIsCoolingDown] = useState(false);
+  const cooldownTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (cooldownTimerRef.current) {
+        clearTimeout(cooldownTimerRef.current);
+        cooldownTimerRef.current = null;
+      }
+    };
+  }, []);
+
+  const handleClick = useMemo(() => {
+    if (!onClick) return undefined;
+
+    return (event: React.MouseEvent<HTMLButtonElement>) => {
+      if (disabled || isCoolingDown) return;
+
+      setIsCoolingDown(true);
+      try {
+        const maybePromise = onClick(event);
+        if (maybePromise && typeof (maybePromise as Promise<unknown>).finally === 'function') {
+          (maybePromise as Promise<unknown>).finally(() => {
+            cooldownTimerRef.current = setTimeout(() => setIsCoolingDown(false), cooldownMs);
+          });
+        } else {
+          cooldownTimerRef.current = setTimeout(() => setIsCoolingDown(false), cooldownMs);
+        }
+      } catch (error) {
+        cooldownTimerRef.current = setTimeout(() => setIsCoolingDown(false), cooldownMs);
+        throw error;
+      }
+    };
+  }, [onClick, disabled, isCoolingDown, cooldownMs]);
 
   const colorClasses: Record<ColorScheme, string> = {
     accent: 'bg-accent hover:bg-accent-hover text-white focus:ring-accent',
@@ -41,8 +78,8 @@ const Button: React.FC<ButtonProps> = ({
   return (
     <button
       type={type}
-      onClick={onClick}
-      disabled={disabled}
+      onClick={handleClick}
+      disabled={disabled || isCoolingDown}
       className={`${baseClasses} ${colorClasses[colorScheme]} ${className}`}
       title={title}
       style={style}
