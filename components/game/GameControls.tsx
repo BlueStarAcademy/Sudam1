@@ -433,10 +433,14 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
     if (isSinglePlayer) {
         const stageId = session.stageId;
         const currentStageIndex = stageId ? SINGLE_PLAYER_STAGES.findIndex(s => s.id === stageId) : -1;
+        const currentStage = stageId ? SINGLE_PLAYER_STAGES.find(s => s.id === stageId) : undefined;
         const nextStage = currentStageIndex >= 0 ? SINGLE_PLAYER_STAGES[currentStageIndex + 1] : undefined;
         const highestClearedStageIndex = currentUser.singlePlayerProgress ?? -1;
         const isWinner = session.winner === Player.Black;
         const canTryNextStage = !!nextStage && isWinner && highestClearedStageIndex >= currentStageIndex;
+        
+        const retryActionPointCost = currentStage?.actionPointCost ?? 0;
+        const nextStageActionPointCost = nextStage?.actionPointCost ?? 0;
 
         const refreshCosts = [0, 50, 75, 100, 200];
         const refreshesUsed = session.singlePlayerPlacementRefreshesUsed ?? 0;
@@ -520,9 +524,11 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                         </div>
                     )}
                     <div className="bg-gray-900/70 border border-stone-700 rounded-xl px-4 py-3 flex flex-wrap items-center justify-center gap-3">
-                        <Button onClick={handleRetry} colorScheme="yellow" className="min-w-[120px]">재도전</Button>
+                        <Button onClick={handleRetry} colorScheme="yellow" className="min-w-[120px]">
+                            재도전 {retryActionPointCost > 0 && `(⚡${retryActionPointCost})`}
+                        </Button>
                         <Button onClick={handleNextStage} colorScheme="accent" className="min-w-[120px]" disabled={!canTryNextStage}>
-                            다음 단계{canTryNextStage && nextStage ? `: ${nextStage.name}` : ''}
+                            다음 단계{canTryNextStage && nextStage ? `: ${nextStage.name}` : ''}{nextStageActionPointCost > 0 && ` (⚡${nextStageActionPointCost})`}
                         </Button>
                         <Button onClick={handleCloseResults} colorScheme="green" className="min-w-[120px]">
                             나가기
@@ -540,7 +546,7 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                         <Button onClick={onConfirmMove} colorScheme="green" className="!py-3 !px-6 animate-pulse">착수</Button>
                     </div>
                 )}
-                <div className="bg-gray-900/60 border border-stone-700 rounded-xl px-4 py-3 flex flex-col lg:flex-row items-center justify-center gap-6 w-full">
+                <div className="bg-gray-900/60 border border-stone-700 rounded-xl px-4 py-3 flex flex-row items-center justify-center gap-6 w-full">
                     <div className="flex flex-col items-center gap-2">
                         <ImageButton
                             src="/images/button/giveup.png"
@@ -588,7 +594,7 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
             )}
 
             {/* Row 2: Game and Special/Playful Functions */}
-            <div className="flex flex-col lg:flex-row gap-1 w-full">
+            <div className="flex flex-row gap-1 w-full">
                 {/* Panel 1: 대국 기능 */}
                 <div className="bg-gray-900/50 rounded-md p-2 flex flex-row items-center gap-4 flex-1 min-w-0">
                     <h3 className="text-xs font-bold text-gray-300 whitespace-nowrap">대국 기능</h3>

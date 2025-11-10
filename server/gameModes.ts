@@ -48,7 +48,7 @@ export const finalizeAnalysisResult = (baseAnalysis: types.AnalysisResult, sessi
 };
 
 
-export const getGameResult = (game: LiveGameSession): LiveGameSession => {
+export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSession> => {
     const isMissileMode = game.mode === types.GameMode.Missile || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Missile));
     const p1MissilesUsed = (game.settings.missileCount ?? 0) - (game.missiles_p1 ?? game.settings.missileCount ?? 0);
     const p2MissilesUsed = (game.settings.missileCount ?? 0) - (game.missiles_p2 ?? game.settings.missileCount ?? 0);
@@ -77,10 +77,19 @@ export const getGameResult = (game: LiveGameSession): LiveGameSession => {
     game.winReason = 'score';
     game.isAnalyzing = true;
     
+    // 계가 시작 상태를 즉시 저장하고 브로드캐스트하여 클라이언트에 계가 화면 표시
+    await db.saveGame(game);
+    const { broadcast } = await import('./socket.js');
+    broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+    console.log(`[getGameResult] Game ${game.id} set to scoring state and broadcasted`);
+    
     analyzeGame(game)
         .then(async (baseAnalysis) => {
             const freshGame = await db.getLiveGame(game.id);
-            if (!freshGame || freshGame.gameStatus !== 'scoring') return;
+            if (!freshGame || freshGame.gameStatus !== 'scoring') {
+                console.log(`[getGameResult] Game ${game.id} no longer in scoring state, skipping analysis result`);
+                return;
+            }
 
             const finalAnalysis = finalizeAnalysisResult(baseAnalysis, freshGame);
 
@@ -91,6 +100,11 @@ export const getGameResult = (game: LiveGameSession): LiveGameSession => {
                 white: finalAnalysis.scoreDetails.white.total
             };
             freshGame.isAnalyzing = false;
+            
+            // 분석 결과 저장 및 브로드캐스트 (계가 화면에 표시되도록)
+            await db.saveGame(freshGame);
+            broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
+            console.log(`[getGameResult] Analysis complete for game ${freshGame.id}, scores: Black ${finalAnalysis.scoreDetails.black.total}, White ${finalAnalysis.scoreDetails.white.total}`);
             
             const winner = finalAnalysis.scoreDetails.black.total > finalAnalysis.scoreDetails.white.total
                 ? types.Player.Black
@@ -103,6 +117,8 @@ export const getGameResult = (game: LiveGameSession): LiveGameSession => {
             const failedGame = await db.getLiveGame(game.id);
             if (failedGame && failedGame.gameStatus === 'scoring') {
                 failedGame.isAnalyzing = false;
+                await db.saveGame(failedGame);
+                broadcast({ type: 'GAME_UPDATE', payload: { [failedGame.id]: failedGame } });
                 // Decide a winner randomly as a fallback
                 const winner = Math.random() < 0.5 ? types.Player.Black : types.Player.White;
                 // End the game properly to process summaries and rewards
@@ -300,9 +316,12 @@ export const updateGameStates = async (games: LiveGameSession[], now: number): P
         }
 
         const p1 = await db.getUser(game.player1.id);
-        const p2 = game.player2.id === aiUserId ? getAiUser(game.mode) : await db.getUser(game.player2.id);
+        // 싱글플레이 게임의 경우 player2는 이미 스테이지별로 설정된 AI 유저이므로 덮어쓰지 않음
+        const p2 = game.isSinglePlayer 
+            ? game.player2  // 싱글플레이: 기존 player2 유지
+            : (game.player2.id === aiUserId ? getAiUser(game.mode) : await db.getUser(game.player2.id));
         if (p1) game.player1 = p1;
-        if (p2) game.player2 = p2;
+        if (p2 && !game.isSinglePlayer) game.player2 = p2;  // 싱글플레이가 아닌 경우에만 업데이트
 
         const p1Id = game.player1.id;
         const p2Id = game.player2.id;

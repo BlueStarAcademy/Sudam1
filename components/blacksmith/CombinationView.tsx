@@ -43,7 +43,7 @@ const ItemSlot: React.FC<{ item: InventoryItem | null; onRemove: () => void; }> 
                 <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
                 {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1"/>}
             </div>
-            <p className={`text-sm font-bold ${styles.color} truncate w-full`}>{item.name}</p>
+            <p className={`text-sm font-bold ${styles.color} whitespace-nowrap overflow-hidden text-ellipsis w-full`} title={item.name}>{item.name}</p>
             <p className="text-xs text-gray-400">{SLOT_NAMES_KO[item.slot!] || '기타'}</p>
         </div>
     );
@@ -145,19 +145,19 @@ const CombinationView: React.FC<CombinationViewProps> = ({ items, onRemoveItem, 
     const canCombine = items.every(item => item !== null) && new Set(items.map(i => i?.grade)).size === 1;
 
     return (
-        <div className="h-full flex flex-col items-center justify-between min-h-0">
-            <div className="w-full flex justify-around items-stretch gap-2 flex-shrink-0">
+        <div className="h-full flex flex-col items-center justify-between">
+            <div className="w-full flex justify-around items-stretch gap-2">
                 {items.map((item, index) => (
                     <ItemSlot key={index} item={item} onRemove={() => onRemoveItem(index)} />
                 ))}
             </div>
 
-            <div className="w-full flex-1 min-h-0 overflow-y-auto">
+            <div className="w-full">
                 <OutcomeProbability items={items} isRandom={isRandom} />
                 <GradeProbability items={items} currentUser={currentUser} />
             </div>
 
-            <div className="w-full space-y-2 mt-2 flex-shrink-0">
+            <div className="w-full space-y-4 mt-4">
                 <div className="flex items-center justify-center">
                     <input 
                         type="checkbox" 
@@ -169,7 +169,7 @@ const CombinationView: React.FC<CombinationViewProps> = ({ items, onRemoveItem, 
                     <label htmlFor="random-combine" className="ml-2 text-sm text-gray-300">완전 랜덤 종류로 받기</label>
                 </div>
 
-                <Button onClick={handleCombine} disabled={!canCombine} colorScheme="blue" className="w-full py-2">
+                <Button onClick={handleCombine} disabled={!canCombine} colorScheme="blue" className="w-full">
                     합성
                 </Button>
             </div>

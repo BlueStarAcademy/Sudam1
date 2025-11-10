@@ -21,9 +21,10 @@ interface SidebarProps extends GameProps {
     onLeaveOrResign: () => void;
     isNoContestLeaveAvailable: boolean;
     onClose?: () => void;
+    onOpenSettings?: () => void;
 }
 
-export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () => void }> = ({ session, onClose }) => {
+export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () => void, onOpenSettings?: () => void }> = ({ session, onClose, onOpenSettings }) => {
     const { mode, settings, effectiveCaptureTargets } = session;
 
     const renderSetting = (label: string, value: React.ReactNode) => (
@@ -47,7 +48,22 @@ export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () =>
         ];
         const modesWithoutTime = [GameMode.Alkkagi, GameMode.Curling, GameMode.Dice, GameMode.Thief];
 
-        details.push(renderSetting("게임 모드", mode));
+        // 게임 모드 이름 결정 (싱글플레이어 살리기 바둑 구분)
+        let gameModeDisplayName: string;
+        if (session.isSinglePlayer) {
+            const isSurvivalMode = (settings as any)?.isSurvivalMode === true;
+            if (isSurvivalMode) {
+                gameModeDisplayName = '살리기 바둑';
+            } else if (mode === GameMode.Capture) {
+                gameModeDisplayName = '따내기 바둑';
+            } else {
+                gameModeDisplayName = mode;
+            }
+        } else {
+            gameModeDisplayName = mode;
+        }
+
+        details.push(renderSetting("게임 모드", gameModeDisplayName));
         if (![GameMode.Alkkagi, GameMode.Curling, GameMode.Dice].includes(mode)) {
             details.push(renderSetting("판 크기", `${settings.boardSize}x${settings.boardSize}`));
         }
@@ -81,10 +97,21 @@ export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () =>
         }
         
         if (mode === GameMode.Capture || (mode === GameMode.Mix && settings.mixedModes?.includes(GameMode.Capture))) {
-            const captureTargetText = effectiveCaptureTargets
-                ? `흑: ${effectiveCaptureTargets[Player.Black]} / 백: ${effectiveCaptureTargets[Player.White]}`
-                : `${settings.captureTarget}개 (흑/백 결정 중)`;
-             details.push(renderSetting("따내기 목표", captureTargetText));
+            const isSurvivalMode = (settings as any)?.isSurvivalMode === true;
+            let captureTargetText: string;
+            if (effectiveCaptureTargets) {
+                if (isSurvivalMode) {
+                    // 살리기 바둑: 흑은 목표점수 없음(-), 백은 목표점수 표시
+                    const blackTarget = effectiveCaptureTargets[Player.Black] === 999 ? '-' : effectiveCaptureTargets[Player.Black];
+                    const whiteTarget = effectiveCaptureTargets[Player.White];
+                    captureTargetText = `흑: ${blackTarget} / 백: ${whiteTarget}`;
+                } else {
+                    captureTargetText = `흑: ${effectiveCaptureTargets[Player.Black]} / 백: ${effectiveCaptureTargets[Player.White]}`;
+                }
+            } else {
+                captureTargetText = `${settings.captureTarget}개 (흑/백 결정 중)`;
+            }
+            details.push(renderSetting("따내기 목표", captureTargetText));
         }
         
         if (mode === GameMode.Base || (mode === GameMode.Mix && settings.mixedModes?.includes(GameMode.Base))) {
@@ -133,7 +160,9 @@ export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () =>
         <div className="bg-gray-800 p-2 rounded-md flex-shrink-0 border border-color">
             <h3 className="text-base font-bold border-b border-gray-700 pb-1 mb-2 text-yellow-300 flex justify-between items-center">
                 대국 정보
-                {onClose && <button onClick={onClose} className="text-xl font-bold text-gray-400 hover:text-white">×</button>}
+                {onClose && (
+                    <button onClick={onClose} className="text-xl font-bold text-gray-400 hover:text-white">×</button>
+                )}
             </h3>
             <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
                 {gameDetails}
@@ -417,8 +446,20 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
     
     return (
         <div className="flex flex-col h-full gap-1.5 bg-gray-900/80 rounded-lg p-2 border border-color">
+            {/* 사이드바 헤더: 설정 버튼 */}
+            {props.onOpenSettings && (
+                <div className="flex-shrink-0 flex justify-end mb-1">
+                    <button 
+                        onClick={props.onOpenSettings} 
+                        className="text-xl p-1.5 rounded hover:bg-gray-700/50 transition-colors"
+                        title="설정"
+                    >
+                        ⚙️
+                    </button>
+                </div>
+            )}
             <div className="flex-shrink-0 space-y-2">
-                <GameInfoPanel session={session} onClose={props.onClose} />
+                <GameInfoPanel session={session} onClose={props.onClose} onOpenSettings={props.onOpenSettings} />
                 <UserListPanel {...props} />
             </div>
             <div className="flex-1 mt-2 min-h-0">

@@ -28,42 +28,132 @@ export const useApp = () => {
     const currentRouteRef = useRef(currentRoute);
     const [error, setError] = useState<string | null>(null);
     const isLoggingOut = useRef(false);
-    // 최근 액션 처리 시간을 추적하여 WebSocket 업데이트와의 충돌 방지
-    const lastActionProcessedTime = useRef<number>(0);
-    const lastActionType = useRef<string | null>(null);
     // 강제 리렌더링을 위한 카운터
     const [updateTrigger, setUpdateTrigger] = useState(0);
     const currentUserRef = useRef<User | null>(null);
+    // HTTP 응답 후 일정 시간 내 WebSocket 업데이트 무시 (중복 방지)
+    const lastHttpUpdateTime = useRef<number>(0);
+    const lastHttpActionType = useRef<string | null>(null);
+    const lastHttpHadUpdatedUser = useRef<boolean>(false); // HTTP 응답에 updatedUser가 있었는지 추적
+    const HTTP_UPDATE_DEBOUNCE_MS = 2000; // HTTP 응답 후 2초 내 WebSocket 업데이트 무시 (더 긴 시간으로 확실하게 보호)
 
     useEffect(() => {
         currentUserRef.current = currentUser;
     }, [currentUser]);
 
     const mergeUserState = useCallback((prev: User | null, updates: Partial<User>) => {
-        const base = prev ? JSON.parse(JSON.stringify(prev)) as Partial<User> : {};
+        if (!prev) {
+            return updates as User;
+        }
+        
+        // 깊은 병합을 위해 JSON 직렬화/역직렬화 사용
+        const base = JSON.parse(JSON.stringify(prev)) as User;
         const patch = JSON.parse(JSON.stringify(updates)) as Partial<User>;
-        const merged = { ...base, ...patch } as User;
-        if (!merged.id && prev?.id) {
+        
+        // inventory는 배열이므로 완전히 교체 (깊은 복사로 새로운 참조 생성)
+        const mergedInventory = patch.inventory !== undefined 
+            ? JSON.parse(JSON.stringify(patch.inventory)) 
+            : base.inventory;
+        
+        // 중첩된 객체들을 깊게 병합
+        const merged: User = {
+            ...base,
+            ...patch,
+            // inventory는 배열이므로 완전히 교체 (새로운 참조로)
+            inventory: mergedInventory,
+            // equipment는 객체이므로 병합
+            equipment: patch.equipment !== undefined ? { ...base.equipment, ...patch.equipment } : base.equipment,
+            // actionPoints는 객체이므로 병합
+            actionPoints: patch.actionPoints !== undefined ? { ...base.actionPoints, ...patch.actionPoints } : base.actionPoints,
+            // stats 객체들도 병합
+            stats: patch.stats !== undefined ? { ...base.stats, ...patch.stats } : base.stats,
+            // 기타 중첩 객체들도 병합
+            equipmentPresets: patch.equipmentPresets !== undefined ? patch.equipmentPresets : base.equipmentPresets,
+            clearedSinglePlayerStages: patch.clearedSinglePlayerStages !== undefined ? patch.clearedSinglePlayerStages : base.clearedSinglePlayerStages,
+            // singlePlayerMissions는 객체이므로 병합
+            singlePlayerMissions: patch.singlePlayerMissions !== undefined ? { ...base.singlePlayerMissions, ...patch.singlePlayerMissions } : base.singlePlayerMissions,
+        };
+        
+        // ID는 항상 유지
+        if (!merged.id && prev.id) {
             merged.id = prev.id;
         }
+        
         return merged;
     }, []);
 
     const applyUserUpdate = useCallback((updates: Partial<User>, source: string) => {
-        const mergedUser = mergeUserState(currentUserRef.current, updates);
+        const prevUser = currentUserRef.current;
+        const mergedUser = mergeUserState(prevUser, updates);
+        
+        // 실제 변경사항이 있는지 확인 (불필요한 리렌더링 방지)
+        // 중요한 필드들을 직접 비교하여 더 정확한 변경 감지
+        let hasActualChanges = !prevUser;
+        if (prevUser) {
+            // inventory 배열 길이와 내용 비교 (더 정확한 변경 감지)
+            const inventoryChanged = 
+                prevUser.inventory?.length !== mergedUser.inventory?.length ||
+                JSON.stringify(prevUser.inventory) !== JSON.stringify(mergedUser.inventory);
+            
+            // 주요 필드 직접 비교
+            const keyFieldsChanged = 
+                prevUser.gold !== mergedUser.gold ||
+                prevUser.diamonds !== mergedUser.diamonds ||
+                prevUser.strategyXp !== mergedUser.strategyXp ||
+                prevUser.playfulXp !== mergedUser.playfulXp ||
+                inventoryChanged ||
+                JSON.stringify(prevUser.equipment) !== JSON.stringify(mergedUser.equipment) ||
+                JSON.stringify(prevUser.singlePlayerMissions) !== JSON.stringify(mergedUser.singlePlayerMissions) ||
+                JSON.stringify(prevUser.actionPoints) !== JSON.stringify(mergedUser.actionPoints);
+            
+            // stableStringify로 전체 비교 (백업)
+            const fullComparison = stableStringify(prevUser) !== stableStringify(mergedUser);
+            
+            hasActualChanges = keyFieldsChanged || fullComparison;
+            
+            // 보상 수령 관련 액션의 경우 inventory 변경을 강제로 감지
+            if (source.includes('CLAIM') || source.includes('REWARD')) {
+                if (inventoryChanged) {
+                    hasActualChanges = true;
+                    console.log(`[applyUserUpdate] Forcing update for ${source} due to inventory change`, {
+                        prevLength: prevUser.inventory?.length,
+                        newLength: mergedUser.inventory?.length
+                    });
+                }
+            }
+        }
+        
+        if (!hasActualChanges && prevUser) {
+            console.log(`[applyUserUpdate] No actual changes detected (${source}), skipping update.`);
+            return prevUser;
+        }
+        
         currentUserRef.current = mergedUser;
         flushSync(() => {
             setCurrentUser(mergedUser);
             setUpdateTrigger(prev => prev + 1);
         });
+        
         if (mergedUser.id) {
             setUsersMap(prevMap => ({ ...prevMap, [mergedUser.id]: mergedUser }));
         }
+        
         try {
             sessionStorage.setItem('currentUser', JSON.stringify(mergedUser));
         } catch (e) {
             console.error(`[applyUserUpdate] Failed to persist user (${source})`, e);
         }
+        
+        console.log(`[applyUserUpdate] Applied update from ${source}`, {
+            inventoryLength: mergedUser.inventory?.length,
+            gold: mergedUser.gold,
+            diamonds: mergedUser.diamonds
+        });
+        
+        // HTTP 업데이트인 경우 타임스탬프 및 액션 타입 기록
+        // (HTTP 응답에 updatedUser가 있었을 때만 타임스탬프 업데이트 - handleAction에서 처리)
+        // 여기서는 source만 확인하여 로깅용으로 사용
+        
         return mergedUser;
     }, [mergeUserState]);
     
@@ -173,6 +263,12 @@ export const useApp = () => {
         root.style.setProperty('--panel-edge-top-right', edgeImages.topRight ?? 'none');
         root.style.setProperty('--panel-edge-bottom-left', edgeImages.bottomLeft ?? 'none');
         root.style.setProperty('--panel-edge-bottom-right', edgeImages.bottomRight ?? 'none');
+        // 엣지 스타일이 'none'이 아닌 경우 data 속성 추가 (CSS에서 금색 테두리 적용용)
+        if (edgeStyle !== 'none') {
+            root.setAttribute('data-edge-style', edgeStyle);
+        } else {
+            root.setAttribute('data-edge-style', 'none');
+        }
 
     }, [settings]);
 
@@ -422,16 +518,51 @@ export const useApp = () => {
                 const updatedUserFromResponse = result.updatedUser || result.clientResponse?.updatedUser;
                 
                 if (updatedUserFromResponse) {
-                    lastActionProcessedTime.current = Date.now();
-                    lastActionType.current = action.type;
+                    // 보상 수령 액션의 경우 inventory가 확실히 업데이트되도록 강제
+                    const rewardActions = ['CLAIM_MAIL_ATTACHMENTS', 'CLAIM_ALL_MAIL_ATTACHMENTS', 'CLAIM_QUEST_REWARD', 'CLAIM_TOURNAMENT_REWARD', 'CLAIM_ACTIVITY_MILESTONE', 'CLAIM_SINGLE_PLAYER_MISSION_REWARD'];
+                    const isRewardAction = rewardActions.includes(action.type);
+                    
+                    if (isRewardAction && updatedUserFromResponse.inventory) {
+                        // inventory가 있는 경우 깊은 복사로 새로운 참조 생성하여 React가 변경을 확실히 감지하도록 함
+                        updatedUserFromResponse.inventory = JSON.parse(JSON.stringify(updatedUserFromResponse.inventory));
+                        console.log(`[handleAction] ${action.type} - Forcing inventory update`, {
+                            inventoryLength: updatedUserFromResponse.inventory?.length,
+                            inventoryItems: updatedUserFromResponse.inventory?.slice(0, 3).map((i: any) => i.name)
+                        });
+                    }
+                    
+                    // applyUserUpdate는 이미 내부에서 flushSync를 사용하므로 모든 액션에서 즉시 UI 업데이트됨
+                    // HTTP 응답의 updatedUser를 우선적으로 적용하고, WebSocket 업데이트는 일정 시간 동안 무시됨
                     const mergedUser = applyUserUpdate(updatedUserFromResponse, `${action.type}-http`);
-                    console.log(`[handleAction] ${action.type} - applied HTTP updatedUser`, {
+                    // HTTP 응답에 updatedUser가 있었음을 기록하고 타임스탬프 업데이트
+                    lastHttpUpdateTime.current = Date.now();
+                    lastHttpActionType.current = action.type;
+                    lastHttpHadUpdatedUser.current = true;
+                    console.log(`[handleAction] ${action.type} - applied HTTP updatedUser (WebSocket updates will be ignored for ${HTTP_UPDATE_DEBOUNCE_MS}ms)`, {
                         inventoryLength: mergedUser?.inventory?.length,
                         equipment: mergedUser?.equipment,
                         gold: mergedUser?.gold,
-                        diamonds: mergedUser?.diamonds
+                        diamonds: mergedUser?.diamonds,
+                        actionPoints: mergedUser?.actionPoints
                     });
+                    
+                    // 보상 수령 액션의 경우 추가로 강제 업데이트
+                    if (isRewardAction) {
+                        flushSync(() => {
+                            setUpdateTrigger(prev => prev + 1);
+                            // currentUser 상태를 다시 설정하여 확실히 업데이트
+                            setCurrentUser(prev => {
+                                if (prev && mergedUser && prev.id === mergedUser.id) {
+                                    return mergedUser;
+                                }
+                                return prev;
+                            });
+                        });
+                    }
                 } else {
+                    // HTTP 응답에 updatedUser가 없었음을 기록 (타임스탬프는 업데이트하지 않음)
+                    lastHttpActionType.current = action.type;
+                    lastHttpHadUpdatedUser.current = false;
                     const actionsThatShouldHaveUpdatedUser = [
                         'TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'ENHANCE_ITEM', 
                         'COMBINE_ITEMS', 'DISASSEMBLE_ITEM', 'CRAFT_MATERIAL', 'BUY_SHOP_ITEM', 
@@ -444,12 +575,34 @@ export const useApp = () => {
                         'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST'
                     ];
                     if (actionsThatShouldHaveUpdatedUser.includes(action.type)) {
-                        console.warn(`[handleAction] ${action.type} - No updatedUser in response!`, {
+                        console.warn(`[handleAction] ${action.type} - No updatedUser in response! Waiting for WebSocket update...`, {
                             hasClientResponse: !!result.clientResponse,
                             clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
                             resultKeys: Object.keys(result)
                         });
+                        // updatedUser가 없어도 액션 타입을 기록하여 WebSocket 업데이트를 받을 수 있도록 함
+                        // 타임스탬프는 설정하지 않아서 WebSocket 업데이트가 즉시 적용되도록 함
+                        lastHttpActionType.current = action.type;
+                        // updatedUser가 없으면 WebSocket 업데이트를 기다리되, 타임아웃을 설정하여 일정 시간 후 강제 업데이트
+                        // WebSocket USER_UPDATE가 곧 도착할 것이므로 별도 처리 불필요
+                        // 하지만 WebSocket 업데이트가 오지 않으면 문제가 될 수 있으므로, 짧은 시간 후 WebSocket 무시 시간을 줄임
+                        setTimeout(() => {
+                            // WebSocket 업데이트가 오지 않았으면 무시 시간을 줄여서 다음 WebSocket 업데이트를 받을 수 있도록 함
+                            const timeSinceLastHttpUpdate = Date.now() - lastHttpUpdateTime.current;
+                            if (timeSinceLastHttpUpdate > HTTP_UPDATE_DEBOUNCE_MS || lastHttpUpdateTime.current === 0) {
+                                console.warn(`[handleAction] ${action.type} - WebSocket update not received, reducing debounce window`);
+                                // 다음 WebSocket 업데이트를 받을 수 있도록 타임스탬프 조정
+                                lastHttpUpdateTime.current = Date.now() - HTTP_UPDATE_DEBOUNCE_MS;
+                            }
+                        }, 500);
                      }
+                 }
+                 
+                 // trainingQuestLevelUp 응답 처리 (강화 완료 피드백용)
+                 const trainingQuestLevelUp = result.clientResponse?.trainingQuestLevelUp;
+                 if (trainingQuestLevelUp && action.type === 'LEVEL_UP_TRAINING_QUEST') {
+                     // TrainingQuestPanel에서 처리할 수 있도록 반환
+                     return trainingQuestLevelUp;
                  }
                  
                  const obtainedItemsBulk = result.clientResponse?.obtainedItemsBulk || result.obtainedItemsBulk;
@@ -996,62 +1149,62 @@ export const useApp = () => {
                                     announcementInterval
                                 });
                                 break;
-                            case 'USER_UPDATE':
-                                // 사용자 데이터 업데이트 (인벤토리, 장비, 프로필 등)
-                                // HTTP 응답이 최근 5초 이내에 처리되었다면 WebSocket 업데이트를 무시 (HTTP 응답이 더 최신)
-                                // 그 외의 경우에는 WebSocket 업데이트를 처리 (다른 사용자의 액션이거나, HTTP 응답이 없는 경우)
-                                const now = Date.now();
-                                const timeSinceLastAction = now - lastActionProcessedTime.current;
-                                // 사용자 데이터 변경 액션의 경우 더 긴 시간 동안 무시 (상태 동기화 시간 확보)
-                                // 사용자 데이터 변경 액션 목록 (HTTP 응답 우선 처리)
-                                const userDataChangingActions = [
-                                    'TOGGLE_EQUIP_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'ENHANCE_ITEM', 'COMBINE_ITEMS', 'DISASSEMBLE_ITEM', 
-                                    'CRAFT_MATERIAL', 'BUY_SHOP_ITEM', 'BUY_CONDITION_POTION', 'USE_CONDITION_POTION', 'UPDATE_AVATAR', 
-                                    'UPDATE_BORDER', 'CHANGE_NICKNAME', 'UPDATE_MBTI', 'ALLOCATE_STAT_POINT',
-                                    'SELL_ITEM', 'EXPAND_INVENTORY', 'BUY_BORDER', 'APPLY_PRESET', 'SAVE_PRESET',
-                                    'DELETE_MAIL', 'DELETE_ALL_CLAIMED_MAIL', 'CLAIM_MAIL_ATTACHMENTS', 'CLAIM_ALL_MAIL_ATTACHMENTS', 'MARK_MAIL_AS_READ',
-                                    'CLAIM_QUEST_REWARD', 'CLAIM_ACTIVITY_MILESTONE',
-                                    'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST',
-                                    'ADMIN_RESET_TOURNAMENT_SESSION'
-                                ];
-                                // HTTP 응답이 최근에 처리된 경우 WebSocket 업데이트 무시 (사용자 데이터 변경 액션은 더 길게)
-                                // 상태 동기화 시간을 충분히 확보하기 위해 15초로 증가
-                                const ignoreDuration = userDataChangingActions.includes(lastActionType.current || '') ? 15000 : 3000;
-                                const shouldIgnoreForCurrentUser = timeSinceLastAction < ignoreDuration && lastActionType.current !== null;
-                                
+                            case 'USER_UPDATE': {
+                                const payload = message.payload || {};
+                                const updatedCurrentUser = currentUser ? payload[currentUser.id] : undefined;
+
                                 setUsersMap(currentUsersMap => {
                                     const updatedUsersMap = { ...currentUsersMap };
-                                    Object.entries(message.payload || {}).forEach(([userId, updatedUserData]: [string, any]) => {
+                                    Object.entries(payload).forEach(([userId, updatedUserData]: [string, any]) => {
                                         updatedUsersMap[userId] = updatedUserData;
                                     });
-                                    
-                                    // 현재 사용자의 데이터가 업데이트되었으면 currentUser도 업데이트
-                                    // 단, HTTP 응답이 최근 3초 이내에 처리되었다면 무시 (HTTP 응답이 더 최신)
-                                    if (currentUser && message.payload[currentUser.id]) {
-                                        if (!shouldIgnoreForCurrentUser) {
-                                            // HTTP 응답이 없거나 충분한 시간이 지난 경우, WebSocket 업데이트 처리
-                                            const updatedCurrentUser = message.payload[currentUser.id];
-                                            // 현재 사용자와 ID가 일치하는지 확인
-                                            if (updatedCurrentUser.id === currentUser.id) {
-                                                // 상태 업데이트를 즉시 동기적으로 처리 (HTTP 응답이 없는 경우에만)
-                                                const mergedUser = applyUserUpdate(updatedCurrentUser, 'USER_UPDATE-websocket');
-                                                console.log(`[WebSocket] Updating currentUser from WebSocket (HTTP response not available):`, {
-                                                    inventoryLength: mergedUser.inventory?.length,
-                                                    gold: mergedUser.gold,
-                                                    diamonds: mergedUser.diamonds,
-                                                    equipment: mergedUser.equipment,
-                                                    timeSinceLastAction,
-                                                    lastActionType: lastActionType.current
-                                                });
-                                            }
-                                        } else {
-                                            console.log(`[WebSocket] Ignoring USER_UPDATE for ${currentUser.id} - HTTP response was processed ${timeSinceLastAction}ms ago (more recent)`);
-                                        }
-                                    }
-                                    
                                     return updatedUsersMap;
                                 });
+
+                                // 현재 유저의 업데이트 처리
+                                if (currentUser && updatedCurrentUser && updatedCurrentUser.id === currentUser.id) {
+                                    const now = Date.now();
+                                    const timeSinceLastHttpUpdate = now - lastHttpUpdateTime.current;
+                                    
+                                    // HTTP 응답 후 일정 시간 내 WebSocket 업데이트는 무시 (중복 방지)
+                                    // 하지만 HTTP 응답에 updatedUser가 없었던 경우에는 WebSocket 업데이트를 받아야 함
+                                    const hadHttpUpdate = lastHttpUpdateTime.current > 0;
+                                    const httpUpdateHadUser = lastHttpHadUpdatedUser.current;
+                                    
+                                    // HTTP 응답에 updatedUser가 있었고 최근에 업데이트가 있었으면 무시
+                                    if (hadHttpUpdate && httpUpdateHadUser && timeSinceLastHttpUpdate < HTTP_UPDATE_DEBOUNCE_MS) {
+                                        console.log(`[WebSocket] USER_UPDATE ignored (${timeSinceLastHttpUpdate}ms since HTTP update with user, debounce: ${HTTP_UPDATE_DEBOUNCE_MS}ms, last action: ${lastHttpActionType.current})`);
+                                        break;
+                                    }
+                                    
+                                    // HTTP 응답에 updatedUser가 없었던 경우, WebSocket 업데이트를 즉시 적용
+                                    if (!httpUpdateHadUser && lastHttpActionType.current) {
+                                        console.log(`[WebSocket] USER_UPDATE applied immediately (HTTP response had no updatedUser for ${lastHttpActionType.current})`);
+                                        // HTTP 업데이트 타임스탬프를 업데이트하여 중복 방지
+                                        lastHttpUpdateTime.current = now;
+                                        lastHttpHadUpdatedUser.current = true; // 이제 WebSocket으로 업데이트되었으므로 표시
+                                    }
+                                    
+                                    // HTTP 업데이트가 최근에 있었고, WebSocket 업데이트가 HTTP 업데이트보다 오래된 데이터일 가능성이 있는 경우 무시
+                                    // (서버에서 WebSocket 메시지가 지연되어 도착하는 경우)
+                                    // 단, HTTP 응답에 updatedUser가 없었던 경우는 제외
+                                    if (hadHttpUpdate && httpUpdateHadUser && timeSinceLastHttpUpdate < HTTP_UPDATE_DEBOUNCE_MS * 2 && lastHttpActionType.current) {
+                                        console.log(`[WebSocket] USER_UPDATE ignored (possible stale data, ${timeSinceLastHttpUpdate}ms since HTTP update)`);
+                                        break;
+                                    }
+                                    
+                                    // 실제 변경사항이 있을 때만 적용 (applyUserUpdate 내부에서도 확인)
+                                    const mergedUser = applyUserUpdate(updatedCurrentUser, 'USER_UPDATE-websocket');
+                                    console.log('[WebSocket] Applied USER_UPDATE for currentUser:', {
+                                        inventoryLength: mergedUser.inventory?.length,
+                                        gold: mergedUser.gold,
+                                        diamonds: mergedUser.diamonds,
+                                        equipment: mergedUser.equipment,
+                                        actionPoints: mergedUser.actionPoints
+                                    });
+                                }
                                 break;
+                            }
                             case 'USER_STATUS_UPDATE':
                                 setUsersMap(currentUsersMap => {
                                     // message.payload는 모든 온라인 유저의 상태 정보를 포함합니다
@@ -1645,7 +1798,9 @@ export const useApp = () => {
                 const nextInventory = snapshot.inventory.map(invItem =>
                         invItem.id === enhancedItem.id ? enhancedItem : invItem
                 );
-                applyUserUpdate({ inventory: nextInventory }, 'clearEnhancementOutcome');
+                flushSync(() => {
+                    applyUserUpdate({ inventory: nextInventory }, 'clearEnhancementOutcome');
+                });
             }
         }
         setEnhancementOutcome(null);

@@ -53,7 +53,7 @@ const Lobby: React.FC<LobbyProps> = ({ lobbyType }) => {
     <div className="bg-primary text-primary p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">
       <header className="flex flex-wrap justify-between items-center mb-8 gap-4">
         <button onClick={onBackToProfile} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
-          <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+          <img src="/images/button/back.png" alt="Back" className="w-10 h-10 sm:w-12 sm:h-12" />
         </button>
         <div className="text-center flex-grow">
           <h1 className="text-4xl font-bold">{title} 로비</h1>

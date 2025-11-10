@@ -1,6 +1,6 @@
 import React, { useMemo, useState, useCallback, useEffect, useRef } from 'react';
 import { UserWithStatus, GameMode, EquipmentSlot, InventoryItem, ItemGrade, ServerAction, LeagueTier, CoreStat, SpecialStat, MythicStat, ItemOptionType, TournamentState, User } from '../types.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, AVATAR_POOL, BORDER_POOL, LEAGUE_DATA, CORE_STATS_DATA, SPECIAL_STATS_DATA, MYTHIC_STATS_DATA, emptySlotImages, TOURNAMENT_DEFINITIONS, GRADE_LEVEL_REQUIREMENTS, RANKING_TIERS, SINGLE_PLAYER_STAGES } from '../constants';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, AVATAR_POOL, BORDER_POOL, LEAGUE_DATA, CORE_STATS_DATA, SPECIAL_STATS_DATA, MYTHIC_STATS_DATA, emptySlotImages, TOURNAMENT_DEFINITIONS, GRADE_LEVEL_REQUIREMENTS, RANKING_TIERS, SINGLE_PLAYER_STAGES, SINGLE_PLAYER_MISSIONS } from '../constants';
 import { STRATEGIC_GO_LOBBY_IMG, PLAYFUL_GO_LOBBY_IMG, TOURNAMENT_LOBBY_IMG, SINGLE_PLAYER_LOBBY_IMG, TOWER_CHALLENGE_LOBBY_IMG } from '../assets.js';
 import Avatar from './Avatar.js';
 import Button from './Button.js';
@@ -26,14 +26,45 @@ function usePrevious<T>(value: T): T | undefined {
   return ref.current;
 }
 
+const getXpRequirementForLevel = (level: number): number => {
+    if (level < 1) return 0;
+    if (level > 100) return Infinity; // Max level
+    
+    // 레벨 1~10: 200 + (레벨 x 100)
+    if (level <= 10) {
+        return 200 + (level * 100);
+    }
+    
+    // 레벨 11~20: 300 + (레벨 x 150)
+    if (level <= 20) {
+        return 300 + (level * 150);
+    }
+    
+    // 레벨 21~50: 이전 필요경험치 x 1.2
+    // 레벨 51~100: 이전 필요경험치 x 1.3
+    // 레벨 20의 필요 경험치를 먼저 계산
+    let xp = 300 + (20 * 150); // 레벨 20의 필요 경험치
+    
+    // 레벨 21부터 현재 레벨까지 반복
+    for (let l = 21; l <= level; l++) {
+        if (l <= 50) {
+            xp = Math.round(xp * 1.2);
+        } else {
+            xp = Math.round(xp * 1.3);
+        }
+    }
+    
+    return xp;
+};
+
 const XpBar: React.FC<{ level: number, currentXp: number, label: string, colorClass: string }> = ({ level, currentXp, label, colorClass }) => {
-    const maxXp = 1000 + (level - 1) * 200;
+    const maxXp = getXpRequirementForLevel(level);
     const percentage = Math.min((currentXp / maxXp) * 100, 100);
     return (
         <div>
-            <div className="flex justify-between items-baseline mb-0.5 text-xs">
-                <span className="font-semibold">{label} <span className="text-base font-bold">Lv.{level}</span></span>
-                <span className="font-mono text-tertiary">{currentXp} / {maxXp}</span>
+            <div className="flex justify-between items-baseline mb-0.5 text-xs whitespace-nowrap">
+                <span className="font-semibold whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>{label} <span className="text-base font-bold">Lv.{level}</span></span>
+                <span className="font-mono text-tertiary whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>{currentXp} / {maxXp}</span>
             </div>
             <div className="w-full bg-tertiary/50 rounded-full h-3 border border-color">
                 <div className={`${colorClass} h-full rounded-full transition-width duration-500`} style={{ width: `${percentage}%` }}></div>
@@ -316,6 +347,44 @@ const Profile: React.FC<ProfileProps> = () => {
     const onSelectTournamentLobby = () => window.location.hash = '#/tournament';
     const onSelectSinglePlayerLobby = () => window.location.hash = '#/singleplayer';
 
+    // 수련과제 보상이 가득 찬지 확인
+    const hasFullTrainingQuestReward = useMemo(() => {
+        const userMissions = (currentUserWithStatus as any).singlePlayerMissions || {};
+        const clearedStages = (currentUserWithStatus as any).clearedSinglePlayerStages || [];
+        const currentTime = Date.now();
+        
+        return SINGLE_PLAYER_MISSIONS.some(mission => {
+            const missionState = userMissions[mission.id];
+            if (!missionState) return false;
+            
+            // 미션이 언락되어 있고 시작되었는지 확인
+            const isUnlocked = clearedStages.includes(mission.unlockStageId);
+            const isStarted = missionState.isStarted;
+            if (!isUnlocked || !isStarted) return false;
+            
+            const currentLevel = missionState.level || 0;
+            if (currentLevel === 0 || currentLevel > mission.levels.length) return false;
+            
+            const levelInfo = mission.levels[currentLevel - 1];
+            const accumulatedAmount = missionState.accumulatedAmount || 0;
+            
+            // 생산량 계산 (실시간 반영)
+            const productionRateMs = levelInfo.productionRateMinutes * 60 * 1000;
+            const lastCollectionTime = missionState.lastCollectionTime || currentTime;
+            const elapsed = currentTime - lastCollectionTime;
+            const cycles = Math.floor(elapsed / productionRateMs);
+            
+            let reward = accumulatedAmount;
+            if (cycles > 0) {
+                const generatedAmount = cycles * levelInfo.rewardAmount;
+                reward = Math.min(levelInfo.maxCapacity, accumulatedAmount + generatedAmount);
+            }
+            
+            // 가득 찬 상태 확인
+            return reward >= levelInfo.maxCapacity;
+        });
+    }, [currentUserWithStatus]);
+
     const handlePresetChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
         const presetIndex = Number(event.target.value);
         setSelectedPreset(presetIndex);
@@ -422,9 +491,9 @@ const Profile: React.FC<ProfileProps> = () => {
                     </div>
                     <div className="flex flex-col items-center w-full">
                         <div className="flex items-center gap-1 w-full justify-center">
-                            <h2 className="text-sm font-bold truncate" title={nickname}>{nickname}</h2>
+                            <h2 className="text-sm font-bold truncate whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }} title={nickname}>{nickname}</h2>
                         </div>
-                         <p className="text-[10px] text-tertiary mt-0.5 truncate">
+                         <p className="text-[10px] text-tertiary mt-0.5 truncate whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.625rem)' }}>
                             MBTI: {currentUserWithStatus.mbti ? currentUserWithStatus.mbti : '미설정'}
                         </p>
                     </div>
@@ -434,9 +503,9 @@ const Profile: React.FC<ProfileProps> = () => {
                     <XpBar level={currentUserWithStatus.strategyLevel} currentXp={currentUserWithStatus.strategyXp} label="전략" colorClass="bg-gradient-to-r from-blue-500 to-cyan-400" />
                     <XpBar level={currentUserWithStatus.playfulLevel} currentXp={currentUserWithStatus.playfulXp} label="놀이" colorClass="bg-gradient-to-r from-yellow-500 to-orange-400" />
                     <div>
-                        <div className="flex justify-between items-baseline mb-0.5 text-xs">
-                            <span className="font-semibold">매너 등급</span>
-                            <span className={`font-semibold text-xs ${mannerRank.color}`}>{totalMannerScore}점 ({mannerRank.rank})</span>
+                        <div className="flex justify-between items-baseline mb-0.5 text-xs whitespace-nowrap">
+                            <span className="font-semibold whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>매너 등급</span>
+                            <span className={`font-semibold text-xs whitespace-nowrap overflow-hidden ${mannerRank.color}`} style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>{totalMannerScore}점 ({mannerRank.rank})</span>
                         </div>
                         <div className="w-full bg-tertiary/50 rounded-full h-2 border border-color">
                             <div className={`${mannerStyle.colorClass} h-full rounded-full`} style={{ width: `${mannerStyle.percentage}%` }}></div>
@@ -453,10 +522,10 @@ const Profile: React.FC<ProfileProps> = () => {
                         <Button onClick={() => window.location.hash = '#/guild'} colorScheme="blue" className="w-full">길드 가입</Button>
                     )}
                 </div>
-                 <div className="flex justify-between items-center mb-1 flex-shrink-0">
-                    <h3 className="font-semibold text-secondary text-sm">능력치</h3>
-                    <div className="text-xs flex items-center gap-2">
-                        <span>보너스: <span className="font-bold text-green-400">{availablePoints}</span>P</span>
+                 <div className="flex justify-between items-center mb-1 flex-shrink-0 whitespace-nowrap">
+                    <h3 className="font-semibold text-secondary text-sm whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }}>능력치</h3>
+                    <div className="text-xs flex items-center gap-2 whitespace-nowrap overflow-hidden">
+                        <span className="whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>보너스: <span className="font-bold text-green-400">{availablePoints}</span>P</span>
                         <Button 
                             onClick={handlers.openStatAllocationModal} 
                             colorScheme="yellow" 
@@ -476,9 +545,9 @@ const Profile: React.FC<ProfileProps> = () => {
 						const finalValue = Math.floor((baseValue + bonusInfo.flat) * (1 + bonusInfo.percent / 100));
 						const bonus = finalValue - baseValue;
                         return (
-                            <div key={stat} className="bg-tertiary/40 p-1 rounded-md flex items-center justify-between text-xs">
-                                <span className="font-semibold text-secondary">{stat}</span>
-                                <span className="font-mono font-bold" title={`기본: ${baseValue}, 장비: ${bonus}`}>
+                            <div key={stat} className="bg-tertiary/40 p-1 rounded-md flex items-center justify-between text-xs whitespace-nowrap overflow-hidden">
+                                <span className="font-semibold text-secondary whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>{stat}</span>
+                                <span className="font-mono font-bold whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }} title={`기본: ${baseValue}, 장비: ${bonus}`}>
                                     {isNaN(finalValue) ? 0 : finalValue}
                                     {bonus > 0 && <span className="text-green-400 text-xs ml-0.5">(+{bonus})</span>}
                                 </span>
@@ -502,18 +571,21 @@ const Profile: React.FC<ProfileProps> = () => {
     
             <div className="col-span-4 row-span-1 lg:col-span-4 lg:row-span-4">
                 <div onClick={onSelectTournamentLobby} className="bg-panel border border-color rounded-lg p-1 lg:p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full text-on-panel">
-                    <h2 className="text-xs lg:text-base font-bold h-5 lg:h-6 mb-0.5 lg:mb-1">챔피언십</h2>
+                    <h2 className="text-xs lg:text-base font-bold h-5 lg:h-6 mb-0.5 lg:mb-1 whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 1rem)' }}>챔피언십</h2>
                     <div className="w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden min-h-0">
                         <img src={TOURNAMENT_LOBBY_IMG} alt="챔피언십" className="w-full h-full object-cover" />
                     </div>
-                    <div className="w-full bg-tertiary/50 rounded-md p-0.5 lg:p-1 text-[10px] lg:text-xs mt-1 lg:mt-2" title="챔피언십 정보">
-                         <span>점수: {(currentUserWithStatus.tournamentScore ?? 0).toLocaleString()} / 리그: {currentUserWithStatus.league || '없음'}</span>
+                    <div className="w-full bg-tertiary/50 rounded-md p-0.5 lg:p-1 text-[10px] lg:text-xs mt-1 lg:mt-2 whitespace-nowrap overflow-hidden" title="챔피언십 정보" style={{ fontSize: 'clamp(0.5rem, 1.2vw, 0.75rem)' }}>
+                         <span className="whitespace-nowrap overflow-hidden">점수: {(currentUserWithStatus.tournamentScore ?? 0).toLocaleString()} / 리그: {currentUserWithStatus.league || '없음'}</span>
                         </div>
                     </div>
                 </div>
                 
                 <div className="col-span-4 row-span-1 lg:col-span-4 lg:row-span-4">
-                    <div onClick={onSelectSinglePlayerLobby} className="bg-panel border border-color rounded-lg p-1 lg:p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-green-500/30 cursor-pointer h-full text-on-panel">
+                    <div onClick={onSelectSinglePlayerLobby} className="bg-panel border border-color rounded-lg p-1 lg:p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-green-500/30 cursor-pointer h-full text-on-panel relative">
+                        {hasFullTrainingQuestReward && (
+                            <div className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full z-10 border-2 border-gray-900"></div>
+                        )}
                         <h2 className="text-xs lg:text-base font-bold h-5 lg:h-6 mb-0.5 lg:mb-1">싱글플레이</h2>
                         <div className="w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden min-h-0">
                             <img src={SINGLE_PLAYER_LOBBY_IMG} alt="싱글플레이" className="w-full h-full object-cover" />
@@ -540,23 +612,23 @@ const Profile: React.FC<ProfileProps> = () => {
             </div>
         );
     return (
-        <div className="bg-primary text-primary p-2 sm:p-4 lg:p-2 max-w-screen-2xl mx-auto w-full h-full flex flex-col">
+        <div className="bg-primary text-primary p-2 sm:p-4 lg:p-2 w-full h-full flex flex-col">
             <header className="flex justify-between items-center mb-2 px-2 flex-shrink-0">
                 <h1 className="text-2xl font-bold text-primary">홈</h1>
                 <div className="flex items-center gap-2">
                     <button 
                         onClick={handlers.openEncyclopedia}
-                        className="w-8 h-8 flex items-center justify-center bg-purple-600 hover:bg-purple-500 rounded-full text-white font-bold text-lg flex-shrink-0 transition-transform hover:scale-110"
+                        className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-transform hover:scale-110"
                         title="도감"
                     >
-                        📖
+                        <img src="/images/button/itembook.png" alt="도감" className="w-full h-full" />
                     </button>
                     <button 
                         onClick={handlers.openInfoModal}
-                        className="w-8 h-8 flex items-center justify-center bg-gray-600 hover:bg-gray-500 rounded-full text-white font-bold text-lg flex-shrink-0 transition-transform hover:scale-110"
+                        className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-transform hover:scale-110"
                         title="도움말"
                     >
-                        ?
+                        <img src="/images/button/help.png" alt="도움말" className="w-full h-full" />
                     </button>
                 </div>
             </header>
@@ -567,13 +639,13 @@ const Profile: React.FC<ProfileProps> = () => {
                         <div className="w-[25%] bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col gap-1">{ProfilePanelContent}</div>
                         {/* New structure for equipped items, ranking boards, and quick access */}
                         <div className="flex-1 flex flex-row gap-2 min-w-0">
-                            <div className="w-[240px] bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col">
+                            <div className="w-[280px] bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col">
                                 <h3 className="text-center font-semibold text-secondary text-sm flex-shrink-0 mb-2">장착 장비</h3>
                                 <div className="grid grid-cols-3 gap-2">
                                     {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
                                         const item = getItemForSlot(slot);
                                         return (
-                                            <div key={slot} className="w-full">
+                                            <div key={slot} className="w-full aspect-square">
                                                 <EquipmentSlotDisplay
                                                     slot={slot}
                                                     item={item}
@@ -702,7 +774,7 @@ const Profile: React.FC<ProfileProps> = () => {
                                     <BadukRankingBoard />
                                 </div>
                             </div>
-                            <div className="flex-1 min-h-0 bg-panel border border-color rounded-lg shadow-lg flex flex-col">
+                            <div className="flex-1 min-h-[400px] bg-panel border border-color rounded-lg shadow-lg flex flex-col">
                                 <ChatWindow messages={globalChat} mode="global" onAction={handlers.handleAction} onViewUser={handlers.openViewingUser} locationPrefix="[홈]" />
                             </div>
                         </div>

@@ -458,15 +458,6 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
             const updatedUser = JSON.parse(JSON.stringify(freshUser));
             
-            console.log(`[START_TOURNAMENT_ROUND] Returning response:`, {
-                hasUpdatedUser: !!updatedUser,
-                updatedUserKeys: updatedUser ? Object.keys(updatedUser).slice(0, 10) : [],
-                hasTournamentState: !!updatedUser?.[stateKey],
-                tournamentStatus: updatedUser?.[stateKey]?.status,
-                currentRound: updatedUser?.[stateKey]?.currentRoundRobinRound,
-                redirectToTournament: type
-            });
-            
             // WebSocket으로 사용자 업데이트 브로드캐스트
             broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUser } });
             
@@ -681,15 +672,20 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 return { error: '컨디션이 이미 최대입니다.' };
             }
 
-            // Use condition potion
+            // Use condition potion - 인벤토리에서 제거
+            // quantity가 1보다 크면 감소, 1이면 배열에서 제거
             if (conditionPotion.quantity && conditionPotion.quantity > 1) {
                 conditionPotion.quantity--;
             } else {
+                // quantity가 1이거나 undefined인 경우 배열에서 제거
                 const itemIndex = user.inventory.findIndex(i => i.id === conditionPotion.id);
                 if (itemIndex !== -1) {
                     user.inventory.splice(itemIndex, 1);
                 }
             }
+            
+            // 인벤토리 배열의 참조를 변경하여 React가 변경을 감지하도록 함
+            user.inventory = [...user.inventory];
 
             // Deduct gold
             if (!user.isAdmin) {
@@ -829,6 +825,7 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             tournamentState.currentMatchCommentary = [];
             tournamentState.timeElapsed = 0;
             tournamentState.currentMatchScores = { player1: 0, player2: 0 };
+            tournamentState.lastSimulationTime = Date.now() - 1100; // 시뮬레이션 시작 직전 시간으로 설정하여 즉시 첫 틱 진행
 
             // Save tournament state
             await db.updateUser(freshUser);
@@ -836,6 +833,13 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             // Update volatile state
             if (!volatileState.activeTournaments) volatileState.activeTournaments = {};
             volatileState.activeTournaments[freshUser.id] = tournamentState;
+
+            // 즉시 첫 번째 시뮬레이션 진행 (지연 없이 시작)
+            const { advanceSimulation } = await import('../tournamentService.js');
+            advanceSimulation(tournamentState, freshUser);
+            
+            // 시뮬레이션 진행 후 다시 저장
+            await db.updateUser(freshUser);
 
             // WebSocket으로 사용자 업데이트 브로드캐스트
             const updatedUserCopy = JSON.parse(JSON.stringify(freshUser));

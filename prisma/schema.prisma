@@ -1,0 +1,148 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String   @id @default(uuid())
+  nickname         String   @unique
+  username         String?  @unique
+  email            String?  @unique
+  strategyLevel    Int      @default(1)
+  strategyXp       Int      @default(0)
+  playfulLevel     Int      @default(1)
+  playfulXp        Int      @default(0)
+  actionPointCurr  Int      @default(0)
+  actionPointMax   Int      @default(0)
+  gold             BigInt   @default(0)
+  diamonds         BigInt   @default(0)
+  league           String?
+  tournamentScore  Int      @default(0)
+  status           Json?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  version          Int      @default(0)
+
+  inventory        UserInventory[]
+  equipment        UserEquipment[]
+  mail             UserMail[]
+  quests           UserQuest[]
+  missions         UserMission[]
+  inventoryHistory InventoryHistory[]
+
+  @@index([league])
+  @@index([tournamentScore])
+}
+
+model UserInventory {
+  id             String   @id @default(uuid())
+  userId         String
+  templateId     String
+  quantity       Int      @default(1)
+  slot           String?
+  enhancementLvl Int      @default(0)
+  stars          Int      @default(0)
+  rarity         String?
+  metadata       Json?
+  isEquipped     Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  version        Int      @default(0)
+
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  equippedIn     UserEquipment[]
+  history        InventoryHistory[]
+
+  @@index([userId])
+  @@index([userId, templateId])
+  @@index([userId, slot])
+}
+
+model UserEquipment {
+  id           String   @id @default(uuid())
+  userId       String
+  slot         String
+  inventoryId  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  version      Int      @default(0)
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inventory    UserInventory? @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+
+  @@unique([userId, slot])
+  @@index([inventoryId])
+}
+
+model UserMail {
+  id         String   @id @default(uuid())
+  userId     String
+  title      String
+  body       String
+  attachments Json?
+  isRead     Boolean  @default(false)
+  expiresAt  DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([expiresAt])
+}
+
+model UserQuest {
+  id        String   @id @default(uuid())
+  userId    String
+  questId   String
+  status    String
+  progress  Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, questId])
+  @@unique([userId, questId])
+}
+
+model UserMission {
+  id        String   @id @default(uuid())
+  userId    String
+  missionId String
+  level     Int      @default(1)
+  state     Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, missionId])
+  @@unique([userId, missionId])
+}
+
+model InventoryHistory {
+  id           String   @id @default(uuid())
+  userId       String
+  inventoryId  String?
+  action       String
+  delta        Json?
+  createdAt    DateTime @default(now())
+
+  user         User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  inventory    UserInventory? @relation(fields: [inventoryId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
+  @@index([inventoryId])
+}

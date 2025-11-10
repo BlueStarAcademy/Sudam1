@@ -2,3 +2,5 @@ database_backup_*.sqlite
 node_modules
 katago/
 gnugo/
+
+/generated/prisma

@@ -10,8 +10,12 @@ const SinglePlayerControls: React.FC<SinglePlayerControlsProps> = ({ session, on
     if (session.gameStatus === 'ended' || session.gameStatus === 'no_contest') {
         const isWinner = session.winner === Player.Black;
         const currentStageIndex = SINGLE_PLAYER_STAGES.findIndex(s => s.id === session.stageId);
+        const currentStage = SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
         const nextStage = SINGLE_PLAYER_STAGES[currentStageIndex + 1];
         const canTryNext = isWinner && nextStage && (currentUser.singlePlayerProgress ?? 0) > currentStageIndex;
+        
+        const retryActionPointCost = currentStage?.actionPointCost ?? 0;
+        const nextStageActionPointCost = nextStage?.actionPointCost ?? 0;
 
         const handleRetry = () => {
             onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
@@ -33,9 +37,11 @@ const SinglePlayerControls: React.FC<SinglePlayerControlsProps> = ({ session, on
         return (
              <div className="bg-stone-800/60 backdrop-blur-sm rounded-lg p-2 flex items-center justify-center gap-2 w-full border border-stone-700/50">
                 <Button onClick={handleExitToLobby} colorScheme="gray" className="flex-1 !text-sm">로비로</Button>
-                <Button onClick={handleRetry} colorScheme="yellow" className="flex-1 !text-sm">재도전</Button>
+                <Button onClick={handleRetry} colorScheme="yellow" className="flex-1 !text-sm">
+                    재도전{retryActionPointCost > 0 && ` (⚡${retryActionPointCost})`}
+                </Button>
                 <Button onClick={handleNextStage} colorScheme="accent" disabled={!canTryNext} className="flex-1 !text-sm">
-                    다음 단계{nextStage ? `: ${nextStage.name.replace('스테이지 ', '')}` : ''}
+                    다음 단계{nextStage ? `: ${nextStage.name.replace('스테이지 ', '')}` : ''}{nextStageActionPointCost > 0 && ` (⚡${nextStageActionPointCost})`}
                 </Button>
             </div>
         );

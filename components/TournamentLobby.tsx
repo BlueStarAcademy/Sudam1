@@ -10,6 +10,7 @@ import ChatWindow from './waiting-room/ChatWindow.js';
 import PointsInfoPanel from './PointsInfoPanel.js';
 import Button from './Button.js';
 import { calculateUserEffects } from '../services/effectService.js';
+import ChampionshipHelpModal from './ChampionshipHelpModal.js';
 
 const stringToSeed = (str: string): number => {
     let hash = 0;
@@ -89,18 +90,10 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
     
         let competitors = (currentUserWithStatus.weeklyCompetitors).map(competitor => {
             if (competitor.id.startsWith('bot-')) {
-                // 봇들은 월요일 0시에 점수가 0으로 초기화되므로 initialScore를 0으로 사용
-                const botInitialScore = 0;
-                let totalGain = 0;
-                for (let i = 1; i <= daysPassed; i++) {
-                    const seedStr = `${competitor.id}-${new Date(startOfWeek.getTime() + i * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}`;
-                    const seed = stringToSeed(seedStr);
-                    const randomVal = seededRandom(seed);
-                    const dailyGain = Math.floor(randomVal * 51); // 0-50 random score gain (한국시간 0시마다 획득)
-                    totalGain += dailyGain;
-                }
-                const liveScore = botInitialScore + totalGain;
-                const scoreChange = liveScore - botInitialScore;
+                // 서버에 저장된 봇 점수 사용
+                const botScore = currentUserWithStatus.weeklyCompetitorsBotScores?.[competitor.id]?.score || 0;
+                const liveScore = botScore;
+                const scoreChange = liveScore - competitor.initialScore; // initialScore는 항상 0
                 return { ...competitor, liveScore, scoreChange };
             } else {
                 const liveData = allUsers.find(u => u.id === competitor.id);
@@ -122,15 +115,9 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
                 const randomAvatar = AVATAR_POOL[Math.floor(seededRandom(botSeed + 1) * AVATAR_POOL.length)];
                 const randomBorder = BORDER_POOL[Math.floor(seededRandom(botSeed + 2) * BORDER_POOL.length)];
 
-                let totalGain = 0;
-                for (let j = 1; j <= daysPassed; j++) {
-                    const seedStr = `${botId}-${new Date(startOfWeek.getTime() + j * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)}`;
-                    const seed = stringToSeed(seedStr);
-                    const randomVal = seededRandom(seed);
-                    const dailyGain = Math.floor(randomVal * 51); // 0-50 random score gain (한국시간 0시마다 획득)
-                    totalGain += dailyGain;
-                }
-                const liveScore = botInitialScore + totalGain;
+                // 서버에 저장된 봇 점수 사용 (없으면 0)
+                const botScore = currentUserWithStatus.weeklyCompetitorsBotScores?.[botId]?.score || 0;
+                const liveScore = botScore;
                 const scoreChange = liveScore - botInitialScore;
 
                 // Static list of possible bot nicknames
@@ -201,7 +188,7 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
                     const rank = index + 1;
                     const isCurrentUser = competitor.id === currentUserWithStatus.id;
                     const scoreChangeColor = competitor.scoreChange > 0 ? 'text-green-400' : competitor.scoreChange < 0 ? 'text-red-400' : 'text-gray-400';
-                    const scoreChangeSign = competitor.scoreChange > 0 ? '▲' : competitor.scoreChange < 0 ? '▼' : '-';
+                    const scoreChangeSign = competitor.scoreChange > 0 ? '▲' : competitor.scoreChange < 0 ? '▼' : '변화없음';
                     
                     const avatarUrl = AVATAR_POOL.find(a => a.id === competitor.avatarId)?.url;
                     const borderUrl = BORDER_POOL.find(b => b.id === competitor.borderId)?.url;
@@ -219,7 +206,9 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
                             <span className="flex-grow font-semibold text-sm truncate">{competitor.nickname}</span>
                             <div className="flex items-baseline gap-1 text-xs">
                                 <span className="font-mono text-yellow-300">{competitor.liveScore.toLocaleString()}</span>
-                                <span className={scoreChangeColor}>({scoreChangeSign}{Math.abs(competitor.scoreChange)})</span>
+                                <span className={scoreChangeColor}>
+                                    {competitor.scoreChange === 0 ? `(${scoreChangeSign})` : `(${scoreChangeSign}${Math.abs(competitor.scoreChange)})`}
+                                </span>
                             </div>
                         </li>
                     );
@@ -280,7 +269,7 @@ const RankItem: React.FC<RankItemProps> = ({ user, rank, isMyRankDisplay }) => {
     );
 };
 
-const ChampionshipRankingPanel: React.FC = () => {
+const ChampionshipRankingPanel: React.FC<{ compactTierIcons?: boolean }> = ({ compactTierIcons = false }) => {
     const { currentUserWithStatus, allUsers, handlers } = useAppContext();
     const [selectedTier, setSelectedTier] = useState<LeagueTier>(LEAGUE_DATA[0].tier);
     const [isLeagueTierInfoModalOpen, setIsLeagueTierInfoModalOpen] = useState(false);
@@ -332,15 +321,19 @@ const ChampionshipRankingPanel: React.FC = () => {
                     티어 안내
                 </button>
             </div>
-            <div className="flex flex-nowrap justify-start bg-gray-900/50 p-1 rounded-lg mb-3 flex-shrink-0 gap-1 tier-tabs-container overflow-x-auto">
+            <div className={`flex flex-wrap justify-start bg-gray-900/50 p-1 rounded-lg mb-3 flex-shrink-0 ${compactTierIcons ? 'gap-0.5' : 'gap-1'} tier-tabs-container`}>
                 {LEAGUE_DATA.map(league => (
                     <button
                         key={league.tier}
                         onClick={() => setSelectedTier(league.tier)}
-                        className={`p-1 rounded-md transition-all duration-200 flex-shrink-0 ${selectedTier === league.tier ? 'bg-purple-600 ring-2 ring-purple-400' : 'hover:bg-gray-600'}`}
+                        className={`p-0.5 rounded-md transition-all duration-200 flex-shrink-0 ${compactTierIcons ? 'min-w-[30px]' : ''} ${selectedTier === league.tier ? 'bg-purple-600 ring-2 ring-purple-400' : 'hover:bg-gray-600'}`}
                         title={league.name}
                     >
-                        <img src={league.icon} alt={league.name} className="w-10 h-10" />
+                        <img
+                            src={league.icon}
+                            alt={league.name}
+                            className={compactTierIcons ? 'w-6 h-6 sm:w-7 sm:h-7' : 'w-8 h-8'}
+                        />
                     </button>
                 ))}
             </div>
@@ -368,7 +361,8 @@ const TournamentCard: React.FC<{
     const definition = TOURNAMENT_DEFINITIONS[type];
     const isSimulationInProgress = inProgress && inProgress.status === 'round_in_progress';
     const hasResultToView = inProgress && (inProgress.status === 'complete' || inProgress.status === 'eliminated');
-    const isReadyToContinue = inProgress && (inProgress.status === 'bracket_ready' || inProgress.status === 'round_complete');
+    // 경기가 완료된 경우에는 계속하기 버튼을 표시하지 않음
+    const isReadyToContinue = inProgress && !hasResultToView && (inProgress.status === 'bracket_ready' || inProgress.status === 'round_complete');
 
     // 입장 가능 횟수 계산 (남은 횟수)
     const now = Date.now();
@@ -542,6 +536,7 @@ const TournamentLobby: React.FC = () => {
     const [hasRankChanged, setHasRankChanged] = useState(false);
     const [enrollingIn, setEnrollingIn] = useState<TournamentType | null>(null);
     const [selectedPreset, setSelectedPreset] = useState(0);
+    const [isChampionshipHelpOpen, setIsChampionshipHelpOpen] = useState(false);
 
     useEffect(() => {
         const checkIsMobile = () => setIsMobile(window.innerWidth < 1024);
@@ -592,27 +587,41 @@ const TournamentLobby: React.FC = () => {
         }
     };
 
+    const containerClass = isMobile
+        ? 'min-h-screen overflow-y-auto'
+        : 'h-[calc(100vh-5rem)] overflow-hidden';
+
     return (
-        <div className="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto flex flex-col h-[calc(100vh-5rem)] relative overflow-hidden">
+        <div className={`p-4 sm:p-6 lg:p-8 w-full flex flex-col relative ${containerClass}`}>
             <header className="flex justify-between items-center mb-4 sm:mb-6 flex-shrink-0">
                 <button onClick={() => window.location.hash = '#/profile'} className="transition-transform active:scale-90 filter hover:drop-shadow-lg">
-                    <img src="/images/button/back.png" alt="Back" className="w-8 h-8 sm:w-10 sm:h-10" />
+                    <img src="/images/button/back.png" alt="Back" className="w-10 h-10 sm:w-12 sm:h-12" />
                 </button>
-                <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold">챔피언십</h1>
+                <div className="flex-1 text-center flex items-center justify-center gap-3">
+                    <h1 className="text-xl sm:text-2xl lg:text-4xl font-bold">챔피언십</h1>
+                    <button 
+                        onClick={() => setIsChampionshipHelpOpen(true)}
+                        className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-transform hover:scale-110"
+                        aria-label="도움말"
+                        title="도움말"
+                    >
+                        <img src="/images/button/help.png" alt="도움말" className="w-full h-full" />
+                    </button>
+                </div>
                 {isMobile ? (
                     <button 
                         onClick={() => setIsMobileSidebarOpen(true)}
                         className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-gray-800/80 backdrop-blur-sm rounded-lg hover:bg-gray-700/80 transition-colors"
                         aria-label="메뉴 열기"
                     >
-                        <span className="text-lg sm:text-2xl font-bold text-white">{'>'}</span>
+                        <span className="text-lg sm:text-2xl font-bold text-white">{'<'}</span>
                     </button>
                 ) : (
                     <div className="w-10"></div>
                 )}
             </header>
             
-            <div className="flex-1 flex flex-col lg:flex-row gap-6 min-h-0 overflow-hidden">
+            <div className={`${isMobile ? '' : 'flex-1'} flex flex-col lg:flex-row gap-6 min-h-0 ${isMobile ? '' : 'overflow-hidden'}`}>
                 <main className="flex-grow flex flex-col gap-6 min-h-0 overflow-hidden">
                     <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:gap-4 flex-shrink-0">
                         <TournamentCard type="neighborhood" onClick={() => handleEnterArena('neighborhood')} onContinue={() => handleContinueTournament('neighborhood')} inProgress={neighborhoodState || null} currentUser={currentUserWithStatus} />
@@ -682,7 +691,7 @@ const TournamentLobby: React.FC = () => {
                         </div>
                         
                         {/* 채팅창 - 모바일에서는 아래에, 데스크톱에서는 왼쪽에 */}
-                        <div className="flex-1 lg:col-span-5 bg-gray-800/50 rounded-lg shadow-lg min-h-0 flex flex-col overflow-hidden">
+                        <div className={`flex-1 lg:col-span-6 bg-gray-800/50 rounded-lg shadow-lg min-h-0 flex flex-col overflow-hidden ${isMobile ? 'min-h-[240px]' : ''}`}>
                             <ChatWindow
                                 messages={waitingRoomChats.global || []}
                                 mode="global"
@@ -693,7 +702,7 @@ const TournamentLobby: React.FC = () => {
                         </div>
                         
                         {/* 데스크톱: 장착 장비 + 능력치 패널 (세로 배치) */}
-                        <div className="hidden lg:flex col-span-4 bg-gray-800/50 rounded-lg p-4 shadow-lg min-h-0 flex-col overflow-hidden">
+                        <div className="hidden lg:flex col-span-3 bg-gray-800/50 rounded-lg p-4 shadow-lg min-h-0 flex-col overflow-hidden">
                             <div className="flex flex-col gap-4 h-full min-h-0">
                                 {/* 장착 장비 섹션 */}
                                 <div className="flex flex-col gap-3 flex-shrink-0">
@@ -748,7 +757,7 @@ const TournamentLobby: React.FC = () => {
                         </div>
                     </div>
                 </main>
-                 <aside className="hidden lg:flex flex-col lg:w-[480px] flex-shrink-0 gap-6 min-h-0 overflow-hidden">
+                 <aside className="hidden lg:flex flex-col lg:w-[560px] flex-shrink-0 gap-6 min-h-0 overflow-hidden">
                     <div className="flex-1 flex flex-row gap-4 items-stretch min-h-0 overflow-hidden">
                         <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
                             <WeeklyCompetitorsPanel setHasRankChanged={setHasRankChanged}/>
@@ -782,13 +791,14 @@ const TournamentLobby: React.FC = () => {
                             </div>
                             {/* Championship Ranking Panel */}
                             <div className="flex-1 min-h-[250px] sm:min-h-[300px] bg-gray-900/50 rounded-lg border border-gray-700 overflow-hidden">
-                                <ChampionshipRankingPanel />
+                                <ChampionshipRankingPanel compactTierIcons={isMobileSidebarOpen} />
                             </div>
                         </div>
                     </div>
                     {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}
                 </>
             )}
+            {isChampionshipHelpOpen && <ChampionshipHelpModal onClose={() => setIsChampionshipHelpOpen(false)} />}
         </div>
     );
 };

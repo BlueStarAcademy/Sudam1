@@ -20,10 +20,10 @@ type SettingsTab = 'graphics' | 'sound' | 'features';
 
 const THEMES: { id: Theme; name: string; colors: string[] }[] = [
     { id: 'black', name: '슬레이트', colors: ['#0f172a', '#1e293b', '#e2e8f0', '#eab308'] },
-    { id: 'white', name: '라이트', colors: ['#f8fafc', '#f1f5f9', '#0f172a', '#ca8a04'] },
-    { id: 'sky', name: '데이브레이크', colors: ['#f0f9ff', '#e0f2fe', '#1e3a8a', '#f97316'] },
-    { id: 'blue', name: '파스텔 블루', colors: ['#eff6ff', '#dbeafe', '#1e40af', '#3b82f6'] },
-    { id: 'green', name: '파스텔 그린', colors: ['#f0fdf4', '#dcfce7', '#14532d', '#d946ef'] },
+    { id: 'white', name: '라이트', colors: ['#e5e7eb', '#d1d5db', '#111827', '#eab308'] },
+    { id: 'sky', name: '데이브레이크', colors: ['#bfdbfe', '#7dd3fc', '#0c4a6e', '#fbbf24'] },
+    { id: 'blue', name: '파스텔 로즈', colors: ['#fef2f2', '#fee2e2', '#881337', '#eab308'] },
+    { id: 'green', name: '파스텔 그린', colors: ['#bbf7d0', '#86efac', '#14532d', '#eab308'] },
 ];
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => {

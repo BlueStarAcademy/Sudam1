@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, LiveGameSession, Player, GameMode, Point, BoardState, SinglePlayerStageInfo, SinglePlayerMissionState, UserStatus } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, LiveGameSession, Player, GameMode, Point, BoardState, SinglePlayerStageInfo, SinglePlayerMissionState, UserStatus, SinglePlayerLevel } from '../../types.js';
 import { SINGLE_PLAYER_STAGES, SINGLE_PLAYER_MISSIONS } from '../../constants/singlePlayerConstants';
 import { getAiUser } from '../aiPlayer.js';
 import { broadcast } from '../socket.js';
@@ -95,14 +95,12 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 return { error: 'Stage not found.' };
             }
             
-            if (user.actionPoints.current < stage.actionPointCost && !user.isAdmin) {
+            if (user.actionPoints.current < stage.actionPointCost) {
                 return { error: `액션 포인트가 부족합니다. (필요: ${stage.actionPointCost})` };
             }
 
-            if (!user.isAdmin) {
-                user.actionPoints.current -= stage.actionPointCost;
-                user.lastActionPointUpdate = now;
-            }
+            user.actionPoints.current -= stage.actionPointCost;
+            user.lastActionPointUpdate = now;
             
             // 게임 모드 결정
             let gameMode: GameMode;
@@ -119,7 +117,22 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 gameMode = GameMode.Standard;
             }
 
-            const aiUser = getAiUser(gameMode);
+            // 싱글플레이용 AI 유저 생성 (스테이지 정보 기반)
+            const aiLevel = getAiLevelFromStageId(stage.id);
+            const levelName = stage.level === SinglePlayerLevel.입문 ? '입문' :
+                             stage.level === SinglePlayerLevel.초급 ? '초급' :
+                             stage.level === SinglePlayerLevel.중급 ? '중급' :
+                             stage.level === SinglePlayerLevel.고급 ? '고급' : '유단자';
+            const botNickname = `${levelName}봇`;
+            const botLevel = aiLevel * 10;
+            
+            const aiUser = {
+                ...getAiUser(gameMode),
+                nickname: botNickname,
+                strategyLevel: botLevel,
+                playfulLevel: botLevel,
+            };
+            
             const { board, blackPattern, whitePattern } = generateSinglePlayerBoard(stage);
 
             // 살리기 바둑 모드 확인
@@ -142,9 +155,6 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                     aiHiddenItemTurn = Math.floor(Math.random() * 21) + 10;
                 }
             }
-
-            // 스테이지별 AI 레벨 계산
-            const aiLevel = getAiLevelFromStageId(stage.id);
 
             const gameId = `sp-game-${randomUUID()}`;
             const game: LiveGameSession = {
@@ -202,10 +212,10 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 turnDeadline: undefined,
                 effectiveCaptureTargets: {
                     [Player.None]: 0,
-                    // 살리기 바둑: 흑만 목표점수 있음 (백을 잡아서 승리)
-                    [Player.Black]: stage.targetScore.black,
-                    // 살리기 바둑: 백은 목표점수가 없음 (살아남는 것이 목표)
-                    [Player.White]: isSurvivalMode ? 999 : stage.targetScore.white,
+                    // 살리기 바둑: 백(봇)이 목표점수를 달성해야 함, 흑(유저)은 목표점수 없음
+                    [Player.Black]: isSurvivalMode ? 999 : stage.targetScore.black,
+                    // 살리기 바둑: 백(봇)이 목표점수를 달성해야 함 (백의 목표점수는 black 값 사용)
+                    [Player.White]: isSurvivalMode ? stage.targetScore.black : stage.targetScore.white,
                 },
                 // 살리기 바둑: 백의 턴 수 추적
                 whiteTurnsPlayed: isSurvivalMode ? 0 : undefined,
@@ -431,10 +441,13 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             await db.updateUser(user);
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
             
+            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            
             // 보상 정보를 클라이언트에 반환
             return { 
                 clientResponse: { 
-                    updatedUser: user,
+                    updatedUser,
                     reward: {
                         [rewardType]: rewardAmount
                     }
@@ -442,42 +455,96 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             };
         }
         case 'LEVEL_UP_TRAINING_QUEST': {
-            const { missionId } = payload;
-            const missionInfo = SINGLE_PLAYER_MISSIONS.find(m => m.id === missionId);
-            if (!missionInfo) return { error: '미션을 찾을 수 없습니다.' };
-        
-            const missionState = user.singlePlayerMissions?.[missionId];
-            if (!missionState || !missionState.isStarted) return { error: '미션이 시작되지 않았습니다.' };
+            if (!payload || typeof payload !== 'object') {
+                console.error('[LEVEL_UP_TRAINING_QUEST] Invalid payload:', payload);
+                return { error: 'Invalid payload.' };
+            }
             
-            const currentLevel = missionState.level || 1;
+            const { missionId } = payload;
+            if (!missionId || typeof missionId !== 'string') {
+                console.error('[LEVEL_UP_TRAINING_QUEST] Missing missionId:', { payload, missionId });
+                return { error: '미션 ID가 필요합니다.' };
+            }
+            
+            const missionInfo = SINGLE_PLAYER_MISSIONS.find(m => m.id === missionId);
+            if (!missionInfo) {
+                console.error('[LEVEL_UP_TRAINING_QUEST] Mission not found:', missionId);
+                return { error: '미션을 찾을 수 없습니다.' };
+            }
+        
+            // singlePlayerMissions 초기화 확인
+            if (!user.singlePlayerMissions) {
+                user.singlePlayerMissions = {};
+            }
+            
+            const missionState = user.singlePlayerMissions[missionId];
+            if (!missionState || !missionState.isStarted) {
+                console.error('[LEVEL_UP_TRAINING_QUEST] Mission not started:', { 
+                    missionId, 
+                    hasMissionState: !!missionState,
+                    isStarted: missionState?.isStarted 
+                });
+                return { error: '미션이 시작되지 않았습니다.' };
+            }
+            
+            const currentLevel = missionState.level ?? 0;
             if (currentLevel >= 10) return { error: '이미 최대 레벨입니다.' };
             
-            const currentLevelInfo = missionInfo.levels[currentLevel - 1];
-            if (!currentLevelInfo) return { error: '현재 레벨 정보를 찾을 수 없습니다.' };
+            // levels 배열 확인
+            if (!missionInfo.levels || !Array.isArray(missionInfo.levels) || missionInfo.levels.length === 0) {
+                console.error('[LEVEL_UP_TRAINING_QUEST] Invalid levels array:', missionInfo.levels);
+                return { error: '레벨 정보가 올바르지 않습니다.' };
+            }
             
-            // 다음 레벨 오픈조건 확인 (레벨 10의 경우)
+            // 다음 레벨 정보 가져오기
+            if (currentLevel >= missionInfo.levels.length) {
+                console.error('[LEVEL_UP_TRAINING_QUEST] Current level exceeds available levels:', { 
+                    currentLevel, 
+                    availableLevels: missionInfo.levels.length 
+                });
+                return { error: '최대 레벨에 도달했습니다.' };
+            }
+            
             const nextLevelInfo = missionInfo.levels[currentLevel];
-            if (nextLevelInfo?.unlockStageId) {
-                const clearedStages = (user.clearedSinglePlayerStages || []) as string[];
+            if (!nextLevelInfo) {
+                console.error('[LEVEL_UP_TRAINING_QUEST] Next level info not found:', { currentLevel, levelsLength: missionInfo.levels.length });
+                return { error: '다음 레벨 정보를 찾을 수 없습니다.' };
+            }
+            
+            // 레벨 0일 때는 현재 레벨 정보가 없으므로 다음 레벨 정보를 사용
+            const currentLevelInfo = currentLevel > 0 ? missionInfo.levels[currentLevel - 1] : null;
+            
+            // 다음 레벨 오픈조건 확인
+            if (nextLevelInfo.unlockStageId) {
+                // clearedSinglePlayerStages가 배열인지 확인
+                let clearedStages: string[] = [];
+                if (Array.isArray(user.clearedSinglePlayerStages)) {
+                    clearedStages = user.clearedSinglePlayerStages;
+                } else if (user.clearedSinglePlayerStages) {
+                    // 배열이 아니면 빈 배열로 초기화
+                    clearedStages = [];
+                }
+                
                 if (!clearedStages.includes(nextLevelInfo.unlockStageId)) {
                     return { error: `${nextLevelInfo.unlockStageId} 스테이지를 클리어해야 합니다.` };
                 }
             }
             
-            // 누적 수령액 확인 (최대생산량 x 현재레벨 x 10)
-            const requiredCollection = currentLevelInfo.maxCapacity * currentLevel * 10;
+            // 누적 수령액 확인 (레벨 0에서 레벨 1로 올릴 때는 수집 요구사항 없음)
+            const requiredCollection = currentLevel === 0 ? 0 : (currentLevelInfo ? currentLevelInfo.maxCapacity * currentLevel * 10 : 0);
             const accumulatedCollection = missionState.accumulatedCollection || 0;
             
             if (accumulatedCollection < requiredCollection) {
                 return { error: `누적 수령액이 부족합니다. (필요: ${requiredCollection}, 현재: ${accumulatedCollection})` };
             }
             
-            // 레벨업 비용 계산 및 차감
+            // 레벨업 비용 계산 및 차감 (레벨 0일 때는 다음 레벨의 maxCapacity 사용)
+            const costBaseCapacity = currentLevelInfo ? currentLevelInfo.maxCapacity : nextLevelInfo.maxCapacity;
             let upgradeCost: number;
             if (missionInfo.rewardType === 'gold') {
-                upgradeCost = currentLevelInfo.maxCapacity * 5;
+                upgradeCost = costBaseCapacity * 5;
             } else {
-                upgradeCost = currentLevelInfo.maxCapacity * 1000;
+                upgradeCost = costBaseCapacity * 1000;
             }
             
             if (missionInfo.rewardType === 'gold') {
@@ -497,21 +564,49 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 }
             }
             
+            // 레벨업 전 상태 저장 (피드백용)
+            const previousLevel = currentLevel;
+            const previousAccumulatedAmount = missionState.accumulatedAmount || 0;
+            
             // 레벨업
             missionState.level = currentLevel + 1;
-            missionState.accumulatedCollection = 0; // 누적 수령액 초기화
+            missionState.accumulatedCollection = 0; // 누적 수령액 초기화 (경험치용)
             
-            // 새 레벨의 초기 생산량 적용
+            // 새 레벨 정보 가져오기
             const newLevelInfo = missionInfo.levels[missionState.level - 1];
             if (newLevelInfo) {
-                const initialAmount = Math.min(newLevelInfo.rewardAmount, newLevelInfo.maxCapacity);
-                missionState.accumulatedAmount = initialAmount;
-                missionState.lastCollectionTime = now;
+                // 수령하지 않은 재화는 유지 (새 레벨의 최대 생산량을 초과하지 않도록 제한)
+                const preservedAmount = Math.min(previousAccumulatedAmount, newLevelInfo.maxCapacity);
+                missionState.accumulatedAmount = preservedAmount;
+                
+                // 재화가 없거나 새 레벨의 초기 생산량이 더 크면 초기 생산량 적용
+                if (preservedAmount === 0 || newLevelInfo.rewardAmount > preservedAmount) {
+                    const initialAmount = Math.min(newLevelInfo.rewardAmount, newLevelInfo.maxCapacity);
+                    missionState.accumulatedAmount = Math.max(preservedAmount, initialAmount);
+                }
+                
+                // 재화가 유지된 경우 lastCollectionTime도 유지, 새로 시작하는 경우만 업데이트
+                if (preservedAmount === 0) {
+                    missionState.lastCollectionTime = now;
+                }
             }
         
             await db.updateUser(user);
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
-            return { clientResponse: { updatedUser: user } };
+            
+            // 강화 완료 정보 반환
+            return { 
+                clientResponse: { 
+                    updatedUser: user,
+                    trainingQuestLevelUp: {
+                        missionId,
+                        previousLevel,
+                        newLevel: missionState.level,
+                        missionName: missionInfo.name,
+                        preservedAmount: missionState.accumulatedAmount
+                    }
+                } 
+            };
         }
         default:
             return { error: 'Unknown single player action' };

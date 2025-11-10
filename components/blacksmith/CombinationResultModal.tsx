@@ -40,10 +40,10 @@ const ItemDisplay: React.FC<{ item: InventoryItem }> = ({ item }) => {
                     {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1"/>}
                     {renderStarDisplay(item.stars)}
                 </div>
-                <div className="flex-grow overflow-hidden pt-2">
-                    <h3 className={`text-lg font-bold truncate ${styles.color}`}>{item.name}</h3>
+                <div className="flex-grow pt-2 min-w-0">
+                    <h3 className={`text-base font-bold whitespace-nowrap overflow-hidden text-ellipsis ${styles.color}`} title={item.name}>{item.name}</h3>
                     {item.options?.main && (
-                        <p className="font-semibold text-yellow-300 text-sm truncate">{item.options.main.display}</p>
+                        <p className="font-semibold text-yellow-300 text-xs whitespace-nowrap overflow-hidden text-ellipsis" title={item.options.main.display}>{item.options.main.display}</p>
                     )}
                 </div>
             </div>

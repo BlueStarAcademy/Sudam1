@@ -14,7 +14,7 @@ const ResourceDisplay: React.FC<{ icon: React.ReactNode; value: string; classNam
     </div>
 );
 
-const ActionPointTimer: React.FC<{ user: UserWithStatus }> = ({ user }) => {
+export const ActionPointTimer: React.FC<{ user: UserWithStatus }> = ({ user }) => {
     const { actionPoints, lastActionPointUpdate } = user;
     const [timeLeft, setTimeLeft] = useState('');
     
@@ -68,7 +68,7 @@ const Header: React.FC = () => {
 
     return (
         <header className="flex-shrink-0 bg-primary/80 backdrop-blur-sm shadow-lg">
-            <div className="p-2 flex justify-between items-center gap-2 h-[60px] flex-nowrap overflow-x-auto">
+            <div className="p-2.5 sm:p-3 flex justify-between items-center gap-2 h-[70px] sm:h-[75px] flex-nowrap overflow-x-auto">
                 <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0 cursor-pointer relative" onClick={openProfileEditModal}>
                      <Avatar userId={currentUserWithStatus.id} userName={currentUserWithStatus.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={40} />
                      <div className="hidden sm:block min-w-0">
@@ -81,15 +81,18 @@ const Header: React.FC = () => {
                 </div>
 
                 <div className="flex items-center justify-end flex-nowrap gap-1 sm:gap-2 flex-shrink-0">
-                    <div className="flex items-center flex-shrink-0 gap-1">
-                        <ResourceDisplay icon="⚡" value={`${safeActionPoints.current}/${safeActionPoints.max}`} className="flex-shrink-0" />
+                    <div className="flex items-center flex-shrink-0 gap-1 bg-tertiary/60 rounded-full pl-2 pr-1 py-1 border border-tertiary/40 shadow-inner">
+                        <span className="flex items-center gap-1 font-bold text-[9px] sm:text-xs text-primary whitespace-nowrap">
+                            <span className="text-base leading-none">⚡</span>
+                            {`${safeActionPoints.current}/${safeActionPoints.max}`}
+                        </span>
                         <ActionPointTimer user={currentUserWithStatus} />
                         <button
                             onClick={() => openShop('misc')}
-                            className="ml-1 flex-shrink-0 transition-transform hover:scale-110 active:scale-95"
+                            className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/70 hover:bg-primary transition-colors border border-primary/60 flex items-center justify-center"
                             title="행동력 충전 (상점)"
                         >
-                            <img src="/images/icon/applus.png" alt="행동력 충전" className="w-7 h-7 object-contain" />
+                            <img src="/images/icon/applus.png" alt="행동력 충전" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
                         </button>
                     </div>
                     <ResourceDisplay icon={<img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 object-contain" />} value={safeGold.toLocaleString()} className="flex-shrink-0" />

@@ -186,6 +186,7 @@ export type TournamentState = {
     lastPlayedDate: number;
     nextRoundStartTime: number | null;
     timeElapsed: number;
+    lastSimulationTime?: number; // 마지막 시뮬레이션 실행 시간 (ms)
     currentMatchScores?: { player1: number; player2: number } | null;
     lastScoreIncrement?: { 
         player1: { base: number; actual: number; isCritical: boolean } | null;
@@ -295,6 +296,7 @@ export type User = {
   weeklyCompetitors?: WeeklyCompetitor[];
   lastWeeklyCompetitorsUpdate?: number;
   lastLeagueUpdate?: number;
+  weeklyCompetitorsBotScores?: Record<string, { score: number; lastUpdate: number }>;
   monthlyGoldBuffExpiresAt?: number | null;
   mbti?: string | null;
   rejectedGameModes?: GameMode[];

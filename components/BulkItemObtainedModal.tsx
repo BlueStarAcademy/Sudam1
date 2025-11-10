@@ -51,7 +51,7 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
     return (
         <DraggableWindow title="보상 수령" onClose={onClose} windowId="bulk-item-obtained" initialWidth={600} closeOnOutsideClick={false} isTopmost={isTopmost} zIndex={70}>
             <div className="text-center">
-                <h2 className="text-xl font-bold mb-4">아이템 {totalItems}개를 획득했습니다!</h2>
+                <h2 className="text-xl font-bold mb-4">아이템을 획득했습니다.</h2>
                 {tournamentScoreChange && (
                     <div className="mb-4 p-4 bg-gradient-to-r from-green-900/40 to-green-800/40 rounded-lg border-2 border-green-600/60 shadow-lg">
                         <div className="flex flex-col items-center gap-2">
@@ -73,7 +73,7 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
                         </div>
                     </div>
                 )}
-                <div className="grid grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto p-2 bg-gray-900/50 rounded-lg">
+                <div className="grid grid-cols-5 gap-2 max-h-[60vh] overflow-y-auto p-2 bg-gray-900/50 rounded-lg justify-items-center">
                     {items.map((item, index) => {
                         // grade가 없는 아이템(골드, 다이아, 재료 등)을 위한 기본 스타일
                         const itemGrade = item.grade || 'normal';

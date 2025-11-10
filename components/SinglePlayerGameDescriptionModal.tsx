@@ -40,7 +40,9 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
     const getWinCondition = (): string => {
         // 살리기 바둑 모드
         if (stage.survivalTurns) {
-            return `흑(유저)이 ${stage.survivalTurns}턴 이내에 백(AI)의 돌을 ${stage.targetScore.black}개 이상 따내면 승리`;
+            // 살리기 바둑: 백의 목표점수는 black 값 사용
+            const whiteTarget = stage.targetScore.black;
+            return `백(AI)이 ${stage.survivalTurns}턴 이내에 목표점수(${whiteTarget}개)를 달성하지 못하면 유저(흑) 승리. 백이 목표점수를 달성하면 유저 패배`;
         }
         
         // 따내기 바둑: 턴 제한과 목표 점수가 모두 있는 경우
@@ -156,9 +158,11 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
                                 </h3>
                                 <div className="bg-gray-700/50 rounded-lg p-3">
                                     <p className="text-gray-200">
-                                        AI(백)가 <span className="text-red-400 font-bold">{stage.survivalTurns}턴</span> 동안 살아남아야 합니다.
+                                        백(AI)이 <span className="text-red-400 font-bold">{stage.survivalTurns}턴</span> 동안 유저(흑)의 돌을 잡으러 옵니다.
                                         <br />
-                                        <span className="text-blue-400">유저(흑)는 이 시간 내에 AI의 돌을 잡아 승리해야 합니다.</span>
+                                        <span className="text-blue-400">백이 한 수를 둘 때마다 백 남은 턴이 감소합니다.</span>
+                                        <br />
+                                        <span className="text-green-400">백의 따낸 돌에는 목표점수가 표시되지만, 유저의 따낸 돌에는 목표점수가 표시되지 않습니다.</span>
                                     </p>
                                 </div>
                             </div>

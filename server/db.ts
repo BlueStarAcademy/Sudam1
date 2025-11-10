@@ -111,8 +111,33 @@ export const createUser = async (user: User): Promise<void> => {
     return userRepository.createUser(await getDb(), user);
 };
 export const updateUser = async (user: User): Promise<void> => {
+    const db = await getDb();
     const userRepository = await import('./repositories/userRepository.ts');
-    return userRepository.updateUser(await getDb(), user);
+
+    let existing: User | null = null;
+    try {
+        existing = user.id ? await userRepository.getUser(db, user.id) : null;
+    } catch (err) {
+        console.error(`[DB] Failed to load existing user ${user.id} before update:`, err);
+    }
+
+    if (existing) {
+        const prevInventoryCount = Array.isArray(existing.inventory) ? existing.inventory.length : 0;
+        const nextInventoryCount = Array.isArray(user.inventory) ? user.inventory.length : 0;
+        const prevEquipmentCount = existing.equipment ? Object.keys(existing.equipment).length : 0;
+        const nextEquipmentCount = user.equipment ? Object.keys(user.equipment).length : 0;
+
+        if (prevInventoryCount > 0 && nextInventoryCount === 0) {
+            console.error(`[DB] CRITICAL: updateUser would clear inventory for ${user.id}. Restoring previous inventory snapshot.`);
+            user.inventory = JSON.parse(JSON.stringify(existing.inventory));
+        }
+        if (prevEquipmentCount > 0 && nextEquipmentCount === 0) {
+            console.error(`[DB] CRITICAL: updateUser would clear equipment for ${user.id}. Restoring previous equipment snapshot.`);
+            user.equipment = JSON.parse(JSON.stringify(existing.equipment));
+        }
+    }
+
+    return userRepository.updateUser(db, user);
 };
 export const deleteUser = async (id: string): Promise<void> => {
     const db = await getDb();

@@ -33,86 +33,86 @@
 }
 
 html[data-theme="white"] {
-  /* Light Theme */
-  --bg-primary: 255 255 255; /* white */
-  --bg-secondary: 248 250 252; /* slate-50 */
-  --bg-tertiary: 241 245 249; /* slate-100 */
-  --text-primary: 15 23 42; /* slate-900 */
-  --text-secondary: 51 65 85; /* slate-700 */
-  --text-tertiary: 100 116 139; /* slate-500 */
-  --accent: 79 70 229; /* indigo-600 */
-  --accent-hover: 99 102 241; /* indigo-500 */
-  --highlight: 202 138 4; /* yellow-600 */
-  --border-color: 203 213 225; /* slate-300 */
+  /* Light Theme - Premium Elegant */
+  --bg-primary: 229 231 235; /* gray-200 - darker, more comfortable */
+  --bg-secondary: 209 213 219; /* gray-300 - subtle depth */
+  --bg-tertiary: 156 163 175; /* gray-400 - more contrast */
+  --text-primary: 17 24 39; /* gray-900 - deep, readable */
+  --text-secondary: 31 41 55; /* gray-800 - balanced */
+  --text-tertiary: 55 65 81; /* gray-700 - subtle */
+  --accent: 99 102 241; /* indigo-500 - vibrant but elegant */
+  --accent-hover: 79 70 229; /* indigo-600 - deeper on hover */
+  --highlight: 234 179 8; /* yellow-500 - warm gold */
+  --border-color: 156 163 175; /* gray-400 - softer borders */
   --ring-color: 99 102 241; /* indigo-500 */
   --danger: 220 38 38; /* red-600 */
   --danger-hover: 185 28 28; /* red-700 */
   --success: 22 163 74; /* green-600 */
 
-  --bg-panel: var(--custom-panel-bg, rgb(255 255 255)); /* white */
-  --text-on-panel: var(--custom-text-color, rgb(30 41 59)); /* slate-800 */
+  --bg-panel: var(--custom-panel-bg, rgb(209 213 219 / 0.8)); /* gray-300/80 - darker panel */
+  --text-on-panel: var(--custom-text-color, rgb(17 24 39)); /* gray-900 */
 }
 
 html[data-theme="blue"] {
-  /* Pastel Blue Theme */
-  --bg-primary: 239 246 255;      /* blue-50 */
-  --bg-secondary: 219 234 254;    /* blue-100 */
-  --bg-tertiary: 239 246 255;     /* blue-50 */
-  --text-primary: 30 64 175;        /* blue-800 */
-  --text-secondary: 30 58 138;      /* blue-900 */
-  --text-tertiary: 49 46 129;    /* indigo-900 */
-  --accent: 59 130 246;           /* blue-500 */
-  --accent-hover: 37 99 235;    /* blue-600 */
-  --highlight: 29 78 216;        /* blue-700 */
-  --border-color: 147 197 253;    /* blue-300 */
-  --ring-color: 59 130 246;      /* blue-500 */
-  --danger: 220 38 38;           /* red-600 */
-  --danger-hover: 185 28 28;     /* red-700 */
-  --success: 22 163 74;          /* green-600 */
+  /* Pastel Red Theme - Premium Rose */
+  --bg-primary: 254 242 242;      /* rose-50 - soft rose mist */
+  --bg-secondary: 254 226 226;    /* rose-100 - gentle petals */
+  --bg-tertiary: 252 165 165;     /* rose-300 - deeper rose */
+  --text-primary: 136 19 55;        /* rose-900 - deep rose */
+  --text-secondary: 190 18 60;      /* rose-700 - rich rose */
+  --text-tertiary: 244 63 94;      /* rose-500 - vibrant rose */
+  --accent: 244 63 94;            /* rose-500 - vibrant rose */
+  --accent-hover: 225 29 72;      /* rose-600 - deeper rose */
+  --highlight: 234 179 8;          /* yellow-500 - golden accent */
+  --border-color: 252 165 165;    /* rose-300 - soft borders */
+  --ring-color: 244 63 94;         /* rose-500 */
+  --danger: 220 38 38;            /* red-600 */
+  --danger-hover: 185 28 28;      /* red-700 */
+  --success: 22 163 74;           /* green-600 */
   
-  --bg-panel: var(--custom-panel-bg, rgb(255 255 255 / 0.7));
-  --text-on-panel: var(--custom-text-color, rgb(30 64 175));
+  --bg-panel: var(--custom-panel-bg, rgb(254 226 226 / 0.7));
+  --text-on-panel: var(--custom-text-color, rgb(136 19 55));
 }
 
 html[data-theme="sky"] {
-  /* Daybreak Theme */
-    --bg-primary: 240 249 255; /* sky-50 */
-    --bg-secondary: 224 242 254; /* sky-100 */
-    --bg-tertiary: 203 213 225; /* slate-300 */
-    --text-primary: 15 23 42; /* slate-900 */
-    --text-secondary: 51 65 85; /* slate-700 */
-    --text-tertiary: 100 116 139; /* slate-500 */
-    --accent: 249 115 22; /* orange-500 */
-    --accent-hover: 251 146 60; /* orange-400 */
-    --highlight: 234 88 12; /* orange-600 */
-    --border-color: 148 163 184; /* slate-400 */
-    --ring-color: 251 146 60; /* orange-400 */
-    --danger: 239 68 68; /* red-500 */
-    --danger-hover: 220 38 38; /* red-600 */
-    --success: 34 197 94; /* green-500 */
+  /* Daybreak Theme - Premium Dawn */
+    --bg-primary: 191 219 254; /* sky-200 - deeper dawn */
+    --bg-secondary: 125 211 252; /* sky-300 - deeper sky */
+    --bg-tertiary: 56 189 248; /* sky-400 - deep sky */
+    --text-primary: 12 74 110; /* sky-900 - deep ocean blue */
+    --text-secondary: 30 64 175; /* blue-800 - rich blue */
+    --text-tertiary: 59 130 246; /* blue-500 - medium blue */
+    --accent: 249 115 22; /* orange-500 - warm sunrise */
+    --accent-hover: 234 88 12; /* orange-600 - deeper sunrise */
+    --highlight: 251 191 36; /* amber-400 - golden hour */
+    --border-color: 125 211 252; /* sky-300 - softer sky border */
+    --ring-color: 249 115 22; /* orange-500 */
+    --danger: 220 38 38; /* red-600 */
+    --danger-hover: 185 28 28; /* red-700 */
+    --success: 22 163 74; /* green-600 */
     
-    --bg-panel: var(--custom-panel-bg, rgb(255 255 255 / 0.7)); /* white/70 */
-    --text-on-panel: var(--custom-text-color, rgb(30 64 175)); /* blue-800 */
+    --bg-panel: var(--custom-panel-bg, rgb(125 211 252 / 0.6)); /* sky-300/60 */
+    --text-on-panel: var(--custom-text-color, rgb(12 74 110)); /* sky-900 */
 }
 
 html[data-theme="green"] {
-  /* Pastel Green Theme (replaces old 'green' theme) */
-    --bg-primary: 240 253 244;      /* green-50 */
-    --bg-secondary: 220 252 231;    /* green-100 */
-    --bg-tertiary: 240 253 244;     /* green-50 */
-    --text-primary: 20 83 45;        /* green-900 */
-    --text-secondary: 21 128 61;     /* green-700 */
-    --text-tertiary: 22 101 52;      /* green-800 */
-    --accent: 217 70 239;          /* fuchsia-500 */
-    --accent-hover: 192 38 211;    /* fuchsia-600 */
-    --highlight: 162 28 175;       /* fuchsia-700 */
-    --border-color: 134 239 172;    /* green-300 */
-    --ring-color: 192 38 211;      /* fuchsia-600 */
-    --danger: 225 29 72;           /* rose-600 */
-    --danger-hover: 190 18 60;     /* rose-700 */
-    --success: 22 163 74;          /* green-600 */
+  /* Pastel Green Theme - Premium Forest */
+    --bg-primary: 187 247 208;      /* green-200 - deeper forest mist */
+    --bg-secondary: 134 239 172;    /* green-300 - deeper leaves */
+    --bg-tertiary: 74 222 128;      /* green-400 - deep foliage */
+    --text-primary: 20 83 45;        /* green-900 - deep forest */
+    --text-secondary: 22 101 52;     /* green-800 - rich forest */
+    --text-tertiary: 34 197 94;      /* green-500 - vibrant nature */
+    --accent: 34 197 94;            /* green-500 - fresh nature */
+    --accent-hover: 22 163 74;      /* green-600 - deeper nature */
+    --highlight: 234 179 8;         /* yellow-500 - golden sunlight */
+    --border-color: 134 239 172;    /* green-300 - softer borders */
+    --ring-color: 34 197 94;        /* green-500 */
+    --danger: 220 38 38;            /* red-600 */
+    --danger-hover: 185 28 28;      /* red-700 */
+    --success: 22 163 74;           /* green-600 */
 
-    --bg-panel: var(--custom-panel-bg, rgb(255 255 255 / 0.7));
+    --bg-panel: var(--custom-panel-bg, rgb(134 239 172 / 0.6));
     --text-on-panel: var(--custom-text-color, rgb(20 83 45));
 }
 
@@ -126,11 +126,41 @@ html[data-theme="green"] {
     border: 1.5px solid rgba(var(--border-color), 0.75);
     border-radius: 0.75rem;
     background-origin: border-box;
-    background-image: var(--panel-edge-top-left), var(--panel-edge-top-right), var(--panel-edge-bottom-left), var(--panel-edge-bottom-right), linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.15));
-    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat, repeat;
-    background-position: top left, top right, bottom left, bottom right, center;
-    background-size: calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), auto;
+    background-image: linear-gradient(145deg, rgba(255, 255, 255, 0.04), rgba(0, 0, 0, 0.15));
+    background-repeat: repeat;
+    background-position: center;
+    background-size: auto;
     box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.4);
+  }
+  
+  /* 엣지 이미지를 별도의 pseudo-element로 분리하여 z-index를 높임 */
+  .panel-surface::before,
+  .bg-panel::before,
+  .bg-panel-secondary::before,
+  .bg-panel-tertiary::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    border-radius: inherit;
+    background-image: var(--panel-edge-top-left), var(--panel-edge-top-right), var(--panel-edge-bottom-left), var(--panel-edge-bottom-right);
+    background-repeat: no-repeat, no-repeat, no-repeat, no-repeat;
+    background-position: top left, top right, bottom left, bottom right;
+    background-size: calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5), calc(var(--panel-edge-size) * 0.5) calc(var(--panel-edge-size) * 0.5);
+    z-index: 10; /* 엣지가 앞으로 나오도록 z-index 설정 */
+  }
+  
+  /* 엣지가 적용된 패널에 금색 테두리 추가 (CSS 변수가 'none'이 아닌 경우) */
+  /* 엣지 이미지가 있는 경우에만 금색 테두리 적용 */
+  html:not([data-edge-style="none"]) .panel-surface,
+  html:not([data-edge-style="none"]) .bg-panel,
+  html:not([data-edge-style="none"]) .bg-panel-secondary,
+  html:not([data-edge-style="none"]) .bg-panel-tertiary {
+    border: 2px solid rgba(250, 204, 21, 0.8) !important; /* amber-400 with opacity */
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 10px 24px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(250, 204, 21, 0.6), 0 0 8px rgba(250, 204, 21, 0.3) !important;
   }
 
   .panel-surface::after,
@@ -144,6 +174,7 @@ html[data-theme="green"] {
     border-radius: inherit;
     background: linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
     mix-blend-mode: screen;
+    z-index: 1; /* 엣지보다 뒤에 위치 */
   }
 }
 

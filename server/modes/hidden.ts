@@ -119,7 +119,9 @@ export const updateHiddenState = (game: types.LiveGameSession, now: number) => {
             if (game.revealAnimationEndTime && now >= game.revealAnimationEndTime) {
                 game.animation = null;
                 game.revealAnimationEndTime = undefined;
-                getGameResult(game); // Now trigger scoring
+                getGameResult(game).catch(err => {
+                    console.error('[Hidden Mode] Failed to finalize game result after final reveal:', err);
+                }); // Now trigger scoring asynchronously
             }
             break;
     }

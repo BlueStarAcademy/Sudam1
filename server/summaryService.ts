@@ -12,10 +12,46 @@ import { randomUUID } from 'crypto';
 import { aiUserId, getAiUser } from './aiPlayer.js';
 import { createItemInstancesFromReward, addItemsToInventory } from '../utils/inventoryUtils.js';
 
-const getXpForLevel = (level: number): number => 1000 + (level - 1) * 200;
+const getXpForLevel = (level: number): number => {
+    if (level < 1) return 0;
+    if (level > 100) return Infinity; // Max level
+    
+    // 레벨 1~10: 200 + (레벨 x 100)
+    if (level <= 10) {
+        return 200 + (level * 100);
+    }
+    
+    // 레벨 11~20: 300 + (레벨 x 150)
+    if (level <= 20) {
+        return 300 + (level * 150);
+    }
+    
+    // 레벨 21~50: 이전 필요경험치 x 1.2
+    // 레벨 51~100: 이전 필요경험치 x 1.3
+    // 레벨 20의 필요 경험치를 먼저 계산
+    let xp = 300 + (20 * 150); // 레벨 20의 필요 경험치
+    
+    // 레벨 21부터 현재 레벨까지 반복
+    for (let l = 21; l <= level; l++) {
+        if (l <= 50) {
+            xp = Math.round(xp * 1.2);
+        } else {
+            xp = Math.round(xp * 1.3);
+        }
+    }
+    
+    return xp;
+};
 
 const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
-    const user = game.player1; // Human is always player1 in single player
+    // DB에서 최신 사용자 데이터를 가져와서 clearedSinglePlayerStages가 정확한지 확인
+    const freshUser = await db.getUser(game.player1.id);
+    if (!freshUser) {
+        console.error(`[SP Summary] Could not find user ${game.player1.id} in database`);
+        return;
+    }
+    
+    const user = freshUser; // 최신 사용자 데이터 사용
     const isWinner = game.winner === Player.Black; // Human is always black
     const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
 
@@ -33,18 +69,27 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
         items: [],
     };
     
+    const stageIndex = SINGLE_PLAYER_STAGES.findIndex(s => s.id === stage.id);
+    const currentProgress = user.singlePlayerProgress ?? 0;
+    
+    // clearedSinglePlayerStages 배열 초기화 (없는 경우)
+    if (!user.clearedSinglePlayerStages) {
+        user.clearedSinglePlayerStages = [];
+    }
+    
+    // 배열이 아닌 경우 배열로 변환 (데이터 무결성 보장)
+    if (!Array.isArray(user.clearedSinglePlayerStages)) {
+        console.warn(`[SP Summary] clearedSinglePlayerStages is not an array for user ${user.id}, resetting to empty array`);
+        user.clearedSinglePlayerStages = [];
+    }
+    
+    // 최초 클리어 여부 확인: clearedSinglePlayerStages에 스테이지 ID가 없으면 최초 클리어
+    const isFirstClear = !user.clearedSinglePlayerStages.includes(stage.id);
+    const isRepeatAttempt = !isFirstClear; // 재도전 여부
+    
+    console.log(`[SP Summary] Stage ${stage.id} - isFirstClear: ${isFirstClear}, clearedStages: ${JSON.stringify(user.clearedSinglePlayerStages)}`);
+    
     if (isWinner) {
-        const stageIndex = SINGLE_PLAYER_STAGES.findIndex(s => s.id === stage.id);
-        const currentProgress = user.singlePlayerProgress ?? 0;
-        
-        // clearedSinglePlayerStages 배열 초기화 (없는 경우)
-        if (!user.clearedSinglePlayerStages) {
-            user.clearedSinglePlayerStages = [];
-        }
-        
-        // 최초 클리어 여부 확인: clearedSinglePlayerStages에 스테이지 ID가 없으면 최초 클리어
-        const isFirstClear = !user.clearedSinglePlayerStages.includes(stage.id);
-        
         const rewards = isFirstClear 
             ? stage.rewards.firstClear 
             : stage.rewards.repeatClear;
@@ -52,6 +97,7 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
         // 최초 클리어인 경우 clearedSinglePlayerStages에 추가
         if (isFirstClear) {
             user.clearedSinglePlayerStages.push(stage.id);
+            console.log(`[SP Summary] Added stage ${stage.id} to clearedSinglePlayerStages`);
         }
         
         // singlePlayerProgress는 순차 진행 여부를 추적 (다음 스테이지 언락용)
@@ -60,7 +106,7 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
         }
 
         const itemsToCreate = rewards.items ? createItemInstancesFromReward(rewards.items) : [];
-        const { success } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
+        const { success, updatedInventory } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
         
         if (!success) {
             console.error(`[SP Summary] Insufficient inventory space for user ${user.id} on stage ${stage.id}. Items not granted.`);
@@ -70,7 +116,8 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
             const initialXp = user.strategyXp;
             user.strategyXp += rewards.exp;
 
-            addItemsToInventory(user.inventory, user.inventorySlots, itemsToCreate);
+            // Update inventory with the returned updatedInventory
+            user.inventory = updatedInventory;
             
             summary.gold = rewards.gold;
             summary.xp = { initial: initialXp, change: rewards.exp, final: user.strategyXp };
@@ -91,6 +138,29 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
                     } as any);
                 }
             }
+        }
+    } else {
+        // 실패시 보상: 재도전이고 기권이 아닌 경우에만 성공 보상의 10% 지급
+        const isResign = game.winReason === 'resign';
+        
+        if (isRepeatAttempt && !isResign) {
+            // 재도전 실패 보상: 성공시 보상의 10% (골드, 경험치만)
+            const successRewards = stage.rewards.repeatClear;
+            
+            const failureRewards = {
+                gold: Math.round(successRewards.gold * 0.1),
+                exp: Math.round(successRewards.exp * 0.1)
+            };
+            
+            console.log(`[SP Summary] Stage ${stage.id} - Failure reward (10% of success): gold=${failureRewards.gold}, exp=${failureRewards.exp}`);
+            
+            user.gold += failureRewards.gold;
+            const initialXp = user.strategyXp;
+            user.strategyXp += failureRewards.exp;
+            
+            summary.gold = failureRewards.gold;
+            summary.xp = { initial: initialXp, change: failureRewards.exp, final: user.strategyXp };
+            summary.items = [];
         }
     }
 
@@ -138,6 +208,10 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
 
     game.statsUpdated = true;
     await db.saveGame(game);
+    
+    // 게임 종료 및 분석 결과 브로드캐스트
+    const { broadcast } = await import('./socket.js');
+    broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
 };
 
 const createConsumableItemInstance = (name: string): InventoryItem | null => {
@@ -462,9 +536,10 @@ const processPlayerSummary = async (
 
     // Add dropped items to inventory
     if (rewards.items.length > 0) {
-        const { success, finalItemsToAdd } = addItemsToInventory(updatedPlayer.inventory, updatedPlayer.inventorySlots, rewards.items);
+        const { success, updatedInventory } = addItemsToInventory(updatedPlayer.inventory, updatedPlayer.inventorySlots, rewards.items);
         if (success) {
-            updatedPlayer.inventory.push(...finalItemsToAdd);
+            // Update inventory with the returned updatedInventory (includes stacked items)
+            updatedPlayer.inventory = updatedInventory;
         } else {
             console.error(`[Summary] Insufficient inventory space for user ${updatedPlayer.id}. Items not granted.`);
             // Optionally, send items via mail here in the future
@@ -507,7 +582,10 @@ export const processGameSummary = async (game: LiveGameSession): Promise<void> =
     const isNoContest = game.gameStatus === 'no_contest';
 
     const p1 = player1.id === aiUserId ? getAiUser(game.mode) : await db.getUser(player1.id);
-    const p2 = player2.id === aiUserId ? getAiUser(game.mode) : await db.getUser(player2.id);
+    // 싱글플레이 게임의 경우 player2는 이미 스테이지별로 설정된 AI 유저이므로 덮어쓰지 않음
+    const p2 = game.isSinglePlayer 
+        ? player2  // 싱글플레이: 기존 player2 유지
+        : (player2.id === aiUserId ? getAiUser(game.mode) : await db.getUser(player2.id));
 
     if (!p1 || !p2) {
         console.error(`[Summary] Could not find one or more users from DB for game ${game.id}`);

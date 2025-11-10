@@ -1,0 +1,33 @@
+# Node / general
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-lock.yaml
+.pnpm-store
+.yarn
+.yarnrc.yml
+*.local
+
+# Build outputs
+dist
+dist-ssr
+build
+coverage
+*.tsbuildinfo
+
+# SQLite databases & backups
+*.sqlite*
+database_local_final.sqlite
+
+# Environment & config
+.env
+.env.*
+
+# Misc
+logs
+tmp
+downloads
+katago/
+
+
+

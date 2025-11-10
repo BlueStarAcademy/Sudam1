@@ -219,7 +219,7 @@ export const updateBaseState = (game: types.LiveGameSession, now: number) => {
                     game.baseStones = [];
                     const newBoardState = Array(game.settings.boardSize).fill(0).map(() => Array(game.settings.boardSize).fill(types.Player.None));
                     const p1Color = p1.id === blackPlayerId ? types.Player.Black : types.Player.White;
-                    const p2Color = p2.id === blackPlayerId ? types.Player.Black : types.Player.White;
+                    const p2Color = p2.id === whitePlayerId ? types.Player.White : types.Player.Black;
                     (game.baseStones_p1 || []).forEach(p => { newBoardState[p.y][p.x] = p1Color; game.baseStones!.push({ ...p, player: p1Color }); });
                     (game.baseStones_p2 || []).forEach(p => { newBoardState[p.y][p.x] = p2Color; game.baseStones!.push({ ...p, player: p2Color }); });
                     game.boardState = newBoardState;

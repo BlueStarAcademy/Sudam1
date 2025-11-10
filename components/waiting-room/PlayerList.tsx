@@ -24,9 +24,10 @@ interface PlayerListProps {
     negotiations: Negotiation[];
     onViewUser: (userId: string) => void;
     lobbyType: 'strategic' | 'playful';
+    userCount?: number;
 }
 
-const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, mode, negotiations, onViewUser, lobbyType }) => {
+const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, mode, negotiations, onViewUser, lobbyType, userCount }) => {
     const [isChallengeSelectionModalOpen, setIsChallengeSelectionModalOpen] = useState(false);
     const [challengeTargetUser, setChallengeTargetUser] = useState<UserWithStatus | null>(null);
     const [isRejectionSettingsModalOpen, setIsRejectionSettingsModalOpen] = useState(false);
@@ -127,7 +128,12 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
     return (
         <div className="p-3 flex flex-col min-h-0 text-on-panel">
              <h2 className="text-xl font-semibold mb-2 border-b border-color pb-2 flex-shrink-0 flex justify-between items-center">
-                <span>유저 목록</span>
+                <span className="flex items-center gap-2">
+                    유저 목록
+                    {userCount !== undefined && (
+                        <span className="text-sm text-secondary font-normal">({userCount}명 접속 중)</span>
+                    )}
+                </span>
                                 <Button
                                     onClick={() => setIsRejectionSettingsModalOpen(true)}
                                     colorScheme="none"

@@ -475,7 +475,7 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
         const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
         if (stage?.autoScoringTurns && game.totalTurns >= stage.autoScoringTurns) {
             const { getGameResult } = await import('./gameModes.js');
-            getGameResult(game);
+            await getGameResult(game);
             await db.saveGame(game);
             return;
         }

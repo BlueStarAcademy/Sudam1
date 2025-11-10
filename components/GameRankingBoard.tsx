@@ -21,14 +21,14 @@ const RankingRow = ({ user, rank, value, isCurrentUser, onViewUser }: { user: Us
 
     return (
         <div 
-            className={`flex items-center p-1 rounded-md ${isCurrentUser ? 'bg-blue-500/30' : onViewUser ? 'cursor-pointer hover:bg-secondary/50' : ''}`}
+            className={`flex items-center p-2 rounded-md ${isCurrentUser ? 'bg-blue-500/30' : onViewUser ? 'cursor-pointer hover:bg-secondary/50' : ''}`}
             onClick={handleClick}
             title={!isCurrentUser && onViewUser ? `${user.nickname} 프로필 보기` : ''}
         >
-            <span className="w-8 text-center font-bold">{rank}</span>
-            <Avatar userId={user.id} userName={user.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={24} />
-            <span className="flex-1 truncate font-semibold ml-2">{user.nickname}</span>
-            <span className="w-16 text-right font-mono">{value.toLocaleString()}</span>
+            <span className="w-10 text-center font-bold text-sm">{rank}</span>
+            <Avatar userId={user.id} userName={user.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={32} />
+            <span className="flex-1 truncate font-semibold ml-2 text-sm">{user.nickname}</span>
+            <span className="w-20 text-right font-mono text-sm">{value.toLocaleString()}</span>
         </div>
     );
 };

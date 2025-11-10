@@ -103,6 +103,36 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         summaryService.endGame(game, winner, 'timeout');
     }
 
+    // 살리기 바둑 모드 승리 조건 체크 (백의 남은 턴이 0인지 확인)
+    const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
+    if (isSurvivalMode && game.gameStatus === 'playing') {
+        const whiteTurnsPlayed = (game as any).whiteTurnsPlayed || 0;
+        const survivalTurns = (game.settings as any)?.survivalTurns || 0;
+        
+        // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
+        const target = game.effectiveCaptureTargets?.[types.Player.White];
+        if (target !== undefined && target !== 999 && game.captures[types.Player.White] >= target) {
+            console.log(`[Survival Go] White reached target score in update loop (${target}), White wins`);
+            await summaryService.endGame(game, types.Player.White, 'capture_limit');
+            return;
+        }
+        
+        // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
+        // 백의 남은 턴 = survivalTurns - whiteTurnsPlayed
+        // 백의 남은 턴이 0이 되었다는 것은 whiteTurnsPlayed >= survivalTurns
+        const remainingTurns = survivalTurns - whiteTurnsPlayed;
+        if (remainingTurns <= 0 && survivalTurns > 0) {
+            console.log(`[Survival Go] White ran out of turns in update loop (${whiteTurnsPlayed}/${survivalTurns}, remaining: ${remainingTurns}), Black wins. Game status before endGame: ${game.gameStatus}`);
+            if (game.gameStatus === 'playing') {
+                await summaryService.endGame(game, types.Player.Black, 'capture_limit');
+                console.log(`[Survival Go] endGame called in update loop. Game status after: ${game.gameStatus}`);
+            } else {
+                console.log(`[Survival Go] Game already ended in update loop (status: ${game.gameStatus}), skipping endGame`);
+            }
+            return;
+        }
+    }
+
     // Delegate to mode-specific update logic
     updateNigiriState(game, now);
     updateCaptureState(game, now);
@@ -389,13 +419,46 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 
                 if (isSurvivalMode) {
                     // 살리기 바둑 모드
-                    // 흑(유저)이 목표점수를 달성하면 유저 승리
-                    if (myPlayerEnum === types.Player.Black) {
-                        const target = game.effectiveCaptureTargets![types.Player.Black];
-                        if (game.captures[types.Player.Black] >= target) {
-                            await summaryService.endGame(game, types.Player.Black, 'capture_limit');
+                    // 백(봇)이 목표점수를 달성하면 백 승리 (유저 패배)
+                    if (myPlayerEnum === types.Player.White) {
+                        const target = game.effectiveCaptureTargets![types.Player.White];
+                        if (target !== undefined && target !== 999 && game.captures[types.Player.White] >= target) {
+                            await summaryService.endGame(game, types.Player.White, 'capture_limit');
+                            return {};
                         }
                     }
+                    
+                    // 흑(유저)이 수를 둔 후 백의 남은 턴 체크
+                    if (myPlayerEnum === types.Player.Black) {
+                        const whiteTurnsPlayed = (game as any).whiteTurnsPlayed || 0;
+                        const survivalTurns = (game.settings as any)?.survivalTurns || 0;
+                        
+                        console.log(`[Survival Go] After Black move - White turns played: ${whiteTurnsPlayed}/${survivalTurns}`);
+                        
+                        // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
+                        const target = game.effectiveCaptureTargets?.[types.Player.White];
+                        if (target !== undefined && target !== 999 && game.captures[types.Player.White] >= target) {
+                            console.log(`[Survival Go] White reached target score after Black move (${target}), White wins`);
+                            await summaryService.endGame(game, types.Player.White, 'capture_limit');
+                            return {};
+                        }
+                        
+                        // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
+                        // 백의 남은 턴 = survivalTurns - whiteTurnsPlayed
+                        // 백의 남은 턴이 0이 되었다는 것은 whiteTurnsPlayed >= survivalTurns
+                        const remainingTurns = survivalTurns - whiteTurnsPlayed;
+                        if (remainingTurns <= 0 && survivalTurns > 0) {
+                            console.log(`[Survival Go] White ran out of turns after Black move (${whiteTurnsPlayed}/${survivalTurns}, remaining: ${remainingTurns}), Black wins. Game status before endGame: ${game.gameStatus}`);
+                            if (game.gameStatus === 'playing') {
+                        await summaryService.endGame(game, types.Player.Black, 'capture_limit');
+                                console.log(`[Survival Go] endGame called after Black move. Game status after: ${game.gameStatus}`);
+                            } else {
+                                console.log(`[Survival Go] Game already ended after Black move (status: ${game.gameStatus}), skipping endGame`);
+                            }
+                            return {};
+                        }
+                    }
+                    // 백의 남은 턴 체크는 백이 수를 둔 직후 goAiBot.ts에서도 처리됨
                 } else {
                     // 일반 따내기 바둑 모드
                     const target = game.effectiveCaptureTargets![myPlayerEnum];
@@ -446,10 +509,10 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         if (!game.permanentlyRevealedStones) game.permanentlyRevealedStones = [];
                         game.permanentlyRevealedStones.push(...unrevealedStones.map(s => s.point));
                     } else {
-                        getGameResult(game);
+                        await getGameResult(game);
                     }
                 } else {
-                    getGameResult(game);
+                    await getGameResult(game);
                 }
             } else {
                 const playerWhoMoved = myPlayerEnum;

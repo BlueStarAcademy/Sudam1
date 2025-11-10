@@ -130,47 +130,37 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
 
     return (
         <div className="p-4 sm:p-6 lg:p-8 w-full flex flex-col h-[calc(100vh-5rem)] relative overflow-hidden">
-            <header className="flex justify-between items-center mb-6 flex-shrink-0">
-                <button onClick={async () => {
-                    if (tournamentState && tournamentState.status === 'round_in_progress') {
-                        if (window.confirm('경기가 진행 중입니다. 현재 경기를 기권하시겠습니까? 현재 경기는 패배 처리됩니다.')) {
-                            handlers.handleAction({ type: 'FORFEIT_CURRENT_MATCH', payload: { type } });
-                        }
-                    } else {
-                        try {
-                            if (tournamentState) {
-                                await handlers.handleAction({ type: 'SAVE_TOURNAMENT_PROGRESS', payload: { type } });
+            {tournamentState && (
+                <TournamentBracket 
+                    tournament={tournamentState}
+                    currentUser={currentUserWithStatus}
+                    onBack={async () => {
+                        if (tournamentState.status === 'round_in_progress') {
+                            if (window.confirm('경기가 진행 중입니다. 현재 경기를 기권하시겠습니까? 현재 경기는 패배 처리됩니다.')) {
+                                handlers.handleAction({ type: 'FORFEIT_CURRENT_MATCH', payload: { type } });
                             }
-                        } catch (error) {
-                            console.error('[TournamentArena] Failed to save tournament progress on exit:', error);
-                        } finally {
-                            window.location.hash = '#/tournament';
+                        } else {
+                            try {
+                                if (tournamentState) {
+                                    await handlers.handleAction({ type: 'SAVE_TOURNAMENT_PROGRESS', payload: { type } });
+                                }
+                            } catch (error) {
+                                console.error('[TournamentArena] Failed to save tournament progress on exit:', error);
+                            } finally {
+                                window.location.hash = '#/tournament';
+                            }
                         }
-                    }
-                }} className="transition-transform active:scale-90 filter hover:drop-shadow-lg">
-                    <img src="/images/button/back.png" alt="Back" className="w-10 h-10" />
-                </button>
-                <h1 className="text-3xl lg:text-4xl font-bold">{tournamentDefinition.name}</h1>
-                <div className="w-10"></div>
-            </header>
-            
-            <main className="flex-1 flex flex-col min-h-0 w-full overflow-hidden">
-                {tournamentState && (
-                    <TournamentBracket 
-                        tournament={tournamentState}
-                        currentUser={currentUserWithStatus}
-                        onBack={() => window.location.hash = '#/tournament'}
-                        allUsersForRanking={allUsers}
-                        onViewUser={handlers.openViewingUser}
-                        onAction={handlers.handleAction}
-                        onStartNextRound={() => handlers.handleAction({ type: 'START_TOURNAMENT_ROUND', payload: { type: type } })}
-                        onReset={() => handlers.handleAction({ type: 'CLEAR_TOURNAMENT_SESSION', payload: { type: type } })}
-                        onSkip={() => handlers.handleAction({ type: 'SKIP_TOURNAMENT_END', payload: { type: type } })}
-                        onOpenShop={() => handlers.openShop('consumables')}
-                        isMobile={isMobile}
-                    />
-                )}
-            </main>
+                    }}
+                    allUsersForRanking={allUsers}
+                    onViewUser={handlers.openViewingUser}
+                    onAction={handlers.handleAction}
+                    onStartNextRound={() => handlers.handleAction({ type: 'START_TOURNAMENT_ROUND', payload: { type: type } })}
+                    onReset={() => handlers.handleAction({ type: 'CLEAR_TOURNAMENT_SESSION', payload: { type: type } })}
+                    onSkip={() => handlers.handleAction({ type: 'SKIP_TOURNAMENT_END', payload: { type: type } })}
+                    onOpenShop={() => handlers.openShop('consumables')}
+                    isMobile={isMobile}
+                />
+            )}
         </div>
     );
 };

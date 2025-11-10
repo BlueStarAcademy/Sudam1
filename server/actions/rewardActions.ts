@@ -515,6 +515,10 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                     console.log(`[CLAIM_TOURNAMENT_REWARD] Added accumulated equipment boxes:`, accumulatedEquipmentBoxes.map(b => `${b.name} x${b.quantity}`).join(', '));
                 }
                 updateQuestProgress(freshUser, 'tournament_complete');
+                
+                // 보상 수령 후에도 토너먼트 상태를 유지하기 위해 DB에 저장
+                (freshUser as any)[tourneyKey] = tournamentState;
+                
                 await db.updateUser(freshUser);
                 
                 // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
@@ -577,6 +581,9 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             
             updateQuestProgress(freshUser, 'tournament_complete');
 
+            // 보상 수령 후에도 토너먼트 상태를 유지하기 위해 DB에 저장
+            (freshUser as any)[tourneyKey] = tournamentState;
+            
             await db.updateUser(freshUser);
             
             // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함

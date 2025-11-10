@@ -88,12 +88,24 @@ const AppContent: React.FC = () => {
     useEffect(() => {
         const initAudio = () => {
             audioService.initialize();
+            // 모든 이벤트 리스너 제거
             document.removeEventListener('pointerdown', initAudio);
+            document.removeEventListener('touchstart', initAudio);
+            document.removeEventListener('click', initAudio);
+            document.removeEventListener('touchend', initAudio);
         };
+        
+        // 모바일 환경을 위한 여러 이벤트 타입 지원
         document.addEventListener('pointerdown', initAudio);
+        document.addEventListener('touchstart', initAudio);
+        document.addEventListener('click', initAudio);
+        document.addEventListener('touchend', initAudio);
 
         return () => {
             document.removeEventListener('pointerdown', initAudio);
+            document.removeEventListener('touchstart', initAudio);
+            document.removeEventListener('click', initAudio);
+            document.removeEventListener('touchend', initAudio);
         };
     }, []);
 

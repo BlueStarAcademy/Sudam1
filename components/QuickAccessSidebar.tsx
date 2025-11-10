@@ -9,25 +9,26 @@ interface QuickAccessSidebarProps {
 }
 
 const QuickAccessSidebar: React.FC<QuickAccessSidebarProps> = ({ mobile = false, compact = false, showOnlyWhenQuestCompleted = false, fillHeight = true }) => {
-    const { handlers, unreadMailCount, hasClaimableQuest } = useAppContext();
+    const { handlers, unreadMailCount, hasClaimableQuest, currentUserWithStatus } = useAppContext();
     
     if (showOnlyWhenQuestCompleted && !hasClaimableQuest) {
         return null;
     }
 
     const hasUnreadMail = unreadMailCount > 0;
+    const blacksmithLevel = currentUserWithStatus?.blacksmithLevel ?? 1;
 
     const allButtons = [
         { label: '퀘스트', iconUrl: '/images/quickmenu/quest.png', handler: handlers.openQuests, disabled: false, notification: hasClaimableQuest },
         { label: '기보', iconUrl: '/images/quickmenu/gibo.png', handler: () => alert('기보보기 기능은 구현 예정입니다.'), disabled: true, notification: false },
-        { label: '대장간', iconUrl: '/images/quickmenu/enhance.png', handler: handlers.openBlacksmithModal, disabled: false, notification: false },
+        { label: `대장간 Lv.${blacksmithLevel}`, iconUrl: '/images/quickmenu/enhance.png', handler: handlers.openBlacksmithModal, disabled: false, notification: false },
         { label: '상점', iconUrl: '/images/quickmenu/store.png', handler: handlers.openShop, disabled: false, notification: false },
         { label: '가방', iconUrl: '/images/quickmenu/bag.png', handler: handlers.openInventory, disabled: false, notification: false },
     ];
     
     const containerClass = mobile 
         ? "flex justify-around items-center gap-2"
-        : `bg-gray-800/50 rounded-lg p-${compact ? 1 : 2} flex flex-col justify-around gap-${compact ? 1 : 2} ${fillHeight ? 'h-full' : ''}`;
+        : `bg-panel rounded-lg p-${compact ? 1 : 2} flex flex-col justify-around gap-${compact ? 1 : 2} ${fillHeight ? 'h-full' : ''}`;
     
     const buttonClass = mobile
         ? "flex flex-col items-center justify-center p-1 rounded-md w-14 h-14 bg-gray-700/50 hover:bg-gray-600/50"

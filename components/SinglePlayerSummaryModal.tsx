@@ -27,16 +27,49 @@ const RewardItemDisplay: React.FC<{ item: any }> = ({ item }) => (
     </div>
 );
 
-const getXpRequirementForLevel = (level: number): number => 1000 + (level - 1) * 200;
+const getXpRequirementForLevel = (level: number): number => {
+    if (level < 1) return 0;
+    if (level > 100) return Infinity; // Max level
+    
+    // 레벨 1~10: 200 + (레벨 x 100)
+    if (level <= 10) {
+        return 200 + (level * 100);
+    }
+    
+    // 레벨 11~20: 300 + (레벨 x 150)
+    if (level <= 20) {
+        return 300 + (level * 150);
+    }
+    
+    // 레벨 21~50: 이전 필요경험치 x 1.2
+    // 레벨 51~100: 이전 필요경험치 x 1.3
+    // 레벨 20의 필요 경험치를 먼저 계산
+    let xp = 300 + (20 * 150); // 레벨 20의 필요 경험치
+    
+    // 레벨 21부터 현재 레벨까지 반복
+    for (let l = 21; l <= level; l++) {
+        if (l <= 50) {
+            xp = Math.round(xp * 1.2);
+        } else {
+            xp = Math.round(xp * 1.3);
+        }
+    }
+    
+    return xp;
+};
 
 const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ session, currentUser, onAction, onClose }) => {
     const isWinner = session.winner === Player.Black; // Human is always Black
     const summary = session.summary?.[currentUser.id];
 
     const currentStageIndex = SINGLE_PLAYER_STAGES.findIndex(s => s.id === session.stageId);
+    const currentStage = SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
     const nextStage = SINGLE_PLAYER_STAGES[currentStageIndex + 1];
     const highestClearedStageIndex = currentUser.singlePlayerProgress ?? -1;
     const canTryNext = isWinner && !!nextStage && highestClearedStageIndex >= currentStageIndex;
+    
+    const retryActionPointCost = currentStage?.actionPointCost ?? 0;
+    const nextStageActionPointCost = nextStage?.actionPointCost ?? 0;
 
     const handleRetry = () => {
         onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
@@ -105,9 +138,11 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                             />
                         </div>
                         <div className="flex items-center justify-between text-xs text-gray-300 mt-2">
-                            <span className="font-mono">{clampedXp.toLocaleString()} / {xpRequirement.toLocaleString()} XP</span>
+                            <span className="font-mono">
+                                {clampedXp.toLocaleString()} {xpChange >= 0 ? `+${xpChange.toLocaleString()}` : xpChange.toLocaleString()} / {xpRequirement.toLocaleString()} XP
+                            </span>
                             <span className={`font-semibold ${xpChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                                {xpChange >= 0 ? `+${xpChange}` : xpChange} XP
+                                {xpChange >= 0 ? `+${xpChange.toLocaleString()}` : xpChange.toLocaleString()} XP
                             </span>
                         </div>
                     </div>
@@ -133,7 +168,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                         {summary.items && summary.items.length > 0 && (
                             <div className="pt-3 border-t border-gray-700/50">
                                 <h3 className="text-sm text-gray-400 mb-2">획득 보상</h3>
-                                <div className="grid grid-cols-5 gap-2">
+                                <div className="grid grid-cols-5 gap-2 justify-items-center">
                                     {summary.items.map(item => <RewardItemDisplay key={item.id} item={item} />)}
                                 </div>
                             </div>
@@ -147,9 +182,11 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                 
                 <div className="mt-8 grid grid-cols-2 gap-3">
                     <Button onClick={handleNextStage} colorScheme="blue" className="w-full" disabled={!canTryNext}>
-                        다음 단계{nextStage ? `: ${nextStage.name.replace('스테이지 ', '')}` : ''}
+                        다음 단계{nextStage ? `: ${nextStage.name.replace('스테이지 ', '')}` : ''}{nextStageActionPointCost > 0 && ` (⚡${nextStageActionPointCost})`}
                     </Button>
-                    <Button onClick={handleRetry} colorScheme="yellow" className="w-full">재도전</Button>
+                    <Button onClick={handleRetry} colorScheme="yellow" className="w-full">
+                        재도전{retryActionPointCost > 0 && ` (⚡${retryActionPointCost})`}
+                    </Button>
                     <Button onClick={handleExitToLobby} colorScheme="gray" className="w-full">나가기</Button>
                     <Button onClick={() => handleClose(session, onClose)} colorScheme="green" className="w-full">확인</Button>
                 </div>

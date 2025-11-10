@@ -184,7 +184,7 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     // Non-Game actions
     if (type.startsWith('ADMIN_')) return handleAdminAction(volatileState, action, user);
     if (type.includes('NEGOTIATION') || type === 'START_AI_GAME' || type === 'REQUEST_REMATCH' || type === 'CHALLENGE_USER' || type === 'SEND_CHALLENGE') return handleNegotiationAction(volatileState, action, user);
-    if (type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD') {
+    if (type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' || type === 'START_SINGLE_PLAYER_MISSION' || type === 'LEVEL_UP_TRAINING_QUEST') {
         return handleSinglePlayerAction(volatileState, action, user);
     }
     if (type.startsWith('CLAIM_') || type.startsWith('DELETE_MAIL') || type === 'DELETE_ALL_CLAIMED_MAIL' || type === 'MARK_MAIL_AS_READ') return handleRewardAction(volatileState, action, user);

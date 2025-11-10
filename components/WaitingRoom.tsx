@@ -178,19 +178,19 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
     <div className="bg-primary text-primary flex flex-col flex-1 p-2 sm:p-4 lg:p-6 max-w-full mx-auto">
       <header className="flex justify-between items-center mb-4 flex-shrink-0">
         <div className="flex-1">
-          <button onClick={onBackToLobby} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
-            <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+          <button onClick={onBackToLobby} className="p-0 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
+            <img src="/images/button/back.png" alt="Back" className="w-full h-full" />
           </button>
         </div>
         <div className='flex-1 text-center flex items-center justify-center'>
           <h1 className="text-3xl font-bold">{mode} 대기실</h1>
           <button 
             onClick={() => setIsHelpModalOpen(true)}
-            className="ml-3 w-8 h-8 flex items-center justify-center bg-secondary hover:bg-tertiary rounded-full text-primary font-bold text-xl flex-shrink-0 transition-transform hover:scale-110"
+            className="ml-3 w-8 h-8 flex items-center justify-center transition-transform hover:scale-110"
             aria-label="게임 방법 보기"
             title="게임 방법 보기"
           >
-            ?
+            <img src="/images/button/help.png" alt="도움말" className="w-full h-full" />
           </button>
         </div>
         <div className="flex-1 text-right">

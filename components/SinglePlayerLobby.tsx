@@ -25,26 +25,30 @@ const SinglePlayerLobby: React.FC = () => {
     }
 
     return (
-        <div className="bg-gray-900 text-gray-100 p-4 sm:p-6 lg:p-8 w-full mx-auto flex flex-col h-[calc(100vh-5rem)] relative">
+        <div className="bg-gray-900 text-gray-100 p-2 sm:p-4 lg:p-8 w-full mx-auto flex flex-col h-[calc(100vh-5rem)] lg:h-[calc(100vh-5rem)] relative">
             {/* Header */}
-            <header className="flex justify-between items-center mb-6 flex-shrink-0">
+            <header className="flex justify-between items-center mb-3 sm:mb-4 lg:mb-6 flex-shrink-0 px-2 sm:px-0">
                 <button 
                     onClick={onBackToProfile} 
-                    className="transition-transform active:scale-90 filter hover:drop-shadow-lg p-0 flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-800"
+                    className="transition-transform active:scale-90 filter hover:drop-shadow-lg p-0 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg hover:bg-gray-800"
                     aria-label="뒤로가기"
                 >
-                    <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+                    <img src="/images/button/back.png" alt="Back" className="w-full h-full" />
                 </button>
-                <h1 className="text-3xl lg:text-4xl font-bold text-gray-100">싱글플레이</h1>
+                <h1 className={`${isMobile ? 'text-xl sm:text-2xl' : 'text-3xl lg:text-4xl'} font-bold text-gray-100`}>싱글플레이</h1>
                 {/* 모바일: 사이드 메뉴 버튼, 데스크톱: 스페이서 */}
                 {isMobile ? (
-                    <button
-                        onClick={() => setIsMobileSidebarOpen(true)}
-                        className="transition-transform active:scale-90 filter hover:drop-shadow-lg p-0 flex items-center justify-center w-10 h-10 rounded-full hover:bg-gray-800"
-                        aria-label="메뉴 열기"
-                    >
-                        <span className="relative font-bold text-lg text-gray-100">{'<'}</span>
-                    </button>
+                    <div className="absolute top-1/2 -translate-y-1/2 right-0 z-20">
+                        <button
+                            onClick={() => setIsMobileSidebarOpen(true)}
+                            className="w-8 h-12 bg-secondary/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-primary shadow-lg"
+                            aria-label="메뉴 열기"
+                        >
+                            <span className="relative font-bold text-lg">
+                                {'<'}
+                            </span>
+                        </button>
+                    </div>
                 ) : (
                     <div className="w-10"></div>
                 )}
@@ -53,9 +57,9 @@ const SinglePlayerLobby: React.FC = () => {
             {/* Main Content */}
             {isMobile ? (
                 // 모바일: 단계 선택 + 스테이지 패널만 표시
-                <div className="flex-1 flex flex-col gap-4 min-h-0">
+                <div className="flex-1 flex flex-col gap-2 sm:gap-3 min-h-0 overflow-hidden">
                     {/* 단계 선택 패널 */}
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 px-2 sm:px-0">
                         <ClassNavigationPanel 
                             selectedClass={selectedClass}
                             onClassSelect={setSelectedClass}
@@ -63,7 +67,7 @@ const SinglePlayerLobby: React.FC = () => {
                     </div>
 
                     {/* 스테이지 패널 */}
-                    <div className="flex-1 flex flex-col min-h-0">
+                    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
                         <StageGrid 
                             selectedClass={selectedClass}
                             currentUser={currentUserWithStatus}

@@ -13,6 +13,11 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
     const { handlers } = useAppContext();
     const [selectedMissionForUpgrade, setSelectedMissionForUpgrade] = useState<string | null>(null);
     const [currentTime, setCurrentTime] = useState(Date.now());
+    const [levelUpResult, setLevelUpResult] = useState<{
+        missionName: string;
+        previousLevel: number;
+        newLevel: number;
+    } | null>(null);
 
     // 실시간 타이머 업데이트 (1초마다)
     useEffect(() => {
@@ -99,25 +104,36 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
     
     // 레벨업 조건 계산
     const getLevelUpInfo = (quest: any) => {
-        if (!quest.isStarted || !quest.levelInfo || quest.currentLevel >= 10) return null;
+        if (!quest.isStarted || quest.currentLevel >= 10) return null;
         
-        const requiredCollection = quest.levelInfo.maxCapacity * quest.currentLevel * 10;
+        // 다음 레벨 정보 확인 (필수)
+        const nextLevelInfo = quest.levels && quest.levels[quest.currentLevel];
+        if (!nextLevelInfo) return null;
+        
+        // 레벨 0일 때는 현재 레벨 정보가 없으므로 다음 레벨 정보를 사용
+        const currentLevelInfo = quest.levelInfo || (quest.currentLevel === 0 ? null : (quest.levels && quest.levels[quest.currentLevel - 1]));
+        
+        // 레벨 0에서 레벨 1로 올릴 때는 수집 요구사항 없음
+        const requiredCollection = quest.currentLevel === 0 ? 0 : (currentLevelInfo ? currentLevelInfo.maxCapacity * quest.currentLevel * 10 : 0);
         const accumulatedCollection = quest.missionState?.accumulatedCollection || 0;
-        const progress = Math.min(100, (accumulatedCollection / requiredCollection) * 100);
+        const progress = requiredCollection === 0 ? 100 : Math.min(100, (accumulatedCollection / requiredCollection) * 100);
         
-        // 레벨업 비용
+        // 레벨업 비용 (레벨 0일 때는 다음 레벨의 maxCapacity 사용)
+        const costBaseCapacity = currentLevelInfo ? currentLevelInfo.maxCapacity : nextLevelInfo.maxCapacity;
         let upgradeCost: number;
         if (quest.rewardType === 'gold') {
-            upgradeCost = quest.levelInfo.maxCapacity * 5;
+            upgradeCost = costBaseCapacity * 5;
         } else {
-            upgradeCost = quest.levelInfo.maxCapacity * 1000;
+            upgradeCost = costBaseCapacity * 1000;
         }
         
         // 다음 레벨 오픈조건 확인
-        const nextLevelInfo = quest.levels[quest.currentLevel];
         const clearedStages = (currentUser as any).clearedSinglePlayerStages || [];
-        const canLevelUp = accumulatedCollection >= requiredCollection && 
-            (!nextLevelInfo?.unlockStageId || clearedStages.includes(nextLevelInfo.unlockStageId));
+        // 레벨 0에서 레벨 1로 올릴 때는 항상 가능 (수집 요구사항 없음)
+        const canLevelUp = quest.currentLevel === 0 ? 
+            (!nextLevelInfo?.unlockStageId || clearedStages.includes(nextLevelInfo.unlockStageId)) :
+            (accumulatedCollection >= requiredCollection && 
+            (!nextLevelInfo?.unlockStageId || clearedStages.includes(nextLevelInfo.unlockStageId)));
         
         return {
             requiredCollection,
@@ -159,12 +175,31 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
     };
 
     // 레벨업 확인
-    const handleLevelUpConfirm = (missionId: string) => {
-        handlers.handleAction({
-            type: 'LEVEL_UP_TRAINING_QUEST',
-            payload: { missionId }
-        });
-        setSelectedMissionForUpgrade(null);
+    const handleLevelUpConfirm = async (missionId: string) => {
+        try {
+            const result = await handlers.handleAction({
+                type: 'LEVEL_UP_TRAINING_QUEST',
+                payload: { missionId }
+            });
+            
+            // 강화 완료 결과 확인
+            const levelUpData = (result as any)?.trainingQuestLevelUp;
+            if (levelUpData) {
+                setLevelUpResult({
+                    missionName: levelUpData.missionName,
+                    previousLevel: levelUpData.previousLevel,
+                    newLevel: levelUpData.newLevel
+                });
+                // 3초 후 자동으로 닫기
+                setTimeout(() => {
+                    setLevelUpResult(null);
+                }, 3000);
+            }
+            
+            setSelectedMissionForUpgrade(null);
+        } catch (error) {
+            console.error('[TrainingQuestPanel] Level up error:', error);
+        }
     };
 
     // 선택된 미션 정보
@@ -353,19 +388,23 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
                                                 <Button
                                                     disabled
                                                     colorScheme="accent"
-                                                    className="w-full !text-[10px] sm:!text-xs !py-0.5 sm:!py-1 opacity-50 flex items-center justify-center gap-1"
+                                                    className="w-full !text-[10px] sm:!text-xs !py-0.5 sm:!py-1 opacity-50 flex items-center justify-center gap-1 !whitespace-nowrap"
                                                 >
-                                                    {quest.levelInfo && quest.currentLevel > 0 && (
-                                                        <div className="flex-1 flex items-center gap-1 mr-1">
-                                                            <div className="flex-1 bg-gray-700 rounded-full h-2 overflow-hidden">
-                                                                <div 
-                                                                    className="h-full bg-gradient-to-r from-yellow-400/50 to-yellow-500/50 transition-all duration-300"
-                                                                    style={{ width: '0%' }}
-                                                                />
+                                                    {quest.levelInfo && quest.currentLevel > 0 ? (
+                                                        <div className="w-full flex items-center gap-1 min-w-0">
+                                                            <div className="flex-1 flex items-center gap-1 min-w-0">
+                                                                <div className="flex-1 bg-gray-700 rounded-full h-2 overflow-hidden min-w-0">
+                                                                    <div 
+                                                                        className="h-full bg-gradient-to-r from-yellow-400/50 to-yellow-500/50 transition-all duration-300"
+                                                                        style={{ width: '0%' }}
+                                                                    />
+                                                                </div>
                                                             </div>
+                                                            <span className="text-sm font-bold flex-shrink-0">↑</span>
                                                         </div>
+                                                    ) : (
+                                                        <span>강화</span>
                                                     )}
-                                                    <span className="text-sm font-bold">↑</span>
                                                 </Button>
                                             </>
                                         ) : !quest.isStarted ? (
@@ -397,22 +436,22 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
                                                 <Button
                                                     onClick={() => handleLevelUpClick(quest.id)}
                                                     colorScheme="accent"
-                                                    className="w-full !text-[10px] sm:!text-xs !py-0.5 sm:!py-1 flex items-center justify-center gap-1 relative"
+                                                    className="w-full !text-[10px] sm:!text-xs !py-0.5 sm:!py-1 flex items-center justify-center gap-1 relative !whitespace-nowrap"
                                                     disabled={isMaxLevel || !levelUpInfo?.canLevelUp}
                                                 >
                                                     {levelUpInfo && !isMaxLevel ? (
-                                                        <>
-                                                            <div className="flex-1 flex items-center gap-1 mr-1">
-                                                                <div className="flex-1 bg-gray-700/70 rounded-full h-2 overflow-hidden">
+                                                        <div className="w-full flex items-center gap-1 min-w-0">
+                                                            <div className="flex-1 flex items-center gap-1 min-w-0">
+                                                                <div className="flex-1 bg-gray-700/70 rounded-full h-2 overflow-hidden min-w-0">
                                                                     <div 
                                                                         className="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 transition-all duration-300"
                                                                         style={{ width: `${levelUpInfo.progress}%` }}
                                                                     />
                                                                 </div>
-                                                                <span className="text-[10px] text-white font-bold">{Math.floor(levelUpInfo.progress)}%</span>
+                                                                <span className="text-[10px] text-white font-bold whitespace-nowrap flex-shrink-0">{Math.floor(levelUpInfo.progress)}%</span>
                                                             </div>
-                                                            <span className="text-sm font-bold">↑</span>
-                                                        </>
+                                                            <span className="text-sm font-bold flex-shrink-0">↑</span>
+                                                        </div>
                                                     ) : (
                                                         <span>강화</span>
                                                     )}
@@ -428,17 +467,35 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
             </div>
 
             {/* 레벨업 모달 */}
-            {selectedQuest && selectedLevelUpInfo && (
+            {selectedQuest && (
                 <TrainingQuestLevelUpModal
                     mission={selectedQuest}
                     currentLevel={selectedQuest.currentLevel}
-                    upgradeCost={selectedLevelUpInfo.upgradeCost}
-                    canLevelUp={selectedLevelUpInfo.canLevelUp}
-                    nextLevelUnlockStage={selectedLevelUpInfo.nextLevelUnlockStage}
+                    upgradeCost={selectedLevelUpInfo?.upgradeCost || 0}
+                    canLevelUp={selectedLevelUpInfo?.canLevelUp || false}
+                    nextLevelUnlockStage={selectedLevelUpInfo?.nextLevelUnlockStage}
                     currentUserGold={currentUser.gold}
                     onConfirm={() => handleLevelUpConfirm(selectedQuest.id)}
                     onClose={() => setSelectedMissionForUpgrade(null)}
                 />
+            )}
+
+            {/* 강화 완료 토스트 */}
+            {levelUpResult && (
+                <div className="fixed top-4 left-1/2 -translate-x-1/2 w-full max-w-md z-[100] animate-slide-down">
+                    <div className="bg-success border-2 border-green-400 rounded-lg shadow-2xl p-6 text-center">
+                        <div className="text-6xl mb-3 animate-bounce">🎉</div>
+                        <h3 className="text-2xl font-bold text-green-400 mb-2">강화 완료!</h3>
+                        <p className="text-white text-lg mb-1">
+                            <span className="font-semibold">{levelUpResult.missionName}</span>
+                        </p>
+                        <div className="flex items-center justify-center gap-3 text-xl font-bold">
+                            <span className="text-yellow-400">Lv.{levelUpResult.previousLevel}</span>
+                            <span className="text-white">→</span>
+                            <span className="text-green-400">Lv.{levelUpResult.newLevel}</span>
+                        </div>
+                    </div>
+                </div>
             )}
         </>
     );

@@ -357,8 +357,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
                 if (stage?.autoScoringTurns && game.totalTurns >= stage.autoScoringTurns) {
                     const { getGameResult } = await import('../gameModes.js');
-                    getGameResult(game);
-                    await db.saveGame(game);
+                    await getGameResult(game);
                     return {};
                 }
                 
@@ -448,10 +447,10 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         if (!game.permanentlyRevealedStones) game.permanentlyRevealedStones = [];
                         game.permanentlyRevealedStones.push(...unrevealedStones.map(s => s.point));
                     } else {
-                        getGameResult(game);
+                        await getGameResult(game);
                     }
                 } else {
-                    getGameResult(game);
+                    await getGameResult(game);
                 }
             } else {
                 const playerWhoMoved = myPlayerEnum;

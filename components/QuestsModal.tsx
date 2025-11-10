@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { UserWithStatus, Quest, ServerAction, QuestLog, QuestReward, InventoryItem } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
@@ -16,7 +16,7 @@ interface QuestsModalProps {
 type QuestTab = 'daily' | 'weekly' | 'monthly';
 type QuestData = NonNullable<QuestLog[QuestTab]>;
 
-const QuestItem: React.FC<{ quest: Quest, onClaim: (id: string) => void }> = ({ quest, onClaim }) => {
+const QuestItem: React.FC<{ quest: Quest, onClaim: (id: string) => void, isMobile?: boolean }> = ({ quest, onClaim, isMobile = false }) => {
     const isComplete = quest.progress >= quest.target;
     const percentage = Math.min((quest.progress / quest.target) * 100, 100);
 
@@ -26,6 +26,42 @@ const QuestItem: React.FC<{ quest: Quest, onClaim: (id: string) => void }> = ({ 
             onClaim(quest.id);
         }
     };
+
+    if (isMobile) {
+        return (
+            <div className="bg-gray-900/50 p-3 rounded-lg flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                    <div className="w-12 h-12 bg-gray-800 rounded-md flex items-center justify-center text-gray-500 text-2xl flex-shrink-0">📜</div>
+                    <div className="flex-grow min-w-0">
+                        <h4 className="font-bold text-sm break-words">{quest.title}</h4>
+                        <p className="text-xs text-gray-400 mt-1 break-words">{quest.description}</p>
+                    </div>
+                </div>
+                <div className="w-full bg-gray-700 rounded-full h-2.5">
+                    <div className="bg-blue-600 h-2.5 rounded-full" style={{ width: `${percentage}%` }}></div>
+                </div>
+                <div className="flex items-center justify-between">
+                    <p className="text-xs text-gray-300">{quest.progress} / {quest.target}</p>
+                    <div className="flex items-center gap-2 text-xs">
+                        <span className="text-yellow-300 font-semibold flex items-center gap-1">📜 +{quest.activityPoints}</span>
+                        {quest.reward.gold && (
+                            <span className="text-yellow-300 font-semibold flex items-center gap-1">
+                                <img src="/images/icon/Gold.png" alt="골드" className="w-3 h-3" /> +{quest.reward.gold}
+                            </span>
+                        )}
+                    </div>
+                </div>
+                <Button 
+                    onClick={handleClaimClick} 
+                    disabled={!isComplete || quest.isClaimed} 
+                    colorScheme={isComplete && !quest.isClaimed ? 'green' : 'gray'}
+                    className="w-full !text-sm !py-2"
+                >
+                    {quest.isClaimed ? '완료' : (isComplete ? '보상 받기' : '진행 중')}
+                </Button>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-gray-900/50 p-3 rounded-lg flex items-center gap-4">
@@ -88,6 +124,31 @@ const ActivityPanel: React.FC<{
                 <div className="w-full bg-gray-700 rounded-full h-4 relative border border-gray-600">
                     <div className="bg-green-500 h-full rounded-full" style={{ width: `${Math.min(100, (activityProgress / maxProgress) * 100)}%` }}></div>
                     <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">{activityProgress} / {maxProgress}</span>
+                    {/* 마일스톤 마커 표시 (마지막 활약도 100 제외) */}
+                    {thresholds.map((milestone, index) => {
+                        if (!rewards[index]) return null;
+                        // 마지막 활약도 100 부분은 마커 표시하지 않음
+                        if (milestone === maxProgress) return null;
+                        const milestonePosition = (milestone / maxProgress) * 100;
+                        const progressMet = activityProgress >= milestone;
+                        const isClaimed = claimedMilestones[index];
+                        
+                        return (
+                            <div
+                                key={`marker-${milestone}`}
+                                className="absolute top-0 bottom-0 -translate-x-1/2"
+                                style={{ left: `${milestonePosition}%` }}
+                            >
+                                <div className={`w-0.5 h-full ${
+                                    isClaimed 
+                                        ? 'bg-green-400' 
+                                        : progressMet 
+                                            ? 'bg-yellow-400' 
+                                            : 'bg-gray-500'
+                                }`}></div>
+                            </div>
+                        );
+                    })}
                 </div>
             </div>
             <div className="flex justify-around items-end">
@@ -136,7 +197,15 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ currentUser: propCurrentUser,
     const currentUser = currentUserWithStatus || propCurrentUser;
     
     const [activeTab, setActiveTab] = useState<QuestTab>('daily');
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
     const { quests } = currentUser;
+
+    useEffect(() => {
+        const checkIsMobile = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', checkIsMobile);
+        checkIsMobile();
+        return () => window.removeEventListener('resize', checkIsMobile);
+    }, []);
 
     const handleClaim = (questId: string) => {
         onAction({ type: 'CLAIM_QUEST_REWARD', payload: { questId } });
@@ -158,8 +227,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ currentUser: propCurrentUser,
     };
 
     return (
-        <DraggableWindow title="퀘스트" onClose={onClose} windowId="quests" initialWidth={750} isTopmost={isTopmost}>
-            <div className="h-[calc(var(--vh,1vh)*70)] flex flex-col">
+        <DraggableWindow title="퀘스트" onClose={onClose} windowId="quests" initialWidth={isMobile ? window.innerWidth - 20 : 750} initialHeight={isMobile ? window.innerHeight - 40 : undefined} isTopmost={isTopmost}>
+            <div className={`${isMobile ? 'h-[calc(100vh-80px)]' : 'h-[calc(var(--vh,1vh)*70)]'} flex flex-col`}>
                 <div className="flex bg-gray-900/70 p-1 rounded-lg mb-4 flex-shrink-0">
                     <button onClick={() => setActiveTab('daily')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === 'daily' ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}>일일</button>
                     <button onClick={() => setActiveTab('weekly')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === 'weekly' ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}>주간</button>
@@ -167,8 +236,8 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ currentUser: propCurrentUser,
                 </div>
 
                 {activeTab === 'monthly' && (
-                    <div className="flex-shrink-0 text-center text-sm text-yellow-300 mb-4 bg-gray-900/50 p-2 rounded-md">
-                        <p>월간 퀘스트 활약도 100보상을 받으면 남은 월간퀘스트 기간동안 획득 골드량 50%상승 버프가 적용됩니다.</p>
+                    <div className="flex-shrink-0 text-center text-xs sm:text-sm text-yellow-300 mb-4 bg-gray-900/50 p-2 rounded-md">
+                        <p className="break-words">월간 퀘스트 활약도 100보상을 받으면 남은 월간퀘스트 기간동안 획득 골드량 50%상승 버프가 적용됩니다.</p>
                     </div>
                 )}
                 
@@ -178,7 +247,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ currentUser: propCurrentUser,
                         <ul className="space-y-3">
                             {questList.map(quest => (
                                 <li key={quest.id}>
-                                    <QuestItem quest={quest} onClaim={handleClaim} />
+                                    <QuestItem quest={quest} onClaim={handleClaim} isMobile={isMobile} />
                                 </li>
                             ))}
                         </ul>

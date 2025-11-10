@@ -222,36 +222,71 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
     <div className="bg-primary text-primary flex flex-col h-full max-w-full">
       <header className="flex justify-between items-center mb-4 flex-shrink-0 px-2 sm:px-4 lg:px-6 pt-2 sm:pt-4 lg:pt-6">
         <div className="flex-1">
-          <button onClick={onBackToLobby} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
-            <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+          <button onClick={onBackToLobby} className="p-0 flex items-center justify-center w-10 h-10 sm:w-12 sm:h-12 rounded-lg transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
+            <img src="/images/button/back.png" alt="Back" className="w-full h-full" />
           </button>
         </div>
         <div className='flex-1 text-center flex items-center justify-center'>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">{mode === 'strategic' ? '전략바둑 대기실' : mode === 'playful' ? '놀이바둑 대기실' : `${mode} 대기실`}</h1>
-          <button 
-            onClick={() => setIsHelpModalOpen(true)}
-            className="ml-3 w-8 h-8 flex items-center justify-center bg-secondary hover:bg-tertiary rounded-full text-primary font-bold text-xl flex-shrink-0 transition-transform hover:scale-110"
-            aria-label="게임 방법 보기"
-            title="게임 방법 보기"
-          >
-            ?
-          </button>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">
+              {mode === 'strategic' ? '전략바둑 대기실' : mode === 'playful' ? '놀이바둑 대기실' : `${mode} 대기실`}
+            </h1>
+            {(mode === 'strategic' || mode === 'playful') && (
+              <div className="flex items-center gap-1 bg-secondary/40 border border-secondary/30 rounded-full px-1.5 py-0.5">
+                <button
+                  type="button"
+                  disabled={mode === 'strategic'}
+                  onClick={() => { if (mode !== 'strategic') window.location.hash = '#/waiting/strategic'; }}
+                  className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs transition-all ${
+                    mode === 'strategic'
+                      ? 'bg-primary/80 text-primary font-semibold shadow-sm cursor-default'
+                      : 'text-tertiary hover:bg-primary/40'
+                  }`}
+                  aria-label="전략바둑 대기실로 이동"
+                >
+                  전략바둑 대기실
+                </button>
+                <button
+                  type="button"
+                  disabled={mode === 'playful'}
+                  onClick={() => { if (mode !== 'playful') window.location.hash = '#/waiting/playful'; }}
+                  className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs transition-all ${
+                    mode === 'playful'
+                      ? 'bg-primary/80 text-primary font-semibold shadow-sm cursor-default'
+                      : 'text-tertiary hover:bg-primary/40'
+                  }`}
+                  aria-label="놀이바둑 대기실로 이동"
+                >
+                  놀이바둑 대기실
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex-1 text-right">
-             <p className="text-secondary text-sm">{usersInThisRoom.length}명 접속 중</p>
+        <div className="flex-1 flex justify-end items-center">
+          {(mode === 'strategic' || mode === 'playful') && (
+            <button 
+              onClick={() => setIsHelpModalOpen(true)}
+              className="w-8 h-8 flex items-center justify-center transition-transform hover:scale-110"
+              aria-label="게임 방법 보기"
+              title="게임 방법 보기"
+            >
+              <img src="/images/button/help.png" alt="도움말" className="w-full h-full" />
+            </button>
+          )}
         </div>
       </header>
       <div className="flex-1 min-h-0 relative px-2 sm:px-4 lg:px-6 pb-2 sm:pb-4 lg:pb-6">
         {isMobile ? (
           <>
             <div className="flex flex-col h-full gap-2">
-                <div className="flex-shrink-0">{mode !== 'strategic' && mode !== 'playful' && <AnnouncementBoard mode={mode} />}</div>
+                <div className="flex-shrink-0"><AnnouncementBoard mode={mode} /></div>
                 <div className="flex-shrink-0"><AiChallengePanel mode={mode} onOpenModal={() => setIsAiChallengeModalOpen(true)} /></div>
                 <div className="h-[350px] min-h-0">
                     <GameList games={ongoingGames} onAction={handlers.handleAction} currentUser={currentUserWithStatus} />
                 </div>
                 <div className="flex-1 min-h-0 bg-panel border border-color rounded-lg shadow-lg flex flex-col">
-                    <PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={isStrategic ? 'strategic' : 'playful'} />
+                    <PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={isStrategic ? 'strategic' : 'playful'} userCount={usersInThisRoom.length} />
                 </div>
             </div>
 
@@ -293,7 +328,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
               {/* Main Content Column */}
                   <div className="lg:col-span-3 flex flex-col gap-4 min-h-0">
                       <div className="flex-shrink-0">
-                          {mode !== 'strategic' && mode !== 'playful' && <AnnouncementBoard mode={mode} />}
+                          <AnnouncementBoard mode={mode} />
                       </div>
                        <div className="flex-shrink-0">
                           <AiChallengePanel mode={mode} onOpenModal={() => setIsAiChallengeModalOpen(true)} />
@@ -311,7 +346,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
               <div className="lg:col-span-2 flex flex-col gap-4">
                 <div className="flex-1 flex flex-row gap-4 items-stretch min-h-0">
                   <div className="flex-1 bg-panel border border-color rounded-lg shadow-lg min-w-0">
-                    <PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={isStrategic ? 'strategic' : 'playful'} />
+                    <PlayerList users={usersInThisRoom} mode={mode} onAction={handlers.handleAction} currentUser={currentUserWithStatus} negotiations={Object.values(negotiations)} onViewUser={handlers.openViewingUser} lobbyType={isStrategic ? 'strategic' : 'playful'} userCount={usersInThisRoom.length} />
                   </div>
                   <div className="w-24 flex-shrink-0">
                     <QuickAccessSidebar />
@@ -326,7 +361,7 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
         )}
       </div>
       {isTierInfoModalOpen && <TierInfoModal onClose={() => setIsTierInfoModalOpen(false)} />}
-      {isHelpModalOpen && <HelpModal mode={mode as GameMode} onClose={() => setIsHelpModalOpen(false)} />}
+      {isHelpModalOpen && <HelpModal mode={mode} onClose={() => setIsHelpModalOpen(false)} />}
       {isAiChallengeModalOpen && (
         <AiChallengeModal 
           lobbyType={isStrategic ? 'strategic' : 'playful'} 

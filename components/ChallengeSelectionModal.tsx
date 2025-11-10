@@ -761,7 +761,7 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
         <div className="flex flex-row flex-1 min-h-0 overflow-hidden" style={{ gap: `${Math.max(8, Math.round(16 * scaleFactor))}px` }}>
           {/* 좌측 패널: 게임 종류 선택 또는 게임 정보 */}
           <div 
-            className="w-1/3 lg:w-1/2 border-r border-gray-700 flex flex-col min-h-0 overflow-hidden"
+            className="w-1/3 border-r border-gray-700 flex flex-col min-h-0 overflow-hidden"
             style={{ paddingRight: `${Math.max(8, Math.round(16 * scaleFactor))}px` }}
           >
             <p 
@@ -873,7 +873,7 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
 
           {/* 우측 패널: 프로필 + 전적 + 협상 설정 */}
           <div 
-            className="w-2/3 lg:w-1/2 flex flex-col min-h-0 overflow-hidden"
+            className="w-2/3 flex flex-col min-h-0 overflow-hidden"
             style={{ paddingLeft: `${Math.max(8, Math.round(16 * scaleFactor))}px` }}
           >
             {/* 상대방 프로필 */}

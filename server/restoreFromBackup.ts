@@ -10,7 +10,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = __dirname.includes('server') ? path.resolve(__dirname, '..') : process.cwd();
 
-const restoreFromBackup = async (backupFileName: string, targetNickname: string) => {
+const restoreFromBackup = async (backupFileName: string, targetNickname: string, allowEmpty: boolean) => {
     const backupPath = path.resolve(projectRoot, backupFileName);
     const currentDbPath = path.resolve(projectRoot, 'database.sqlite');
     
@@ -70,8 +70,15 @@ const restoreFromBackup = async (backupFileName: string, targetNickname: string)
         const backupEquipment = backupUser.equipment ? JSON.parse(backupUser.equipment) : {};
         const backupInventory = backupUser.inventory ? JSON.parse(backupUser.inventory) : [];
         
-        console.log(`[Restore From Backup] Backup equipment: ${Object.keys(backupEquipment).length} slots`);
-        console.log(`[Restore From Backup] Backup inventory: ${backupInventory.length} items`);
+        const backupEquipmentCount = Object.keys(backupEquipment).length;
+        const backupInventoryCount = Array.isArray(backupInventory) ? backupInventory.length : 0;
+        console.log(`[Restore From Backup] Backup equipment: ${backupEquipmentCount} slots`);
+        console.log(`[Restore From Backup] Backup inventory: ${backupInventoryCount} items`);
+
+        if (!allowEmpty && backupEquipmentCount === 0 && backupInventoryCount === 0) {
+            console.error('[Restore From Backup] Backup contains no equipment or inventory. Aborting restore (use --allow-empty to override).');
+            return;
+        }
         
         // 현재 데이터 확인
         const currentUserData = await currentDb.get('SELECT equipment, inventory FROM users WHERE nickname = ?', targetNickname);
@@ -121,8 +128,15 @@ const restoreFromBackup = async (backupFileName: string, targetNickname: string)
 };
 
 // 스크립트 실행
-const backupFile = process.argv[2];
-const nickname = process.argv[3] || '이수호';
+const args = process.argv.slice(2);
+const allowEmptyFlagIndex = args.indexOf('--allow-empty');
+const allowEmpty = allowEmptyFlagIndex !== -1;
+if (allowEmpty) {
+    args.splice(allowEmptyFlagIndex, 1);
+}
+
+const backupFile = args[0];
+const nickname = args[1] || '이수호';
 
 if (!backupFile) {
     console.error('Usage: npx tsx server/restoreFromBackup.ts <backup-file-name> [nickname]');
@@ -130,7 +144,7 @@ if (!backupFile) {
     process.exit(1);
 }
 
-restoreFromBackup(backupFile, nickname)
+restoreFromBackup(backupFile, nickname, allowEmpty)
     .then(() => {
         console.log('[Restore From Backup] Restoration script completed successfully');
         process.exit(0);

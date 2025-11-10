@@ -105,9 +105,15 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
             prevGameStatus !== 'no_contest' &&
             prevGameStatus !== 'rematch_pending';
 
-        if (gameHasJustEnded) {
+        // 게임이 종료되었거나 계가 중일 때 모달 표시
+        const shouldShowModal = gameHasJustEnded || 
+            (gameStatus === 'scoring' && prevGameStatus !== 'scoring' && prevGameStatus !== 'ended');
+
+        if (shouldShowModal) {
             setShowResultModal(true);
-            setShowFinalTerritory(true);
+            if (gameStatus === 'ended') {
+                setShowFinalTerritory(true);
+            }
         }
     }, [gameStatus, prevGameStatus]);
     
@@ -437,18 +443,23 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                         onStart={handleStartGame}
                     />
                 )}
-                <button
-                    onClick={handlers.openSettingsModal}
-                    className="absolute top-2 right-2 z-30 p-2 rounded-lg text-xl hover:bg-secondary/50 transition-colors"
-                    title="설정"
-                >
-                    ⚙️
-                </button>
                 <div className="flex-1 flex flex-col lg:flex-row gap-2 min-h-0">
                     <main className="flex-1 flex items-center justify-center min-w-0 min-h-0">
                         <div className="w-full h-full max-h-full max-w-full lg:max-w-[calc(100vh-8rem)] flex flex-col items-center gap-1 lg:gap-2">
-                            <div className="flex-shrink-0 w-full">
-                                <PlayerPanel {...gameProps} clientTimes={clientTimes.clientTimes} isSinglePlayer={true} />
+                            <div className="flex-shrink-0 w-full flex items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                    <PlayerPanel {...gameProps} clientTimes={clientTimes.clientTimes} isSinglePlayer={true} isMobile={isMobile} />
+                                </div>
+                                {isMobile && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setIsMobileSidebarOpen(true)}
+                                        className="flex-shrink-0 w-10 h-12 sm:w-12 sm:h-14 bg-secondary/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-primary shadow-lg hover:bg-secondary transition-colors"
+                                        aria-label="메뉴 열기"
+                                    >
+                                        <span className="font-bold text-lg sm:text-xl">{'<'}</span>
+                                    </button>
+                                )}
                             </div>
                             <div className="flex-1 w-full relative">
                                 <div className="absolute inset-0">
@@ -485,24 +496,13 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                     resumeCountdown={resumeCountdown}
                                     pauseButtonCooldown={pauseButtonCooldown}
                                     onTogglePause={handlePauseToggle}
+                                    onOpenSettings={handlers.openSettingsModal}
                                 />
                         </div>
                     )}
                     
                     {isMobile && (
                         <>
-                            <div className="absolute top-1/2 -translate-y-1/2 right-0 z-20">
-                                <button 
-                                    onClick={() => setIsMobileSidebarOpen(true)} 
-                                    className="w-8 h-12 bg-secondary/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-primary shadow-lg"
-                                    aria-label="메뉴 열기"
-                                >
-                                    <span className="relative font-bold text-lg">
-                                        {'<'}
-                                    </span>
-                                </button>
-                            </div>
-
                             <div className={`fixed top-0 right-0 h-full w-[280px] bg-secondary shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                                 <SinglePlayerSidebar 
                                     session={session}
@@ -510,6 +510,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                     onAction={handlers.handleAction}
                                     currentUser={currentUserWithStatus}
                                     onClose={() => setIsMobileSidebarOpen(false)}
+                                    onOpenSettings={handlers.openSettingsModal}
                                     isPaused={isPaused}
                                     resumeCountdown={resumeCountdown}
                                     pauseButtonCooldown={pauseButtonCooldown}
@@ -552,18 +553,26 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                     <p className="text-xl font-bold text-white">계가 중...</p>
                 </div>
             )}
-            <button
-                onClick={handlers.openSettingsModal}
-                className="absolute top-2 right-2 z-30 p-2 rounded-lg text-xl hover:bg-secondary/50 transition-colors"
-                title="설정"
-            >
-                ⚙️
-            </button>
             <div className="flex-1 flex flex-col lg:flex-row gap-2 min-h-0">
                 <main className="flex-1 flex items-center justify-center min-w-0 min-h-0">
                     <div className="w-full h-full max-h-full max-w-full lg:max-w-[calc(100vh-8rem)] flex flex-col items-center gap-1 lg:gap-2">
-                        <div className="flex-shrink-0 w-full">
-                            <PlayerPanel {...gameProps} clientTimes={clientTimes.clientTimes} />
+                        <div className="flex-shrink-0 w-full flex items-center gap-2">
+                            <div className="flex-1 min-w-0">
+                                <PlayerPanel {...gameProps} clientTimes={clientTimes.clientTimes} isMobile={isMobile} />
+                            </div>
+                            {isMobile && (
+                                <button
+                                    type="button"
+                                    onClick={openMobileSidebar}
+                                    className="flex-shrink-0 w-10 h-12 sm:w-12 sm:h-14 bg-secondary/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-primary shadow-lg hover:bg-secondary transition-colors"
+                                    aria-label="메뉴 열기"
+                                >
+                                    <span className="relative font-bold text-lg sm:text-xl">
+                                        {'<'}
+                                        {hasNewMessage && <div className="absolute -top-1 -right-1.5 w-2.5 h-2.5 bg-danger rounded-full border-2 border-secondary"></div>}
+                                    </span>
+                                </button>
+                            )}
                         </div>
                         <div className="flex-1 w-full relative">
                             <div className="absolute inset-0">
@@ -593,31 +602,20 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                             {...gameProps}
                             onLeaveOrResign={handleLeaveOrResignClick}
                             isNoContestLeaveAvailable={isNoContestLeaveAvailable}
+                            onOpenSettings={handlers.openSettingsModal}
                         />
                     </div>
                 )}
                 
                 {isMobile && (
                     <>
-                        <div className="absolute top-1/2 -translate-y-1/2 right-0 z-20">
-                            <button 
-                                onClick={openMobileSidebar} 
-                                className="w-8 h-12 bg-secondary/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-primary shadow-lg"
-                                aria-label="메뉴 열기"
-                            >
-                                <span className="relative font-bold text-lg">
-                                    {'<'}
-                                    {hasNewMessage && <div className="absolute -top-1 -right-1.5 w-2.5 h-2.5 bg-danger rounded-full border-2 border-secondary"></div>}
-                                </span>
-                            </button>
-                        </div>
-
                         <div className={`fixed top-0 right-0 h-full w-[280px] bg-secondary shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
                             <Sidebar 
                                 {...gameProps}
                                 onLeaveOrResign={handleLeaveOrResignClick}
                                 isNoContestLeaveAvailable={isNoContestLeaveAvailable}
                                 onClose={() => setIsMobileSidebarOpen(false)}
+                                onOpenSettings={handlers.openSettingsModal}
                             />
                         </div>
                         {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}

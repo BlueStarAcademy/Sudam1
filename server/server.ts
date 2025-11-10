@@ -14,7 +14,7 @@ import * as types from '../types/index.js';
 import { processGameSummary, endGame } from './summaryService.js';
 // FIX: Correctly import from the placeholder module.
 import * as aiPlayer from './aiPlayer.js';
-import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset, resetAllTournamentScores, processDailyRankings, processDailyQuestReset } from './scheduledTasks.js';
+import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset, resetAllTournamentScores, resetAllUsersLeagueScoresForNewWeek, processDailyRankings, processDailyQuestReset } from './scheduledTasks.js';
 import * as tournamentService from './tournamentService.js';
 import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS } from '../constants';
 import { calculateTotalStats } from './statService.js';
@@ -23,6 +23,21 @@ import { createDefaultBaseStats, createDefaultUser } from './initialData.ts';
 import { containsProfanity } from '../profanity.js';
 import { volatileState } from './state.js';
 import { CoreStat } from '../types/index.js';
+
+const getTournamentStateByType = (user: types.User, type: types.TournamentType): types.TournamentState | null => {
+    switch (type) {
+        case 'neighborhood':
+            return user.lastNeighborhoodTournament ?? null;
+        case 'national':
+            return user.lastNationalTournament ?? null;
+        case 'world':
+            return user.lastWorldTournament ?? null;
+        default:
+            return null;
+    }
+};
+
+let isProcessingTournamentTick = false;
 
 const processSinglePlayerMissions = (user: types.User): types.User => {
     const now = Date.now();
@@ -116,6 +131,9 @@ const startServer = async () => {
 
     // --- 1회성 챔피언십 점수 초기화 (주석 해제하여 실행) ---
     // await resetAllTournamentScores();
+    
+    // --- 1회성: 모든 유저의 리그 점수를 0으로 초기화하여 변화없음으로 표시되도록 함 ---
+    await resetAllUsersLeagueScoresForNewWeek();
 
     const app = express();
     console.log(`[Server] process.env.PORT: ${process.env.PORT}`);
@@ -143,6 +161,57 @@ const startServer = async () => {
         await initializeKataGo();
     });
 
+    const processActiveTournamentSimulations = async () => {
+        if (isProcessingTournamentTick) return;
+        if (!volatileState.activeTournaments || Object.keys(volatileState.activeTournaments).length === 0) {
+            return;
+        }
+
+        isProcessingTournamentTick = true;
+        try {
+            for (const [userId, activeState] of Object.entries(volatileState.activeTournaments)) {
+                try {
+                    const user = await db.getUser(userId);
+                    if (!user) {
+                        delete volatileState.activeTournaments[userId];
+                        continue;
+                    }
+
+                    const tournamentState = getTournamentStateByType(user, activeState.type);
+                    if (!tournamentState || tournamentState.status !== 'round_in_progress') {
+                        delete volatileState.activeTournaments[userId];
+                        continue;
+                    }
+
+                    const advanced = tournamentService.advanceSimulation(tournamentState, user);
+                    if (!advanced) {
+                        continue;
+                    }
+
+                    // Keep volatile state reference updated
+                    volatileState.activeTournaments[userId] = tournamentState;
+
+                    await db.updateUser(user);
+
+                    const sanitizedUser = JSON.parse(JSON.stringify(user));
+                    broadcast({ type: 'USER_UPDATE', payload: { [user.id]: sanitizedUser } });
+
+                    if (tournamentState.status !== 'round_in_progress') {
+                        delete volatileState.activeTournaments[userId];
+                    }
+                } catch (error) {
+                    console.error(`[TournamentTicker] Failed to advance simulation for user ${userId}`, error);
+                }
+            }
+        } catch (error) {
+            console.error('[TournamentTicker] Failed to process tournament simulations', error);
+        } finally {
+            isProcessingTournamentTick = false;
+        }
+    };
+
+    setInterval(processActiveTournamentSimulations, 1000);
+
     // --- Main Game Loop ---
     setInterval(async () => {
         try {
@@ -167,31 +236,14 @@ const startServer = async () => {
                 
                 updatedUser = await regenerateActionPoints(updatedUser);
                 updatedUser = processSinglePlayerMissions(updatedUser);
-
-
                 
-                // --- Tournament Simulation Logic ---
-                let userModifiedByTournament = false;
-                const tournamentTypes: types.TournamentType[] = ['neighborhood', 'national', 'world'];
-                for (const type of tournamentTypes) {
-                    const key = `last${type.charAt(0).toUpperCase() + type.slice(1)}Tournament` as keyof types.User;
-                    const tournamentState = (updatedUser as any)[key] as types.TournamentState | null;
-                    if (tournamentState && tournamentState.status === 'round_in_progress') {
-                        tournamentService.advanceSimulation(tournamentState, updatedUser);
-                        userModifiedByTournament = true;
-                    }
-                }
+                // 봇의 리그 점수 업데이트 (하루에 한번)
+                const { updateBotLeagueScores } = await import('./scheduledTasks.js');
+                updatedUser = await updateBotLeagueScores(updatedUser);
                 
                 // Use the original check, but rename my flag to avoid confusion
-                if (userModifiedByTournament || JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+                if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
                     await db.updateUser(updatedUser);
-                    
-                    // Tournament simulation이 진행된 경우 클라이언트에 업데이트 브로드캐스트
-                    if (userModifiedByTournament) {
-                        const { broadcast } = await import('./socket.js');
-                        const updatedUserCopy = JSON.parse(JSON.stringify(updatedUser));
-                        broadcast({ type: 'USER_UPDATE', payload: { [updatedUser.id]: updatedUserCopy } });
-                    }
                 }
             }
             // --- END NEW OFFLINE AP REGEN LOGIC ---
@@ -204,14 +256,39 @@ const startServer = async () => {
             // 월요일 0시에 명시적으로 모든 사용자에 대해 리그 업데이트를 실행
             const kstNow = getKSTDate(now);
             const isMondayMidnight = kstNow.getUTCDay() === 1 && kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
+            
+            // 중복 실행 방지: 이번 월요일 0시에 이미 처리했는지 확인
             if (isMondayMidnight) {
-                console.log(`[WeeklyLeagueUpdate] Processing weekly league updates for all users at Monday 0:00 KST`);
-                const allUsersForLeagueUpdate = await db.getAllUsers();
-                for (const user of allUsersForLeagueUpdate) {
-                    const updatedUser = await processWeeklyLeagueUpdates(user);
-                    if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-                        await db.updateUser(updatedUser);
+                const { getLastWeeklyLeagueUpdateTimestamp, setLastWeeklyLeagueUpdateTimestamp } = await import('./scheduledTasks.js');
+                const lastUpdateTimestamp = getLastWeeklyLeagueUpdateTimestamp();
+                const currentMonday = new Date(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
+                
+                if (lastUpdateTimestamp === null || 
+                    getKSTDate(lastUpdateTimestamp).getTime() < currentMonday.getTime()) {
+                    console.log(`[WeeklyLeagueUpdate] Processing weekly league updates for all users at Monday 0:00 KST`);
+                    setLastWeeklyLeagueUpdateTimestamp(now);
+                    
+                    const allUsersForLeagueUpdate = await db.getAllUsers();
+                    let usersUpdated = 0;
+                    let mailsSent = 0;
+                    for (const user of allUsersForLeagueUpdate) {
+                        const userBeforeUpdate = JSON.parse(JSON.stringify(user));
+                        const updatedUser = await processWeeklyLeagueUpdates(user);
+                        const userAfterUpdate = JSON.parse(JSON.stringify(updatedUser));
+                        
+                        // 메일이 추가되었는지 확인
+                        const mailAdded = (updatedUser.mail?.length || 0) > (user.mail?.length || 0);
+                        if (mailAdded) {
+                            mailsSent++;
+                            console.log(`[WeeklyLeagueUpdate] Mail sent to user ${user.nickname} (${user.id})`);
+                        }
+                        
+                        if (JSON.stringify(userBeforeUpdate) !== JSON.stringify(userAfterUpdate)) {
+                            await db.updateUser(updatedUser);
+                            usersUpdated++;
+                        }
                     }
+                    console.log(`[WeeklyLeagueUpdate] Updated ${usersUpdated} users, sent ${mailsSent} mails`);
                 }
             }
             
@@ -551,9 +628,24 @@ const startServer = async () => {
                 user.ownedBorders.push('simple_black');
             }
 
+            const hadInventoryBefore = Array.isArray(user.inventory) && user.inventory.length > 0;
+            const hadEquipmentBefore = user.equipment && Object.keys(user.equipment).length > 0;
+
             let updatedUser = await resetAndGenerateQuests(user);
             updatedUser = await processWeeklyLeagueUpdates(updatedUser);
             updatedUser = await regenerateActionPoints(updatedUser);
+
+            const hasInventoryNow = Array.isArray(updatedUser.inventory) && updatedUser.inventory.length > 0;
+            const hasEquipmentNow = updatedUser.equipment && Object.keys(updatedUser.equipment).length > 0;
+
+            if (hadInventoryBefore && !hasInventoryNow) {
+                console.error(`[/api/auth/login] CRITICAL: Inventory vanished during login pipeline for user ${user.id}. Restoring previous inventory snapshot.`);
+                updatedUser.inventory = JSON.parse(JSON.stringify(user.inventory));
+            }
+            if (hadEquipmentBefore && !hasEquipmentNow) {
+                console.error(`[/api/auth/login] CRITICAL: Equipment vanished during login pipeline for user ${user.id}. Restoring previous equipment snapshot.`);
+                updatedUser.equipment = JSON.parse(JSON.stringify(user.equipment));
+            }
 
             const userLevelSum = updatedUser.strategyLevel + updatedUser.playfulLevel;
             let itemsUnequipped = false;
@@ -679,7 +771,8 @@ const startServer = async () => {
                 volatileState.userStatuses[user!.id] = { status: types.UserStatus.Online };
             }
             
-            sendResponse(200, { user });
+            const sanitizedUser = JSON.parse(JSON.stringify(user));
+            sendResponse(200, { user: sanitizedUser });
         } catch (e: any) {
             console.error('[/api/auth/login] Login error:', e);
             console.error('[/api/auth/login] Error stack:', e?.stack);
@@ -950,15 +1043,7 @@ const startServer = async () => {
                 return res.status(400).json({ message: result.error });
             }
             
-            // 디버깅: START_TOURNAMENT_ROUND 응답 확인
-            if (req.body.type === 'START_TOURNAMENT_ROUND') {
-                console.log(`[API] START_TOURNAMENT_ROUND response:`, {
-                    hasClientResponse: !!result.clientResponse,
-                    clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : [],
-                    hasUpdatedUser: !!result.clientResponse?.updatedUser,
-                    hasRedirectToTournament: !!result.clientResponse?.redirectToTournament
-                });
-            }
+            // 디버깅 로그 제거 (과도한 로깅 방지)
             
             res.status(200).json({ success: true, ...result.clientResponse });
         } catch (e: any) {

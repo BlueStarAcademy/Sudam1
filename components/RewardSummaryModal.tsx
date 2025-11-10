@@ -51,7 +51,7 @@ const RewardSummaryModal: React.FC<RewardSummaryModalProps> = ({ summary, onClos
                 {items.length > 0 && (
                      <div className="mt-4 bg-gray-900/50 p-4 rounded-lg">
                          <h3 className="font-semibold mb-2">획득 아이템</h3>
-                         <div className="grid grid-cols-4 gap-2">
+                         <div className="grid grid-cols-4 gap-2 justify-items-center">
                              {items.map((item, index) => (
                                  <div key={index} className="flex flex-col items-center" title={item.name}>
                                      <img src={item.image!} alt={item.name} className="w-12 h-12 object-contain" />

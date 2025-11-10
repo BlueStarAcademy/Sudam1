@@ -139,7 +139,7 @@ const MailSystemPanel: React.FC<MailSystemPanelProps> = ({ allUsers, onAction, o
             <header className="flex justify-between items-center mb-8">
                 <h1 className="text-3xl font-bold">우편 발송 시스템</h1>
                 <button onClick={onBack} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
-                    <img src="/images/button/back.png" alt="Back" className="w-6 h-6" />
+                    <img src="/images/button/back.png" alt="Back" className="w-10 h-10 sm:w-12 sm:h-12" />
                 </button>
             </header>
 

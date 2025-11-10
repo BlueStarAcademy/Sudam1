@@ -84,8 +84,7 @@ const calculatePower = (player: PlayerForTournament, phase: 'early' | 'mid' | 'e
         const weight = weights[statKey]!;
         power += (player.stats[statKey] || 0) * weight;
     }
-    const conditionModifier = (player.condition || 100) / 100;
-    return (power) * conditionModifier;
+    return power;
 };
 
 const finishMatch = (
@@ -514,6 +513,10 @@ const processMatchCompletion = (state: TournamentState, user: User, completedMat
             const finalAllMatchesFinished = state.rounds.every(r => r.matches.every(m => m.isFinished));
             if (finalAllMatchesFinished) {
                 // 모든 경기가 완료되었으므로 eliminated 상태 유지 (보상 수령 가능)
+                // 경기 종료 시 모든 플레이어의 컨디션 초기화 (컨디션 회복제 낭비 방지)
+                state.players.forEach(p => {
+                    p.condition = 1000;
+                });
             } else {
                 // 아직 완료되지 않은 경기가 있으면 강제로 완료
                 state.rounds.forEach(round => {
@@ -523,6 +526,10 @@ const processMatchCompletion = (state: TournamentState, user: User, completedMat
                         }
                     });
                 });
+                // 모든 경기 완료 후 모든 플레이어의 컨디션 초기화
+                state.players.forEach(p => {
+                    p.condition = 1000;
+                });
             }
         }
     } else {
@@ -530,6 +537,10 @@ const processMatchCompletion = (state: TournamentState, user: User, completedMat
         const allTournamentMatchesFinished = state.rounds.every(r => r.matches.every(m => m.isFinished));
         if (allTournamentMatchesFinished) {
              state.status = 'complete';
+             // 경기 종료 시 모든 플레이어의 컨디션 초기화 (컨디션 회복제 낭비 방지)
+             state.players.forEach(p => {
+                 p.condition = 1000;
+             });
         } else {
              // 현재 라운드가 완료되었으면 round_complete 상태로 설정
              const currentRoundAllFinished = currentRound?.matches.every(m => m.isFinished) || false;
@@ -557,6 +568,10 @@ const processMatchCompletion = (state: TournamentState, user: User, completedMat
                              });
                          });
                          state.status = 'complete';
+                         // 경기 종료 시 모든 플레이어의 컨디션 초기화 (컨디션 회복제 낭비 방지)
+                         state.players.forEach(p => {
+                             p.condition = 1000;
+                         });
                      }
                  } else {
                      // 다음 라운드가 준비되었는지 확인하고 startNextRound 호출
@@ -580,6 +595,10 @@ const processMatchCompletion = (state: TournamentState, user: User, completedMat
                      } else {
                          // 다음 라운드가 없으면 완료
                          state.status = 'complete';
+                         // 경기 종료 시 모든 플레이어의 컨디션 초기화 (컨디션 회복제 낭비 방지)
+                         state.players.forEach(p => {
+                             p.condition = 1000;
+                         });
                      }
                  }
              } else {
@@ -668,6 +687,11 @@ export const createTournament = (type: TournamentType, user: User, players: Play
 
 export const startNextRound = (state: TournamentState, user: User) => {
     if (state.status === 'round_in_progress') return;
+    
+    // 경기가 완료된 상태에서는 컨디션을 변경하지 않음
+    if (state.status === 'complete' || state.status === 'eliminated') {
+        return;
+    }
     
     if (state.type === 'neighborhood') {
         if (state.status === 'bracket_ready') {
@@ -885,21 +909,21 @@ export const forfeitCurrentMatch = (state: TournamentState, user: User) => {
     }
 };
 
-export const advanceSimulation = (state: TournamentState, user: User) => {
-    if (state.status !== 'round_in_progress' || !state.currentSimulatingMatch) return;
+export const advanceSimulation = (state: TournamentState, user: User): boolean => {
+    if (state.status !== 'round_in_progress' || !state.currentSimulatingMatch) return false;
 
     const { roundIndex, matchIndex } = state.currentSimulatingMatch;
     
     // Validate round and match indices
     if (!state.rounds || roundIndex >= state.rounds.length || !state.rounds[roundIndex]) {
         console.error(`[advanceSimulation] Invalid roundIndex: ${roundIndex}, total rounds: ${state.rounds?.length || 0}`);
-        return;
+        return false;
     }
     
     const round = state.rounds[roundIndex];
     if (!round.matches || matchIndex >= round.matches.length || !round.matches[matchIndex]) {
         console.error(`[advanceSimulation] Invalid matchIndex: ${matchIndex}, total matches: ${round.matches?.length || 0}`);
-        return;
+        return false;
     }
     
     const match = round.matches[matchIndex];
@@ -908,9 +932,22 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
         match.winner = match.players[0] || null;
         match.isFinished = true;
         processMatchCompletion(state, user, match, roundIndex);
-        return;
+        return true;
+    }
+
+    // 마지막 시뮬레이션 시간 확인: 1초가 지나지 않았으면 실행하지 않음
+    const now = Date.now();
+    if (state.lastSimulationTime !== undefined) {
+        const timeSinceLastSimulation = now - state.lastSimulationTime;
+        if (timeSinceLastSimulation < 1000) {
+            // 1초가 지나지 않았으면 실행하지 않음
+            return false;
+        }
     }
     
+    // 마지막 시뮬레이션 시간 업데이트
+    state.lastSimulationTime = now;
+
     if (state.timeElapsed === 0) {
         state.currentMatchScores = { player1: 0, player2: 0 };
         state.lastScoreIncrement = null;
@@ -923,20 +960,23 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
     
     if (!p1 || !p2) {
         console.error(`[advanceSimulation] Player not found: p1=${!!p1}, p2=${!!p2}, match.players[0]=${match.players[0]?.id}, match.players[1]=${match.players[1]?.id}`);
-        return;
+        return false;
     }
 
     if (state.timeElapsed === 1) {
         if (p1.originalStats) p1.stats = JSON.parse(JSON.stringify(p1.originalStats));
         if (p2.originalStats) p2.stats = JSON.parse(JSON.stringify(p2.originalStats));
 
+        // 경기가 완료된 상태에서는 컨디션을 변경하지 않음
         // 컨디션은 이미 토너먼트 생성 시 랜덤 부여되었으므로 변경하지 않음
-        // 단, 컨디션이 1000(초기값)인 경우에만 랜덤 부여 (하위 호환성)
-        if (p1.condition === 1000) {
-            p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-        }
-        if (p2.condition === 1000) {
-            p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+        // 단, 경기가 진행 중이고 컨디션이 1000(초기값)인 경우에만 랜덤 부여 (하위 호환성)
+        if (state.status === 'round_in_progress') {
+            if (p1.condition === 1000) {
+                p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            }
+            if (p2.condition === 1000) {
+                p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            }
         }
     }
     
@@ -1036,7 +1076,15 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
 
     // Commentary system: 1 second interval
     if (state.timeElapsed === 1) {
-        state.currentMatchCommentary.push({ text: COMMENTARY_POOLS.start.replace('{p1}', p1.nickname).replace('{p2}', p2.nickname), phase, isRandomEvent: false });
+        // 초반전 시작 메시지
+        state.currentMatchCommentary.push({ text: `초반전이 시작되었습니다. (필요능력치: 전투력, 사고속도, 집중력)`, phase: 'early', isRandomEvent: false });
+        state.currentMatchCommentary.push({ text: COMMENTARY_POOLS.start.replace('{p1}', p1.nickname).replace('{p2}', p2.nickname), phase: 'early', isRandomEvent: false });
+    } else if (state.timeElapsed === EARLY_GAME_DURATION + 1) {
+        // 중반전 시작 메시지
+        state.currentMatchCommentary.push({ text: `중반전이 시작되었습니다. (필요능력치: 전투력, 판단력, 집중력, 안정감)`, phase: 'mid', isRandomEvent: false });
+    } else if (state.timeElapsed === EARLY_GAME_DURATION + MID_GAME_DURATION + 1) {
+        // 종반전 시작 메시지
+        state.currentMatchCommentary.push({ text: `종반전이 시작되었습니다. (필요능력치: 계산력, 안정감, 집중력)`, phase: 'end', isRandomEvent: false });
     } else if (state.timeElapsed % 10 === 0 && state.timeElapsed > 0 && state.timeElapsed < TOTAL_GAME_DURATION) {
         // Intermediate score every 10 seconds
         const leadPercent = Math.abs(p1ScorePercent - 50) * 2;
@@ -1071,113 +1119,157 @@ export const advanceSimulation = (state: TournamentState, user: User) => {
         state.currentMatchCommentary.push({ text: newCommentText, phase, isRandomEvent: false });
     }
 
-    // Random events every 5 seconds
-    if (state.timeElapsed > 1 && state.timeElapsed < TOTAL_GAME_DURATION && state.timeElapsed % 5 === 0) {
-        const events = [
-            { type: CoreStat.Concentration, isPositive: false, text: "{player}님이 조급한 마음에 실수가 나왔습니다." },
-            { type: CoreStat.ThinkingSpeed, isPositive: true, text: "{player}님이 시간 압박에서도 좋은 수를 둡니다." },
-            { type: CoreStat.CombatPower, isPositive: true, text: "{player}님이 공격적인 수로 판세를 흔듭니다." },
-            { type: CoreStat.Stability, isPositive: true, text: "{player}님이 차분하게 받아치며 불리한 싸움을 버팁니다." },
-        ];
-        
-        // Check each event individually with stat-based probability
-        const eventResults: Array<{ event: typeof events[0]; player: PlayerForTournament; probability: number }> = [];
-        
-        for (const event of events) {
-            const p1Stat = p1.stats[event.type] || 100;
-            const p2Stat = p2.stats[event.type] || 100;
+    // Random events every 5 seconds (경기 종료 직전 마지막 5초에는 발동하지 않음)
+    // 경기 시작 후 1초부터 경기 종료 5초 전까지만 발동
+    const RANDOM_EVENT_STOP_TIME = TOTAL_GAME_DURATION - 5;
+    if (state.timeElapsed > 1 && state.timeElapsed <= RANDOM_EVENT_STOP_TIME && state.timeElapsed % 5 === 0) {
+        // 30% 확률로 이벤트 발생 여부 결정
+        if (Math.random() < 0.30) {
+            const events = [
+                { type: CoreStat.Concentration, isPositive: false, text: "{player}님이 조급한 마음에 실수가 나왔습니다." },
+                { type: CoreStat.ThinkingSpeed, isPositive: true, text: "{player}님이 시간 압박에서도 좋은 수를 둡니다." },
+                { type: CoreStat.CombatPower, isPositive: true, text: "{player}님이 공격적인 수로 판세를 흔듭니다." },
+                { type: CoreStat.Stability, isPositive: true, text: "{player}님이 차분하게 받아치며 불리한 싸움을 버팁니다." },
+            ];
             
-            let highStatPlayer: PlayerForTournament, lowStatPlayer: PlayerForTournament;
-            if (p1Stat > p2Stat) {
-                highStatPlayer = p1; lowStatPlayer = p2;
-            } else if (p2Stat > p1Stat) {
-                highStatPlayer = p2; lowStatPlayer = p1;
-            } else {
-                // Equal stats, use default 20% chance
-                eventResults.push({ event, player: p1, probability: 0.20 });
-                continue;
-            }
-
-            const playerForEvent = event.isPositive ? highStatPlayer : lowStatPlayer;
-            const otherPlayer = playerForEvent.id === p1.id ? p2 : p1;
+            // 각 이벤트에 대해 플레이어별 확률 계산
+            const eventOptions: Array<{ event: typeof events[0]; player: PlayerForTournament; weight: number }> = [];
             
-            // Calculate stat difference percentage (as bar graph percentage)
-            const totalStat = p1Stat + p2Stat;
-            const statDiffPercent = totalStat > 0 ? (Math.abs(p1Stat - p2Stat) / totalStat) * 100 : 0;
-            
-            // Base 20% chance, plus stat difference percentage
-            let eventChance = 0.20;
-            if (event.isPositive) {
-                // Positive events: higher stat player gets bonus
-                const highStatPercent = totalStat > 0 ? (highStatPlayer.stats[event.type]! / totalStat) * 100 : 50;
-                eventChance += (highStatPercent - 50) / 100; // Convert to 0-50% range
-            } else {
-                // Negative events (mistake): lower stat player gets penalty
-                const lowStatPercent = totalStat > 0 ? (lowStatPlayer.stats[event.type]! / totalStat) * 100 : 50;
-                eventChance += (50 - lowStatPercent) / 100; // Invert so lower stat = higher chance
-            }
-            
-            eventChance = Math.min(0.95, Math.max(0.05, eventChance)); // Cap between 5% and 95%
-            eventResults.push({ event, player: playerForEvent, probability: eventChance });
-        }
-        
-        // Only one event can trigger per 5-second interval
-        // First check if base 20% chance triggers
-        if (Math.random() < 0.20) {
-            // Select one event based on weighted probability
-            const totalProb = eventResults.reduce((sum, r) => sum + r.probability, 0);
-            let random = Math.random() * totalProb;
-            let selectedEventResult = eventResults[0];
-            
-            for (const result of eventResults) {
-                if (random <= result.probability) {
-                    selectedEventResult = result;
-                    break;
-                }
-                random -= result.probability;
-            }
-            
-            const { event, player: playerForEvent, probability } = selectedEventResult;
-            
-            // Check if this specific event triggers based on its probability
-            if (Math.random() < probability) {
-                let triggeredMessage = event.text.replace('{player}', playerForEvent.nickname);
-                const isMistake = !event.isPositive;
-
-                const randomPercent = Math.random() * 8 + 2; // 2% to 10%
-                const points = Math.round(randomPercent / 2); // 2% per point, rounded
+            for (const event of events) {
+                const p1Stat = p1.stats[event.type] || 100;
+                const p2Stat = p2.stats[event.type] || 100;
                 
-                // Calculate score change as percentage of current total
-                const currentTotal = (state.currentMatchScores?.player1 || 0) + (state.currentMatchScores?.player2 || 0);
-                const scoreChange = currentTotal * (randomPercent / 100);
+                // 능력치 차이 계산
+                const totalStat = p1Stat + p2Stat;
+                const statDiff = Math.abs(p1Stat - p2Stat);
+                const statDiffPercent = totalStat > 0 ? (statDiff / totalStat) * 100 : 0;
                 
-                triggeredMessage += ` (${isMistake ? '-' : '+'}${points}집 : ${randomPercent.toFixed(1)}%발동시)`;
-                
-                if (state.currentMatchScores) {
-                    if (playerForEvent.id === p1.id) {
-                        state.currentMatchScores.player1 += isMistake ? -scoreChange : scoreChange;
+                // 각 플레이어별로 이벤트 발생 확률 계산
+                if (event.isPositive) {
+                    // 긍정 이벤트: 능력치가 높은 플레이어에게 발생
+                    if (p1Stat > p2Stat) {
+                        // p1이 높으면 p1에게 긍정 이벤트 발생 확률이 높음
+                        const p1Weight = 50 + (statDiffPercent / 2); // 능력치 차이에 따라 50~100% 범위
+                        eventOptions.push({ event, player: p1, weight: p1Weight });
+                    } else if (p2Stat > p1Stat) {
+                        // p2가 높으면 p2에게 긍정 이벤트 발생 확률이 높음
+                        const p2Weight = 50 + (statDiffPercent / 2);
+                        eventOptions.push({ event, player: p2, weight: p2Weight });
                     } else {
-                        state.currentMatchScores.player2 += isMistake ? -scoreChange : scoreChange;
+                        // 능력치가 같으면 50% 확률
+                        eventOptions.push({ event, player: p1, weight: 50 });
+                        eventOptions.push({ event, player: p2, weight: 50 });
+                    }
+                } else {
+                    // 부정 이벤트: 능력치가 낮은 플레이어에게 발생
+                    if (p1Stat < p2Stat) {
+                        // p1이 낮으면 p1에게 부정 이벤트 발생 확률이 높음
+                        const p1Weight = 50 + (statDiffPercent / 2); // 능력치 차이에 따라 50~100% 범위
+                        eventOptions.push({ event, player: p1, weight: p1Weight });
+                    } else if (p2Stat < p1Stat) {
+                        // p2가 낮으면 p2에게 부정 이벤트 발생 확률이 높음
+                        const p2Weight = 50 + (statDiffPercent / 2);
+                        eventOptions.push({ event, player: p2, weight: p2Weight });
+                    } else {
+                        // 능력치가 같으면 50% 확률
+                        eventOptions.push({ event, player: p1, weight: 50 });
+                        eventOptions.push({ event, player: p2, weight: 50 });
                     }
                 }
-                
-                state.currentMatchCommentary.push({ text: triggeredMessage, phase, isRandomEvent: true });
             }
+            
+            // 가중치 기반으로 이벤트 선택 (반드시 하나 선택)
+            const totalWeight = eventOptions.reduce((sum, opt) => sum + opt.weight, 0);
+            let random = Math.random() * totalWeight;
+            let selectedOption = eventOptions[0];
+            
+            for (const option of eventOptions) {
+                if (random <= option.weight) {
+                    selectedOption = option;
+                    break;
+                }
+                random -= option.weight;
+            }
+            
+            const { event, player: playerForEvent } = selectedOption;
+            
+            // 선택된 이벤트가 발생
+            let triggeredMessage = event.text.replace('{player}', playerForEvent.nickname);
+            const isMistake = !event.isPositive;
+
+            const randomPercent = Math.random() * 8 + 2; // 2% to 10%
+            const points = Math.round(randomPercent / 2); // 2% per point, rounded
+            
+            // Calculate score change as percentage of current total
+            const currentTotal = (state.currentMatchScores?.player1 || 0) + (state.currentMatchScores?.player2 || 0);
+            const scoreChange = currentTotal * (randomPercent / 100);
+            
+            triggeredMessage += ` (${isMistake ? '-' : '+'}${points}집)`;
+            
+            if (state.currentMatchScores) {
+                if (playerForEvent.id === p1.id) {
+                    state.currentMatchScores.player1 += isMistake ? -scoreChange : scoreChange;
+                } else {
+                    state.currentMatchScores.player2 += isMistake ? -scoreChange : scoreChange;
+                }
+            }
+            
+            // 랜덤 이벤트로 인한 점수 변화를 lastScoreIncrement에 추가
+            if (state.lastScoreIncrement) {
+                if (playerForEvent.id === p1.id) {
+                    // 기존 점수 증가에 랜덤 이벤트 점수 변화 추가
+                    state.lastScoreIncrement.player1 = {
+                        base: state.lastScoreIncrement.player1?.base || 0,
+                        actual: (state.lastScoreIncrement.player1?.actual || 0) + (isMistake ? -scoreChange : scoreChange),
+                        isCritical: state.lastScoreIncrement.player1?.isCritical || false
+                    };
+                } else {
+                    state.lastScoreIncrement.player2 = {
+                        base: state.lastScoreIncrement.player2?.base || 0,
+                        actual: (state.lastScoreIncrement.player2?.actual || 0) + (isMistake ? -scoreChange : scoreChange),
+                        isCritical: state.lastScoreIncrement.player2?.isCritical || false
+                    };
+                }
+            } else {
+                // lastScoreIncrement가 없으면 새로 생성
+                state.lastScoreIncrement = {
+                    player1: playerForEvent.id === p1.id ? {
+                        base: 0,
+                        actual: isMistake ? -scoreChange : scoreChange,
+                        isCritical: false
+                    } : null,
+                    player2: playerForEvent.id === p2.id ? {
+                        base: 0,
+                        actual: isMistake ? -scoreChange : scoreChange,
+                        isCritical: false
+                    } : null
+                };
+            }
+            
+            state.currentMatchCommentary.push({ text: triggeredMessage, phase, isRandomEvent: true });
         }
     }
     
     if (state.timeElapsed >= TOTAL_GAME_DURATION) {
-        const { finalCommentary, winner } = finishMatch(match, p1, p2, p1Cumulative, p2Cumulative);
+        // 최종 점수 계산 (최신 currentMatchScores 사용)
+        const finalP1Cumulative = state.currentMatchScores?.player1 || p1Cumulative;
+        const finalP2Cumulative = state.currentMatchScores?.player2 || p2Cumulative;
+        const totalFinalScore = finalP1Cumulative + finalP2Cumulative;
+        const finalP1ScorePercent = totalFinalScore > 0 ? (finalP1Cumulative / totalFinalScore) * 100 : 50;
+        
+        const { finalCommentary, winner } = finishMatch(match, p1, p2, finalP1Cumulative, finalP2Cumulative);
         
         state.currentMatchCommentary.push(...finalCommentary);
         
         match.winner = winner;
         match.isFinished = true;
         match.commentary = [...state.currentMatchCommentary];
-        match.finalScore = { player1: p1ScorePercent, player2: 100 - p1ScorePercent };
+        match.finalScore = { player1: finalP1ScorePercent, player2: 100 - finalP1ScorePercent };
         
         processMatchCompletion(state, user, match, roundIndex);
     }
+
+    return true;
 };
 
 export const calculateRanks = (tournament: TournamentState): { id: string, nickname: string, rank: number }[] => {

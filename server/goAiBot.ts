@@ -219,8 +219,8 @@ export async function makeGoAiBotMove(
     const allValidMoves = findAllValidMoves(game, logic, aiPlayerEnum);
     
     if (allValidMoves.length === 0) {
-        // 유효한 수가 없으면 패스
-        await handlePass(game, aiPlayerEnum, opponentPlayerEnum, now, isSurvivalMode);
+        console.log('[GoAiBot] No valid moves available. AI resigns.');
+        await summaryService.endGame(game, opponentPlayerEnum, 'resign');
         return;
     }
 
@@ -293,8 +293,8 @@ export async function makeGoAiBotMove(
             selectedMove = bestMove;
             result = fallbackResult;
         } else {
-            // 그래도 실패하면 패스
-            await handlePass(game, aiPlayerEnum, opponentPlayerEnum, now, isSurvivalMode);
+            console.warn('[GoAiBot] Selected move and fallback move invalid. AI resigns.');
+            await summaryService.endGame(game, opponentPlayerEnum, 'resign');
             return;
         }
     }
@@ -321,24 +321,36 @@ export async function makeGoAiBotMove(
 
     // 7. 살리기 바둑 모드에서 승리 조건 확인
     if (isSurvivalMode) {
-        // 백(AI)의 턴 수 증가
+        // 백(AI)의 턴 수 증가 (백이 한 수를 둘 때마다)
         if (aiPlayerEnum === Player.White) {
             const whiteTurnsPlayed = ((game as any).whiteTurnsPlayed || 0) + 1;
             (game as any).whiteTurnsPlayed = whiteTurnsPlayed;
             const survivalTurns = (game.settings as any)?.survivalTurns || 0;
             
-            // 백이 정해진 턴 동안 살아남으면 AI 승리
-            if (whiteTurnsPlayed >= survivalTurns) {
-                await summaryService.endGame(game, Player.White, 'timeout'); // AI 승리
+            console.log(`[Survival Go] White turns played: ${whiteTurnsPlayed}/${survivalTurns}, Captures: ${game.captures[Player.White]}`);
+            
+            // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
+            // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
+            const target = game.effectiveCaptureTargets![Player.White];
+            if (target !== undefined && target !== 999 && game.captures[Player.White] >= target) {
+                console.log(`[Survival Go] White reached target score (${target}), White wins`);
+                await summaryService.endGame(game, Player.White, 'capture_limit');
                 return;
             }
-        }
-        
-        // 흑(유저)이 목표점수를 달성하면 유저 승리
-        if (opponentPlayerEnum === Player.Black) {
-            const target = game.effectiveCaptureTargets![Player.Black];
-            if (game.captures[Player.Black] >= target) {
-                await summaryService.endGame(game, Player.Black, 'capture_limit');
+            
+            // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
+            // 백의 남은 턴 = survivalTurns - whiteTurnsPlayed
+            // 백의 남은 턴이 0이 되었다는 것은 whiteTurnsPlayed >= survivalTurns
+            const remainingTurns = survivalTurns - whiteTurnsPlayed;
+            if (remainingTurns <= 0 && survivalTurns > 0) {
+                console.log(`[Survival Go] White ran out of turns (${whiteTurnsPlayed}/${survivalTurns}, remaining: ${remainingTurns}), Black wins. Game status before endGame: ${game.gameStatus}`);
+                if (game.gameStatus === 'playing') {
+                    await summaryService.endGame(game, Player.Black, 'capture_limit');
+                    console.log(`[Survival Go] endGame called. Game status after: ${game.gameStatus}`);
+                    return;
+                } else {
+                    console.log(`[Survival Go] Game already ended (status: ${game.gameStatus}), skipping endGame`);
+                }
                 return;
             }
         }
@@ -406,46 +418,6 @@ function findAllValidMoves(
     }
 
     return validMoves;
-}
-
-/**
- * 패스 처리
- */
-async function handlePass(
-    game: types.LiveGameSession,
-    aiPlayer: Player,
-    opponentPlayer: Player,
-    now: number,
-    isSurvivalMode: boolean = false
-): Promise<void> {
-    game.passCount++;
-    if (game.passCount >= 2) {
-        // 살리기 바둑 모드에서는 패스가 승리 조건이 될 수 없음
-        if (isSurvivalMode && aiPlayer === Player.White) {
-            // 백이 패스하면 흑 승리 (백이 포기)
-            await summaryService.endGame(game, Player.Black, 'resign');
-        } else {
-            await summaryService.endGame(game, types.Player.None, 'score');
-        }
-        return;
-    }
-
-    game.currentPlayer = opponentPlayer;
-    if (game.settings.timeLimit > 0) {
-        const timeKey = opponentPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
-        const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
-        const isNextInByoyomi = game[timeKey] <= 0 && game.settings.byoyomiCount > 0 && !isFischer;
-        
-        if (isNextInByoyomi) {
-            game.turnDeadline = now + game.settings.byoyomiTime * 1000;
-        } else {
-            game.turnDeadline = now + game[timeKey] * 1000;
-        }
-        game.turnStartTime = now;
-    } else {
-        game.turnDeadline = undefined;
-        game.turnStartTime = undefined;
-    }
 }
 
 /**
@@ -819,31 +791,31 @@ function scoreMovesForAggressiveCapture(
 
         // 1. 따내기 기회 평가 (최우선) - 유저의 돌을 잡을 수 있는 수
         const captureScore = evaluateCaptureOpportunity(game, logic, point, aiPlayer, opponentPlayer);
-        score += captureScore * 300; // 따내기가 최우선 (매우 높은 가중치)
+        score += captureScore * 500; // 따내기가 최우선 (매우 높은 가중치로 증가)
 
         // 2. 공격 기회 평가 - 유저의 돌을 위협하는 수
         const attackScore = evaluateAttackOpportunity(game, logic, point, aiPlayer, opponentPlayer);
-        score += attackScore * 200; // 공격 기회도 높은 점수
+        score += attackScore * 350; // 공격 기회도 높은 점수 (가중치 증가)
 
         // 3. 유저 돌과의 근접성 평가 - 유저 돌 근처로 가는 수
         const proximityScore = evaluateProximityToOpponent(game, logic, point, opponentPlayer);
-        score += proximityScore * 150; // 유저 돌 근처로 접근
+        score += proximityScore * 250; // 유저 돌 근처로 접근 (가중치 증가)
 
         // 4. 유저 그룹을 포위하는 수 평가
         const surroundScore = evaluateSurroundOpportunity(game, logic, point, aiPlayer, opponentPlayer);
-        score += surroundScore * 120; // 유저 그룹 포위
+        score += surroundScore * 200; // 유저 그룹 포위 (가중치 증가)
 
         // 5. 전투 성향 반영 - 유저와 전투를 벌이는 수
         const combatScore = evaluateCombat(game, logic, point, aiPlayer, opponentPlayer);
-        score += combatScore * 100;
+        score += combatScore * 150; // 전투 성향 (가중치 증가)
 
         // 6. 자신의 안전성도 약간 고려 (너무 위험한 수는 피하기)
         const safetyScore = evaluateSafety(game, logic, point, aiPlayer);
-        score += safetyScore * 50; // 안전성은 낮은 가중치
+        score += safetyScore * 30; // 안전성은 낮은 가중치 (더 낮춤)
 
         // 7. 실수 확률 적용 (공격 모드에서는 실수율 감소)
-        if (Math.random() < profile.mistakeRate * 0.7) { // 살리기 공격 모드에서는 실수율 감소
-            score *= 0.8;
+        if (Math.random() < profile.mistakeRate * 0.5) { // 살리기 공격 모드에서는 실수율 더 감소
+            score *= 0.9; // 실수 시에도 점수 감소를 줄임
         }
 
         scoredMoves.push({ move, score });
@@ -883,11 +855,13 @@ function evaluateAttackOpportunity(
         const libertyCount = group.libertyPoints.size;
         // 유저 그룹의 자유도가 적을수록 공격 성공 가능성 높음
         if (libertyCount === 1) {
-            attackScore += 3.0; // 다음 턴에 잡을 수 있는 위치
+            attackScore += 5.0; // 다음 턴에 잡을 수 있는 위치 (점수 증가)
         } else if (libertyCount === 2) {
-            attackScore += 2.0; // 2턴 안에 잡을 수 있는 위치
+            attackScore += 3.5; // 2턴 안에 잡을 수 있는 위치 (점수 증가)
         } else if (libertyCount === 3) {
-            attackScore += 1.0; // 위협적인 위치
+            attackScore += 2.0; // 위협적인 위치 (점수 증가)
+        } else if (libertyCount === 4) {
+            attackScore += 1.0; // 약간 위협적인 위치 (추가)
         }
 
         // 이 수가 유저 그룹의 자유도를 감소시켰는지 확인 (이전 상태와 비교)
@@ -896,7 +870,7 @@ function evaluateAttackOpportunity(
             g.stones.some(s => group.stones.some(gs => gs.x === s.x && gs.y === s.y))
         );
         if (oldGroup && libertyCount < oldGroup.libertyPoints.size) {
-            attackScore += 1.5; // 자유도를 줄인 수
+            attackScore += 2.5; // 자유도를 줄인 수 (점수 증가)
         }
     }
 
@@ -933,13 +907,14 @@ function evaluateProximityToOpponent(
 
     // 거리가 가까울수록 높은 점수 (공격적)
     if (minDistance === Infinity) return 0.0; // 유저 돌이 없음
-    if (minDistance === 1) return 1.0; // 바로 인접 (최고 점수)
-    if (minDistance === 2) return 0.8; // 2칸 거리
-    if (minDistance === 3) return 0.6; // 3칸 거리
-    if (minDistance >= 4) return 0.2; // 멀면 낮은 점수
+    if (minDistance === 1) return 2.0; // 바로 인접 (최고 점수, 점수 증가)
+    if (minDistance === 2) return 1.5; // 2칸 거리 (점수 증가)
+    if (minDistance === 3) return 1.0; // 3칸 거리 (점수 증가)
+    if (minDistance === 4) return 0.5; // 4칸 거리 (점수 증가)
+    if (minDistance >= 5) return 0.1; // 멀면 낮은 점수
 
     // 근처에 유저 돌이 많을수록 더 높은 점수
-    return Math.min(1.0, nearbyOpponentStones / 3.0);
+    return Math.min(2.0, nearbyOpponentStones / 2.0); // 최대 점수 증가
 }
 
 /**
@@ -985,10 +960,14 @@ function evaluateSurroundOpportunity(
                 if (nearbyGroup) {
                     const libertyCount = nearbyGroup.libertyPoints.size;
                     // 유저 그룹을 포위하는 수일수록 높은 점수
-                    if (libertyCount <= 2) {
-                        surroundScore += 2.0;
-                    } else if (libertyCount <= 3) {
-                        surroundScore += 1.0;
+                    if (libertyCount === 1) {
+                        surroundScore += 4.0; // 거의 잡을 수 있는 위치 (점수 증가)
+                    } else if (libertyCount === 2) {
+                        surroundScore += 3.0; // 위험한 위치 (점수 증가)
+                    } else if (libertyCount === 3) {
+                        surroundScore += 2.0; // 포위 중 (점수 증가)
+                    } else if (libertyCount === 4) {
+                        surroundScore += 1.0; // 약간 포위 (추가)
                     }
                 }
             }

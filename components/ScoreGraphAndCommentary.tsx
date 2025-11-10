@@ -12,10 +12,21 @@ interface ScoreGraphAndCommentaryProps {
 }
 
 const parseCommentary = (commentaryLine: CommentaryLine) => {
-    const { text, isRandomEvent } = commentaryLine;
+    const { text, isRandomEvent, phase } = commentaryLine;
 
     if (text.startsWith('최종 결과 발표!')) {
         return <strong className="text-yellow-400">{text}</strong>;
+    }
+
+    // 초반/중반/종반전 시작 메시지에 색상 적용 (그래프 색상과 일치)
+    if (text.includes('초반전이 시작되었습니다')) {
+        return <strong className="text-green-500">{text}</strong>;
+    }
+    if (text.includes('중반전이 시작되었습니다')) {
+        return <strong className="text-yellow-500">{text}</strong>;
+    }
+    if (text.includes('종반전이 시작되었습니다')) {
+        return <strong className="text-red-500">{text}</strong>;
     }
 
     const leadRegex = /(\d+\.\d+집|\d+\.5집)/g;

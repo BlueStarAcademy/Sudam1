@@ -216,6 +216,11 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             await db.updateUser(challenger);
             await db.updateUser(opponent);
 
+            // Broadcast updated action points immediately so clients reflect the deduction
+            const challengerBroadcast = JSON.parse(JSON.stringify(challenger));
+            const opponentBroadcast = JSON.parse(JSON.stringify(opponent));
+            broadcast({ type: 'USER_UPDATE', payload: { [challenger.id]: challengerBroadcast, [opponent.id]: opponentBroadcast } });
+
             // 수락 시에는 원래 negotiation.settings를 사용 (발신자가 보낸 설정)
             // settings 파라미터는 UPDATE_NEGOTIATION에서만 사용
             const game = await initializeGame(negotiation);

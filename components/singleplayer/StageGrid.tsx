@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { SinglePlayerLevel, UserWithStatus } from '../../types.js';
 import { SINGLE_PLAYER_STAGES } from '../../constants/singlePlayerConstants.js';
+import { CONSUMABLE_ITEMS } from '../../constants/index.js';
 import Button from '../Button.js';
 import { useAppContext } from '../../hooks/useAppContext.js';
 
@@ -65,21 +66,23 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
         }
     };
 
+    const isMobile = window.innerWidth < 1024;
+    
     return (
-        <div className="bg-panel rounded-lg shadow-lg p-4 h-full flex flex-col">
-            <h2 className="text-xl font-bold text-on-panel mb-4 border-b border-color pb-2">
+        <div className={`bg-panel rounded-lg shadow-lg ${isMobile ? 'p-2' : 'p-4'} flex flex-col min-h-0 h-full overflow-hidden`}>
+            <h2 className={`${isMobile ? 'text-base' : 'text-xl'} font-bold text-on-panel ${isMobile ? 'mb-2' : 'mb-4'} border-b border-color ${isMobile ? 'pb-1' : 'pb-2'} flex-shrink-0`}>
                 {selectedClass === SinglePlayerLevel.입문 ? '입문반' :
                  selectedClass === SinglePlayerLevel.초급 ? '초급반' :
                  selectedClass === SinglePlayerLevel.중급 ? '중급반' :
                  selectedClass === SinglePlayerLevel.고급 ? '고급반' : '유단자'} 스테이지
             </h2>
             
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto pr-1 -mr-1 pb-2">
                 <div
-                    className="grid gap-2 h-full"
+                    className={`grid ${isMobile ? 'gap-1.5' : 'gap-2'} min-w-0 pb-2`}
                     style={{
-                        gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-                        gridTemplateRows: 'repeat(4, minmax(0, 1fr))'
+                        gridTemplateColumns: isMobile ? 'repeat(auto-fill, minmax(100px, 1fr))' : 'repeat(auto-fill, minmax(140px, 1fr))',
+                        gridAutoRows: isMobile ? 'minmax(150px, auto)' : 'minmax(180px, auto)'
                     }}
                 >
                     {stages.map((stage, index) => {
@@ -135,6 +138,57 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
                                         클리어 완료
                                     </div>
                                 )}
+
+                                {/* 보상 표시 */}
+                                <div className="w-full mb-1.5 space-y-0.5">
+                                    {isCleared ? (
+                                        // 재도전 보상
+                                        <div className="text-[9px] text-gray-400 space-y-0.5">
+                                            {stage.rewards.repeatClear.gold > 0 && (
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <img src="/images/icon/Gold.png" alt="골드" className="w-3 h-3" />
+                                                    <span>{stage.rewards.repeatClear.gold}</span>
+                                                </div>
+                                            )}
+                                            {stage.rewards.repeatClear.exp > 0 && (
+                                                <div className="text-center">+{stage.rewards.repeatClear.exp} XP</div>
+                                            )}
+                                            {stage.rewards.repeatClear.items && stage.rewards.repeatClear.items.length > 0 && (
+                                                <div className="flex items-center justify-center gap-0.5 flex-wrap">
+                                                    {stage.rewards.repeatClear.items.map((item, idx) => {
+                                                        const itemTemplate = CONSUMABLE_ITEMS.find(i => i.name === item.itemId);
+                                                        return itemTemplate ? (
+                                                            <img key={idx} src={itemTemplate.image} alt={item.itemId} className="w-3 h-3" title={item.itemId} />
+                                                        ) : null;
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    ) : (
+                                        // 최초 클리어 보상
+                                        <div className="text-[9px] text-yellow-300 space-y-0.5">
+                                            {stage.rewards.firstClear.gold > 0 && (
+                                                <div className="flex items-center justify-center gap-1">
+                                                    <img src="/images/icon/Gold.png" alt="골드" className="w-3 h-3" />
+                                                    <span className="font-semibold">{stage.rewards.firstClear.gold}</span>
+                                                </div>
+                                            )}
+                                            {stage.rewards.firstClear.exp > 0 && (
+                                                <div className="text-center font-semibold">+{stage.rewards.firstClear.exp} XP</div>
+                                            )}
+                                            {stage.rewards.firstClear.items && stage.rewards.firstClear.items.length > 0 && (
+                                                <div className="flex items-center justify-center gap-0.5 flex-wrap">
+                                                    {stage.rewards.firstClear.items.map((item, idx) => {
+                                                        const itemTemplate = CONSUMABLE_ITEMS.find(i => i.name === item.itemId);
+                                                        return itemTemplate ? (
+                                                            <img key={idx} src={itemTemplate.image} alt={item.itemId} className="w-3 h-3" title={item.itemId} />
+                                                        ) : null;
+                                                    })}
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
 
                                 {!isLocked ? (
                                     <Button

@@ -12,7 +12,7 @@ const formatTime = (seconds: number) => {
     return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}`;
 };
 
-const CapturedStones: React.FC<{ count: number; target?: number; panelType: 'black' | 'white' | 'neutral', mode: GameMode }> = ({ count, target, panelType, mode }) => {
+const CapturedStones: React.FC<{ count: number; target?: number; panelType: 'black' | 'white' | 'neutral', mode: GameMode, isMobile?: boolean }> = ({ count, target, panelType, mode, isMobile = false }) => {
     const displayCount = typeof target === 'number' && target > 0 ? `${count}/${target}` : `${count}`;
     const isDiceGo = mode === GameMode.Dice;
     
@@ -23,8 +23,14 @@ const CapturedStones: React.FC<{ count: number; target?: number; panelType: 'bla
         label = '점수';
     }
 
+    const widthClass = isMobile ? 'w-[3rem]' : 'w-[clamp(4.5rem,16vmin,6rem)]';
+    const paddingClass = isMobile ? 'p-0.5' : 'p-1';
+    const labelSize = isMobile ? 'text-[0.5rem]' : 'text-[clamp(0.6rem,2vmin,0.75rem)]';
+    const countSize = isMobile ? 'text-[0.9rem]' : 'text-[clamp(1rem,5vmin,2rem)]';
+    const diceSize = isMobile ? 'w-2 h-2' : 'w-[clamp(0.8rem,3vmin,1rem)] h-[clamp(0.8rem,3vmin,1rem)]';
+    const marginClass = isMobile ? 'my-0.5' : 'my-1';
 
-    const baseClasses = "flex flex-col items-center justify-center w-[clamp(4.5rem,16vmin,6rem)] rounded-lg shadow-lg border-2 p-1 text-center h-full";
+    const baseClasses = `flex flex-col items-center justify-center ${widthClass} rounded-lg shadow-lg border-2 ${paddingClass} text-center h-full`;
     let colorClasses = '';
     let labelColor = 'text-gray-300';
     let countColor = 'text-white';
@@ -39,14 +45,14 @@ const CapturedStones: React.FC<{ count: number; target?: number; panelType: 'bla
 
     return (
         <div className={`${baseClasses} ${colorClasses}`}>
-            <span className={`${labelColor} text-[clamp(0.6rem,2vmin,0.75rem)] font-semibold whitespace-nowrap`}>{label}</span>
+            <span className={`${labelColor} ${labelSize} font-semibold whitespace-nowrap`}>{label}</span>
             {isDiceGo ? (
-                <div className={`font-mono font-bold text-[clamp(1rem,5vmin,2rem)] tracking-tighter my-1 ${countColor} flex items-center justify-center gap-1`}>
-                    <div className="w-[clamp(0.8rem,3vmin,1rem)] h-[clamp(0.8rem,3vmin,1rem)] rounded-full bg-white border border-black inline-block flex-shrink-0"></div>
+                <div className={`font-mono font-bold ${countSize} tracking-tighter ${marginClass} ${countColor} flex items-center justify-center gap-0.5`}>
+                    <div className={`${diceSize} rounded-full bg-white border border-black inline-block flex-shrink-0`}></div>
                     <span>{displayCount}</span>
                 </div>
             ) : (
-                <span className={`font-mono font-bold text-[clamp(1rem,5vmin,2rem)] tracking-tighter my-1 ${countColor}`}>
+                <span className={`font-mono font-bold ${countSize} tracking-tighter ${marginClass} ${countColor}`}>
                     {displayCount}
                 </span>
             )}
@@ -109,10 +115,11 @@ interface SinglePlayerPanelProps {
     mode: GameMode;
     // FIX: Add isSinglePlayer prop to handle different UI themes
     isSinglePlayer?: boolean;
+    isMobile?: boolean;
 }
 
 const SinglePlayerPanel: React.FC<SinglePlayerPanelProps> = (props) => {
-    const { user, playerEnum, score, isActive, timeLeft, totalTime, mainTimeLeft, byoyomiPeriodsLeft, totalByoyomi, byoyomiTime, isLeft, session, captureTarget, role, isAiPlayer, mode, isSinglePlayer } = props;
+    const { user, playerEnum, score, isActive, timeLeft, totalTime, mainTimeLeft, byoyomiPeriodsLeft, totalByoyomi, byoyomiTime, isLeft, session, captureTarget, role, isAiPlayer, mode, isSinglePlayer, isMobile = false } = props;
     const { gameStatus, winner, blackPlayerId, whitePlayerId } = session;
 
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === user.avatarId)?.url, [user.avatarId]);
@@ -186,36 +193,44 @@ const SinglePlayerPanel: React.FC<SinglePlayerPanelProps> = (props) => {
     const stonesThrown = session.stonesThrownThisRound?.[user.id] || 0;
     const stonesLeft = totalStones - stonesThrown;
 
+    const avatarSize = isMobile ? 32 : 48;
+    const nameTextSize = isMobile ? 'text-[0.7rem]' : 'text-[clamp(0.8rem,3vmin,1.125rem)]';
+    const levelTextSize = isMobile ? 'text-[0.5rem]' : 'text-[clamp(0.6rem,2vmin,0.75rem)]';
+    const timeTextSize = isMobile ? 'text-[0.75rem]' : 'text-[clamp(1rem,3.5vmin,1.25rem)]';
+    const winLoseTextSize = isMobile ? 'text-lg' : 'text-2xl';
+    const padding = isMobile ? 'p-0.5' : 'p-1';
+    const gap = isMobile ? 'gap-1' : 'gap-2';
+
     return (
-        <div className={`flex items-stretch gap-2 flex-1 ${orderClass} p-1 rounded-lg transition-all duration-300 border ${panelColorClasses}`}>
+        <div className={`flex items-stretch ${gap} flex-1 ${orderClass} ${padding} rounded-lg transition-all duration-300 border ${panelColorClasses}`}>
             <div className={`flex flex-col ${textAlignClass} flex-grow justify-between min-w-0`}>
-                <div className={`flex items-center gap-2 ${isLeft ? '' : 'flex-row-reverse'}`}>
-                    <Avatar userId={user.id} userName={user.nickname} size={48} avatarUrl={avatarUrl} borderUrl={borderUrl} />
+                <div className={`flex items-center ${gap} ${isLeft ? '' : 'flex-row-reverse'}`}>
+                    <Avatar userId={user.id} userName={user.nickname} size={avatarSize} avatarUrl={avatarUrl} borderUrl={borderUrl} />
                     <div className="min-w-0">
-                         <div className={`flex items-baseline gap-2 ${justifyClass}`}>
-                            {!isLeft && isGameEnded && isWinner && <span className="text-2xl font-black text-blue-400">승</span>}
-                            {!isLeft && isGameEnded && isLoser && <span className="text-2xl font-black text-red-400">패</span>}
-                            <h2 className={`font-bold text-[clamp(0.8rem,3vmin,1.125rem)] leading-tight whitespace-nowrap ${finalNameClass}`}>{user.nickname} {isAiPlayer && '🤖'} {role && `(${role})`}</h2>
-                            {isLeft && isGameEnded && isWinner && <span className="text-2xl font-black text-blue-400">승</span>}
-                            {isLeft && isGameEnded && isLoser && <span className="text-2xl font-black text-red-400">패</span>}
+                         <div className={`flex items-baseline ${gap} ${justifyClass}`}>
+                            {!isLeft && isGameEnded && isWinner && <span className={`${winLoseTextSize} font-black text-blue-400`}>승</span>}
+                            {!isLeft && isGameEnded && isLoser && <span className={`${winLoseTextSize} font-black text-red-400`}>패</span>}
+                            <h2 className={`font-bold ${nameTextSize} leading-tight whitespace-nowrap ${finalNameClass}`}>{user.nickname} {isAiPlayer && '🤖'} {role && `(${role})`}</h2>
+                            {isLeft && isGameEnded && isWinner && <span className={`${winLoseTextSize} font-black text-blue-400`}>승</span>}
+                            {isLeft && isGameEnded && isLoser && <span className={`${winLoseTextSize} font-black text-red-400`}>패</span>}
                         </div>
-                        <p className={`text-[clamp(0.6rem,2vmin,0.75rem)] ${levelTextClasses}`}>{levelText}</p>
+                        <p className={`${levelTextSize} ${levelTextClasses}`}>{levelText}</p>
                          {isCurling && (
-                            <div className={`flex items-center gap-3 text-xs mt-1 ${justifyClass} ${levelTextClasses}`}>
+                            <div className={`flex items-center gap-2 ${isMobile ? 'text-[0.5rem]' : 'text-xs'} mt-0.5 ${justifyClass} ${levelTextClasses}`}>
                                 <span>{session.curlingRound || 1}/{session.settings.curlingRounds || 3}R</span>
                                 <span className="font-semibold">남은 스톤: {stonesLeft}</span>
                             </div>
                         )}
                     </div>
                 </div>
-                <div className="mt-1">
+                <div className={isMobile ? 'mt-0.5' : 'mt-1'}>
                     <TimeBar timeLeft={timeLeft} totalTime={totalTime} byoyomiTime={effectiveByoyomiTime} byoyomiPeriods={effectiveByoyomiPeriodsLeft} totalByoyomi={effectiveTotalByoyomi} isActive={isActive && !isGameEnded} isInByoyomi={isInByoyomi} isFoulMode={isFoulMode} isLeft={isLeft} />
-                    <div className={`flex items-center mt-0.5 ${justifyClass}`}>
-                        <span className={`font-mono font-bold ${isInByoyomi || (isFoulMode && timeLeft < 10) ? 'text-red-400' : timeTextClasses} text-[clamp(1rem,3.5vmin,1.25rem)]`}>{formatTime(timeLeft)}</span>
+                    <div className={`flex items-center ${isMobile ? 'mt-0' : 'mt-0.5'} ${justifyClass}`}>
+                        <span className={`font-mono font-bold ${isInByoyomi || (isFoulMode && timeLeft < 10) ? 'text-red-400' : timeTextClasses} ${timeTextSize}`}>{formatTime(timeLeft)}</span>
                     </div>
                 </div>
             </div>
-            <CapturedStones count={score} target={captureTarget} panelType={panelType} mode={mode} />
+            <CapturedStones count={score} target={captureTarget} panelType={panelType} mode={mode} isMobile={isMobile} />
         </div>
     );
 };
@@ -224,6 +239,7 @@ interface PlayerPanelProps extends GameProps {
   clientTimes: { black: number; white: number; };
   // FIX: Add isSinglePlayer prop to handle different UI themes
   isSinglePlayer?: boolean;
+  isMobile?: boolean;
 }
 
 const getTurnDuration = (mode: GameMode, gameStatus: GameStatus, settings: GameSettings): number => {
@@ -258,7 +274,7 @@ const getTurnDuration = (mode: GameMode, gameStatus: GameStatus, settings: GameS
 
 
 const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
-    const { session, clientTimes, isSinglePlayer } = props;
+    const { session, clientTimes, isSinglePlayer, isMobile = false } = props;
     const { player1, player2, blackPlayerId, whitePlayerId, captures, mode, settings, effectiveCaptureTargets, scores, currentPlayer } = session;
 
     const isScoreMode = [GameMode.Dice, GameMode.Thief, GameMode.Curling].includes(mode);
@@ -299,7 +315,14 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
     
     const getCaptureTargetForPlayer = (playerEnum: Player) => {
         if (session.isSinglePlayer || mode === GameMode.Capture) {
-            return effectiveCaptureTargets?.[playerEnum];
+            const isSurvivalMode = (session.settings as any)?.isSurvivalMode === true;
+            // 살리기 바둑 모드: 흑(유저)은 목표점수 없음, 백(봇)만 목표점수 표시
+            if (isSurvivalMode && playerEnum === Player.Black) {
+                return undefined;
+            }
+            const target = effectiveCaptureTargets?.[playerEnum];
+            // 999는 목표점수가 없음을 의미하므로 undefined 반환
+            return target === 999 ? undefined : target;
         }
         if (mode === GameMode.Ttamok) {
             return settings.captureTarget;
@@ -333,8 +356,9 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
         
         // 살리기바둑: 백의 남은 턴
         if (stage.survivalTurns) {
-            const whiteTurnsPlayed = session.whiteTurnsPlayed || 0;
-            const remainingTurns = Math.max(0, stage.survivalTurns - whiteTurnsPlayed);
+            // 백이 수를 둔 횟수를 moveHistory에서 직접 계산 (백이 수를 둘 때마다만 카운팅)
+            const whiteMovesCount = session.moveHistory.filter(m => m.player === Player.White && m.x !== -1).length;
+            const remainingTurns = Math.max(0, stage.survivalTurns - whiteMovesCount);
             return {
                 type: 'survival' as const,
                 label: '백 남은 턴',
@@ -358,10 +382,15 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
         // 기본: 현재 턴 표시 (다른 조건이 없는 경우)
         // 이 경우에는 턴 정보를 표시하지 않음
         return null;
-    }, [isSinglePlayer, session.stageId, session.moveHistory, session.whiteTurnsPlayed, session.totalTurns, session.settings]);
+    }, [isSinglePlayer, session.stageId, session.moveHistory, session.totalTurns, session.settings]);
     
+    const turnInfoSize = isMobile ? 'w-16 h-16' : 'w-24 h-24 md:w-28 md:h-28';
+    const turnInfoLabelSize = isMobile ? 'text-[0.5rem]' : 'text-[11px] md:text-xs';
+    const turnInfoValueSize = isMobile ? 'text-lg' : 'text-2xl md:text-3xl';
+    const turnInfoTotalSize = isMobile ? 'text-[0.6rem]' : 'text-sm md:text-base';
+
     return (
-        <div className="flex justify-between items-start gap-2 flex-shrink-0 h-full">
+        <div className={`flex justify-between items-start ${isMobile ? 'gap-1' : 'gap-2'} flex-shrink-0 h-full`}>
             <SinglePlayerPanel
                 user={leftPlayerUser}
                 playerEnum={leftPlayerEnum}
@@ -380,14 +409,15 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
                 isAiPlayer={isLeftAi}
                 mode={mode}
                 isSinglePlayer={isSinglePlayer}
+                isMobile={isMobile}
             />
             {isSinglePlayer && turnInfo && (
-                <div className="flex items-center justify-center w-24 h-24 md:w-28 md:h-28 flex-shrink-0 bg-stone-800/95 rounded-lg border-2 border-stone-500 shadow-xl">
-                    <div className="flex flex-col items-center justify-center text-center px-2">
-                        <span className="text-[11px] md:text-xs text-stone-300 mb-1 leading-tight font-semibold">{turnInfo.label}</span>
-                        <div className="flex items-baseline justify-center gap-1">
-                            <span className="text-2xl md:text-3xl font-bold text-amber-300">{turnInfo.remaining}</span>
-                            <span className="text-sm md:text-base text-stone-400">/{turnInfo.total}</span>
+                <div className={`flex items-center justify-center ${turnInfoSize} flex-shrink-0 bg-stone-800/95 rounded-lg border-2 border-stone-500 shadow-xl`}>
+                    <div className="flex flex-col items-center justify-center text-center px-1">
+                        <span className={`${turnInfoLabelSize} text-stone-300 ${isMobile ? 'mb-0.5' : 'mb-1'} leading-tight font-semibold`}>{turnInfo.label}</span>
+                        <div className="flex items-baseline justify-center gap-0.5">
+                            <span className={`${turnInfoValueSize} font-bold text-amber-300`}>{turnInfo.remaining}</span>
+                            <span className={`${turnInfoTotalSize} text-stone-400`}>/{turnInfo.total}</span>
                         </div>
                     </div>
                 </div>
@@ -410,6 +440,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
                 isAiPlayer={isRightAi}
                 mode={mode}
                 isSinglePlayer={isSinglePlayer}
+                isMobile={isMobile}
             />
         </div>
     );

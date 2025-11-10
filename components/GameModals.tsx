@@ -84,9 +84,14 @@ const GameModals: React.FC<GameModalsProps> = (props) => {
         if (gameStatus === 'dice_round_end') return <DiceRoundSummary session={session} currentUser={currentUser} onAction={onAction} />;
         if (gameStatus === 'alkkagi_simultaneous_placement') return <AlkkagiPlacementModal session={session} currentUser={currentUser} />;
         
-        if (showResultModal) {
+        // 계가 중이거나 게임이 종료되었을 때 결과 모달 표시
+        if (showResultModal || gameStatus === 'scoring') {
             if (gameStatus === 'ended') return <GameSummaryModal session={session} currentUser={currentUser} onConfirm={onCloseResults} />;
-            if (gameStatus === 'no_contest') return <NoContestModal session={session} currentUser={currentUser} onConfirm={onCloseResults} />
+            if (gameStatus === 'no_contest') return <NoContestModal session={session} currentUser={currentUser} onConfirm={onCloseResults} />;
+            if (gameStatus === 'scoring') {
+                // 계가 중일 때는 분석 결과가 있으면 표시, 없으면 로딩 표시 (GameSummaryModal 내부에서 처리됨)
+                return <GameSummaryModal session={session} currentUser={currentUser} onConfirm={onCloseResults} />;
+            }
         }
         return null;
     };

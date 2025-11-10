@@ -59,8 +59,24 @@ class AudioService {
         }
     }
 
-    private playSound(buffer: AudioBuffer, volume = 1, loop = false): AudioBufferSourceNode | null {
-        if (!this.isReady() || !this.audioContext) return null;
+    private async playSound(buffer: AudioBuffer, volume = 1, loop = false): Promise<AudioBufferSourceNode | null> {
+        if (!this.audioContext) {
+            await this.initialize();
+            if (!this.audioContext) return null;
+        }
+        
+        // 모바일 환경에서 AudioContext가 suspended 상태일 수 있으므로 resume 시도
+        if (this.audioContext.state === 'suspended') {
+            try {
+                await this.audioContext.resume();
+            } catch (error) {
+                console.error("Failed to resume audio context:", error);
+                return null;
+            }
+        }
+        
+        if (this.audioContext.state !== 'running') return null;
+        
         const source = this.audioContext.createBufferSource();
         source.buffer = buffer;
         source.loop = loop;
@@ -76,7 +92,7 @@ class AudioService {
         if (this.settings.masterMuted || this.settings.categoryMuted[category]) return null;
         try {
             const buffer = await this.loadSound(`${this.soundsPath}${soundName}.mp3`);
-            if (buffer) return this.playSound(buffer, volume * this.settings.masterVolume, loop);
+            if (buffer) return await this.playSound(buffer, volume * this.settings.masterVolume, loop);
         } catch (e) {
             console.error(`Could not play sound ${soundName}`, e);
         }
@@ -84,23 +100,23 @@ class AudioService {
     }
 
     // Public methods based on user request
-    public placeStone() { this.play('move', 'stone', 0.7); }
-    public rollDice(count: number) { this.play('dice', 'item', 0.6); if (count > 1) { setTimeout(() => this.play('dice', 'item', 0.6), 500); } }
-    public enhancementFail() { this.play('failure', 'notification', 0.7); }
-    public revealHiddenStone() { this.play('hidden', 'item', 0.8); }
+    public placeStone() { this.play('move', 'stone', 0.7).catch(() => {}); }
+    public rollDice(count: number) { this.play('dice', 'item', 0.6).catch(() => {}); if (count > 1) { setTimeout(() => this.play('dice', 'item', 0.6).catch(() => {}), 500); } }
+    public enhancementFail() { this.play('failure', 'notification', 0.7).catch(() => {}); }
+    public revealHiddenStone() { this.play('hidden', 'item', 0.8).catch(() => {}); }
     public async playScanBgm() { this.stopScanBgm(); this.scanBgmSourceNode = await this.play('scanbgm', 'item', 0.4, true); }
     public stopScanBgm() { if (this.scanBgmSourceNode) { try { this.scanBgmSourceNode.stop(); } catch(e) {} this.scanBgmSourceNode = null; } }
-    public scanSuccess() { this.play('find', 'item', 0.7); }
-    public stoneCollision() { this.play('hit', 'stone', 0.4); }
-    public launchMissile() { this.play('rocket', 'item', 0.7); }
-    public gameLose() { this.play('lose', 'notification', 0.6); }
-    public gameWin() { this.play('win', 'notification', 0.6); }
-    public levelUp() { this.play('levelup', 'notification', 0.7); }
-    public disassemblyJackpot() { this.play('jackpot2', 'notification', 0.8); }
-    public gachaEpicOrHigher() { this.play('jackpot', 'notification', 0.7); }
-    public gameStart() { this.play('gamestart', 'notification', 0.6); }
-    public myTurn() { this.play('myturn', 'turn', 0.7); }
-    public scanFail() { this.play('scanfail', 'item', 0.6); }
+    public scanSuccess() { this.play('find', 'item', 0.7).catch(() => {}); }
+    public stoneCollision() { this.play('hit', 'stone', 0.4).catch(() => {}); }
+    public launchMissile() { this.play('rocket', 'item', 0.7).catch(() => {}); }
+    public gameLose() { this.play('lose', 'notification', 0.6).catch(() => {}); }
+    public gameWin() { this.play('win', 'notification', 0.6).catch(() => {}); }
+    public levelUp() { this.play('levelup', 'notification', 0.7).catch(() => {}); }
+    public disassemblyJackpot() { this.play('jackpot2', 'notification', 0.8).catch(() => {}); }
+    public gachaEpicOrHigher() { this.play('jackpot', 'notification', 0.7).catch(() => {}); }
+    public gameStart() { this.play('gamestart', 'notification', 0.6).catch(() => {}); }
+    public myTurn() { this.play('myturn', 'turn', 0.7).catch(() => {}); }
+    public scanFail() { this.play('scanfail', 'item', 0.6).catch(() => {}); }
 
     public async timerWarning() {
         this.stopTimerWarning();
@@ -118,12 +134,12 @@ class AudioService {
         }
     }
 
-    public timeoutFoul() { this.play('bip', 'notification', 0.8); }
-    public enhancementSuccess() { this.play('success', 'notification', 0.7); }
-    public combinationGreatSuccess() { this.play('jackpot', 'notification', 0.7); }
-    public combinationSuccess() { this.play('success', 'notification', 0.7); }
-    public stoneFallOff() { this.play('fall', 'stone', 0.5); }
-    public claimReward() { this.play('reward', 'notification', 0.7); }
+    public timeoutFoul() { this.play('bip', 'notification', 0.8).catch(() => {}); }
+    public enhancementSuccess() { this.play('success', 'notification', 0.7).catch(() => {}); }
+    public combinationGreatSuccess() { this.play('jackpot', 'notification', 0.7).catch(() => {}); }
+    public combinationSuccess() { this.play('success', 'notification', 0.7).catch(() => {}); }
+    public stoneFallOff() { this.play('fall', 'stone', 0.5).catch(() => {}); }
+    public claimReward() { this.play('reward', 'notification', 0.7).catch(() => {}); }
 }
 
 export const audioService = new AudioService();

@@ -35,10 +35,10 @@ const DisassemblyPreviewPanel: React.FC<{
     }, [selectedIds, inventory]);
 
     return (
-        <div className="w-full h-full bg-secondary/50 rounded-lg p-4 flex flex-col text-center">
-            <h3 className="font-bold text-lg text-tertiary mb-2">분해 미리보기</h3>
-            <p className="text-sm text-tertiary mb-4">선택된 아이템: {itemCount}개</p>
-            <div className="flex-grow w-full bg-tertiary/30 p-3 rounded-md overflow-y-auto space-y-2">
+        <div className="w-full h-full bg-secondary/50 rounded-lg p-4 flex flex-col text-center min-h-0">
+            <h3 className="font-bold text-lg text-tertiary mb-2 flex-shrink-0">분해 미리보기</h3>
+            <p className="text-sm text-tertiary mb-4 flex-shrink-0">선택된 아이템: {itemCount}개</p>
+            <div className="flex-1 min-h-0 w-full bg-tertiary/30 p-3 rounded-md overflow-y-auto space-y-2">
                 <h4 className="font-semibold text-highlight text-left border-b border-color pb-1">예상 획득 재료</h4>
                 {totalMaterials.length > 0 ? (
                     totalMaterials.map(({ name, amount }) => {
@@ -132,13 +132,24 @@ const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction, selectedFor
     const handleDisassemble = () => {
         if (selectedForDisassembly.size === 0) return;
 
-        const hasHighGrade = Array.from(selectedForDisassembly).some(itemId => {
-            const item = inventory.find((i: InventoryItem) => i.id === itemId);
-            return item && (item.grade === 'legendary' || item.grade === 'mythic');
-        });
+        const selectedItems = Array.from(selectedForDisassembly)
+            .map(itemId => inventory.find((i: InventoryItem) => i.id === itemId))
+            .filter((item): item is InventoryItem => item !== undefined);
+
+        const hasHighGrade = selectedItems.some(item => 
+            item.grade === 'legendary' || item.grade === 'mythic'
+        );
+        
+        const hasHighStars = selectedItems.some(item => 
+            (item.stars || 0) >= 7
+        );
     
-        if (hasHighGrade) {
-            if (!window.confirm("높은 등급의 장비가 포함되어 있습니다. 그래도 분해하시겠습니까?")) {
+        if (hasHighGrade || hasHighStars) {
+            const reasons: string[] = [];
+            if (hasHighGrade) reasons.push('전설 등급 이상의 장비');
+            if (hasHighStars) reasons.push('7강화 이상의 장비');
+            
+            if (!window.confirm(`${reasons.join(', ')}가 포함되어 있습니다. 정말 분해하시겠습니까?`)) {
                 return;
             }
         }
@@ -151,9 +162,22 @@ const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction, selectedFor
     };
 
     const handleAutoSelectConfirm = (grades: ItemGrade[]) => {
+        // 프리셋에 등록된 장비 ID 수집
+        const presetItemIds = new Set<string>();
+        if (currentUserWithStatus.equipmentPresets) {
+            currentUserWithStatus.equipmentPresets.forEach(preset => {
+                if (preset.equipment) {
+                    Object.values(preset.equipment).forEach(itemId => {
+                        if (itemId) presetItemIds.add(itemId);
+                    });
+                }
+            });
+        }
+
         const itemsToSelect = inventory.filter(item =>
             item.type === 'equipment' &&
             !item.isEquipped &&
+            !presetItemIds.has(item.id) &&
             grades.includes(item.grade)
         ).map(item => item.id);
 
@@ -163,21 +187,21 @@ const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction, selectedFor
     };
 
     return (
-        <div className="h-full flex flex-col">
+        <div className="h-full flex flex-col min-h-0">
             {isAutoSelectOpen && (
                 <AutoSelectModal
                     onClose={() => setIsAutoSelectOpen(false)}
                     onConfirm={handleAutoSelectConfirm}
                 />
             )}
-            <div className="flex-grow">
+            <div className="flex-1 min-h-0">
                 <DisassemblyPreviewPanel 
                     selectedIds={selectedForDisassembly} 
                     inventory={inventory} 
                     blacksmithLevel={currentUserWithStatus.blacksmithLevel ?? 1}
                 />
             </div>
-            <div className="flex-shrink-0 border-t border-color py-3 px-2 my-2 flex flex-wrap justify-center items-center gap-2">
+            <div className="flex-shrink-0 border-t border-color py-3 px-2 mt-2 flex flex-wrap justify-center items-center gap-2">
                 <Button onClick={() => setIsAutoSelectOpen(true)} colorScheme="blue">자동 선택</Button>
                 <Button onClick={handleDisassemble} colorScheme="red" disabled={selectedForDisassembly.size === 0}>
                     선택 아이템 분해 ({selectedForDisassembly.size})

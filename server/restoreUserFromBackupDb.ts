@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = __dirname.includes('server') ? path.resolve(__dirname, '..') : process.cwd();
 
-const restoreUserFromBackupDb = async (backupDbPath: string, nickname: string) => {
+const restoreUserFromBackupDb = async (backupDbPath: string, nickname: string, allowEmpty: boolean) => {
     console.log(`[Restore From Backup DB] Starting restoration...`);
     console.log(`[Restore From Backup DB] Backup DB: ${backupDbPath}`);
     console.log(`[Restore From Backup DB] Target user: ${nickname}\n`);
@@ -81,8 +81,15 @@ const restoreUserFromBackupDb = async (backupDbPath: string, nickname: string) =
             console.warn(`[Restore From Backup DB] Invalid inventory JSON in backup`);
         }
         
-        console.log(`[Restore From Backup DB] Backup equipment: ${Object.keys(backupEquipment).length} slots`);
-        console.log(`[Restore From Backup DB] Backup inventory: ${backupInventory.length} items`);
+        const backupEquipmentCount = Object.keys(backupEquipment).length;
+        const backupInventoryCount = Array.isArray(backupInventory) ? backupInventory.length : 0;
+        console.log(`[Restore From Backup DB] Backup equipment: ${backupEquipmentCount} slots`);
+        console.log(`[Restore From Backup DB] Backup inventory: ${backupInventoryCount} items`);
+
+        if (!allowEmpty && backupEquipmentCount === 0 && backupInventoryCount === 0) {
+            console.error('[Restore From Backup DB] Backup contains no equipment or inventory. Aborting restore (use --allow-empty to override).');
+            return;
+        }
         
         if (Object.keys(backupEquipment).length > 0) {
             console.log(`[Restore From Backup DB] Equipment details:`);
@@ -178,8 +185,15 @@ const restoreUserFromBackupDb = async (backupDbPath: string, nickname: string) =
 };
 
 // 스크립트 실행
-const backupDbPath = process.argv[2];
-const nickname = process.argv[3] || '이수호';
+const args = process.argv.slice(2);
+const allowEmptyFlagIndex = args.indexOf('--allow-empty');
+const allowEmpty = allowEmptyFlagIndex !== -1;
+if (allowEmpty) {
+    args.splice(allowEmptyFlagIndex, 1);
+}
+
+const backupDbPath = args[0];
+const nickname = args[1] || '이수호';
 
 if (!backupDbPath) {
     console.error('Usage: npx tsx server/restoreUserFromBackupDb.ts <backup-db-path> [nickname]');
@@ -188,7 +202,7 @@ if (!backupDbPath) {
     process.exit(1);
 }
 
-restoreUserFromBackupDb(backupDbPath, nickname)
+restoreUserFromBackupDb(backupDbPath, nickname, allowEmpty)
     .then(() => {
         console.log('[Restore From Backup DB] Restoration script completed successfully');
         process.exit(0);

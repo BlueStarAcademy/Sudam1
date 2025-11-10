@@ -15,12 +15,16 @@ export const initializeNigiri = (game: types.LiveGameSession, now: number) => {
     };
     game.gameStatus = 'nigiri_choosing';
     game.guessDeadline = now + 30000;
+    game.nigiriStartTime = now;
 };
 
 export const updateNigiriState = (game: types.LiveGameSession, now: number) => {
     switch (game.gameStatus) {
         case 'nigiri_choosing':
-            if (now > (game.createdAt + 2000)) {
+            if (!game.nigiriStartTime) {
+                game.nigiriStartTime = now;
+            }
+            if (now > (game.nigiriStartTime + 1000)) {
                 game.gameStatus = 'nigiri_guessing';
             }
             break;
