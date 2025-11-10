@@ -1,35 +1,46 @@
-import { Database } from 'sqlite';
 import { getDb, initializeAndGetDb } from './db/connection.ts';
 import { User, LiveGameSession, AppState, UserCredentials, AdminLog, Announcement, OverrideAnnouncement, GameMode } from '../types.ts';
 import { getInitialState } from './initialData.ts';
+import {
+    listUsers,
+    getUserById as prismaGetUserById,
+    getUserByNickname as prismaGetUserByNickname,
+    createUser as prismaCreateUser,
+    updateUser as prismaUpdateUser,
+    deleteUser as prismaDeleteUser
+} from './prisma/userService.ts';
+import {
+    getUserCredentialByUsername,
+    getUserCredentialByUserId,
+    createUserCredential,
+    deleteUserCredentialByUsername
+} from './prisma/credentialService.ts';
 
 // --- Initialization and Seeding ---
 let isInitialized = false;
 
-const seedInitialData = async (db: Database) => {
-    const userRepository = await import('./repositories/userRepository.ts');
-    const credentialsRepository = await import('./repositories/credentialsRepository.ts');
+const seedInitialData = async () => {
     const initialState = getInitialState();
     const usersToCreate = Object.values(initialState.users);
     const credentialsToCreate = initialState.userCredentials;
 
     for (const user of usersToCreate) {
         // 이미 존재하는 사용자인지 확인
-        const existingUser = await userRepository.getUser(db, user.id);
+        const existingUser = await prismaGetUserById(user.id);
         if (existingUser) {
             console.log(`[DB] User ${user.username} (${user.id}) already exists, skipping creation.`);
             continue;
         }
         
         // username으로도 확인 (다른 ID로 같은 username이 있을 수 있음)
-        const existingUserByUsername = await userRepository.getUserByNickname(db, user.username);
+        const existingUserByUsername = await prismaGetUserByNickname(user.username);
         if (existingUserByUsername) {
             console.log(`[DB] User with username ${user.username} already exists, skipping creation.`);
             continue;
         }
         
         try {
-            await userRepository.createUser(db, user);
+            await prismaCreateUser(user);
             console.log(`[DB] Created initial user: ${user.username}`);
         } catch (error: any) {
             // UNIQUE 제약조건 위반 등은 무시 (이미 존재하는 경우)
@@ -47,14 +58,14 @@ const seedInitialData = async (db: Database) => {
         const originalUser = usersToCreate.find(u => u.username === username);
         if (originalUser) {
             // 이미 존재하는 credentials인지 확인
-            const existingCreds = await credentialsRepository.getUserCredentials(db, username);
+            const existingCreds = await getUserCredentialByUsername(username);
             if (existingCreds) {
                 console.log(`[DB] Credentials for ${username} already exist, skipping creation.`);
                 continue;
             }
             
             try {
-                await credentialsRepository.createUserCredentials(db, originalUser.username, cred.passwordHash, cred.userId);
+                await createUserCredential(originalUser.username, cred.passwordHash, cred.userId);
                 console.log(`[DB] Created credentials for: ${username}`);
             } catch (error: any) {
                 // UNIQUE 제약조건 위반 등은 무시 (이미 존재하는 경우)
@@ -73,9 +84,9 @@ const seedInitialData = async (db: Database) => {
 export const initializeDatabase = async () => {
     if (isInitialized) return;
     const db = await initializeAndGetDb();
-    const userCount = await db.get('SELECT COUNT(*) as count FROM users');
-    if (userCount && userCount.count === 0) {
-        await seedInitialData(db);
+    const existingUsers = await listUsers();
+    if (existingUsers.length === 0) {
+        await seedInitialData();
     }
     isInitialized = true;
 };
@@ -95,28 +106,21 @@ export const setKV = async <T>(key: string, value: T): Promise<void> => {
 
 // --- User Functions ---
 export const getAllUsers = async (): Promise<User[]> => {
-    const userRepository = await import('./repositories/userRepository.ts');
-    return userRepository.getAllUsers(await getDb());
+    return listUsers();
 };
 export const getUser = async (id: string): Promise<User | null> => {
-    const userRepository = await import('./repositories/userRepository.ts');
-    return userRepository.getUser(await getDb(), id);
+    return prismaGetUserById(id);
 };
 export const getUserByNickname = async (nickname: string): Promise<User | null> => {
-    const userRepository = await import('./repositories/userRepository.ts');
-    return userRepository.getUserByNickname(await getDb(), nickname);
+    return prismaGetUserByNickname(nickname);
 };
 export const createUser = async (user: User): Promise<void> => {
-    const userRepository = await import('./repositories/userRepository.ts');
-    return userRepository.createUser(await getDb(), user);
+    await prismaCreateUser(user);
 };
 export const updateUser = async (user: User): Promise<void> => {
-    const db = await getDb();
-    const userRepository = await import('./repositories/userRepository.ts');
-
     let existing: User | null = null;
     try {
-        existing = user.id ? await userRepository.getUser(db, user.id) : null;
+        existing = user.id ? await prismaGetUserById(user.id) : null;
     } catch (err) {
         console.error(`[DB] Failed to load existing user ${user.id} before update:`, err);
     }
@@ -137,65 +141,58 @@ export const updateUser = async (user: User): Promise<void> => {
         }
     }
 
-    return userRepository.updateUser(db, user);
+    await prismaUpdateUser(user);
 };
 export const deleteUser = async (id: string): Promise<void> => {
-    const db = await getDb();
-    const userRepository = await import('./repositories/userRepository.ts');
-    const credentialsRepository = await import('./repositories/credentialsRepository.ts');
-    const user = await userRepository.getUser(db, id);
-    if (user) {
-        await credentialsRepository.deleteUserCredentials(db, user.username);
-        await userRepository.deleteUser(db, id);
-    }
+    const user = await prismaGetUserById(id);
+    if (!user) return;
+
+    await deleteUserCredentialByUsername(user.username);
+    await prismaDeleteUser(id);
 };
 
 // --- User Credentials Functions ---
 export const getUserCredentials = async (username: string): Promise<UserCredentials | null> => {
-    const credentialsRepository = await import('./repositories/credentialsRepository.ts');
-    return credentialsRepository.getUserCredentials(await getDb(), username);
+    const cred = await getUserCredentialByUsername(username.toLowerCase());
+    return cred ? { username: cred.username, passwordHash: cred.passwordHash, userId: cred.userId } : null;
 };
 export const getUserCredentialsByUserId = async (userId: string): Promise<UserCredentials | null> => {
-    const credentialsRepository = await import('./repositories/credentialsRepository.ts');
-    return credentialsRepository.getUserCredentialsByUserId(await getDb(), userId);
+    const cred = await getUserCredentialByUserId(userId);
+    return cred ? { username: cred.username, passwordHash: cred.passwordHash, userId: cred.userId } : null;
 };
 export const createUserCredentials = async (username: string, passwordHash: string, userId: string): Promise<void> => {
-    const credentialsRepository = await import('./repositories/credentialsRepository.ts');
-    return credentialsRepository.createUserCredentials(await getDb(), username, passwordHash, userId);
+    await createUserCredential(username, passwordHash, userId);
 };
 
 // --- Game Functions ---
 export const getLiveGame = async (id: string): Promise<LiveGameSession | null> => {
-    const gameRepository = await import('./repositories/gameRepository.ts');
-    return gameRepository.getLiveGame(await getDb(), id);
+    const { getLiveGame: prismaGetLiveGame } = await import('./prisma/gameService.ts');
+    return prismaGetLiveGame(id);
 };
 export const getAllActiveGames = async (): Promise<LiveGameSession[]> => {
-    const gameRepository = await import('./repositories/gameRepository.ts');
-    return gameRepository.getAllActiveGames(await getDb());
+    const { getAllActiveGames: prismaGetAllActiveGames } = await import('./prisma/gameService.ts');
+    return prismaGetAllActiveGames();
 };
 export const getAllEndedGames = async (): Promise<LiveGameSession[]> => {
-    const gameRepository = await import('./repositories/gameRepository.ts');
-    return gameRepository.getAllEndedGames(await getDb());
+    const { getAllEndedGames: prismaGetAllEndedGames } = await import('./prisma/gameService.ts');
+    return prismaGetAllEndedGames();
 };
 export const saveGame = async (game: LiveGameSession): Promise<void> => {
-    const gameRepository = await import('./repositories/gameRepository.ts');
-    return gameRepository.saveGame(await getDb(), game);
+    const { saveGame: prismaSaveGame } = await import('./prisma/gameService.ts');
+    await prismaSaveGame(game);
 };
 export const deleteGame = async (id: string): Promise<void> => {
-    const gameRepository = await import('./repositories/gameRepository.ts');
-    return gameRepository.deleteGame(await getDb(), id);
+    const { deleteGame: prismaDeleteGame } = await import('./prisma/gameService.ts');
+    await prismaDeleteGame(id);
 };
 
 
 // --- Full State Retrieval (for client sync) ---
 export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCredentials' | 'liveGames' | 'singlePlayerGames' | 'towerGames' | 'adminLogs' | 'announcements' | 'globalOverrideAnnouncement' | 'gameModeAvailability' | 'announcementInterval'>> => {
     const db = await getDb();
-    const userRepository = await import('./repositories/userRepository.ts');
-    const gameRepository = await import('./repositories/gameRepository.ts');
+    const users = await listUsers();
+    const allGames = await getAllActiveGames();
     const kvRepository = await import('./repositories/kvRepository.ts');
-    
-    const users = await userRepository.getAllUsers(db);
-    const allGames = await gameRepository.getAllActiveGames(db);
     
     // 게임을 카테고리별로 분리
     const liveGames: Record<string, LiveGameSession> = {};

@@ -40,6 +40,7 @@ model User {
   quests           UserQuest[]
   missions         UserMission[]
   inventoryHistory InventoryHistory[]
+  credential       UserCredential?
 
   @@index([league])
   @@index([tournamentScore])
@@ -145,4 +146,22 @@ model InventoryHistory {
 
   @@index([userId, createdAt])
   @@index([inventoryId])
+}
+
+model UserCredential {
+  username     String @id
+  passwordHash String
+  userId       String @unique
+
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model LiveGame {
+  id        String   @id
+  status    String
+  category  String?
+  isEnded   Boolean  @default(false)
+  data      Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
