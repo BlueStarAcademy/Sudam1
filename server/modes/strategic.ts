@@ -12,6 +12,7 @@ import { initializeMissile, updateMissileState, handleMissileAction } from './mi
 import { transitionToPlaying, handleSharedAction } from './shared.js';
 import { UserStatus } from '../../types.js';
 import { aiUserId } from '../aiPlayer.js';
+import { getCaptureTarget, NO_CAPTURE_TARGET } from '../utils/captureTargets.ts';
 
 
 export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.Negotiation, now: number) => {
@@ -110,8 +111,8 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         const survivalTurns = (game.settings as any)?.survivalTurns || 0;
         
         // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
-        const target = game.effectiveCaptureTargets?.[types.Player.White];
-        if (target !== undefined && target !== 999 && game.captures[types.Player.White] >= target) {
+        const target = getCaptureTarget(game, types.Player.White);
+        if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[types.Player.White] >= target) {
             console.log(`[Survival Go] White reached target score in update loop (${target}), White wins`);
             await summaryService.endGame(game, types.Player.White, 'capture_limit');
             return;
@@ -421,8 +422,8 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     // 살리기 바둑 모드
                     // 백(봇)이 목표점수를 달성하면 백 승리 (유저 패배)
                     if (myPlayerEnum === types.Player.White) {
-                        const target = game.effectiveCaptureTargets![types.Player.White];
-                        if (target !== undefined && target !== 999 && game.captures[types.Player.White] >= target) {
+                        const target = getCaptureTarget(game, types.Player.White);
+                        if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[types.Player.White] >= target) {
                             await summaryService.endGame(game, types.Player.White, 'capture_limit');
                             return {};
                         }
@@ -436,8 +437,8 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         console.log(`[Survival Go] After Black move - White turns played: ${whiteTurnsPlayed}/${survivalTurns}`);
                         
                         // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
-                        const target = game.effectiveCaptureTargets?.[types.Player.White];
-                        if (target !== undefined && target !== 999 && game.captures[types.Player.White] >= target) {
+                        const target = getCaptureTarget(game, types.Player.White);
+                        if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[types.Player.White] >= target) {
                             console.log(`[Survival Go] White reached target score after Black move (${target}), White wins`);
                             await summaryService.endGame(game, types.Player.White, 'capture_limit');
                             return {};
@@ -461,8 +462,8 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     // 백의 남은 턴 체크는 백이 수를 둔 직후 goAiBot.ts에서도 처리됨
                 } else {
                     // 일반 따내기 바둑 모드
-                    const target = game.effectiveCaptureTargets![myPlayerEnum];
-                    if (game.captures[myPlayerEnum] >= target) {
+                    const target = getCaptureTarget(game, myPlayerEnum);
+                    if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[myPlayerEnum] >= target) {
                         await summaryService.endGame(game, myPlayerEnum, 'capture_limit');
                     }
                 }

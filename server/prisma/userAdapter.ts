@@ -199,7 +199,11 @@ const ensureMail = (value: unknown): Mail[] =>
 
 export type PrismaUserWithStatus = PrismaUserModel;
 
-const applyDefaults = (user: Partial<User>, prismaUser: PrismaUserWithStatus): User => {
+const applyDefaults = (
+  user: Partial<User>,
+  prismaUser: PrismaUserWithStatus,
+  status?: SerializedUserStatus
+): User => {
   return {
     id: prismaUser.id,
     username:
@@ -349,7 +353,7 @@ export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
       LeagueTier.Sprout;
     cloned.gold = safeNumber(prismaUser.gold ?? cloned.gold ?? 0);
     cloned.diamonds = safeNumber(prismaUser.diamonds ?? cloned.diamonds ?? 0);
-    const applied = applyDefaults(cloned, prismaUser);
+    const applied = applyDefaults(cloned, prismaUser, status);
     return ensureAdminSinglePlayerAccess(applied);
   }
 
@@ -517,7 +521,7 @@ export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
     )
   };
 
-  const applied = applyDefaults(partial, prismaUser);
+  const applied = applyDefaults(partial, prismaUser, status);
   return ensureAdminSinglePlayerAccess(applied);
 }
 

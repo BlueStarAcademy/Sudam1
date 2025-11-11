@@ -903,11 +903,12 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
 
                 // Calculate materials from next enhancement level costs (30%)
                 const nextStars = item.stars + 1;
-                const costsForNextLevel = ENHANCEMENT_COSTS[item.grade]?.[item.stars]; // Costs for current stars to reach next
+                const costsForNextLevel = ENHANCEMENT_COSTS[item.grade]?.[item.stars];
                 
                 if (costsForNextLevel) {
                     for (const cost of costsForNextLevel) {
-                        const yieldAmount = Math.floor(cost.amount * 0.30); // 30% return
+                        const yieldRatio = getRandomInt(20, 50) / 100;
+                        const yieldAmount = Math.max(1, Math.floor(cost.amount * yieldRatio));
                         if (yieldAmount > 0) {
                             gainedMaterials[cost.name] = (gainedMaterials[cost.name] || 0) + yieldAmount;
                         }
@@ -1022,8 +1023,8 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                 fromMaterialName = materialTiers[tierIndex];
                 toMaterialName = materialTiers[tierIndex - 1];
                 fromCost = 1 * quantity;
-                // 분해 시 기본 분해 개수를 3~7개로 랜덤 분해
-                const baseYieldPerItem = getRandomInt(3, 7);
+                // 분해 시 기본 분해 개수를 3~5개로 랜덤 분해
+                const baseYieldPerItem = getRandomInt(3, 5);
                 toYield = baseYieldPerItem * quantity;
                 // 대박 발생 시 재료를 2배로 획득
                 if (isJackpot) {

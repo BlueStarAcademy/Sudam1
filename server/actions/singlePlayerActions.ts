@@ -108,11 +108,11 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 gameMode = GameMode.Hidden;
             } else if (stage.missileCount !== undefined) {
                 gameMode = GameMode.Missile;
-            } else if (stage.timeControl.type === 'fischer') {
-                gameMode = GameMode.Speed;
             } else if (stage.blackTurnLimit !== undefined || stage.targetScore) {
                 // 따내기 바둑: blackTurnLimit이 있거나 targetScore가 있는 경우
                 gameMode = GameMode.Capture;
+            } else if (stage.timeControl.type === 'fischer') {
+                gameMode = GameMode.Speed;
             } else {
                 gameMode = GameMode.Standard;
             }

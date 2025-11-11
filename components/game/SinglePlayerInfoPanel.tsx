@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 
 const goProverbs = [
     { term: "부득탐승(不得貪勝)", meaning: "너무 이기려고 탐하지 말라." },
@@ -16,15 +16,7 @@ const goProverbs = [
 ];
 
 const ProverbPanel: React.FC<{ onClose?: () => void }> = ({ onClose }) => {
-    const [proverbIndex, setProverbIndex] = useState(0);
-
-    useEffect(() => {
-        const timer = setInterval(() => {
-            setProverbIndex(prev => (prev + 1) % goProverbs.length);
-        }, 15000); // Change proverb every 15 seconds
-        return () => clearInterval(timer);
-    }, []);
-
+    const [proverbIndex] = useState(() => Math.floor(Math.random() * goProverbs.length));
     const currentProverb = goProverbs[proverbIndex];
 
     return (

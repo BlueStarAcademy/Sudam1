@@ -5,6 +5,7 @@ import * as types from '../types.js';
 import { analyzeGame } from './kataGoService.js';
 import type { LiveGameSession, AppState, Negotiation, ActionButton, GameMode } from '../types.js';
 import { aiUserId, makeAiMove, getAiUser } from './aiPlayer.js';
+import { syncAiSession } from './aiSessionManager.js';
 // FIX: The imported functions were not found. They are now exported from `standard.ts` with the correct names.
 import { initializeStrategicGame, updateStrategicGameState } from './modes/standard.js';
 import { initializePlayfulGame, updatePlayfulGameState } from './modes/playful.js';
@@ -326,6 +327,9 @@ export const updateGameStates = async (games: LiveGameSession[], now: number): P
         const p1Id = game.player1.id;
         const p2Id = game.player2.id;
         const players = [game.player1, game.player2].filter(p => p.id !== aiUserId);
+
+        // AI 세션을 현재 게임 상태와 동기화 (재시작/재연결 시 안전 장치)
+        syncAiSession(game, aiUserId);
 
         const playableStatuses: types.GameStatus[] = [
             'playing', 'hidden_placing', 'scanning', 'missile_selecting',

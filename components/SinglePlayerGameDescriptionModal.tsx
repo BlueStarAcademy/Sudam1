@@ -2,7 +2,7 @@ import React from 'react';
 import { LiveGameSession, SinglePlayerStageInfo } from '../types.js';
 import { SINGLE_PLAYER_STAGES } from '../constants/singlePlayerConstants.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants/gameModes.js';
-import { GameMode } from '../types/enums.js';
+import { GameMode, Player } from '../types/enums.js';
 import Button from './Button.js';
 
 interface SinglePlayerGameDescriptionModalProps {
@@ -30,7 +30,8 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
     };
 
     const gameModeName = getGameModeName(session.mode);
-    const isSpeedMode = stage.timeControl.type === 'fischer';
+    const isCaptureMode = stage.blackTurnLimit !== undefined || session.mode === GameMode.Capture;
+    const isSpeedMode = !isCaptureMode && stage.timeControl.type === 'fischer';
     
     // 문양돌 개수 확인
     const blackPatternCount = stage.placements.blackPattern || 0;
@@ -39,11 +40,10 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
     
     // 승리 목표 설명
     const getWinCondition = (): string => {
-        // 스피드 바둑 (피셔 타이머)
-        if (isSpeedMode) {
-            return '계가 시 최종 점수가 더 높은 플레이어가 승리합니다. 남은 시간 5초마다 1점 보너스가 추가됩니다.';
-        }
-        
+        const effectiveTargets = session.effectiveCaptureTargets;
+        const blackTarget = effectiveTargets?.[Player.Black];
+        const whiteTarget = effectiveTargets?.[Player.White];
+
         // 살리기 바둑 모드
         if (stage.survivalTurns) {
             // 살리기 바둑: 백의 목표점수는 black 값 사용
@@ -51,14 +51,37 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
             return `백(AI)이 ${stage.survivalTurns}턴 이내에 목표점수(${whiteTarget}개)를 달성하지 못하면 유저(흑) 승리. 백이 목표점수를 달성하면 유저 패배`;
         }
         
+        // 따내기 바둑
+        if (isCaptureMode) {
+            if (stage.blackTurnLimit && typeof blackTarget === 'number' && blackTarget !== 999) {
+                if (typeof whiteTarget === 'number' && whiteTarget !== 999) {
+                    return `${stage.blackTurnLimit}턴 이내에 흑 ${blackTarget}점 이상 달성 (백은 ${whiteTarget}점 달성 시 승리)`;
+                }
+                return `${stage.blackTurnLimit}턴 이내에 흑이 ${blackTarget}점 이상 획득하면 승리`;
+            }
+
+            if (typeof blackTarget === 'number' && blackTarget !== 999 && typeof whiteTarget === 'number' && whiteTarget !== 999) {
+                return `흑 ${blackTarget}점 / 백 ${whiteTarget}점 달성 경쟁`;
+            }
+            if (typeof blackTarget === 'number' && blackTarget !== 999) {
+                return `흑이 ${blackTarget}개 이상의 돌을 따내면 승리`;
+            }
+            if (typeof whiteTarget === 'number' && whiteTarget !== 999) {
+                return `백이 ${whiteTarget}개 이상의 돌을 따내면 승리`;
+            }
+            if (typeof session.settings.captureTarget === 'number') {
+                return `흑이 ${session.settings.captureTarget}개 이상의 돌을 따내면 승리`;
+            }
+        }
+        
+        // 스피드 바둑 (피셔 타이머)
+        if (isSpeedMode) {
+            return '계가 시 최종 점수가 더 높은 플레이어가 승리합니다. 남은 시간 5초마다 1점 보너스가 추가됩니다.';
+        }
+        
         // 따내기 바둑: 턴 제한과 목표 점수가 모두 있는 경우
         if (stage.blackTurnLimit && stage.targetScore.black > 0) {
             return `${stage.blackTurnLimit}턴 이내에 ${stage.targetScore.black}점 이상 획득하기`;
-        }
-        
-        // 따내기 바둑: captureTarget만 있는 경우
-        if (session.mode === GameMode.Capture && session.settings.captureTarget) {
-            return `흑이 ${session.settings.captureTarget}개 이상의 돌을 따내면 승리`;
         }
         
         // 일반 계가 승리 조건

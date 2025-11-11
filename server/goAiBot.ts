@@ -8,6 +8,7 @@ import { LiveGameSession, Player, Point } from '../types.js';
 import { getGoLogic, processMove } from './goLogic.js';
 import * as types from '../types.js';
 import * as summaryService from './summaryService.js';
+import { getCaptureTarget, NO_CAPTURE_TARGET } from './utils/captureTargets.ts';
 
 /**
  * AI 봇 단계별 특성 정의
@@ -47,141 +48,141 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         level: 1,
         name: '초급 AI (18급)',
         description: '초급단계의 18급 수준. 따내기에 집중하며 승리를 목표로 하는 AI',
-        captureTendency: 0.9, // 따내기 성향 매우 강함
+        captureTendency: 0.95, // 따내기 성향 매우 강함
         territoryTendency: 0.2, // 영토 확보는 약함
         combatTendency: 0.8, // 전투 선호
         josekiUsage: 0.1, // 정석/포석 거의 사용 안함
         lifeDeathSkill: 0.2, // 사활 판단 약함
         movementSkill: 0.2, // 행마 능력 약함
         mistakeRate: 0.4, // 실수 많음
-        winFocus: 0.9, // 승리에 집중
+        winFocus: 0.95, // 승리에 집중
         calculationDepth: 1, // 계산 깊이 매우 낮음
     },
     2: {
         level: 2,
         name: '초급 AI (15급)',
         description: '초급단계의 15급 수준. 따내기를 선호하지만 기본적인 영토 개념 이해',
-        captureTendency: 0.75,
+        captureTendency: 0.85,
         territoryTendency: 0.3,
         combatTendency: 0.7,
         josekiUsage: 0.15,
         lifeDeathSkill: 0.3,
         movementSkill: 0.3,
         mistakeRate: 0.35,
-        winFocus: 0.85,
+        winFocus: 0.9,
         calculationDepth: 1,
     },
     3: {
         level: 3,
         name: '초급 AI (12급)',
         description: '초급단계의 12급 수준. 따내기와 영토의 균형을 시작',
-        captureTendency: 0.6,
+        captureTendency: 0.72,
         territoryTendency: 0.4,
         combatTendency: 0.6,
         josekiUsage: 0.2,
         lifeDeathSkill: 0.4,
         movementSkill: 0.4,
         mistakeRate: 0.3,
-        winFocus: 0.8,
+        winFocus: 0.85,
         calculationDepth: 2,
     },
     4: {
         level: 4,
         name: '중급 AI (9급)',
         description: '중급단계의 9급 수준. 기본적인 정석과 포석 이해',
-        captureTendency: 0.5,
+        captureTendency: 0.62,
         territoryTendency: 0.5,
         combatTendency: 0.5,
         josekiUsage: 0.3,
         lifeDeathSkill: 0.5,
         movementSkill: 0.5,
         mistakeRate: 0.25,
-        winFocus: 0.75,
+        winFocus: 0.8,
         calculationDepth: 2,
     },
     5: {
         level: 5,
         name: '중급 AI (6급)',
         description: '중급단계의 6급 수준. 정석과 포석을 활용하며 전투 능력 향상',
-        captureTendency: 0.45,
+        captureTendency: 0.55,
         territoryTendency: 0.55,
         combatTendency: 0.55,
         josekiUsage: 0.4,
         lifeDeathSkill: 0.6,
         movementSkill: 0.6,
         mistakeRate: 0.2,
-        winFocus: 0.7,
+        winFocus: 0.78,
         calculationDepth: 3,
     },
     6: {
         level: 6,
         name: '중급 AI (3급)',
         description: '중급단계의 3급 수준. 영토와 전투의 균형잡힌 플레이',
-        captureTendency: 0.4,
+        captureTendency: 0.5,
         territoryTendency: 0.6,
         combatTendency: 0.6,
         josekiUsage: 0.5,
         lifeDeathSkill: 0.7,
         movementSkill: 0.7,
         mistakeRate: 0.15,
-        winFocus: 0.65,
+        winFocus: 0.75,
         calculationDepth: 3,
     },
     7: {
         level: 7,
         name: '고급 AI (1단)',
         description: '고급단계의 1단 수준. 정석과 포석을 잘 활용하며 사활 판단 능력 향상',
-        captureTendency: 0.35,
+        captureTendency: 0.45,
         territoryTendency: 0.65,
         combatTendency: 0.65,
         josekiUsage: 0.6,
         lifeDeathSkill: 0.8,
         movementSkill: 0.8,
-        mistakeRate: 0.1,
-        winFocus: 0.6,
+        mistakeRate: 0.08,
+        winFocus: 0.72,
         calculationDepth: 4,
     },
     8: {
         level: 8,
         name: '고급 AI (2단)',
         description: '고급단계의 2단 수준. 우수한 행마와 정석 활용',
-        captureTendency: 0.3,
+        captureTendency: 0.4,
         territoryTendency: 0.7,
         combatTendency: 0.7,
         josekiUsage: 0.7,
         lifeDeathSkill: 0.85,
         movementSkill: 0.85,
-        mistakeRate: 0.08,
-        winFocus: 0.55,
-        calculationDepth: 4,
+        mistakeRate: 0.06,
+        winFocus: 0.68,
+        calculationDepth: 5,
     },
     9: {
         level: 9,
         name: '유단자 AI (3단)',
         description: '유단자 수준의 3단. 전반적인 기술이 뛰어나며 정확한 판단',
-        captureTendency: 0.25,
+        captureTendency: 0.35,
         territoryTendency: 0.75,
         combatTendency: 0.75,
         josekiUsage: 0.8,
         lifeDeathSkill: 0.9,
         movementSkill: 0.9,
-        mistakeRate: 0.05,
-        winFocus: 0.5,
-        calculationDepth: 5,
+        mistakeRate: 0.04,
+        winFocus: 0.65,
+        calculationDepth: 6,
     },
     10: {
         level: 10,
         name: '유단자 AI (약 1단)',
         description: '유단자 수준의 약 1단. 영토, 전투, 행마, 정석, 포석, 사활 등 전반적인 모든 기술이 뛰어남',
-        captureTendency: 0.2, // 따내기보다는 전략적 플레이
+        captureTendency: 0.3, // 따내기보다는 전략적 플레이
         territoryTendency: 0.8, // 영토 확보에 집중
         combatTendency: 0.8, // 전투 능력 뛰어남
         josekiUsage: 0.9, // 정석/포석을 잘 활용
         lifeDeathSkill: 0.95, // 사활 판단 매우 정확
         movementSkill: 0.95, // 행마 능력 매우 우수
-        mistakeRate: 0.02, // 실수 거의 없음
-        winFocus: 0.45, // 승리에 집중하되 전략적
-        calculationDepth: 5, // 계산 깊이 최대
+        mistakeRate: 0.015, // 실수 거의 없음
+        winFocus: 0.62, // 승리에 집중하되 전략적
+        calculationDepth: 6, // 계산 깊이 최대
     },
 };
 
@@ -329,8 +330,8 @@ export async function makeGoAiBotMove(
             
             // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
             // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
-            const target = game.effectiveCaptureTargets![Player.White];
-            if (target !== undefined && target !== 999 && game.captures[Player.White] >= target) {
+            const target = getCaptureTarget(game, Player.White);
+            if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[Player.White] >= target) {
                 await summaryService.endGame(game, Player.White, 'capture_limit');
                 return;
             }
@@ -350,8 +351,8 @@ export async function makeGoAiBotMove(
     } else {
         // 일반 따내기 바둑 모드에서 승리 조건 확인
         if (game.isSinglePlayer || game.mode === types.GameMode.Capture) {
-            const target = game.effectiveCaptureTargets![aiPlayerEnum];
-            if (game.captures[aiPlayerEnum] >= target) {
+            const target = getCaptureTarget(game, aiPlayerEnum);
+            if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[aiPlayerEnum] >= target) {
                 await summaryService.endGame(game, aiPlayerEnum, 'capture_limit');
                 return;
             }
@@ -724,9 +725,8 @@ function evaluateWinFocus(
     aiPlayer: Player,
     opponentPlayer: Player
 ): number {
-    if (!game.effectiveCaptureTargets) return 0;
-
-    const target = game.effectiveCaptureTargets[aiPlayer];
+    const target = getCaptureTarget(game, aiPlayer);
+    if (target === undefined || target === NO_CAPTURE_TARGET) return 0;
     const currentScore = game.captures[aiPlayer] || 0;
     const remainingScore = target - currentScore;
 

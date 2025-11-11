@@ -11,24 +11,39 @@ const DisassemblyPreviewPanel: React.FC<{
     inventory: InventoryItem[];
     blacksmithLevel: number;
 }> = ({ selectedIds, inventory, blacksmithLevel }) => {
-    const { totalMaterials, itemCount } = useMemo(() => {
+    const { rangeMap, totalMaterials, itemCount } = useMemo(() => {
         const selectedItems = inventory.filter(item => selectedIds.has(item.id));
         const materials: Record<string, number> = {};
+        const ranges: Record<string, { min: number; max: number }> = {};
 
         for (const item of selectedItems) {
             const enhancementIndex = Math.min(item.stars, 9);
             const costsForNextLevel = ENHANCEMENT_COSTS[item.grade]?.[enhancementIndex];
             if (costsForNextLevel) {
                 for (const cost of costsForNextLevel) {
-                    const yieldAmount = Math.floor(cost.amount * 0.25);
-                    if (yieldAmount > 0) {
-                        materials[cost.name] = (materials[cost.name] || 0) + yieldAmount;
+                    const minYield = Math.max(1, Math.floor(cost.amount * 0.20));
+                    const maxYield = Math.max(minYield, Math.floor(cost.amount * 0.50));
+
+                    if (!ranges[cost.name]) {
+                        ranges[cost.name] = { min: 0, max: 0 };
                     }
+
+                    ranges[cost.name].min += minYield;
+                    ranges[cost.name].max += maxYield;
                 }
             }
         }
-        
+
+        Object.entries(ranges).forEach(([name, value]) => {
+            const minYield = Math.trunc(value.min);
+            const maxYield = Math.trunc(value.max);
+            const avgYield = Math.max(minYield, Math.round((minYield + maxYield) / 2));
+            materials[name] = avgYield;
+            ranges[name] = { min: minYield, max: maxYield };
+        });
+
         return {
+            rangeMap: ranges,
             totalMaterials: Object.entries(materials).map(([name, amount]) => ({ name, amount })),
             itemCount: selectedItems.length
         };
@@ -49,7 +64,11 @@ const DisassemblyPreviewPanel: React.FC<{
                                     {template?.image && <img src={template.image} alt={name} className="w-6 h-6" />}
                                     {name}
                                 </span>
-                                <span className="font-mono text-primary">x {amount.toLocaleString()}</span>
+                                <span className="font-mono text-primary">
+                                    x {rangeMap[name]
+                                        ? `${rangeMap[name].min.toLocaleString()} ~ ${rangeMap[name].max.toLocaleString()}`
+                                        : amount.toLocaleString()}
+                                </span>
                             </div>
                         );
                     })

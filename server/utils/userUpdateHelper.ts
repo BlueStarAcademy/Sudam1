@@ -53,6 +53,7 @@ export function getSelectiveUserUpdate(
         'DELETE_MAIL': ['mail'],
         'DELETE_ALL_CLAIMED_MAIL': ['mail'],
         'MARK_MAIL_AS_READ': ['mail'],
+        'CLAIM_SINGLE_PLAYER_MISSION_REWARD': ['inventory', 'gold', 'diamonds', 'singlePlayerMissions'],
         
         // 토너먼트 관련
         'USE_CONDITION_POTION': ['inventory', 'gold', 'lastNeighborhoodTournament', 'lastNationalTournament', 'lastWorldTournament'],

@@ -12,6 +12,7 @@ import { broadcast } from '../socket.js';
 import { calculateTotalStats } from '../statService.js';
 import * as tournamentService from '../tournamentService.js';
 import { getStartOfDayKST } from '../../utils/timeUtils.js';
+import { clearAiSession } from '../aiSessionManager.js';
 
 type HandleActionResult = { 
     clientResponse?: any;
@@ -410,6 +411,7 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             });
 
             // 게임 삭제 (DB에서 완전히 제거)
+            clearAiSession(gameId);
             await db.deleteGame(gameId);
 
             // 브로드캐스트

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { UserWithStatus, InventoryItem, ServerAction, ItemGrade, ItemOption } from '../../types.js';
 import Button from '../Button.js';
 import { ENHANCEMENT_SUCCESS_RATES, ENHANCEMENT_COSTS, MATERIAL_ITEMS, ENHANCEMENT_FAIL_BONUS_RATES, GRADE_LEVEL_REQUIREMENTS, calculateEnhancementGoldCost } from '../../constants';
@@ -173,6 +173,20 @@ interface EnhancementViewProps {
 
 const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, currentUser, onAction, enhancementOutcome, onOutcomeConfirm }) => {
     const [isEnhancing, setIsEnhancing] = useState(false);
+    const [enhancementProgress, setEnhancementProgress] = useState(0);
+    const enhancementIntervalRef = useRef<number | null>(null);
+    const enhancementTimeoutRef = useRef<number | null>(null);
+
+    const clearEnhancementTimers = useCallback(() => {
+        if (enhancementIntervalRef.current !== null) {
+            window.clearInterval(enhancementIntervalRef.current);
+            enhancementIntervalRef.current = null;
+        }
+        if (enhancementTimeoutRef.current !== null) {
+            window.clearTimeout(enhancementTimeoutRef.current);
+            enhancementTimeoutRef.current = null;
+        }
+    }, []);
 
     const costs = useMemo(() => {
         if (!selectedItem) return null;
@@ -280,8 +294,16 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
     }, [isEnhancing, selectedItem, levelRequirement, meetsLevelRequirement, costs, canEnhance, hasEnoughGold, goldCost]);
 
     useEffect(() => {
+    return () => {
+        clearEnhancementTimers();
+    };
+}, [clearEnhancementTimers]);
+
+useEffect(() => {
         setIsEnhancing(false);
-    }, [selectedItem]);
+        setEnhancementProgress(0);
+        clearEnhancementTimers();
+    }, [selectedItem, clearEnhancementTimers]);
 
     if (!selectedItem) {
         return (
@@ -297,8 +319,41 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
 
     const handleEnhanceClick = () => {
         if (!canEnhance || isEnhancing) return;
+
         setIsEnhancing(true);
-        onAction({ type: 'ENHANCE_ITEM', payload: { itemId: selectedItem.id } });
+        setEnhancementProgress(0);
+
+        clearEnhancementTimers();
+
+        const duration = 3000;
+        const targetItemId = selectedItem.id;
+        const startTime = Date.now();
+
+        enhancementIntervalRef.current = window.setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const percent = Math.min(100, Math.round((elapsed / duration) * 100));
+            setEnhancementProgress(percent);
+            if (elapsed >= duration && enhancementIntervalRef.current !== null) {
+                window.clearInterval(enhancementIntervalRef.current);
+                enhancementIntervalRef.current = null;
+            }
+        }, 50);
+
+        enhancementTimeoutRef.current = window.setTimeout(() => {
+            enhancementTimeoutRef.current = null;
+            (async () => {
+                try {
+                    setEnhancementProgress(100);
+                    await onAction({ type: 'ENHANCE_ITEM', payload: { itemId: targetItemId } });
+                } catch (error) {
+                    console.error('[EnhancementView] Failed to enhance item:', error);
+                } finally {
+                    clearEnhancementTimers();
+                    setIsEnhancing(false);
+                    setEnhancementProgress(0);
+                }
+            })();
+        }, duration);
     };
 
     return (
@@ -373,6 +428,17 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
                                 {failBonus > 0 && <span className="text-green-400 ml-1" style={{ fontSize: 'clamp(0.875rem, 2vw, 1.125rem)' }}>(+{failBonus.toFixed(1).replace(/\.0$/, '')}%)</span>}
                             </p>
                         </div>
+                        {isEnhancing && (
+                            <div className="bg-gray-900/60 p-2 rounded-lg flex flex-col gap-1">
+                                <span className="text-center text-xs text-tertiary font-medium">강화 중...</span>
+                                <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
+                                    <div
+                                        className="bg-yellow-400 h-full transition-[width] duration-100 ease-linear"
+                                        style={{ width: `${enhancementProgress}%` }}
+                                    />
+                                </div>
+                            </div>
+                        )}
                         <div className="flex items-center">
                             <Button
                                 onClick={handleEnhanceClick}
@@ -392,4 +458,6 @@ const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, current
 };
 
 export default EnhancementView;
+
+
 

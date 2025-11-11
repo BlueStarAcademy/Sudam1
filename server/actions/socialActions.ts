@@ -8,6 +8,7 @@ import * as tournamentService from '../tournamentService.js';
 import * as summaryService from '../summaryService.js';
 import { broadcast } from '../socket.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants.js';
+import { clearAiSession } from '../aiSessionManager.js';
 
 
 type HandleActionResult = { 
@@ -285,6 +286,7 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                 
                 if (!isRematchBeingNegotiated) {
                     console.log(`[GC] Deleting game ${gameId} - both players left and no spectators`);
+                    clearAiSession(gameId);
                     await db.deleteGame(gameId);
                     // 게임 삭제를 클라이언트에 알리기 위해 GAME_DELETED 브로드캐스트
                     broadcast({ type: 'GAME_DELETED', payload: { gameId } });

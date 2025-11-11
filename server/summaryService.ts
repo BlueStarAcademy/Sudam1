@@ -2,8 +2,10 @@
 // FIX: Import missing types from the centralized types file.
 import { LiveGameSession, Player, User, GameSummary, StatChange, GameMode, InventoryItem, SpecialStat, WinReason, SinglePlayerStageInfo, QuestReward } from '../types.js';
 import * as db from './db.js';
+import { clearAiSession } from './aiSessionManager.js';
 import { SPECIAL_GAME_MODES, NO_CONTEST_MANNER_PENALTY, NO_CONTEST_RANKING_PENALTY, CONSUMABLE_ITEMS, PLAYFUL_GAME_MODES, SINGLE_PLAYER_STAGES } from '../constants';
 import { updateQuestProgress } from './questService.js';
+import { getSelectiveUserUpdate } from './utils/userUpdateHelper.js';
 import * as mannerService from './mannerService.js';
 import { openEquipmentBox1 } from './shop.js';
 import * as effectService from './effectService.js';
@@ -208,6 +210,7 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
 
     game.statsUpdated = true;
     await db.saveGame(game);
+    clearAiSession(game.id);
     
     // 게임 종료 및 분석 결과 브로드캐스트
     const { broadcast } = await import('./socket.js');
@@ -608,6 +611,8 @@ export const processGameSummary = async (game: LiveGameSession): Promise<void> =
             const { summary: p1Summary, updatedPlayer: updatedP1 } = await processPlayerSummary(p1, p2, p1IsWinner, isDraw, game, isNoContest, p1IsNoContestInitiator);
             await db.updateUser(updatedP1);
             game.summary[p1.id] = p1Summary;
+            const selectiveUpdate = getSelectiveUserUpdate(updatedP1, '', { includeAll: true });
+            broadcast({ type: 'USER_UPDATE', payload: { [updatedP1.id]: selectiveUpdate } });
         }
     } catch (e) {
         console.error(`[Summary] Error processing summary for player 1 (${p1.id}) in game ${game.id}:`, e);
@@ -618,6 +623,8 @@ export const processGameSummary = async (game: LiveGameSession): Promise<void> =
             const { summary: p2Summary, updatedPlayer: updatedP2 } = await processPlayerSummary(p2, p1, p2IsWinner, isDraw, game, isNoContest, p2IsNoContestInitiator);
             await db.updateUser(updatedP2);
             game.summary[p2.id] = p2Summary;
+            const selectiveUpdate = getSelectiveUserUpdate(updatedP2, '', { includeAll: true });
+            broadcast({ type: 'USER_UPDATE', payload: { [updatedP2.id]: selectiveUpdate } });
         }
     } catch (e) {
         console.error(`[Summary] Error processing summary for player 2 (${p2.id}) in game ${game.id}:`, e);

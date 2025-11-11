@@ -257,14 +257,14 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                 onClose={onClose} 
                 isTopmost={isTopmost && !modals.isBlacksmithHelpOpen && !modals.disassemblyResult}
                 initialWidth={1100}
-                initialHeight={950}
+                initialHeight={900}
                 windowId="blacksmith"
                 zIndex={50}
             >
-                <div className="flex h-[930px]">
+                <div className="flex h-full min-h-0">
                     {/* Left Panel */}
-                    <div className="w-[380px] bg-tertiary/30 p-4 flex flex-col items-center gap-4 flex-shrink-0">
-                        <div className="w-full aspect-w-3 aspect-h-2 prism-border rounded-lg overflow-hidden relative">
+                    <div className="w-[360px] bg-tertiary/30 p-4 flex flex-col items-center gap-4 flex-shrink-0 overflow-hidden">
+                        <div className="w-full aspect-w-3 aspect-h-2 prism-border rounded-lg overflow-hidden relative flex-shrink-0">
                             <img src="/images/equipments/moru.png" alt="Blacksmith" className="w-full h-full object-cover" />
                             <button onClick={handlers.openBlacksmithHelp} className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center transition-transform hover:scale-110">
                                 <img src="/images/button/help.png" alt="도움말" className="w-full h-full" />
@@ -278,11 +278,11 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                 <span>경험치</span>
                                 <span>{(blacksmithXp ?? 0)} / {BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)} ({Math.round(((blacksmithXp ?? 0) / BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)) * 100)}%)</span>
                             </div>
-                            <div className="w-full bg-black/50 rounded-full h-4 border-2 border-color">
-                                <div className="bg-yellow-500 h-full rounded-full" style={{ width: `${((blacksmithXp ?? 0) / BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)) * 100}%` }}></div>
+                            <div className="w-full bg-black/50 rounded-full h-3 border border-color">
+                                <div className="bg-yellow-500 h-full rounded-full transition-all" style={{ width: `${((blacksmithXp ?? 0) / BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)) * 100}%` }}></div>
                             </div>
                         </div>
-                        <div className="w-full text-left">
+                        <div className="w-full text-left flex-1 min-h-0 overflow-y-auto">
                             <div className="flex justify-between text-sm font-bold text-gray-400 px-2 pb-1 border-b border-gray-600 mb-1">
                                 <span>효과</span>
                                 <span>
@@ -348,7 +348,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                     </div>
 
                     {/* Right Panel */}
-                    <div className="flex-1 bg-primary p-4 flex flex-col min-w-0">
+                    <div className="flex-1 bg-primary p-4 flex flex-col min-w-0 min-h-0">
                         <div className="flex border-b border-color mb-4">
                             {tabs.map(tab => (
                                 <button
@@ -364,10 +364,10 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                 </button>
                             ))}
                         </div>
-                        <div className="p-4 bg-tertiary/20 rounded-lg flex-1 min-h-0">
+                        <div className="p-4 bg-tertiary/20 rounded-lg flex-1 min-h-0 overflow-hidden">
                             {renderContent()}
                         </div>
-                        <div className="mt-4">
+                        <div className="mt-4 flex flex-col min-h-0">
                             <div className="flex items-center justify-between mb-2">
                                 <h3 className="text-lg font-bold text-on-panel">{bagHeaderText}</h3>
                                 <select
@@ -381,7 +381,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                     <option value="date">최신순</option>
                                 </select>
                             </div>
-                            <div className="h-[140px] overflow-y-auto pr-1">
+                            <div className="h-[130px] overflow-y-auto pr-1">
                                 <InventoryGrid 
                                     inventory={filteredInventory} 
                                     inventorySlots={inventorySlotsToDisplay} 

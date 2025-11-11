@@ -8,6 +8,13 @@ import { analyzeGame } from './kataGoService.js';
 import * as summaryService from './summaryService.js';
 import { makeGoAiBotMove } from './goAiBot.js';
 import * as db from './db.js';
+import {
+    shouldProcessAiTurn,
+    startAiProcessing,
+    finishAiProcessing,
+    cancelAiProcessing,
+} from './aiSessionManager.js';
+import { getCaptureTarget, NO_CAPTURE_TARGET } from './utils/captureTargets.ts';
 
 
 export const aiUserId = 'ai-player-01';
@@ -109,7 +116,8 @@ const makeSimpleCaptureAiMove = (game: types.LiveGameSession) => {
             }
         }
         
-        if (game.captures[aiPlayer] >= game.settings.captureTarget!) {
+        const target = getCaptureTarget(game, aiPlayer);
+        if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[aiPlayer] >= target) {
             summaryService.endGame(game, aiPlayer, 'capture_limit');
             return;
         }
@@ -151,10 +159,15 @@ const makeSimpleCaptureAiMove = (game: types.LiveGameSession) => {
 
     // 1. Winning Capture
     if (Math.random() < probability) {
-        const winningMoves = allValidAiMoves.filter(move => {
-            const res = processMove(game.boardState, { ...move, player: aiPlayer }, game.koInfo, game.moveHistory.length);
-            return res.isValid && (game.captures[aiPlayer] + res.capturedStones.length * (res.capturedStones.some(s => game.whitePatternStones?.some(p => p.x === s.x && p.y === s.y)) ? 2 : 1)) >= game.settings.captureTarget!;
-        });
+        const target = getCaptureTarget(game, aiPlayer);
+        const winningMoves = target === undefined || target === NO_CAPTURE_TARGET
+            ? []
+            : allValidAiMoves.filter(move => {
+                const res = processMove(game.boardState, { ...move, player: aiPlayer }, game.koInfo, game.moveHistory.length);
+                if (!res.isValid) return false;
+                const captureGain = res.capturedStones.length * (res.capturedStones.some(s => game.whitePatternStones?.some(p => p.x === s.x && p.y === s.y)) ? 2 : 1);
+                return (game.captures[aiPlayer] + captureGain) >= target;
+            });
         if (winningMoves.length > 0) {
             applyMove(winningMoves[Math.floor(Math.random() * winningMoves.length)]);
             return;
@@ -163,10 +176,15 @@ const makeSimpleCaptureAiMove = (game: types.LiveGameSession) => {
     
     // 2. Block Opponent's Winning Capture
     if (Math.random() < probability) {
-        const opponentWinningMoves = findValidMoves(game.boardState, humanPlayer).filter(move => {
-            const res = processMove(game.boardState, { ...move, player: humanPlayer }, game.koInfo, game.moveHistory.length);
-            return res.isValid && (game.captures[humanPlayer] + res.capturedStones.length * (res.capturedStones.some(s => game.blackPatternStones?.some(p => p.x === s.x && p.y === s.y)) ? 2 : 1)) >= game.settings.captureTarget!;
-        });
+        const opponentTarget = getCaptureTarget(game, humanPlayer);
+        const opponentWinningMoves = opponentTarget === undefined || opponentTarget === NO_CAPTURE_TARGET
+            ? []
+            : findValidMoves(game.boardState, humanPlayer).filter(move => {
+                const res = processMove(game.boardState, { ...move, player: humanPlayer }, game.koInfo, game.moveHistory.length);
+                if (!res.isValid) return false;
+                const captureGain = res.capturedStones.length * (res.capturedStones.some(s => game.blackPatternStones?.some(p => p.x === s.x && p.y === s.y)) ? 2 : 1);
+                return (game.captures[humanPlayer] + captureGain) >= opponentTarget;
+            });
 
         if (opponentWinningMoves.length > 0) {
             const blockMove = opponentWinningMoves[Math.floor(Math.random() * opponentWinningMoves.length)];
@@ -455,8 +473,8 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
     }
     
     if (game.isSinglePlayer || game.mode === types.GameMode.Capture) {
-        const target = game.effectiveCaptureTargets![aiPlayerEnum];
-        if (game.captures[aiPlayerEnum] >= target) {
+        const target = getCaptureTarget(game, aiPlayerEnum);
+        if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[aiPlayerEnum] >= target) {
             await summaryService.endGame(game, aiPlayerEnum, 'capture_limit');
             return;
         }
@@ -697,7 +715,8 @@ const makeOmokAiMove = (game: types.LiveGameSession) => {
     if (game.mode === types.GameMode.Ttamok) {
         const { capturedCount } = logic.performTtamokCapture(chosenMove.x, chosenMove.y);
         game.captures[aiPlayerEnum] += capturedCount;
-        if (game.captures[aiPlayerEnum] >= (game.settings.captureTarget || 10)) {
+        const target = getCaptureTarget(game, aiPlayerEnum) ?? game.settings.captureTarget ?? 10;
+        if (target !== NO_CAPTURE_TARGET && game.captures[aiPlayerEnum] >= target) {
             game.winner = aiPlayerEnum;
             game.winReason = 'capture_limit';
             game.gameStatus = 'ended';
@@ -1117,79 +1136,106 @@ const makeCurlingAiMove = async (game: types.LiveGameSession) => {
 
 
 export const makeAiMove = async (game: LiveGameSession) => {
-    // 새로운 바둑 AI 봇 시스템 사용 여부 확인
-    // 싱글플레이, 도전의탑, 전략바둑에서 사용
-    const useGoAiBot = game.isSinglePlayer || 
-                       (game.settings as any)?.useGoAiBot === true ||
-                       (game.settings as any)?.goAiBotLevel !== undefined;
-    
-    if (useGoAiBot) {
-        // AI 봇 단계 결정
-        let aiLevel = 1; // 기본값
+    const initialMoveCount = game.moveHistory?.length ?? 0;
+
+    if (!shouldProcessAiTurn(game.id, initialMoveCount)) {
+        return;
+    }
+
+    if (!startAiProcessing(game.id)) {
+        return;
+    }
+
+    try {
+        let moveExecuted = false;
+
+        // 새로운 바둑 AI 봇 시스템 사용 여부 확인
+        // 싱글플레이, 도전의탑, 전략바둑에서 사용
+        const useGoAiBot = game.isSinglePlayer ||
+                           (game.settings as any)?.useGoAiBot === true ||
+                           (game.settings as any)?.goAiBotLevel !== undefined;
         
-        if (game.isSinglePlayer) {
-            // 싱글플레이: 게임 설정의 aiDifficulty를 사용 (katagoLevel 제거됨)
-            aiLevel = (game.settings.aiDifficulty || 1);
-        } else if ((game.settings as any)?.goAiBotLevel !== undefined) {
-            aiLevel = (game.settings as any).goAiBotLevel;
-        } else {
-            aiLevel = (game.settings.aiDifficulty || 1);
+        if (useGoAiBot) {
+            // AI 봇 단계 결정
+            let aiLevel = 1; // 기본값
+            
+            if (game.isSinglePlayer) {
+                // 싱글플레이: 게임 설정의 aiDifficulty를 사용 (katagoLevel 제거됨)
+                aiLevel = (game.settings.aiDifficulty || 1);
+            } else if ((game.settings as any)?.goAiBotLevel !== undefined) {
+                aiLevel = (game.settings as any).goAiBotLevel;
+            } else {
+                aiLevel = (game.settings.aiDifficulty || 1);
+            }
+
+            // 바둑 모드인 경우에만 새로운 AI 봇 시스템 사용
+            const goModes: GameMode[] = [
+                types.GameMode.Standard,
+                types.GameMode.Capture,
+                types.GameMode.Speed,
+                types.GameMode.Base,
+                types.GameMode.Hidden,
+                types.GameMode.Missile,
+                types.GameMode.Mix
+            ];
+
+            if (goModes.includes(game.mode)) {
+                await makeGoAiBotMove(game, aiLevel);
+                moveExecuted = true;
+            }
         }
 
-        // 바둑 모드인 경우에만 새로운 AI 봇 시스템 사용
-        const goModes: GameMode[] = [
-            types.GameMode.Standard,
-            types.GameMode.Capture,
-            types.GameMode.Speed,
-            types.GameMode.Base,
-            types.GameMode.Hidden,
-            types.GameMode.Missile,
-            types.GameMode.Mix
-        ];
+        if (!moveExecuted) {
+            // 기존 로직 유지
+            if (game.isSinglePlayer) {
+                makeSimpleCaptureAiMove(game);
+                moveExecuted = true;
+            } else {
+                const strategicModes: GameMode[] = [
+                    types.GameMode.Standard,
+                    types.GameMode.Capture,
+                    types.GameMode.Speed,
+                    types.GameMode.Base,
+                    types.GameMode.Hidden,
+                    types.GameMode.Missile,
+                    types.GameMode.Mix
+                ];
 
-        if (goModes.includes(game.mode)) {
-            await makeGoAiBotMove(game, aiLevel);
-            return;
+                if (strategicModes.includes(game.mode)) {
+                    await makeStrategicAiMove(game);
+                    moveExecuted = true;
+                } else {
+                    switch (game.mode) {
+                        case types.GameMode.Dice:
+                            await makeDiceGoAiMove(game);
+                            moveExecuted = true;
+                            break;
+                        case types.GameMode.Omok:
+                        case types.GameMode.Ttamok:
+                            makeOmokAiMove(game);
+                            moveExecuted = true;
+                            break;
+                        case types.GameMode.Alkkagi:
+                            await makeAlkkagiAiMove(game);
+                            moveExecuted = true;
+                            break;
+                        case types.GameMode.Curling:
+                            await makeCurlingAiMove(game);
+                            moveExecuted = true;
+                            break;
+                        case types.GameMode.Thief:
+                            await makeThiefAiMove(game);
+                            moveExecuted = true;
+                            break;
+                    }
+                }
+            }
         }
-    }
 
-    // 기존 로직 유지
-    if (game.isSinglePlayer) {
-        makeSimpleCaptureAiMove(game);
-        return;
-    }
-
-    const strategicModes: GameMode[] = [
-        types.GameMode.Standard,
-        types.GameMode.Capture,
-        types.GameMode.Speed,
-        types.GameMode.Base,
-        types.GameMode.Hidden,
-        types.GameMode.Missile,
-        types.GameMode.Mix
-    ];
-
-    if (strategicModes.includes(game.mode)) {
-        await makeStrategicAiMove(game);
-        return;
-    }
-    
-    switch (game.mode) {
-        case types.GameMode.Dice:
-            await makeDiceGoAiMove(game);
-            break;
-        case types.GameMode.Omok:
-        case types.GameMode.Ttamok:
-            makeOmokAiMove(game);
-            break;
-        case types.GameMode.Alkkagi:
-            await makeAlkkagiAiMove(game);
-            break;
-        case types.GameMode.Curling:
-            await makeCurlingAiMove(game);
-            break;
-        case types.GameMode.Thief:
-            await makeThiefAiMove(game);
-            break;
+        const finalMoveCount = game.moveHistory?.length ?? initialMoveCount;
+        finishAiProcessing(game.id, finalMoveCount);
+    } catch (error) {
+        cancelAiProcessing(game.id);
+        throw error;
     }
 };

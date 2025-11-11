@@ -23,6 +23,7 @@ import { createDefaultBaseStats, createDefaultUser } from './initialData.ts';
 import { containsProfanity } from '../profanity.js';
 import { volatileState } from './state.js';
 import { CoreStat } from '../types/index.js';
+import { clearAiSession, syncAiSession } from './aiSessionManager.js';
 
 const getTournamentStateByType = (user: types.User, type: types.TournamentType): types.TournamentState | null => {
     switch (type) {
@@ -38,6 +39,13 @@ const getTournamentStateByType = (user: types.User, type: types.TournamentType):
 };
 
 let isProcessingTournamentTick = false;
+let isProcessingMainLoop = false;
+let hasLoggedMainLoopSkip = false;
+
+const OFFLINE_REGEN_INTERVAL_MS = 60_000; // 1 minute
+let lastOfflineRegenAt = 0;
+const DAILY_TASK_CHECK_INTERVAL_MS = 60_000; // 1 minute
+let lastDailyTaskCheckAt = 0;
 
 const processSinglePlayerMissions = (user: types.User): types.User => {
     const now = Date.now();
@@ -217,41 +225,50 @@ const startServer = async () => {
 
     setInterval(processActiveTournamentSimulations, 1000);
 
-    // --- Main Game Loop ---
-    setInterval(async () => {
-        try {
-            const now = Date.now();
+    const scheduleMainLoop = (delay = 1000) => {
+        setTimeout(async () => {
+            if (isProcessingMainLoop) {
+                scheduleMainLoop(Math.min(delay * 2, 5000));
+                return;
+            }
+
+            isProcessingMainLoop = true;
+            hasLoggedMainLoopSkip = false;
+            try {
+                const now = Date.now();
 
             // --- START NEW OFFLINE AP REGEN LOGIC ---
-            // Fetch all users to regenerate AP even for those offline.
-            const allUsers = await db.getAllUsers();
-            
-            // 매일 0시에 토너먼트 상태 자동 리셋 확인 (processDailyQuestReset에서 처리되지만, 
-            // 메인 루프에서도 날짜 변경 시 체크하여 오프라인 사용자도 리셋되도록 보장)
-            const kstNowForReset = getKSTDate(now);
-            const isMidnightForReset = kstNowForReset.getUTCHours() === 0 && kstNowForReset.getUTCMinutes() < 5;
-            
-            for (const user of allUsers) {
-                let updatedUser = user;
+            if (now - lastOfflineRegenAt >= OFFLINE_REGEN_INTERVAL_MS) {
+                const allUsers = await db.getAllUsers();
                 
-                // 매일 0시에만 토너먼트 상태 리셋 (로그인하지 않은 사용자도 포함)
-                if (isMidnightForReset) {
-                    updatedUser = await resetAndGenerateQuests(updatedUser);
+                // 매일 0시에 토너먼트 상태 자동 리셋 확인 (processDailyQuestReset에서 처리되지만, 
+                // 메인 루프에서도 날짜 변경 시 체크하여 오프라인 사용자도 리셋되도록 보장)
+                const kstNowForReset = getKSTDate(now);
+                const isMidnightForReset = kstNowForReset.getUTCHours() === 0 && kstNowForReset.getUTCMinutes() < 5;
+                
+                for (const user of allUsers) {
+                    let updatedUser = user;
+                    
+                    // 매일 0시에만 토너먼트 상태 리셋 (로그인하지 않은 사용자도 포함)
+                    if (isMidnightForReset) {
+                        updatedUser = await resetAndGenerateQuests(updatedUser);
+                    }
+                    
+                    updatedUser = await regenerateActionPoints(updatedUser);
+                    updatedUser = processSinglePlayerMissions(updatedUser);
+                    
+                    // 봇의 리그 점수 업데이트 (하루에 한번)
+                    const { updateBotLeagueScores } = await import('./scheduledTasks.js');
+                    updatedUser = await updateBotLeagueScores(updatedUser);
+                    
+                    if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+                        await db.updateUser(updatedUser);
+                    }
                 }
-                
-                updatedUser = await regenerateActionPoints(updatedUser);
-                updatedUser = processSinglePlayerMissions(updatedUser);
-                
-                // 봇의 리그 점수 업데이트 (하루에 한번)
-                const { updateBotLeagueScores } = await import('./scheduledTasks.js');
-                updatedUser = await updateBotLeagueScores(updatedUser);
-                
-                // Use the original check, but rename my flag to avoid confusion
-                if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
-                    await db.updateUser(updatedUser);
+
+                lastOfflineRegenAt = now;
                 }
-            }
-            // --- END NEW OFFLINE AP REGEN LOGIC ---
+                // --- END NEW OFFLINE AP REGEN LOGIC ---
 
             const activeGames = await db.getAllActiveGames();
             const originalGamesJson = activeGames.map(g => JSON.stringify(g));
@@ -259,55 +276,59 @@ const startServer = async () => {
             // Handle weekly league updates (Monday 0:00 KST) - 점수 리셋 전에 실행
             // 리그 업데이트는 각 사용자 로그인 시 processWeeklyLeagueUpdates에서 처리되지만,
             // 월요일 0시에 명시적으로 모든 사용자에 대해 리그 업데이트를 실행
-            const kstNow = getKSTDate(now);
-            const isMondayMidnight = kstNow.getUTCDay() === 1 && kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
-            
-            // 중복 실행 방지: 이번 월요일 0시에 이미 처리했는지 확인
-            if (isMondayMidnight) {
-                const { getLastWeeklyLeagueUpdateTimestamp, setLastWeeklyLeagueUpdateTimestamp } = await import('./scheduledTasks.js');
-                const lastUpdateTimestamp = getLastWeeklyLeagueUpdateTimestamp();
-                const currentMonday = new Date(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
+                if (now - lastDailyTaskCheckAt >= DAILY_TASK_CHECK_INTERVAL_MS) {
+                const kstNow = getKSTDate(now);
+                const isMondayMidnight = kstNow.getUTCDay() === 1 && kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
                 
-                if (lastUpdateTimestamp === null || 
-                    getKSTDate(lastUpdateTimestamp).getTime() < currentMonday.getTime()) {
-                    console.log(`[WeeklyLeagueUpdate] Processing weekly league updates for all users at Monday 0:00 KST`);
-                    setLastWeeklyLeagueUpdateTimestamp(now);
+                // 중복 실행 방지: 이번 월요일 0시에 이미 처리했는지 확인
+                if (isMondayMidnight) {
+                    const { getLastWeeklyLeagueUpdateTimestamp, setLastWeeklyLeagueUpdateTimestamp } = await import('./scheduledTasks.js');
+                    const lastUpdateTimestamp = getLastWeeklyLeagueUpdateTimestamp();
+                    const currentMonday = new Date(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
                     
-                    const allUsersForLeagueUpdate = await db.getAllUsers();
-                    let usersUpdated = 0;
-                    let mailsSent = 0;
-                    for (const user of allUsersForLeagueUpdate) {
-                        const userBeforeUpdate = JSON.parse(JSON.stringify(user));
-                        const updatedUser = await processWeeklyLeagueUpdates(user);
-                        const userAfterUpdate = JSON.parse(JSON.stringify(updatedUser));
+                    if (lastUpdateTimestamp === null || 
+                        getKSTDate(lastUpdateTimestamp).getTime() < currentMonday.getTime()) {
+                        console.log(`[WeeklyLeagueUpdate] Processing weekly league updates for all users at Monday 0:00 KST`);
+                        setLastWeeklyLeagueUpdateTimestamp(now);
                         
-                        // 메일이 추가되었는지 확인
-                        const mailAdded = (updatedUser.mail?.length || 0) > (user.mail?.length || 0);
-                        if (mailAdded) {
-                            mailsSent++;
-                            console.log(`[WeeklyLeagueUpdate] Mail sent to user ${user.nickname} (${user.id})`);
+                        const allUsersForLeagueUpdate = await db.getAllUsers();
+                        let usersUpdated = 0;
+                        let mailsSent = 0;
+                        for (const user of allUsersForLeagueUpdate) {
+                            const userBeforeUpdate = JSON.parse(JSON.stringify(user));
+                            const updatedUser = await processWeeklyLeagueUpdates(user);
+                            const userAfterUpdate = JSON.parse(JSON.stringify(updatedUser));
+                            
+                            // 메일이 추가되었는지 확인
+                            const mailAdded = (updatedUser.mail?.length || 0) > (user.mail?.length || 0);
+                            if (mailAdded) {
+                                mailsSent++;
+                                console.log(`[WeeklyLeagueUpdate] Mail sent to user ${user.nickname} (${user.id})`);
+                            }
+                            
+                            if (JSON.stringify(userBeforeUpdate) !== JSON.stringify(userAfterUpdate)) {
+                                await db.updateUser(updatedUser);
+                                usersUpdated++;
+                            }
                         }
-                        
-                        if (JSON.stringify(userBeforeUpdate) !== JSON.stringify(userAfterUpdate)) {
-                            await db.updateUser(updatedUser);
-                            usersUpdated++;
-                        }
+                        console.log(`[WeeklyLeagueUpdate] Updated ${usersUpdated} users, sent ${mailsSent} mails`);
                     }
-                    console.log(`[WeeklyLeagueUpdate] Updated ${usersUpdated} users, sent ${mailsSent} mails`);
                 }
-            }
-            
-            // Handle weekly tournament reset (Monday 0:00 KST) - 리그 업데이트 후 실행
-            await processWeeklyTournamentReset();
-            
-            // Handle ranking rewards
-            await processRankingRewards(volatileState);
-            
-            // Handle daily ranking calculations (매일 0시 정산)
-            await processDailyRankings();
-            
-            // Handle daily quest reset (매일 0시 KST)
-            await processDailyQuestReset();
+                
+                // Handle weekly tournament reset (Monday 0:00 KST) - 리그 업데이트 후 실행
+                await processWeeklyTournamentReset();
+                
+                // Handle ranking rewards
+                await processRankingRewards(volatileState);
+                
+                // Handle daily ranking calculations (매일 0시 정산)
+                await processDailyRankings();
+                
+                // Handle daily quest reset (매일 0시 KST)
+                await processDailyQuestReset();
+
+                    lastDailyTaskCheckAt = now;
+                }
 
             // Handle user timeouts and disconnections
             const onlineUserIdsBeforeTimeoutCheck = Object.keys(volatileState.userConnections);
@@ -423,6 +444,7 @@ const startServer = async () => {
                     game.gameStatus = 'no_contest';
                     game.winReason = 'disconnect'; // For context, but no one is penalized
                     await db.saveGame(game);
+                    clearAiSession(game.id);
                     disconnectedGamesToBroadcast[game.id] = game;
                 }
             }
@@ -438,17 +460,35 @@ const startServer = async () => {
                 const updatedGame = updatedGames[i];
                 if (JSON.stringify(updatedGame) !== originalGamesJson[i]) {
                     const currentMoveCount = updatedGame.moveHistory?.length ?? 0;
+                    const localRevision = updatedGame.serverRevision ?? 0;
+                    const localSyncedAt = updatedGame.lastSyncedAt ?? 0;
                     const latestGame = await db.getLiveGame(updatedGame.id);
-                    const latestMoveCount = latestGame?.moveHistory?.length ?? 0;
 
-                    if (latestGame && latestMoveCount > currentMoveCount) {
-                        console.warn(`[Game Loop] Detected newer game state for ${updatedGame.id} (server has ${latestMoveCount} moves vs local ${currentMoveCount}). Skipping save to avoid overwriting player progress.`);
-                        gamesToBroadcast[updatedGame.id] = latestGame;
-                        updatedGames[i] = latestGame;
-                        continue;
+                    if (latestGame) {
+                        const latestMoveCount = latestGame.moveHistory?.length ?? 0;
+                        const latestRevision = latestGame.serverRevision ?? 0;
+                        const latestSyncedAt = latestGame.lastSyncedAt ?? 0;
+
+                        let newerReason: string | null = null;
+                        if (latestRevision > localRevision) {
+                            newerReason = `revision ${latestRevision} > local ${localRevision}`;
+                        } else if (latestRevision === localRevision && latestSyncedAt > localSyncedAt) {
+                            newerReason = `sync ${latestSyncedAt} > ${localSyncedAt}`;
+                        } else if (latestRevision === localRevision && latestSyncedAt === localSyncedAt && latestMoveCount > currentMoveCount) {
+                            newerReason = `move history ${latestMoveCount} > ${currentMoveCount}`;
+                        }
+
+                        if (newerReason) {
+                            console.warn(`[Game Loop] Detected newer game state for ${updatedGame.id} (${newerReason}). Refreshing local copy instead of saving.`);
+                            syncAiSession(latestGame, aiPlayer.aiUserId);
+                            gamesToBroadcast[updatedGame.id] = latestGame;
+                            updatedGames[i] = latestGame;
+                            continue;
+                        }
                     }
 
                     await db.saveGame(updatedGame);
+                    syncAiSession(updatedGame, aiPlayer.aiUserId);
                     gamesToBroadcast[updatedGame.id] = updatedGame;
                 }
             }
@@ -512,15 +552,23 @@ const startServer = async () => {
 
                     if (!isRematchBeingNegotiated) {
                         console.log(`[GC] Deleting empty, ended game room: ${game.id}`);
+                        clearAiSession(game.id);
                         await db.deleteGame(game.id);
                     }
                 }
             }
 
-        } catch (e) {
-            console.error('[FATAL] Unhandled error in main loop:', e);
-        }
-    }, 1000);
+            } catch (e) {
+                console.error('[FATAL] Unhandled error in main loop:', e);
+            } finally {
+                isProcessingMainLoop = false;
+                scheduleMainLoop(1000);
+            }
+        }, delay);
+    };
+
+    // --- Main Game Loop ---
+    scheduleMainLoop(1000);
     
     // --- API Endpoints ---
     app.post('/api/auth/register', async (req, res) => {

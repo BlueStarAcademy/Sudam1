@@ -55,12 +55,12 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
             return '히든 바둑';
         } else if (stage.missileCount !== undefined) {
             return '미사일 바둑';
-        } else if (stage.timeControl.type === 'fischer') {
-            return '스피드 바둑';
-        } else if (stage.survivalTurns !== undefined) {
-            return '살리기 바둑';
         } else if (stage.blackTurnLimit !== undefined) {
             return '따내기 바둑';
+        } else if (stage.survivalTurns !== undefined) {
+            return '살리기 바둑';
+        } else if (stage.timeControl.type === 'fischer') {
+            return '스피드 바둑';
         } else {
             return '정통 바둑';
         }

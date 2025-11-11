@@ -11,6 +11,7 @@ import { initializeHidden, updateHiddenState, handleHiddenAction } from './hidde
 import { initializeMissile, updateMissileState, handleMissileAction } from './missile.js';
 import { transitionToPlaying, handleSharedAction } from './shared.js';
 import { UserStatus } from '../../types.js';
+import { getCaptureTarget, NO_CAPTURE_TARGET } from '../utils/captureTargets.ts';
 
 
 export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.Negotiation, now: number) => {
@@ -400,8 +401,8 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
             // After move logic
             if (game.mode === types.GameMode.Capture || game.isSinglePlayer) {
-                const target = game.effectiveCaptureTargets![myPlayerEnum];
-                if (game.captures[myPlayerEnum] >= target) {
+                const target = getCaptureTarget(game, myPlayerEnum);
+                if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[myPlayerEnum] >= target) {
                     await summaryService.endGame(game, myPlayerEnum, 'capture_limit');
                 }
             }

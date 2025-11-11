@@ -578,6 +578,11 @@ export const useApp = () => {
                         actionPoints: mergedUser?.actionPoints
                     });
                     
+                    if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD') {
+                        lastHttpHadUpdatedUser.current = false;
+                        lastHttpUpdateTime.current = 0;
+                    }
+                    
                     // 보상 수령 액션의 경우 추가로 강제 업데이트
                     if (isInventoryCriticalAction) {
                         flushSync(() => {
@@ -905,6 +910,9 @@ export const useApp = () => {
         let isIntentionalClose = false;
         let shouldReconnect = true;
         let isConnecting = false; // 중복 연결 방지 플래그
+        let isInitialStateReady = true;
+        let pendingMessages: any[] = [];
+        let initialStateTimeout: NodeJS.Timeout | null = null;
 
         const getCloseCodeMeaning = (code: number): string => {
             switch (code) {
@@ -1090,504 +1098,520 @@ export const useApp = () => {
                     }
                 };
 
+                const scheduleInitialStateTimeout = () => {
+                    if (initialStateTimeout) {
+                        clearTimeout(initialStateTimeout);
+                    }
+                    initialStateTimeout = setTimeout(() => {
+                        if (!isInitialStateReady) {
+                            console.warn('[WebSocket] Initial state chunks timeout, forcing completion.');
+                            const buffer = (window as any).__chunkedStateBuffer;
+                            const users = buffer?.users || {};
+                            const otherData = buffer?.otherData || {};
+                            (window as any).__chunkedStateBuffer = null;
+                            processInitialState(users, otherData);
+                            completeInitialState();
+                        }
+                    }, 10000);
+                };
+
+                const completeInitialState = () => {
+                    if (initialStateTimeout) {
+                        clearTimeout(initialStateTimeout);
+                        initialStateTimeout = null;
+                    }
+                    if (!isInitialStateReady) {
+                        isInitialStateReady = true;
+                        if (pendingMessages.length > 0) {
+                            const bufferedMessages = pendingMessages;
+                            pendingMessages = [];
+                            bufferedMessages.forEach(message => handleMessage(message, true));
+                        }
+                    }
+                };
+
+                function handleMessage(message: any, fromBuffer = false) {
+                    const initialStateTypes = ['INITIAL_STATE_START', 'INITIAL_STATE_CHUNK', 'INITIAL_STATE', 'CONNECTION_ESTABLISHED'];
+
+                    if (!fromBuffer && !isInitialStateReady && !initialStateTypes.includes(message.type)) {
+                        pendingMessages.push(message);
+                        return;
+                    }
+
+                    switch (message.type) {
+                        case 'CONNECTION_ESTABLISHED':
+                            console.log('[WebSocket] Connection established, waiting for initial state...');
+                            return;
+                        case 'INITIAL_STATE_START': {
+                            console.log('[WebSocket] Receiving chunked initial state (start):', {
+                                chunkIndex: message.payload.chunkIndex,
+                                totalChunks: message.payload.totalChunks
+                            });
+                            isInitialStateReady = false;
+                            pendingMessages = [];
+                            scheduleInitialStateTimeout();
+                            (window as any).__chunkedStateBuffer = {
+                                users: {},
+                                receivedChunks: 0,
+                                totalChunks: message.payload.totalChunks,
+                                otherData: null
+                            };
+                            const startBuffer = (window as any).__chunkedStateBuffer;
+                            Object.assign(startBuffer.users, message.payload.users);
+                            startBuffer.otherData = {
+                                onlineUsers: message.payload.onlineUsers,
+                                liveGames: message.payload.liveGames,
+                                singlePlayerGames: message.payload.singlePlayerGames,
+                                towerGames: message.payload.towerGames,
+                                negotiations: message.payload.negotiations,
+                                waitingRoomChats: message.payload.waitingRoomChats,
+                                gameChats: message.payload.gameChats,
+                                adminLogs: message.payload.adminLogs,
+                                announcements: message.payload.announcements,
+                                globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
+                                gameModeAvailability: message.payload.gameModeAvailability,
+                                announcementInterval: message.payload.announcementInterval
+                            };
+                            startBuffer.receivedChunks++;
+                            if (message.payload.isLast) {
+                                processInitialState(startBuffer.users, startBuffer.otherData);
+                                (window as any).__chunkedStateBuffer = null;
+                                completeInitialState();
+                            }
+                            return;
+                        }
+                        case 'INITIAL_STATE_CHUNK': {
+                            if (!(window as any).__chunkedStateBuffer) {
+                                console.warn('[WebSocket] Received chunk without INITIAL_STATE_START, initializing buffer...');
+                                (window as any).__chunkedStateBuffer = {
+                                    users: {},
+                                    receivedChunks: 0,
+                                    totalChunks: message.payload.totalChunks || 0,
+                                    otherData: null
+                                };
+                            }
+                            isInitialStateReady = false;
+                            scheduleInitialStateTimeout();
+                            const chunkBuffer = (window as any).__chunkedStateBuffer;
+                            Object.assign(chunkBuffer.users, message.payload.users);
+                            chunkBuffer.receivedChunks++;
+                            console.log(`[WebSocket] Received chunk ${chunkBuffer.receivedChunks}/${chunkBuffer.totalChunks || '?'} (index ${message.payload.chunkIndex})`);
+                            if (message.payload.isLast) {
+                                console.log('[WebSocket] All chunks received, processing...');
+                                if (!chunkBuffer.otherData) {
+                                    chunkBuffer.otherData = {
+                                        onlineUsers: message.payload.onlineUsers,
+                                        liveGames: message.payload.liveGames,
+                                        singlePlayerGames: message.payload.singlePlayerGames,
+                                        towerGames: message.payload.towerGames,
+                                        negotiations: message.payload.negotiations,
+                                        waitingRoomChats: message.payload.waitingRoomChats,
+                                        gameChats: message.payload.gameChats,
+                                        adminLogs: message.payload.adminLogs,
+                                        announcements: message.payload.announcements,
+                                        globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
+                                        gameModeAvailability: message.payload.gameModeAvailability,
+                                        announcementInterval: message.payload.announcementInterval
+                                    };
+                                }
+                                processInitialState(chunkBuffer.users, chunkBuffer.otherData);
+                                (window as any).__chunkedStateBuffer = null;
+                                completeInitialState();
+                                console.log('[WebSocket] Chunked initial state processed successfully');
+                            }
+                            return;
+                        }
+                        case 'INITIAL_STATE': {
+                            console.log('INITIAL_STATE payload:', message.payload);
+                            isInitialStateReady = false;
+                            pendingMessages = [];
+                            scheduleInitialStateTimeout();
+                            const {
+                                users,
+                                onlineUsers,
+                                liveGames,
+                                singlePlayerGames,
+                                towerGames,
+                                negotiations,
+                                waitingRoomChats,
+                                gameChats,
+                                adminLogs,
+                                announcements,
+                                globalOverrideAnnouncement,
+                                gameModeAvailability,
+                                announcementInterval
+                            } = message.payload;
+                            processInitialState(users, {
+                                onlineUsers,
+                                liveGames,
+                                singlePlayerGames,
+                                towerGames,
+                                negotiations,
+                                waitingRoomChats,
+                                gameChats,
+                                adminLogs,
+                                announcements,
+                                globalOverrideAnnouncement,
+                                gameModeAvailability,
+                                announcementInterval
+                            });
+                            completeInitialState();
+                            return;
+                        }
+                        case 'USER_UPDATE': {
+                            const payload = message.payload || {};
+                            const updatedCurrentUser = currentUser ? payload[currentUser.id] : undefined;
+
+                            setUsersMap(currentUsersMap => {
+                                const updatedUsersMap = { ...currentUsersMap };
+                                Object.entries(payload).forEach(([userId, updatedUserData]: [string, any]) => {
+                                    updatedUsersMap[userId] = updatedUserData;
+                                });
+                                return updatedUsersMap;
+                            });
+
+                            if (currentUser && updatedCurrentUser && updatedCurrentUser.id === currentUser.id) {
+                                const now = Date.now();
+                                const timeSinceLastHttpUpdate = now - lastHttpUpdateTime.current;
+
+                                const hadHttpUpdate = lastHttpUpdateTime.current > 0;
+                                const httpUpdateHadUser = lastHttpHadUpdatedUser.current;
+
+                                if (hadHttpUpdate && httpUpdateHadUser && timeSinceLastHttpUpdate < HTTP_UPDATE_DEBOUNCE_MS) {
+                                    console.log(`[WebSocket] USER_UPDATE ignored (${timeSinceLastHttpUpdate}ms since HTTP update with user, debounce: ${HTTP_UPDATE_DEBOUNCE_MS}ms, last action: ${lastHttpActionType.current})`);
+                                    return;
+                                }
+
+                                if (!httpUpdateHadUser && lastHttpActionType.current) {
+                                    console.log(`[WebSocket] USER_UPDATE applied immediately (HTTP response had no updatedUser for ${lastHttpActionType.current})`);
+                                    lastHttpUpdateTime.current = now;
+                                    lastHttpHadUpdatedUser.current = true;
+                                }
+
+                                if (hadHttpUpdate && httpUpdateHadUser && timeSinceLastHttpUpdate < HTTP_UPDATE_DEBOUNCE_MS * 2 && lastHttpActionType.current) {
+                                    console.log(`[WebSocket] USER_UPDATE ignored (possible stale data, ${timeSinceLastHttpUpdate}ms since HTTP update)`);
+                                    return;
+                                }
+
+                                const mergedUser = applyUserUpdate(updatedCurrentUser, 'USER_UPDATE-websocket');
+                                console.log('[WebSocket] Applied USER_UPDATE for currentUser:', {
+                                    inventoryLength: mergedUser.inventory?.length,
+                                    gold: mergedUser.gold,
+                                    diamonds: mergedUser.diamonds,
+                                    equipment: mergedUser.equipment,
+                                    actionPoints: mergedUser.actionPoints
+                                });
+                            }
+                            return;
+                        }
+                        case 'USER_STATUS_UPDATE': {
+                            setUsersMap(currentUsersMap => {
+                                const updatedUsersMap = { ...currentUsersMap };
+                                const onlineStatuses = Object.entries(message.payload || {}).map(([id, statusInfo]: [string, any]) => {
+                                    let user: User | undefined = currentUsersMap[id];
+                                    if (!user) {
+                                        const allUsersArray = Object.values(currentUsersMap);
+                                        user = allUsersArray.find((u: any) => u?.id === id) as User | undefined;
+                                        if (!user) {
+                                            console.warn(`[WebSocket] User ${id} not found in usersMap or allUsers`);
+                                            return undefined;
+                                        }
+                                        updatedUsersMap[id] = user;
+                                    }
+                                    return { ...user, ...statusInfo };
+                                }).filter(Boolean) as UserWithStatus[];
+                                setOnlineUsers(onlineStatuses);
+
+                                if (currentUser) {
+                                    const currentUserStatus = onlineStatuses.find(u => u.id === currentUser.id);
+                                    if (currentUserStatus) {
+                                        if (currentUserStatus.gameId && currentUserStatus.status === 'in-game') {
+                                            const gameId = currentUserStatus.gameId;
+                                            console.log('[WebSocket] Current user status updated to in-game:', gameId);
+                                            setLiveGames(currentGames => {
+                                                if (currentGames[gameId]) {
+                                                    console.log('[WebSocket] Game found in liveGames, routing immediately');
+                                                    setTimeout(() => {
+                                                        window.location.hash = `#/game/${gameId}`;
+                                                    }, 100);
+                                                } else {
+                                                    console.log('[WebSocket] Game not in liveGames yet, will wait for GAME_UPDATE');
+                                                    let attempts = 0;
+                                                    const maxAttempts = 20;
+                                                    const checkGame = () => {
+                                                        attempts++;
+                                                        setLiveGames(games => {
+                                                            if (games[gameId]) {
+                                                                console.log('[WebSocket] Game received in delayed check, routing');
+                                                                setTimeout(() => {
+                                                                    window.location.hash = `#/game/${gameId}`;
+                                                                }, 100);
+                                                            } else if (attempts < maxAttempts) {
+                                                                setTimeout(checkGame, 200);
+                                                            }
+                                                            return games;
+                                                        });
+                                                    };
+                                                    setTimeout(checkGame, 200);
+                                                }
+                                                return currentGames;
+                                            });
+                                        } else if (currentUserStatus.status === 'waiting' && currentUserStatus.mode && !currentUserStatus.gameId) {
+                                            const currentHash = window.location.hash;
+                                            const isGamePage = currentHash.startsWith('#/game/');
+                                            if (isGamePage) {
+                                                const postGameRedirect = sessionStorage.getItem('postGameRedirect');
+                                                if (postGameRedirect) {
+                                                    console.log('[WebSocket] Current user status updated to waiting, routing to postGameRedirect:', postGameRedirect);
+                                                    sessionStorage.removeItem('postGameRedirect');
+                                                    setTimeout(() => {
+                                                        window.location.hash = postGameRedirect;
+                                                    }, 100);
+                                                } else {
+                                                    const mode = currentUserStatus.mode;
+                                                    if (!mode && (currentUserStatus.status === UserStatus.Waiting || currentUserStatus.status === UserStatus.Resting)) {
+                                                        console.log('[WebSocket] Current user status updated to waiting without mode (likely in strategic/playful lobby)');
+                                                    } else if (mode) {
+                                                        console.warn('[WebSocket] Individual game mode detected, redirecting to profile:', mode);
+                                                        setTimeout(() => {
+                                                            window.location.hash = '#/profile';
+                                                        }, 100);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                return updatedUsersMap;
+                            });
+                            return;
+                        }
+                        case 'WAITING_ROOM_CHAT_UPDATE': {
+                            setWaitingRoomChats(currentChats => {
+                                const updatedChats = { ...currentChats };
+                                Object.entries(message.payload || {}).forEach(([channel, messages]: [string, any]) => {
+                                    updatedChats[channel] = messages;
+                                });
+                                return updatedChats;
+                            });
+                            return;
+                        }
+                        case 'GAME_CHAT_UPDATE': {
+                            setGameChats(currentChats => {
+                                const updatedChats = { ...currentChats };
+                                Object.entries(message.payload || {}).forEach(([gameId, messages]: [string, any]) => {
+                                    updatedChats[gameId] = messages;
+                                });
+                                return updatedChats;
+                            });
+                            return;
+                        }
+                        case 'GAME_UPDATE': {
+                            Object.entries(message.payload || {}).forEach(([gameId, game]: [string, any]) => {
+                                const gameCategory = game.gameCategory || (game.isSinglePlayer ? 'singleplayer' : game.isTower ? 'tower' : 'normal');
+
+                                if (gameCategory === 'singleplayer') {
+                                    setSinglePlayerGames(currentGames => {
+                                        const signature = stableStringify(game);
+                                        const previousSignature = singlePlayerGameSignaturesRef.current[gameId];
+                                        if (previousSignature === signature) {
+                                            return currentGames;
+                                        }
+                                        singlePlayerGameSignaturesRef.current[gameId] = signature;
+                                        const updatedGames = { ...currentGames };
+                                        updatedGames[gameId] = game;
+
+                                        if (currentUser && game.player1 && game.player2) {
+                                            const isPlayer1 = game.player1.id === currentUser.id;
+                                            const isPlayer2 = game.player2.id === currentUser.id;
+
+                                            if (isPlayer1 || isPlayer2) {
+                                                const targetHash = `#/game/${gameId}`;
+                                                if (window.location.hash !== targetHash) {
+                                                    console.log('[WebSocket] Routing to single player game:', gameId);
+                                                    setTimeout(() => {
+                                                        if (window.location.hash !== targetHash) {
+                                                            window.location.hash = targetHash;
+                                                        }
+                                                    }, 100);
+                                                }
+                                            }
+                                        }
+                                        return updatedGames;
+                                    });
+                                } else if (gameCategory === 'tower') {
+                                    setTowerGames(currentGames => {
+                                        const signature = stableStringify(game);
+                                        const previousSignature = towerGameSignaturesRef.current[gameId];
+                                        if (previousSignature === signature) {
+                                            return currentGames;
+                                        }
+                                        towerGameSignaturesRef.current[gameId] = signature;
+                                        const updatedGames = { ...currentGames };
+                                        updatedGames[gameId] = game;
+
+                                        if (currentUser && game.player1 && game.player2) {
+                                            const isPlayer1 = game.player1.id === currentUser.id;
+                                            const isPlayer2 = game.player2.id === currentUser.id;
+
+                                            if (isPlayer1 || isPlayer2) {
+                                                const targetHash = `#/game/${gameId}`;
+                                                if (window.location.hash !== targetHash) {
+                                                    console.log('[WebSocket] Routing to tower game:', gameId);
+                                                    setTimeout(() => {
+                                                        if (window.location.hash !== targetHash) {
+                                                            window.location.hash = targetHash;
+                                                        }
+                                                    }, 100);
+                                                }
+                                            }
+                                        }
+                                        return updatedGames;
+                                    });
+                                } else {
+                                    setLiveGames(currentGames => {
+                                        const signature = stableStringify(game);
+                                        const previousSignature = liveGameSignaturesRef.current[gameId];
+                                        if (previousSignature === signature) {
+                                            return currentGames;
+                                        }
+                                        liveGameSignaturesRef.current[gameId] = signature;
+                                        const updatedGames = { ...currentGames };
+                                        updatedGames[gameId] = game;
+
+                                        if (currentUser && game.player1 && game.player2) {
+                                            const isPlayer1 = game.player1.id === currentUser.id;
+                                            const isPlayer2 = game.player2.id === currentUser.id;
+
+                                            if (isPlayer1 || isPlayer2) {
+                                                const targetHash = `#/game/${gameId}`;
+                                                if (window.location.hash !== targetHash) {
+                                                    console.log('[WebSocket] Routing to game:', gameId);
+                                                    setTimeout(() => {
+                                                        if (window.location.hash !== targetHash) {
+                                                            window.location.hash = targetHash;
+                                                        }
+                                                    }, 100);
+                                                }
+                                            }
+                                        }
+                                        return updatedGames;
+                                    });
+                                }
+                            });
+                            return;
+                        }
+                        case 'GAME_DELETED': {
+                            const deletedGameId = message.payload?.gameId;
+                            const serverGameCategory = message.payload?.gameCategory;
+                            if (!deletedGameId) return;
+
+                            const removeFromGames = (setter: any, signaturesRef: Record<string, string>) => {
+                                setter((currentGames: Record<string, any>) => {
+                                    if (!currentGames[deletedGameId]) return currentGames;
+                                    const updatedGames = { ...currentGames };
+                                    delete updatedGames[deletedGameId];
+                                    delete signaturesRef[deletedGameId];
+                                    return updatedGames;
+                                });
+                            };
+
+                            if (serverGameCategory === 'singleplayer') {
+                                removeFromGames(setSinglePlayerGames, singlePlayerGameSignaturesRef.current);
+                            } else if (serverGameCategory === 'tower') {
+                                removeFromGames(setTowerGames, towerGameSignaturesRef.current);
+                            } else if (serverGameCategory === 'normal') {
+                                removeFromGames(setLiveGames, liveGameSignaturesRef.current);
+                            } else {
+                                removeFromGames(setLiveGames, liveGameSignaturesRef.current);
+                                removeFromGames(setSinglePlayerGames, singlePlayerGameSignaturesRef.current);
+                                removeFromGames(setTowerGames, towerGameSignaturesRef.current);
+                            }
+
+                            if (serverGameCategory === 'singleplayer') {
+                                const currentHash = window.location.hash;
+                                const isGamePage = currentHash.startsWith('#/game/') && currentHash.includes(deletedGameId);
+                                if (isGamePage) {
+                                    const postGameRedirect = sessionStorage.getItem('postGameRedirect');
+                                    if (postGameRedirect) {
+                                        console.log('[WebSocket] Single player game deleted, routing to postGameRedirect:', postGameRedirect);
+                                        sessionStorage.removeItem('postGameRedirect');
+                                        setTimeout(() => {
+                                            window.location.hash = postGameRedirect;
+                                        }, 100);
+                                    } else {
+                                        console.log('[WebSocket] Single player game deleted, routing to singleplayer lobby');
+                                        setTimeout(() => {
+                                            window.location.hash = '#/singleplayer';
+                                        }, 100);
+                                    }
+                                }
+                            }
+                            return;
+                        }
+                        case 'CHALLENGE_DECLINED': {
+                            if (message.payload?.challengerId === currentUser?.id && message.payload?.declinedMessage) {
+                                showError(message.payload.declinedMessage.message);
+                            }
+                            return;
+                        }
+                        case 'NEGOTIATION_UPDATE': {
+                            if (message.payload?.negotiations) {
+                                const updatedNegotiations = JSON.parse(JSON.stringify(message.payload.negotiations));
+                                setNegotiations(updatedNegotiations);
+                            }
+                            if (message.payload?.userStatuses) {
+                                setOnlineUsers(prevOnlineUsers => {
+                                    const updatedStatuses = message.payload.userStatuses;
+                                    return prevOnlineUsers.map(user => {
+                                        const statusInfo = updatedStatuses[user.id];
+                                        if (statusInfo) {
+                                            return { ...user, ...statusInfo };
+                                        }
+                                        return user;
+                                    });
+                                });
+                            }
+                            return;
+                        }
+                        case 'ANNOUNCEMENT_UPDATE': {
+                            const { announcements: anns, globalOverrideAnnouncement: override } = message.payload || {};
+                            if (Array.isArray(anns)) setAnnouncements(anns);
+                            if (override !== undefined) setGlobalOverrideAnnouncement(override);
+                            return;
+                        }
+                        case 'GAME_MODE_AVAILABILITY_UPDATE': {
+                            const { gameModeAvailability: availability } = message.payload || {};
+                            if (availability) setGameModeAvailability(availability);
+                            return;
+                        }
+                        case 'TOURNAMENT_STATE_UPDATE': {
+                            const { tournamentState, tournamentType } = message.payload || {};
+                            if (currentUserRef.current && tournamentState) {
+                                setUsersMap(prev => ({
+                                    ...prev,
+                                    [currentUserRef.current!.id]: {
+                                        ...prev[currentUserRef.current!.id],
+                                        [`last${tournamentType.charAt(0).toUpperCase() + tournamentType.slice(1)}Tournament`]: tournamentState
+                                    }
+                                }));
+                            }
+                            return;
+                        }
+                        case 'ERROR': {
+                            console.error('[WebSocket] Error message:', message.payload?.message || 'Unknown error');
+                            return;
+                        }
+                        default:
+                            console.warn('[WebSocket] Unhandled message type:', message.type);
+                    }
+                }
+
                 ws.onmessage = (event) => {
                     try {
                         const message = JSON.parse(event.data);
-                        
-                        // 연결 확인 메시지 처리
-                        if (message.type === 'CONNECTION_ESTABLISHED') {
-                            console.log('[WebSocket] Connection established, waiting for initial state...');
-                            return;
-                        }
-
-                        switch (message.type) {
-                            case 'INITIAL_STATE_START':
-                                // 청크 전송 시작 - 첫 번째 청크
-                                console.log('[WebSocket] Receiving chunked initial state (start):', {
-                                    chunkIndex: message.payload.chunkIndex,
-                                    totalChunks: message.payload.totalChunks
-                                });
-                                // 버퍼 초기화 및 첫 청크 데이터 병합
-                                if (!(window as any).__chunkedStateBuffer) {
-                                    (window as any).__chunkedStateBuffer = {
-                                        users: {},
-                                        receivedChunks: 0,
-                                        totalChunks: message.payload.totalChunks,
-                                        otherData: null
-                                    };
-                                }
-                                const startBuffer = (window as any).__chunkedStateBuffer;
-                                // 첫 번째 청크의 사용자 데이터 병합
-                                Object.assign(startBuffer.users, message.payload.users);
-                                // 다른 데이터는 첫 번째 청크에서 가져옴
-                                startBuffer.otherData = {
-                                    onlineUsers: message.payload.onlineUsers,
-                                    liveGames: message.payload.liveGames,
-                                    negotiations: message.payload.negotiations,
-                                    waitingRoomChats: message.payload.waitingRoomChats,
-                                    gameChats: message.payload.gameChats,
-                                    adminLogs: message.payload.adminLogs,
-                                    announcements: message.payload.announcements,
-                                    globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
-                                    gameModeAvailability: message.payload.gameModeAvailability,
-                                    announcementInterval: message.payload.announcementInterval
-                                };
-                                startBuffer.receivedChunks++;
-                                
-                                // 마지막 청크인 경우 (청크가 1개뿐)
-                                if (message.payload.isLast) {
-                                    processInitialState(startBuffer.users, startBuffer.otherData);
-                                    (window as any).__chunkedStateBuffer = null;
-                                }
-                                break;
-                            case 'INITIAL_STATE_CHUNK':
-                                // 추가 청크 수집
-                                if (!(window as any).__chunkedStateBuffer) {
-                                    console.warn('[WebSocket] Received chunk without INITIAL_STATE_START, initializing buffer...');
-                                    (window as any).__chunkedStateBuffer = {
-                                        users: {},
-                                        receivedChunks: 0,
-                                        totalChunks: message.payload.totalChunks || 0,
-                                        otherData: null
-                                    };
-                                }
-                                const chunkBuffer = (window as any).__chunkedStateBuffer;
-                                // 사용자 데이터 병합
-                                Object.assign(chunkBuffer.users, message.payload.users);
-                                chunkBuffer.receivedChunks++;
-                                console.log(`[WebSocket] Received chunk ${chunkBuffer.receivedChunks}/${chunkBuffer.totalChunks || '?'} (index ${message.payload.chunkIndex})`);
-                                
-                                if (message.payload.isLast) {
-                                    // 모든 청크를 받았으므로 처리
-                                    console.log('[WebSocket] All chunks received, processing...');
-                                    if (!chunkBuffer.otherData) {
-                                        // otherData가 없으면 현재 청크에서 가져옴
-                                        chunkBuffer.otherData = {
-                                            onlineUsers: message.payload.onlineUsers,
-                                            liveGames: message.payload.liveGames,
-                                            negotiations: message.payload.negotiations,
-                                            waitingRoomChats: message.payload.waitingRoomChats,
-                                            gameChats: message.payload.gameChats,
-                                            adminLogs: message.payload.adminLogs,
-                                            announcements: message.payload.announcements,
-                                            globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
-                                            gameModeAvailability: message.payload.gameModeAvailability,
-                                            announcementInterval: message.payload.announcementInterval
-                                        };
-                                    }
-                                    processInitialState(chunkBuffer.users, chunkBuffer.otherData);
-                                    (window as any).__chunkedStateBuffer = null;
-                                    console.log('[WebSocket] Chunked initial state processed successfully');
-                                }
-                                break;
-                            case 'INITIAL_STATE':
-                                console.log('INITIAL_STATE payload:', message.payload);
-                                const { users, onlineUsers, liveGames, negotiations, waitingRoomChats, gameChats, adminLogs, announcements, globalOverrideAnnouncement, gameModeAvailability, announcementInterval } = message.payload;
-                                processInitialState(users, {
-                                    onlineUsers,
-                                    liveGames,
-                                    negotiations,
-                                    waitingRoomChats,
-                                    gameChats,
-                                    adminLogs,
-                                    announcements,
-                                    globalOverrideAnnouncement,
-                                    gameModeAvailability,
-                                    announcementInterval
-                                });
-                                break;
-                            case 'USER_UPDATE': {
-                                const payload = message.payload || {};
-                                const updatedCurrentUser = currentUser ? payload[currentUser.id] : undefined;
-
-                                setUsersMap(currentUsersMap => {
-                                    const updatedUsersMap = { ...currentUsersMap };
-                                    Object.entries(payload).forEach(([userId, updatedUserData]: [string, any]) => {
-                                        updatedUsersMap[userId] = updatedUserData;
-                                    });
-                                    return updatedUsersMap;
-                                });
-
-                                // 현재 유저의 업데이트 처리
-                                if (currentUser && updatedCurrentUser && updatedCurrentUser.id === currentUser.id) {
-                                    const now = Date.now();
-                                    const timeSinceLastHttpUpdate = now - lastHttpUpdateTime.current;
-                                    
-                                    // HTTP 응답 후 일정 시간 내 WebSocket 업데이트는 무시 (중복 방지)
-                                    // 하지만 HTTP 응답에 updatedUser가 없었던 경우에는 WebSocket 업데이트를 받아야 함
-                                    const hadHttpUpdate = lastHttpUpdateTime.current > 0;
-                                    const httpUpdateHadUser = lastHttpHadUpdatedUser.current;
-                                    
-                                    // HTTP 응답에 updatedUser가 있었고 최근에 업데이트가 있었으면 무시
-                                    if (hadHttpUpdate && httpUpdateHadUser && timeSinceLastHttpUpdate < HTTP_UPDATE_DEBOUNCE_MS) {
-                                        console.log(`[WebSocket] USER_UPDATE ignored (${timeSinceLastHttpUpdate}ms since HTTP update with user, debounce: ${HTTP_UPDATE_DEBOUNCE_MS}ms, last action: ${lastHttpActionType.current})`);
-                                        break;
-                                    }
-                                    
-                                    // HTTP 응답에 updatedUser가 없었던 경우, WebSocket 업데이트를 즉시 적용
-                                    if (!httpUpdateHadUser && lastHttpActionType.current) {
-                                        console.log(`[WebSocket] USER_UPDATE applied immediately (HTTP response had no updatedUser for ${lastHttpActionType.current})`);
-                                        // HTTP 업데이트 타임스탬프를 업데이트하여 중복 방지
-                                        lastHttpUpdateTime.current = now;
-                                        lastHttpHadUpdatedUser.current = true; // 이제 WebSocket으로 업데이트되었으므로 표시
-                                    }
-                                    
-                                    // HTTP 업데이트가 최근에 있었고, WebSocket 업데이트가 HTTP 업데이트보다 오래된 데이터일 가능성이 있는 경우 무시
-                                    // (서버에서 WebSocket 메시지가 지연되어 도착하는 경우)
-                                    // 단, HTTP 응답에 updatedUser가 없었던 경우는 제외
-                                    if (hadHttpUpdate && httpUpdateHadUser && timeSinceLastHttpUpdate < HTTP_UPDATE_DEBOUNCE_MS * 2 && lastHttpActionType.current) {
-                                        console.log(`[WebSocket] USER_UPDATE ignored (possible stale data, ${timeSinceLastHttpUpdate}ms since HTTP update)`);
-                                        break;
-                                    }
-                                    
-                                    // 실제 변경사항이 있을 때만 적용 (applyUserUpdate 내부에서도 확인)
-                                    const mergedUser = applyUserUpdate(updatedCurrentUser, 'USER_UPDATE-websocket');
-                                    console.log('[WebSocket] Applied USER_UPDATE for currentUser:', {
-                                        inventoryLength: mergedUser.inventory?.length,
-                                        gold: mergedUser.gold,
-                                        diamonds: mergedUser.diamonds,
-                                        equipment: mergedUser.equipment,
-                                        actionPoints: mergedUser.actionPoints
-                                    });
-                                }
-                                break;
-                            }
-                            case 'USER_STATUS_UPDATE':
-                                setUsersMap(currentUsersMap => {
-                                    // message.payload는 모든 온라인 유저의 상태 정보를 포함합니다
-                                    // usersMap에 있는 유저를 찾고, 없으면 allUsers에서 찾아서 추가
-                                    const updatedUsersMap = { ...currentUsersMap };
-                                    const onlineStatuses = Object.entries(message.payload).map(([id, statusInfo]: [string, any]) => {
-                                        let user: User | undefined = currentUsersMap[id];
-                                        // usersMap에 없으면 allUsers에서 찾기
-                                        if (!user) {
-                                            const allUsersArray = Object.values(currentUsersMap);
-                                            user = allUsersArray.find((u: any) => u?.id === id) as User | undefined;
-                                            // allUsers에서도 찾지 못했으면 undefined 반환 (나중에 INITIAL_STATE에서 받을 것)
-                                            if (!user) {
-                                                console.warn(`[WebSocket] User ${id} not found in usersMap or allUsers`);
-                                                return undefined;
-                                            }
-                                            // usersMap에 추가
-                                            updatedUsersMap[id] = user;
-                                        }
-                                        // statusInfo와 user를 병합하여 UserWithStatus 생성
-                                        return { ...user, ...statusInfo };
-                                    }).filter(Boolean) as UserWithStatus[];
-                                    // 온라인 유저 목록을 즉시 업데이트
-                                    setOnlineUsers(onlineStatuses);
-                                    
-                                    // 현재 사용자의 상태가 업데이트되었는지 확인하고 라우팅
-                                    if (currentUser) {
-                                        const currentUserStatus = onlineStatuses.find(u => u.id === currentUser.id);
-                                        if (currentUserStatus) {
-                                            // 게임으로 이동해야 하는 경우
-                                            if (currentUserStatus.gameId && currentUserStatus.status === 'in-game') {
-                                                const gameId = currentUserStatus.gameId;
-                                                console.log('[WebSocket] Current user status updated to in-game:', gameId);
-                                                
-                                                // liveGames 상태를 확인하고 라우팅
-                                                setLiveGames(currentGames => {
-                                                    if (currentGames[gameId]) {
-                                                        console.log('[WebSocket] Game found in liveGames, routing immediately');
-                                                        setTimeout(() => {
-                                                            window.location.hash = `#/game/${gameId}`;
-                                                        }, 100);
-                                                    } else {
-                                                        console.log('[WebSocket] Game not in liveGames yet, will wait for GAME_UPDATE');
-                                                        // GAME_UPDATE를 기다리기 위해 짧은 지연 후 재시도
-                                                        let attempts = 0;
-                                                        const maxAttempts = 20;
-                                                        const checkGame = () => {
-                                                            attempts++;
-                                                            setLiveGames(games => {
-                                                                if (games[gameId]) {
-                                                                    console.log('[WebSocket] Game received in delayed check, routing');
-                                                                    setTimeout(() => {
-                                                                        window.location.hash = `#/game/${gameId}`;
-                                                                    }, 100);
-                                                                } else if (attempts < maxAttempts) {
-                                                                    setTimeout(checkGame, 200);
-                                                                }
-                                                                return games;
-                                                            });
-                                                        };
-                                                        setTimeout(checkGame, 200);
-                                                    }
-                                                    return currentGames;
-                                                });
-                                            }
-                                            // 대기실로 이동해야 하는 경우 (상태가 waiting이고 게임 페이지에 있는 경우)
-                                            else if (currentUserStatus.status === 'waiting' && currentUserStatus.mode && !currentUserStatus.gameId) {
-                                                const currentHash = window.location.hash;
-                                                const isGamePage = currentHash.startsWith('#/game/');
-                                                if (isGamePage) {
-                                                    // postGameRedirect가 설정되어 있으면 (싱글플레이 등) 그것을 사용
-                                                    const postGameRedirect = sessionStorage.getItem('postGameRedirect');
-                                                    if (postGameRedirect) {
-                                                        console.log('[WebSocket] Current user status updated to waiting, routing to postGameRedirect:', postGameRedirect);
-                                                        sessionStorage.removeItem('postGameRedirect');
-                                                    setTimeout(() => {
-                                                            window.location.hash = postGameRedirect;
-                                                        }, 100);
-                                                    } else {
-                                                        // 개별 게임 모드가 아닌 strategic/playful만 허용
-                                                        // strategic/playful 대기실에서는 mode가 undefined일 수 있음
-                                                        const mode = currentUserStatus.mode;
-                                                        if (!mode && (currentUserStatus.status === UserStatus.Waiting || currentUserStatus.status === UserStatus.Resting)) {
-                                                            // mode가 undefined이고 waiting/resting 상태인 경우, strategic/playful 대기실에 있을 가능성이 높음
-                                                            // 라우팅은 하지 않음 (이미 대기실에 있을 가능성이 높음)
-                                                            console.log('[WebSocket] Current user status updated to waiting without mode (likely in strategic/playful lobby)');
-                                                        } else if (mode) {
-                                                            // 개별 게임 모드인 경우 프로필로 이동 (통합 대기실 외에는 접근 불가)
-                                                            console.warn('[WebSocket] Individual game mode detected, redirecting to profile:', mode);
-                                                            setTimeout(() => {
-                                                                window.location.hash = '#/profile';
-                                                            }, 100);
-                                                        }
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                    
-                                    return updatedUsersMap;
-                                });
-                                break;
-                            case 'WAITING_ROOM_CHAT_UPDATE':
-                                setWaitingRoomChats(currentChats => {
-                                    const updatedChats = { ...currentChats };
-                                    // payload에 있는 각 채널의 메시지 목록을 업데이트
-                                    Object.entries(message.payload || {}).forEach(([channel, messages]: [string, any]) => {
-                                        updatedChats[channel] = messages;
-                                    });
-                                    return updatedChats;
-                                });
-                                break;
-                            case 'GAME_CHAT_UPDATE':
-                                setGameChats(currentChats => {
-                                    const updatedChats = { ...currentChats };
-                                    // payload에 있는 각 게임 채널의 메시지 목록을 업데이트
-                                    Object.entries(message.payload || {}).forEach(([gameId, messages]: [string, any]) => {
-                                        updatedChats[gameId] = messages;
-                                    });
-                                    return updatedChats;
-                                });
-                                break;
-                            case 'GAME_UPDATE':
-                                // 게임 업데이트 처리 (게임 카테고리별로 분리)
-                                Object.entries(message.payload || {}).forEach(([gameId, game]: [string, any]) => {
-                                    const gameCategory = game.gameCategory || (game.isSinglePlayer ? 'singleplayer' : 'normal');
-                                    
-                                    if (gameCategory === 'singleplayer') {
-                                        setSinglePlayerGames(currentGames => {
-                                            const signature = stableStringify(game);
-                                            const previousSignature = singlePlayerGameSignaturesRef.current[gameId];
-                                            if (previousSignature === signature) {
-                                                return currentGames;
-                                            }
-                                            singlePlayerGameSignaturesRef.current[gameId] = signature;
-                                            const updatedGames = { ...currentGames };
-                                            updatedGames[gameId] = game;
-                                            
-                                            // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
-                                            if (currentUser && game.player1 && game.player2) {
-                                                const isPlayer1 = game.player1.id === currentUser.id;
-                                                const isPlayer2 = game.player2.id === currentUser.id;
-                                                
-                                                if (isPlayer1 || isPlayer2) {
-                                                    const targetHash = `#/game/${gameId}`;
-                                                    if (window.location.hash !== targetHash) {
-                                                        console.log('[WebSocket] Routing to single player game:', gameId);
-                                                        setTimeout(() => {
-                                                            if (window.location.hash !== targetHash) {
-                                                                window.location.hash = targetHash;
-                                                            }
-                                                        }, 100);
-                                                    }
-                                                }
-                                            }
-                                            return updatedGames;
-                                        });
-                                    } else if (gameCategory === 'tower') {
-                                        setTowerGames(currentGames => {
-                                            const signature = stableStringify(game);
-                                            const previousSignature = towerGameSignaturesRef.current[gameId];
-                                            if (previousSignature === signature) {
-                                                return currentGames;
-                                            }
-                                            towerGameSignaturesRef.current[gameId] = signature;
-                                            const updatedGames = { ...currentGames };
-                                            updatedGames[gameId] = game;
-                                            
-                                            // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
-                                            if (currentUser && game.player1 && game.player2) {
-                                                const isPlayer1 = game.player1.id === currentUser.id;
-                                                const isPlayer2 = game.player2.id === currentUser.id;
-                                                
-                                                if (isPlayer1 || isPlayer2) {
-                                                    const targetHash = `#/game/${gameId}`;
-                                                    if (window.location.hash !== targetHash) {
-                                                        console.log('[WebSocket] Routing to tower game:', gameId);
-                                                        setTimeout(() => {
-                                                            if (window.location.hash !== targetHash) {
-                                                                window.location.hash = targetHash;
-                                                            }
-                                                        }, 100);
-                                                    }
-                                                }
-                                            }
-                                            return updatedGames;
-                                        });
-                                    } else {
-                                        // normal 게임
-                                        setLiveGames(currentGames => {
-                                            const signature = stableStringify(game);
-                                            const previousSignature = liveGameSignaturesRef.current[gameId];
-                                            if (previousSignature === signature) {
-                                                return currentGames;
-                                            }
-                                            liveGameSignaturesRef.current[gameId] = signature;
-                                            const updatedGames = { ...currentGames };
-                                            updatedGames[gameId] = game;
-                                            
-                                            // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
-                                            if (currentUser && game.player1 && game.player2) {
-                                                const isPlayer1 = game.player1.id === currentUser.id;
-                                                const isPlayer2 = game.player2.id === currentUser.id;
-                                                
-                                                if (isPlayer1 || isPlayer2) {
-                                                    const targetHash = `#/game/${gameId}`;
-                                                    if (window.location.hash !== targetHash) {
-                                                        console.log('[WebSocket] Routing to game:', gameId);
-                                                        setTimeout(() => {
-                                                            if (window.location.hash !== targetHash) {
-                                                                window.location.hash = targetHash;
-                                                            }
-                                                        }, 100);
-                                                    }
-                                                }
-                                            }
-                                            return updatedGames;
-                                        });
-                                    }
-                                });
-                                break;
-                            case 'GAME_DELETED':
-                                // 게임 삭제 처리 (게임 카테고리별로 분리)
-                                const deletedGameId = message.payload?.gameId;
-                                const serverGameCategory = message.payload?.gameCategory;
-                                if (deletedGameId) {
-                                    // 서버에서 제공한 gameCategory를 우선 사용
-                                    if (serverGameCategory === 'singleplayer') {
-                                        setSinglePlayerGames(currentGames => {
-                                            if (currentGames[deletedGameId]) {
-                                                const updatedGames = { ...currentGames };
-                                                delete updatedGames[deletedGameId];
-                                                delete singlePlayerGameSignaturesRef.current[deletedGameId];
-                                                console.log('[WebSocket] Single player game deleted:', deletedGameId);
-                                                return updatedGames;
-                                            }
-                                            return currentGames;
-                                        });
-                                    } else if (serverGameCategory === 'tower') {
-                                        setTowerGames(currentGames => {
-                                            if (currentGames[deletedGameId]) {
-                                                const updatedGames = { ...currentGames };
-                                                delete updatedGames[deletedGameId];
-                                                delete towerGameSignaturesRef.current[deletedGameId];
-                                                console.log('[WebSocket] Tower game deleted:', deletedGameId);
-                                                return updatedGames;
-                                            }
-                                            return currentGames;
-                                        });
-                                    } else {
-                                        // normal 게임 또는 gameCategory가 없는 경우 (하위 호환성)
-                                    setLiveGames(currentGames => {
-                                            if (currentGames[deletedGameId]) {
-                                        const updatedGames = { ...currentGames };
-                                        delete updatedGames[deletedGameId];
-                                                delete liveGameSignaturesRef.current[deletedGameId];
-                                                console.log('[WebSocket] Normal game deleted:', deletedGameId);
-                                        return updatedGames;
-                                            }
-                                            return currentGames;
-                                        });
-                                        
-                                        // 모든 카테고리에서 찾기 (하위 호환성)
-                                        setSinglePlayerGames(currentGames => {
-                                            if (currentGames[deletedGameId]) {
-                                                const updatedGames = { ...currentGames };
-                                                delete updatedGames[deletedGameId];
-                                                delete singlePlayerGameSignaturesRef.current[deletedGameId];
-                                                console.log('[WebSocket] Single player game deleted (fallback):', deletedGameId);
-                                                return updatedGames;
-                                            }
-                                            return currentGames;
-                                        });
-                                        
-                                        setTowerGames(currentGames => {
-                                            if (currentGames[deletedGameId]) {
-                                                const updatedGames = { ...currentGames };
-                                                delete updatedGames[deletedGameId];
-                                                delete towerGameSignaturesRef.current[deletedGameId];
-                                                console.log('[WebSocket] Tower game deleted (fallback):', deletedGameId);
-                                                return updatedGames;
-                                            }
-                                            return currentGames;
-                                        });
-                                    }
-                                    
-                                    // 싱글플레이 게임이 삭제되었고, 현재 게임 페이지에 있으면 postGameRedirect 확인
-                                    if (serverGameCategory === 'singleplayer') {
-                                        const currentHash = window.location.hash;
-                                        const isGamePage = currentHash.startsWith('#/game/') && currentHash.includes(deletedGameId);
-                                        if (isGamePage) {
-                                            const postGameRedirect = sessionStorage.getItem('postGameRedirect');
-                                            if (postGameRedirect) {
-                                                console.log('[WebSocket] Single player game deleted, routing to postGameRedirect:', postGameRedirect);
-                                                sessionStorage.removeItem('postGameRedirect');
-                                                setTimeout(() => {
-                                                    window.location.hash = postGameRedirect;
-                                                }, 100);
-                                            } else {
-                                                console.log('[WebSocket] Single player game deleted, routing to singleplayer lobby');
-                                                setTimeout(() => {
-                                                    window.location.hash = '#/singleplayer';
-                                                }, 100);
-                                            }
-                                        }
-                                    }
-                                }
-                                break;
-                            case 'CHALLENGE_DECLINED':
-                                // 대국 신청 거절 메시지 처리 (발신자에게만 표시)
-                                if (message.payload?.challengerId === currentUser?.id && message.payload?.declinedMessage) {
-                                    showError(message.payload.declinedMessage.message);
-                                }
-                                break;
-                            case 'NEGOTIATION_UPDATE':
-                                // 대국 신청서 업데이트 처리
-                                if (message.payload?.negotiations) {
-                                    // Deep copy를 수행하여 React가 변경을 감지하도록 함
-                                    const updatedNegotiations = JSON.parse(JSON.stringify(message.payload.negotiations));
-                                    setNegotiations(updatedNegotiations);
-                                }
-                                // 사용자 상태도 업데이트
-                                if (message.payload?.userStatuses) {
-                                    setOnlineUsers(prevOnlineUsers => {
-                                        const updatedStatuses = message.payload.userStatuses;
-                                        return prevOnlineUsers.map(user => {
-                                            const statusInfo = updatedStatuses[user.id];
-                                            if (statusInfo) {
-                                                return { ...user, ...statusInfo };
-                                            }
-                                            return user;
-                                        });
-                                    });
-                                }
-                                break;
-                        }
+                        handleMessage(message);
                     } catch (error) {
                         console.error('[WebSocket] Error parsing message:', error);
                     }
@@ -1664,6 +1688,12 @@ export const useApp = () => {
                         clearTimeout(connectionTimeout);
                         connectionTimeout = null;
                     }
+                    if (initialStateTimeout) {
+                        clearTimeout(initialStateTimeout);
+                        initialStateTimeout = null;
+                    }
+                    pendingMessages = [];
+                    isInitialStateReady = true;
                     console.log('[WebSocket] Disconnected', {
                         code: event.code,
                         reason: event.reason,
@@ -1715,6 +1745,12 @@ export const useApp = () => {
                 clearTimeout(reconnectTimeout);
                 reconnectTimeout = null;
             }
+            if (initialStateTimeout) {
+                clearTimeout(initialStateTimeout);
+                initialStateTimeout = null;
+            }
+            pendingMessages = [];
+            isInitialStateReady = true;
             if (ws) {
                 if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
                     ws.close();

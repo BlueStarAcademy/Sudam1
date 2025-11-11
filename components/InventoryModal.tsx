@@ -421,10 +421,10 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
         return Math.max(400, Math.min(950, baseWidth));
     }, [windowWidth]);
     
-    // 뷰포트 크기에 비례한 창 높이 계산 (80% 높이, 최소 450px, 최대 900px) - 인벤토리 슬롯 2줄 이상 보이도록
+    // 뷰포트 크기에 비례한 창 높이 계산 (90% 높이, 최소 520px, 최대 1000px) - 인벤토리 슬롯 2줄 이상 보이도록
     const calculatedHeight = useMemo(() => {
-        const baseHeight = windowHeight * 0.80;
-        return Math.max(450, Math.min(900, baseHeight));
+        const baseHeight = windowHeight * 0.90;
+        return Math.max(520, Math.min(1000, baseHeight));
     }, [windowHeight]);
     
     // 모바일 감지 (768px 이하를 모바일로 간주)
@@ -880,7 +880,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
                 </div>
 
                 {/* Bottom section: Inventory grid */}
-                <div className="bg-gray-900 overflow-hidden flex flex-col" style={{ flex: '1 1 0', minHeight: `${isMobile ? Math.max(200 * scaleFactor, windowHeight * 0.3) : Math.max(250 * scaleFactor, windowHeight * 0.35)}px`, padding: `${isMobile ? Math.max(8, Math.round(10 * scaleFactor)) : Math.max(12, Math.round(16 * scaleFactor))}px`, paddingTop: `${isMobile ? Math.max(8, Math.round(10 * scaleFactor)) : Math.max(12, Math.round(16 * scaleFactor))}px`, paddingBottom: `${isMobile ? Math.max(8, Math.round(10 * scaleFactor)) : Math.max(12, Math.round(16 * scaleFactor))}px`, marginBottom: 0 }}>
+                <div className="bg-gray-900 overflow-hidden flex flex-col" style={{ flex: '1 1 0', minHeight: `${isMobile ? Math.max(200 * scaleFactor, windowHeight * 0.3) : Math.max(320 * scaleFactor, windowHeight * 0.45)}px`, padding: `${isMobile ? Math.max(8, Math.round(10 * scaleFactor)) : Math.max(12, Math.round(16 * scaleFactor))}px`, paddingTop: `${isMobile ? Math.max(8, Math.round(10 * scaleFactor)) : Math.max(12, Math.round(16 * scaleFactor))}px`, paddingBottom: `${isMobile ? Math.max(8, Math.round(10 * scaleFactor)) : Math.max(12, Math.round(16 * scaleFactor))}px`, marginBottom: 0 }}>
                     <div className={`flex-shrink-0 bg-gray-900/50 rounded-md mb-2 ${isMobile ? 'flex flex-col gap-2' : ''}`} style={{ padding: `${isMobile ? Math.max(4, Math.round(6 * scaleFactor)) : Math.max(6, Math.round(8 * scaleFactor))}px`, marginBottom: `${isMobile ? Math.max(4, Math.round(6 * scaleFactor)) : Math.max(6, Math.round(8 * scaleFactor))}px` }}>
                         <div className={`flex items-center ${isMobile ? 'justify-between w-full' : 'justify-between'}`}>
                             <div className={`flex items-center ${isMobile ? 'gap-1' : 'space-x-2'}`}>

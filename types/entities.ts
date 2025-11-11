@@ -579,6 +579,8 @@ export type LiveGameSession = {
   currentPlayer: Player;
   boardState: BoardState;
   moveHistory: Move[];
+  serverRevision?: number;
+  lastSyncedAt?: number;
   captures: { [key in Player]: number };
   baseStoneCaptures: { [key in Player]: number };
   hiddenStoneCaptures: { [key in Player]: number };

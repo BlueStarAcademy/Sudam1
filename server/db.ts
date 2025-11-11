@@ -177,6 +177,9 @@ export const getAllEndedGames = async (): Promise<LiveGameSession[]> => {
 };
 export const saveGame = async (game: LiveGameSession): Promise<void> => {
     const { saveGame: prismaSaveGame } = await import('./prisma/gameService.ts');
+    const now = Date.now();
+    game.serverRevision = (game.serverRevision ?? 0) + 1;
+    game.lastSyncedAt = now;
     await prismaSaveGame(game);
 };
 export const deleteGame = async (id: string): Promise<void> => {
