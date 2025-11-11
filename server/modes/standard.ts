@@ -350,7 +350,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
             // 싱글플레이 턴 카운팅 및 자동 계가 트리거
             if (game.isSinglePlayer && game.stageId) {
-                game.totalTurns = (game.totalTurns || 0) + 1;
+                game.totalTurns = game.moveHistory.length;
                 
                 // 자동 계가 트리거 체크
                 const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');

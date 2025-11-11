@@ -8,6 +8,8 @@ interface BadukRankingBoardProps {
     isTopmost?: boolean;
 }
 
+const IS_DEV = import.meta.env.DEV;
+
 const RankingRow = ({ user, rank, value, isCurrentUser, onViewUser }: { user: User, rank: number, value: number, isCurrentUser: boolean, onViewUser?: (userId: string) => void }) => {
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === user.avatarId)?.url, [user.avatarId]);
     const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === user.borderId)?.url, [user.borderId]);
@@ -38,7 +40,6 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
 
     const rankings = useMemo(() => {
         if (!allUsers || allUsers.length === 0) {
-            console.log('[BadukRankingBoard] No users available');
             return [];
         }
         
@@ -56,7 +57,9 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
                     ...entry,
                     rank: index + 1
                 }));
-            console.log('[BadukRankingBoard] Championship rankings (cumulative):', result.length, 'users');
+            if (IS_DEV) {
+                console.debug('[BadukRankingBoard] Championship rankings (cumulative):', result.length, 'users');
+            }
             return result;
         } else {
             const mode = activeTab === 'strategic' ? 'strategic' : 'playful';
@@ -74,7 +77,9 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
                     }))
                     .sort((a, b) => a.rank - b.rank)
                     .slice(0, 50);
-                console.log('[BadukRankingBoard]', mode, 'rankings (daily):', result.length, 'users');
+                if (IS_DEV) {
+                    console.debug('[BadukRankingBoard]', mode, 'rankings (daily):', result.length, 'users');
+                }
                 return result;
             } else {
                 // 실시간 계산 (cumulativeRankingScore 사용)
@@ -105,7 +110,9 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
                         ...entry,
                         rank: index + 1
                     }));
-                console.log('[BadukRankingBoard]', mode, 'rankings (realtime):', result.length, 'users');
+                if (IS_DEV) {
+                    console.debug('[BadukRankingBoard]', mode, 'rankings (realtime):', result.length, 'users');
+                }
                 return result;
             }
         }

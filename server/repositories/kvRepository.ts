@@ -1,9 +1,14 @@
-import { Database } from 'sqlite';
+import prisma from '../prismaClient.js';
 
-export const getKV = async <T>(db: Database, key: string): Promise<T | null> => {
-    const row = await db.get('SELECT value FROM kv WHERE key = ?', key);
-    return row && row.value ? JSON.parse(row.value) : null;
+export const getKV = async <T>(key: string): Promise<T | null> => {
+    const row = await prisma.keyValue.findUnique({ where: { key } });
+    return (row?.value as T) ?? null;
 };
-export const setKV = async <T>(db: Database, key: string, value: T): Promise<void> => {
-    await db.run('INSERT OR REPLACE INTO kv (key, value) VALUES (?, ?)', key, JSON.stringify(value));
+
+export const setKV = async <T>(key: string, value: T): Promise<void> => {
+    await prisma.keyValue.upsert({
+        where: { key },
+        update: { value },
+        create: { key, value },
+    });
 };

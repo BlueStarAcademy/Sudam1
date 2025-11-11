@@ -49,23 +49,21 @@ const MbtiInfoModal: React.FC<MbtiInfoModalProps> = ({ onClose, isTopmost }) => 
         setAnswers(prev => ({ ...prev, [questionId]: value }));
     };
 
-    const handleNextQuestion = () => {
+    const handleNextQuestion = async () => {
         if (currentQuestionIndex < MBTI_QUESTIONS.length - 1) {
             setCurrentQuestionIndex(prev => prev + 1);
         } else {
             // All questions answered, calculate MBTI
             const mbti = calculateMbti();
             setCalculatedMbti(mbti);
-            setShowResult(true);
             // Dispatch action to update MBTI
-            handlers.handleAction({
+            const isFirstTime = !hasMbti;
+            await handlers.handleAction({
                 type: 'UPDATE_MBTI',
-                payload: { mbti: mbti, isMbtiPublic: true }
+                payload: { mbti, isMbtiPublic: true, isFirstTime }
             });
-            handlers.handleAction({
-                type: 'CLAIM_MBTI_REWARD',
-            });
-            console.log('MBTI set:', mbti, '100 diamonds rewarded!');
+            setShowResult(true);
+            console.log('MBTI set:', mbti, 'MBTI reward processed.');
         }
     };
 

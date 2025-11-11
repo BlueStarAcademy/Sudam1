@@ -46,11 +46,16 @@ const StageSelectionModal: React.FC<StageSelectionModalProps> = ({ currentUser, 
                                 }`}
                             >
                                 {isCleared && <div className="absolute top-2 right-2 text-2xl">✅</div>}
-                                <div className="flex-grow flex flex-col items-center justify-center">
+                                <div className="flex-grow flex flex-col items-center justify-center space-y-2">
                                     <h3 className="font-bold text-lg">{stage.name}</h3>
-                                    {/* FIX: The 'stage.targetScore' object is formatted as a string to be properly rendered as a ReactNode. */}
-                                    <p className="text-xs text-gray-400 mt-1">목표 점수: 흑{stage.targetScore.black}/백{stage.targetScore.white}집</p>
-                                    {/* AI 레벨은 단계별로 고정되어 있음 */}
+                                    <p className="text-xs text-gray-400">
+                                        목표 점수: 흑{stage.targetScore.black > 0 ? stage.targetScore.black : '—'}/백{stage.targetScore.white > 0 ? stage.targetScore.white : '—'}집
+                                    </p>
+                                    {stage.timeControl?.type === 'fischer' && (
+                                        <div className="px-2 py-0.5 rounded-full bg-blue-500/15 border border-blue-400 text-[10px] text-blue-200">
+                                            스피드 바둑 · 남은 시간 5초마다 +1점
+                                        </div>
+                                    )}
                                 </div>
                                 <div className="mt-4 pt-2 border-t border-gray-600 w-full flex-shrink-0">
                                     <p className="text-xs font-semibold text-yellow-300">최초 보상</p>

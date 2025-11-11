@@ -61,7 +61,7 @@ const CapturedStones: React.FC<{ count: number; target?: number; panelType: 'bla
 };
 
 
-const TimeBar: React.FC<{ timeLeft: number; totalTime: number; byoyomiTime: number; byoyomiPeriods: number; totalByoyomi: number; isActive: boolean; isInByoyomi: boolean; isFoulMode?: boolean; isLeft: boolean; }> = ({ timeLeft, totalTime, byoyomiTime, byoyomiPeriods, totalByoyomi, isActive, isInByoyomi, isFoulMode = false, isLeft }) => {
+const TimeBar: React.FC<{ timeLeft: number; totalTime: number; byoyomiTime: number; byoyomiPeriods: number; totalByoyomi: number; isActive: boolean; isInByoyomi: boolean; isFoulMode?: boolean; }> = ({ timeLeft, totalTime, byoyomiTime, byoyomiPeriods, totalByoyomi, isActive, isInByoyomi, isFoulMode = false }) => {
     const percent = useMemo(() => {
         if (isFoulMode) {
              const turnTime = totalTime > 0 ? totalTime : byoyomiTime;
@@ -70,9 +70,6 @@ const TimeBar: React.FC<{ timeLeft: number; totalTime: number; byoyomiTime: numb
         if (isInByoyomi) return byoyomiTime > 0 ? (timeLeft / byoyomiTime) * 100 : 0;
         return totalTime > 0 ? (timeLeft / totalTime) * 100 : 0;
     }, [timeLeft, totalTime, byoyomiTime, isInByoyomi, isFoulMode]);
-    
-    const iconPositionClass = isLeft ? 'right-1' : 'left-1';
-    const iconJustifyClass = isLeft ? 'justify-end' : 'justify-start';
 
     return (
         <div className="w-full relative">
@@ -84,24 +81,6 @@ const TimeBar: React.FC<{ timeLeft: number; totalTime: number; byoyomiTime: numb
                     style={{ width: `${Math.min(100, percent)}%`, transition: 'width 0.2s linear' }}
                 />
             </div>
-            
-            {/* The icons positioned on top of the track */}
-            {(totalByoyomi > 0 || isFoulMode) && (
-                <div className={`absolute ${iconPositionClass} top-1/2 -translate-y-1/2 flex items-center ${iconJustifyClass} gap-1 sm:gap-1.5`}>
-                    {isFoulMode ? (
-                        <div className="flex items-center gap-0.5">
-                            {Array.from({ length: byoyomiPeriods }).map((_, i) => (
-                                <span key={i} className="text-base leading-none" title={`${byoyomiPeriods} fouls remaining`}>⏰</span>
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="flex items-center gap-1 text-yellow-300">
-                            <span className="text-base">⏰</span>
-                            <span className="text-sm font-bold">{byoyomiPeriods}</span>
-                        </div>
-                    )}
-                </div>
-            )}
         </div>
     );
 };
@@ -128,8 +107,12 @@ const SinglePlayerPanel: React.FC<SinglePlayerPanelProps> = (props) => {
     const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === mode);
     const isFoulMode = PLAYFUL_GAME_MODES.some(m => m.mode === mode) && ![GameMode.Omok, GameMode.Ttamok].includes(mode);
     const isCurling = mode === GameMode.Curling;
-
+    
+    const foulLimit = PLAYFUL_MODE_FOUL_LIMIT;
     const effectiveByoyomiTime = isFoulMode ? totalTime : byoyomiTime;
+    const effectiveTotalByoyomi = isFoulMode ? foulLimit : totalByoyomi;
+    const effectiveByoyomiPeriodsLeft = Math.max(0, isFoulMode ? foulLimit - (session.timeoutFouls?.[user.id] || 0) : byoyomiPeriodsLeft);
+    const showByoyomiStatus = isFoulMode ? true : effectiveTotalByoyomi > 0;
 
     const levelToDisplay = isStrategic ? user.strategyLevel : user.playfulLevel;
     const levelLabel = isStrategic ? '전략' : '놀이';
@@ -145,9 +128,6 @@ const SinglePlayerPanel: React.FC<SinglePlayerPanelProps> = (props) => {
     
     const isInByoyomi = !isFoulMode && mainTimeLeft <= 0 && totalByoyomi > 0;
     
-    const foulLimit = PLAYFUL_MODE_FOUL_LIMIT;
-    const effectiveTotalByoyomi = isFoulMode ? foulLimit : totalByoyomi;
-    const effectiveByoyomiPeriodsLeft = isFoulMode ? foulLimit - (session.timeoutFouls?.[user.id] || 0) : byoyomiPeriodsLeft;
 
     const isDiceGo = mode === GameMode.Dice;
     const isBlackPanel = isDiceGo || playerEnum === Player.Black;
@@ -224,9 +204,33 @@ const SinglePlayerPanel: React.FC<SinglePlayerPanelProps> = (props) => {
                     </div>
                 </div>
                 <div className={isMobile ? 'mt-0.5' : 'mt-1'}>
-                    <TimeBar timeLeft={timeLeft} totalTime={totalTime} byoyomiTime={effectiveByoyomiTime} byoyomiPeriods={effectiveByoyomiPeriodsLeft} totalByoyomi={effectiveTotalByoyomi} isActive={isActive && !isGameEnded} isInByoyomi={isInByoyomi} isFoulMode={isFoulMode} isLeft={isLeft} />
-                    <div className={`flex items-center ${isMobile ? 'mt-0' : 'mt-0.5'} ${justifyClass}`}>
+                    <TimeBar timeLeft={timeLeft} totalTime={totalTime} byoyomiTime={effectiveByoyomiTime} byoyomiPeriods={effectiveByoyomiPeriodsLeft} totalByoyomi={effectiveTotalByoyomi} isActive={isActive && !isGameEnded} isInByoyomi={isInByoyomi} isFoulMode={isFoulMode} />
+                    <div className={`flex items-center ${isMobile ? 'mt-0' : 'mt-0.5'} ${justifyClass} gap-1`}>
                         <span className={`font-mono font-bold ${isInByoyomi || (isFoulMode && timeLeft < 10) ? 'text-red-400' : timeTextClasses} ${timeTextSize}`}>{formatTime(timeLeft)}</span>
+                        {showByoyomiStatus && (
+                            isFoulMode ? (
+                                <div className="flex items-center gap-0.5">
+                                    {Array.from({ length: effectiveByoyomiPeriodsLeft }).map((_, i) => (
+                                        <img
+                                            key={i}
+                                            src="/images/icon/timer.png"
+                                            alt="남은 기회"
+                                            title={`남은 기회 ${effectiveByoyomiPeriodsLeft}회`}
+                                            className="w-4 h-4 object-contain"
+                                        />
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="flex items-center gap-1 text-yellow-300">
+                                    <img
+                                        src="/images/icon/timer.png"
+                                        alt="초읽기"
+                                        className="w-4 h-4 object-contain"
+                                    />
+                                    <span className="text-xs font-semibold">{effectiveByoyomiPeriodsLeft}</span>
+                                </div>
+                            )
+                        )}
                     </div>
                 </div>
             </div>
@@ -422,7 +426,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
                     </div>
                 </div>
             )}
-             <SinglePlayerPanel
+            <SinglePlayerPanel
                 user={rightPlayerUser}
                 playerEnum={rightPlayerEnum}
                 score={rightPlayerScore}

@@ -327,13 +327,10 @@ export async function makeGoAiBotMove(
             (game as any).whiteTurnsPlayed = whiteTurnsPlayed;
             const survivalTurns = (game.settings as any)?.survivalTurns || 0;
             
-            console.log(`[Survival Go] White turns played: ${whiteTurnsPlayed}/${survivalTurns}, Captures: ${game.captures[Player.White]}`);
-            
             // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
             // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
             const target = game.effectiveCaptureTargets![Player.White];
             if (target !== undefined && target !== 999 && game.captures[Player.White] >= target) {
-                console.log(`[Survival Go] White reached target score (${target}), White wins`);
                 await summaryService.endGame(game, Player.White, 'capture_limit');
                 return;
             }
@@ -343,13 +340,9 @@ export async function makeGoAiBotMove(
             // 백의 남은 턴이 0이 되었다는 것은 whiteTurnsPlayed >= survivalTurns
             const remainingTurns = survivalTurns - whiteTurnsPlayed;
             if (remainingTurns <= 0 && survivalTurns > 0) {
-                console.log(`[Survival Go] White ran out of turns (${whiteTurnsPlayed}/${survivalTurns}, remaining: ${remainingTurns}), Black wins. Game status before endGame: ${game.gameStatus}`);
                 if (game.gameStatus === 'playing') {
                     await summaryService.endGame(game, Player.Black, 'capture_limit');
-                    console.log(`[Survival Go] endGame called. Game status after: ${game.gameStatus}`);
                     return;
-                } else {
-                    console.log(`[Survival Go] Game already ended (status: ${game.gameStatus}), skipping endGame`);
                 }
                 return;
             }

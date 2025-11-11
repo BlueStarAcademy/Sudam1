@@ -2,12 +2,16 @@ import type { Prisma, User as PrismaUserModel } from "../../generated/prisma/ind
 import type { User, InventoryItem, Equipment, Mail, QuestLog } from "../../types.js";
 import { createDefaultBaseStats, createDefaultSpentStatPoints, createDefaultQuests } from "../initialData.ts";
 import { LeagueTier } from "../../types/enums.js";
+import { SINGLE_PLAYER_STAGES } from "../../constants/singlePlayerConstants.js";
 
 const DEFAULT_INVENTORY_SLOTS: User["inventorySlots"] = {
   equipment: 30,
   consumable: 30,
   material: 30
 };
+
+const ALL_SINGLE_PLAYER_STAGE_IDS = SINGLE_PLAYER_STAGES.map((stage) => stage.id);
+const MAX_SINGLE_PLAYER_PROGRESS = ALL_SINGLE_PLAYER_STAGE_IDS.length;
 
 type SerializedUserStatus = {
   version?: number;
@@ -203,16 +207,25 @@ const applyDefaults = (user: Partial<User>, prismaUser: PrismaUserWithStatus): U
       prismaUser.username ??
       `user-${prismaUser.id.slice(-6)}`,
     nickname: user.nickname ?? prismaUser.nickname,
-    isAdmin: user.isAdmin ?? false,
+    isAdmin: user.isAdmin ?? prismaUser.isAdmin ?? false,
     strategyLevel: user.strategyLevel ?? prismaUser.strategyLevel ?? 1,
     strategyXp: user.strategyXp ?? prismaUser.strategyXp ?? 0,
     playfulLevel: user.playfulLevel ?? prismaUser.playfulLevel ?? 1,
     playfulXp: user.playfulXp ?? prismaUser.playfulXp ?? 0,
     baseStats: user.baseStats ?? createDefaultBaseStats(),
     spentStatPoints: user.spentStatPoints ?? createDefaultSpentStatPoints(),
-    inventory: user.inventory ?? [],
-    inventorySlots: user.inventorySlots ?? DEFAULT_INVENTORY_SLOTS,
-    equipment: user.equipment ?? {},
+    inventory:
+      user.inventory ??
+      status?.serializedUser?.inventory ??
+      parseJson(prismaUser.inventory as any, []),
+    inventorySlots:
+      user.inventorySlots ??
+      status?.serializedUser?.inventorySlots ??
+      parseJson(prismaUser.inventorySlots as any, DEFAULT_INVENTORY_SLOTS),
+    equipment:
+      user.equipment ??
+      status?.serializedUser?.equipment ??
+      parseJson(prismaUser.equipment as any, {}),
     equipmentPresets: user.equipmentPresets ?? [],
     actionPoints: user.actionPoints ?? {
       current: prismaUser.actionPointCurr ?? 0,
@@ -275,6 +288,28 @@ const applyDefaults = (user: Partial<User>, prismaUser: PrismaUserWithStatus): U
   };
 };
 
+const ensureAdminSinglePlayerAccess = (user: User): User => {
+  if (!user.isAdmin) {
+    return user;
+  }
+
+  const originalStages = Array.isArray(user.clearedSinglePlayerStages)
+    ? user.clearedSinglePlayerStages
+    : [];
+  const clearedStageSet = new Set<string>([...originalStages, ...ALL_SINGLE_PLAYER_STAGE_IDS]);
+
+  const ensuredProgress =
+    user.singlePlayerProgress != null
+      ? Math.max(user.singlePlayerProgress, MAX_SINGLE_PLAYER_PROGRESS)
+      : MAX_SINGLE_PLAYER_PROGRESS;
+
+  return {
+    ...user,
+    clearedSinglePlayerStages: Array.from(clearedStageSet),
+    singlePlayerProgress: ensuredProgress
+  };
+};
+
 export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
   const status = (prismaUser.status ?? {}) as SerializedUserStatus;
 
@@ -286,6 +321,11 @@ export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
       status.identity?.username ??
       `user-${prismaUser.id.slice(-6)}`;
     cloned.nickname = prismaUser.nickname ?? cloned.nickname ?? cloned.username!;
+    cloned.isAdmin =
+      prismaUser.isAdmin ??
+      cloned.isAdmin ??
+      status.serializedUser?.isAdmin ??
+      false;
     cloned.strategyLevel = prismaUser.strategyLevel ?? cloned.strategyLevel;
     cloned.strategyXp = prismaUser.strategyXp ?? cloned.strategyXp;
     cloned.playfulLevel = prismaUser.playfulLevel ?? cloned.playfulLevel;
@@ -309,7 +349,8 @@ export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
       LeagueTier.Sprout;
     cloned.gold = safeNumber(prismaUser.gold ?? cloned.gold ?? 0);
     cloned.diamonds = safeNumber(prismaUser.diamonds ?? cloned.diamonds ?? 0);
-    return applyDefaults(cloned, prismaUser);
+    const applied = applyDefaults(cloned, prismaUser);
+    return ensureAdminSinglePlayerAccess(applied);
   }
 
   const legacy = (status.legacyRow ?? {}) as Record<string, unknown>;
@@ -320,7 +361,11 @@ export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
       status.identity?.username ??
       (legacy.username as string | undefined),
     nickname: prismaUser.nickname ?? (legacy.nickname as string | undefined),
-    isAdmin: safeBoolean(status.version != null ? status.serializedUser?.isAdmin : legacy.isAdmin),
+    isAdmin:
+      prismaUser.isAdmin ??
+      safeBoolean(
+        status.version != null ? status.serializedUser?.isAdmin : legacy.isAdmin
+      ),
     baseStats: status.baseStats ?? parseJson(legacy.baseStats, undefined),
     spentStatPoints: status.spentStatPoints ?? parseJson(legacy.spentStatPoints, undefined),
     stats: ensureStats(status.stats ?? legacy.stats),
@@ -472,7 +517,8 @@ export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
     )
   };
 
-  return applyDefaults(partial, prismaUser);
+  const applied = applyDefaults(partial, prismaUser);
+  return ensureAdminSinglePlayerAccess(applied);
 }
 
 export function serializeUser(user: User): SerializedUserStatus {

@@ -12,7 +12,7 @@ export function getSelectiveUserUpdate(
     const { includeAll = false, additionalFields = [] } = options || {};
     
     // 항상 포함해야 하는 기본 필드
-    const baseFields = ['id'];
+    const baseFields = ['id', 'isAdmin'];
     
     // 액션 타입별 필요한 필드 맵
     const fieldMap: Record<string, string[]> = {
@@ -39,6 +39,7 @@ export function getSelectiveUserUpdate(
         'UPDATE_BORDER': ['borderId'],
         'CHANGE_NICKNAME': ['nickname', 'diamonds'],
         'UPDATE_MBTI': ['mbti', 'isMbtiPublic', 'diamonds'],
+        'MANNER_ACTION': ['mannerScore', 'mannerMasteryApplied', 'actionPoints'],
         'RESET_STAT_POINTS': ['spentStatPoints', 'diamonds'],
         'CONFIRM_STAT_ALLOCATION': ['spentStatPoints'],
         'SAVE_PRESET': ['equipmentPresets'],

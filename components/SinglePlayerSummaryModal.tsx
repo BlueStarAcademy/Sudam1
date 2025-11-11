@@ -71,6 +71,42 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
     const retryActionPointCost = currentStage?.actionPointCost ?? 0;
     const nextStageActionPointCost = nextStage?.actionPointCost ?? 0;
 
+    const failureReason = useMemo(() => {
+        if (isWinner) return null;
+        switch (session.winReason) {
+            case 'timeout':
+                return '제한시간이 초과되어 미션에 실패했습니다.';
+            case 'capture_limit':
+                return currentStage?.survivalTurns
+                    ? '백이 정해진 턴을 모두 버텨 미션에 실패했습니다.'
+                    : '상대가 목표 점수를 먼저 달성했습니다.';
+            case 'score':
+                return '계가 결과 상대가 더 많은 집을 차지했습니다.';
+            case 'resign':
+                return '기권하여 미션이 종료되었습니다.';
+            case 'disconnect':
+                return '연결이 끊어져 미션이 실패 처리되었습니다.';
+            case 'total_score':
+                return '총 점수 합계에서 상대에게 밀렸습니다.';
+            case 'dice_win':
+                return '주사위 점수에서 뒤처졌습니다.';
+            case 'foul_limit':
+                return '반칙 한도를 초과했습니다.';
+            case 'thief_captured':
+                return '도둑 돌이 모두 잡혔습니다.';
+            case 'police_win':
+                return '경찰이 더 많은 점수를 획득했습니다.';
+            case 'omok_win':
+                return '상대가 먼저 다섯 줄을 완성했습니다.';
+            case 'alkkagi_win':
+                return '알까기 승부에서 뒤졌습니다.';
+            case 'curling_win':
+                return '컬링 총점에서 상대에게 뒤졌습니다.';
+            default:
+                return null;
+        }
+    }, [isWinner, session.winReason, currentStage]);
+
     const handleRetry = () => {
         onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
         onClose();
@@ -111,9 +147,12 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                 {isWinner && (
                     <div className="absolute -top-1/2 -left-1/4 w-full h-full bg-yellow-400/20 rounded-full blur-3xl animate-pulse"></div>
                 )}
-                <h1 className={`text-5xl font-black mb-6 tracking-widest ${isWinner ? 'text-yellow-300' : 'text-red-400'}`} style={{ textShadow: isWinner ? '0 0 15px rgba(250, 204, 21, 0.5)' : '0 0 10px rgba(220, 38, 38, 0.5)' }}>
+                <h1 className={`text-5xl font-black ${isWinner ? 'mb-6' : 'mb-4'} tracking-widest ${isWinner ? 'text-yellow-300' : 'text-red-400'}`} style={{ textShadow: isWinner ? '0 0 15px rgba(250, 204, 21, 0.5)' : '0 0 10px rgba(220, 38, 38, 0.5)' }}>
                     {isWinner ? 'MISSION CLEAR' : 'MISSION FAILED'}
                 </h1>
+                {!isWinner && failureReason && (
+                    <p className="mb-4 text-sm text-red-200 font-medium">{failureReason}</p>
+                )}
 
                 <div className="flex items-center gap-4 bg-black/40 backdrop-blur-sm border border-gray-700/60 rounded-2xl p-4 text-left mb-6">
                     <Avatar

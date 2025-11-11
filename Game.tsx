@@ -450,16 +450,6 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                 <div className="flex-1 min-w-0">
                                     <PlayerPanel {...gameProps} clientTimes={clientTimes.clientTimes} isSinglePlayer={true} isMobile={isMobile} />
                                 </div>
-                                {isMobile && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setIsMobileSidebarOpen(true)}
-                                        className="flex-shrink-0 w-10 h-12 sm:w-12 sm:h-14 bg-secondary/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-primary shadow-lg hover:bg-secondary transition-colors"
-                                        aria-label="메뉴 열기"
-                                    >
-                                        <span className="font-bold text-lg sm:text-xl">{'<'}</span>
-                                    </button>
-                                )}
                             </div>
                             <div className="flex-1 w-full relative">
                                 <div className="absolute inset-0">
@@ -479,7 +469,12 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                 </div>
                             </div>
                             <div className="flex-shrink-0 w-full flex flex-col gap-1">
-                                <TurnDisplay session={session} isPaused={isPaused} />
+                                <TurnDisplay
+                                    session={session}
+                                    isPaused={isPaused}
+                                    isMobile={isMobile}
+                                    onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+                                />
                                 <GameControls {...gameControlsProps} isSinglePlayer={true} isSinglePlayerPaused={isPaused} />
                             </div>
                         </div>
@@ -560,19 +555,6 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                             <div className="flex-1 min-w-0">
                                 <PlayerPanel {...gameProps} clientTimes={clientTimes.clientTimes} isMobile={isMobile} />
                             </div>
-                            {isMobile && (
-                                <button
-                                    type="button"
-                                    onClick={openMobileSidebar}
-                                    className="flex-shrink-0 w-10 h-12 sm:w-12 sm:h-14 bg-secondary/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-primary shadow-lg hover:bg-secondary transition-colors"
-                                    aria-label="메뉴 열기"
-                                >
-                                    <span className="relative font-bold text-lg sm:text-xl">
-                                        {'<'}
-                                        {hasNewMessage && <div className="absolute -top-1 -right-1.5 w-2.5 h-2.5 bg-danger rounded-full border-2 border-secondary"></div>}
-                                    </span>
-                                </button>
-                            )}
                         </div>
                         <div className="flex-1 w-full relative">
                             <div className="absolute inset-0">
@@ -590,7 +572,12 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                             </div>
                         </div>
                         <div className="flex-shrink-0 w-full flex flex-col gap-1">
-                            <TurnDisplay session={session} />
+                            <TurnDisplay
+                                session={session}
+                                isMobile={isMobile}
+                                onOpenSidebar={isMobile ? openMobileSidebar : undefined}
+                                sidebarNotification={hasNewMessage}
+                            />
                             <GameControls {...gameControlsProps} />
                         </div>
                     </div>

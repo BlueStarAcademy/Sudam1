@@ -421,6 +421,7 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
     game.boardState = result.newBoardState;
     game.lastMove = { x: move!.x, y: move!.y };
     game.moveHistory.push({ player: aiPlayerEnum, x: move!.x, y: move!.y });
+    game.totalTurns = game.moveHistory.length;
     game.koInfo = result.newKoInfo;
     
     // 히든 수인 경우 hiddenMoves에 기록
@@ -467,11 +468,8 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
         game[aiPlayerTimeKey] = timeRemaining;
     }
     
-    // 턴 카운팅 증가
+    // 싱글플레이 자동 계가 트리거 체크
     if (game.isSinglePlayer) {
-        game.totalTurns = (game.totalTurns || 0) + 1;
-        
-        // 자동 계가 트리거 체크
         const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
         if (stage?.autoScoringTurns && game.totalTurns >= stage.autoScoringTurns) {
             const { getGameResult } = await import('./gameModes.js');

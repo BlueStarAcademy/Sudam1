@@ -157,6 +157,10 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             }
 
             const gameId = `sp-game-${randomUUID()}`;
+            const isSpeedMode = stage.timeControl.type === 'fischer';
+            const baseCaptureTargetBlack = isSpeedMode ? 999 : (stage.targetScore.black > 0 ? stage.targetScore.black : 999);
+            const baseCaptureTargetWhite = isSpeedMode ? 999 : (stage.targetScore.white > 0 ? stage.targetScore.white : 999);
+
             const game: LiveGameSession = {
                 id: gameId,
                 mode: gameMode,
@@ -213,9 +217,9 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 effectiveCaptureTargets: {
                     [Player.None]: 0,
                     // 살리기 바둑: 백(봇)이 목표점수를 달성해야 함, 흑(유저)은 목표점수 없음
-                    [Player.Black]: isSurvivalMode ? 999 : stage.targetScore.black,
+                    [Player.Black]: isSurvivalMode ? 999 : baseCaptureTargetBlack,
                     // 살리기 바둑: 백(봇)이 목표점수를 달성해야 함 (백의 목표점수는 black 값 사용)
-                    [Player.White]: isSurvivalMode ? stage.targetScore.black : stage.targetScore.white,
+                    [Player.White]: isSurvivalMode ? stage.targetScore.black : baseCaptureTargetWhite,
                 },
                 // 살리기 바둑: 백의 턴 수 추적
                 whiteTurnsPlayed: isSurvivalMode ? 0 : undefined,
@@ -335,7 +339,7 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
 
             // 레벨 1로 시작
             const level1Info = missionInfo.levels[0];
-            const initialAmount = Math.min(level1Info.rewardAmount, level1Info.maxCapacity);
+            const initialAmount = 0;
 
             user.singlePlayerMissions[missionId] = {
                 id: missionId,

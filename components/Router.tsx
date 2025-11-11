@@ -56,10 +56,13 @@ const Router: React.FC = () => {
              if (currentRoute.params.id && activeGame && activeGame.id === currentRoute.params.id) {
                 return <Game session={activeGame} />;
             }
-            // Fallback if game ID is missing or doesn't match active game
             console.warn("Router: Mismatch between route and active game. Redirecting to profile.");
-            window.location.hash = '#/profile';
-            return null;
+            setTimeout(() => {
+                if (window.location.hash !== '#/profile') {
+                    window.location.hash = '#/profile';
+                }
+            }, 100);
+            return <div className="flex items-center justify-center h-full">게임 정보 동기화 중...</div>;
         case 'admin':
             return <Admin />;
         case 'tournament':

@@ -18,6 +18,7 @@ model User {
   id               String   @id @default(uuid())
   nickname         String   @unique
   username         String?  @unique
+  isAdmin          Boolean  @default(false)
   email            String?  @unique
   strategyLevel    Int      @default(1)
   strategyXp       Int      @default(0)
@@ -164,4 +165,9 @@ model LiveGame {
   data      Json
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+model KeyValue {
+  key   String @id
+  value Json
 }

@@ -431,6 +431,13 @@ export async function updateBotLeagueScores(user: types.User): Promise<types.Use
     
     const now = Date.now();
     const kstNow = getKSTDate(now);
+    const dayOfWeekKST = kstNow.getUTCDay(); // 0: Sun, 1: Mon, ...
+
+    // 월요일 0시는 주간 초기화 직후이므로 봇 점수를 올리지 않음
+    if (dayOfWeekKST === 1) {
+        return user;
+    }
+
     const todayStart = getStartOfDayKST(now);
     
     // weeklyCompetitors에 봇 점수 업데이트 정보가 없으면 초기화

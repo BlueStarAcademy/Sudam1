@@ -60,7 +60,7 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
 }) => {
     const { handlers, currentUserWithStatus, updateTrigger } = useAppContext();
     // prop으로 받은 currentUser가 있으면 사용하고, 없으면 context에서 가져옴
-    const currentUser = propCurrentUser || currentUserWithStatus;
+    const currentUser = currentUserWithStatus || propCurrentUser;
     const [selectedPotionType, setSelectedPotionType] = useState<PotionType | null>(null);
 
     if (!currentUser) {

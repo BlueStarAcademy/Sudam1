@@ -9,6 +9,8 @@ interface GameRankingBoardProps {
     isTopmost?: boolean;
 }
 
+const IS_DEV = import.meta.env.DEV;
+
 const RankingRow = ({ user, rank, value, isCurrentUser, onViewUser }: { user: User, rank: number, value: number, isCurrentUser: boolean, onViewUser?: (userId: string) => void }) => {
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === user.avatarId)?.url, [user.avatarId]);
     const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === user.borderId)?.url, [user.borderId]);
@@ -39,7 +41,6 @@ const GameRankingBoard: React.FC<GameRankingBoardProps> = ({ isTopmost }) => {
 
     const rankings = useMemo(() => {
         if (!allUsers || allUsers.length === 0) {
-            console.log('[GameRankingBoard] No users available');
             return [];
         }
         
@@ -53,7 +54,9 @@ const GameRankingBoard: React.FC<GameRankingBoardProps> = ({ isTopmost }) => {
                 })
                 .sort((a, b) => b.value - a.value)
                 .slice(0, 50); // 상위 50위까지만 표시
-            console.log('[GameRankingBoard] Combat rankings:', result.length, 'users');
+            if (IS_DEV) {
+                console.debug('[GameRankingBoard] Combat rankings:', result.length, 'users');
+            }
             return result;
         } else {
             const result = allUsers
@@ -61,7 +64,9 @@ const GameRankingBoard: React.FC<GameRankingBoardProps> = ({ isTopmost }) => {
                 .map(user => ({ user, value: user.mannerScore || 0 }))
                 .sort((a, b) => b.value - a.value)
                 .slice(0, 50); // 상위 50위까지만 표시
-            console.log('[GameRankingBoard] Manner rankings:', result.length, 'users');
+            if (IS_DEV) {
+                console.debug('[GameRankingBoard] Manner rankings:', result.length, 'users');
+            }
             return result;
         }
     }, [allUsers, activeTab]);

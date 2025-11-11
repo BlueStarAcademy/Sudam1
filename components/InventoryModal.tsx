@@ -337,10 +337,11 @@ const LocalItemDetailDisplay: React.FC<{
                         if (current.type in SpecialStat) colorClass = 'text-green-300';
                         if (current.type in MythicStat) colorClass = 'text-red-400';
 
+                        const rangeText = current.range ? ` [${current.range[0]}~${current.range[1]}]` : '';
                         return (
                             <p key={type} className={`${colorClass} flex justify-between items-center`}>
                                 <span>
-                                    {current.display}
+                                    {current.display}{rangeText}
                                 </span>
                                 {difference !== 0 && (
                                     <span className={`font-bold ${differenceColorClass} text-right`}>{differenceText}</span>
@@ -352,10 +353,11 @@ const LocalItemDetailDisplay: React.FC<{
                         let colorClass = 'text-green-400';
                         if (current.type in SpecialStat) colorClass = 'text-green-300';
                         if (current.type in MythicStat) colorClass = 'text-red-400';
+                        const rangeText = current.range ? ` [${current.range[0]}~${current.range[1]}]` : '';
                         return (
                             <p key={type} className={`${colorClass} flex justify-between items-center`}>
                                 <span>
-                                    {current.display}
+                                    {current.display}{rangeText}
                                 </span> <span className="font-bold text-right">(New)</span>
                             </p>
                         );
@@ -364,9 +366,10 @@ const LocalItemDetailDisplay: React.FC<{
                         let colorClass = 'text-red-400';
                         if (comparison.type in SpecialStat) colorClass = 'text-green-300';
                         if (comparison.type in MythicStat) colorClass = 'text-red-400';
+                        const rangeText = comparison.range ? ` [${comparison.range[0]}~${comparison.range[1]}]` : '';
                         return (
                             <p key={type} className={`${colorClass} line-through flex justify-between items-center`}>
-                                <span>{comparison.display}</span>
+                                <span>{comparison.display}{rangeText}</span>
                             </p>
                         );
                     }

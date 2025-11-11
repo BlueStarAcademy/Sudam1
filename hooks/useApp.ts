@@ -101,6 +101,13 @@ export const useApp = () => {
                 prevUser.diamonds !== mergedUser.diamonds ||
                 prevUser.strategyXp !== mergedUser.strategyXp ||
                 prevUser.playfulXp !== mergedUser.playfulXp ||
+                prevUser.avatarId !== mergedUser.avatarId ||
+                prevUser.borderId !== mergedUser.borderId ||
+                prevUser.nickname !== mergedUser.nickname ||
+                prevUser.mbti !== mergedUser.mbti ||
+                prevUser.isMbtiPublic !== mergedUser.isMbtiPublic ||
+                prevUser.mannerScore !== mergedUser.mannerScore ||
+                prevUser.mannerMasteryApplied !== mergedUser.mannerMasteryApplied ||
                 inventoryChanged ||
                 JSON.stringify(prevUser.equipment) !== JSON.stringify(mergedUser.equipment) ||
                 JSON.stringify(prevUser.singlePlayerMissions) !== JSON.stringify(mergedUser.singlePlayerMissions) ||
@@ -123,9 +130,15 @@ export const useApp = () => {
             }
         }
         
+        const updateKeys = Object.keys(updates || {}).filter(key => key !== 'id');
+
         if (!hasActualChanges && prevUser) {
-            console.log(`[applyUserUpdate] No actual changes detected (${source}), skipping update.`);
-            return prevUser;
+            if (updateKeys.length === 0) {
+                console.log(`[applyUserUpdate] No actual changes detected (${source}) and no update keys, skipping update.`);
+                return prevUser;
+            }
+
+            console.warn(`[applyUserUpdate] No diff detected for ${source}, but forcing refresh to avoid stale UI.`, { updateKeys });
         }
         
         currentUserRef.current = mergedUser;
@@ -195,6 +208,9 @@ export const useApp = () => {
     const [liveGames, setLiveGames] = useState<Record<string, LiveGameSession>>({});  // 일반 게임만
     const [singlePlayerGames, setSinglePlayerGames] = useState<Record<string, LiveGameSession>>({});  // 싱글플레이 게임
     const [towerGames, setTowerGames] = useState<Record<string, LiveGameSession>>({});  // 도전의 탑 게임
+    const liveGameSignaturesRef = useRef<Record<string, string>>({});
+    const singlePlayerGameSignaturesRef = useRef<Record<string, string>>({});
+    const towerGameSignaturesRef = useRef<Record<string, string>>({});
     const [negotiations, setNegotiations] = useState<Record<string, Negotiation>>({});
     const [waitingRoomChats, setWaitingRoomChats] = useState<Record<string, ChatMessage[]>>({});
     const [gameChats, setGameChats] = useState<Record<string, ChatMessage[]>>({});
@@ -342,10 +358,7 @@ export const useApp = () => {
                 // 모든 게임 카테고리에서 찾기
                 const game = liveGames[gameId] || singlePlayerGames[gameId] || towerGames[gameId];
                 if (game) {
-                    console.log('[useApp] activeGame calculated:', gameId, 'status:', currentUserWithStatus.status, 'category:', game.gameCategory);
                     return game;
-                } else {
-                    console.log('[useApp] activeGame: gameId exists but game not found in any category yet:', gameId);
                 }
             }
         }
@@ -518,11 +531,30 @@ export const useApp = () => {
                 const updatedUserFromResponse = result.updatedUser || result.clientResponse?.updatedUser;
                 
                 if (updatedUserFromResponse) {
-                    // 보상 수령 액션의 경우 inventory가 확실히 업데이트되도록 강제
-                    const rewardActions = ['CLAIM_MAIL_ATTACHMENTS', 'CLAIM_ALL_MAIL_ATTACHMENTS', 'CLAIM_QUEST_REWARD', 'CLAIM_TOURNAMENT_REWARD', 'CLAIM_ACTIVITY_MILESTONE', 'CLAIM_SINGLE_PLAYER_MISSION_REWARD'];
-                    const isRewardAction = rewardActions.includes(action.type);
+                    // 인벤토리 변경을 확실히 반영해야 하는 액션들
+                    const inventoryCriticalActions = [
+                        'CLAIM_MAIL_ATTACHMENTS',
+                        'CLAIM_ALL_MAIL_ATTACHMENTS',
+                        'CLAIM_QUEST_REWARD',
+                        'CLAIM_TOURNAMENT_REWARD',
+                        'CLAIM_ACTIVITY_MILESTONE',
+                        'CLAIM_SINGLE_PLAYER_MISSION_REWARD',
+                        'BUY_SHOP_ITEM',
+                        'BUY_MATERIAL_BOX',
+                        'BUY_CONDITION_POTION',
+                        'USE_CONDITION_POTION',
+                        'BUY_BORDER',
+                        'ENHANCE_ITEM',
+                        'DISASSEMBLE_ITEM',
+                        'COMBINE_ITEMS',
+                        'CRAFT_MATERIAL',
+                        'EXPAND_INVENTORY',
+                        'TOGGLE_EQUIP_ITEM',
+                        'MANNER_ACTION'
+                    ];
+                    const isInventoryCriticalAction = inventoryCriticalActions.includes(action.type);
                     
-                    if (isRewardAction && updatedUserFromResponse.inventory) {
+                    if (isInventoryCriticalAction && updatedUserFromResponse.inventory) {
                         // inventory가 있는 경우 깊은 복사로 새로운 참조 생성하여 React가 변경을 확실히 감지하도록 함
                         updatedUserFromResponse.inventory = JSON.parse(JSON.stringify(updatedUserFromResponse.inventory));
                         console.log(`[handleAction] ${action.type} - Forcing inventory update`, {
@@ -547,7 +579,7 @@ export const useApp = () => {
                     });
                     
                     // 보상 수령 액션의 경우 추가로 강제 업데이트
-                    if (isRewardAction) {
+                    if (isInventoryCriticalAction) {
                         flushSync(() => {
                             setUpdateTrigger(prev => prev + 1);
                             // currentUser 상태를 다시 설정하여 확실히 업데이트
@@ -572,7 +604,8 @@ export const useApp = () => {
                         'DELETE_MAIL', 'DELETE_ALL_CLAIMED_MAIL', 'CLAIM_MAIL_ATTACHMENTS', 
                         'CLAIM_ALL_MAIL_ATTACHMENTS', 'MARK_MAIL_AS_READ',
                         'CLAIM_QUEST_REWARD', 'CLAIM_ACTIVITY_MILESTONE',
-                        'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST'
+                        'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST',
+                        'MANNER_ACTION'
                     ];
                     if (actionsThatShouldHaveUpdatedUser.includes(action.type)) {
                         console.warn(`[handleAction] ${action.type} - No updatedUser in response! Waiting for WebSocket update...`, {
@@ -908,10 +941,26 @@ export const useApp = () => {
             gameModeAvailability?: Record<string, boolean>;
             announcementInterval?: number;
         }) => {
-            console.log('[WebSocket] Processing initial state - users:', users ? Object.keys(users).length : 0, 'users');
+                const userEntries = Object.entries(users || {});
+                // nickname이 없거나 비어 있는 경우 제외
+                const filteredEntries = userEntries.filter(
+                    ([, u]) => u && typeof u.nickname === 'string' && u.nickname.trim().length > 0
+                );
+
+                console.log('[WebSocket] Processing initial state - total users:', userEntries.length, 'filtered:', filteredEntries.length);
+
+                const normalizedFiltered = filteredEntries.map(([id, u]) => [
+                    id,
+                    {
+                        ...u,
+                        mbti: typeof u.mbti === 'string' ? u.mbti : null,
+                        inventory: Array.isArray(u.inventory) ? u.inventory : [],
+                    },
+                ]);
+
             if (users && typeof users === 'object' && !Array.isArray(users)) {
-                setUsersMap(users);
-                console.log('[WebSocket] usersMap updated with', Object.keys(users).length, 'users');
+                setUsersMap(Object.fromEntries(normalizedFiltered));
+                console.log('[WebSocket] usersMap updated with', normalizedFiltered.length, 'users');
                 
                 // 현재 사용자의 데이터가 초기 상태에 포함되어 있으면 업데이트
                 const currentUserSnapshot = currentUserRef.current;
@@ -983,19 +1032,17 @@ export const useApp = () => {
                 let wsUrl: string;
                 
                 // Vite 개발 서버를 사용하는 경우 (포트가 5173이거나 hostname이 localhost/127.0.0.1인 경우)
-                const isViteDevServer = window.location.port === '5173' || 
-                                       window.location.hostname === 'localhost' || 
-                                       window.location.hostname === '127.0.0.1' ||
-                                       window.location.hostname.includes('192.168.');
-                
-                if (isViteDevServer) {
-                    // 개발 환경: Vite 프록시를 통해 연결 (/ws로 프록시됨)
-                    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const isLocalHost =
+                    window.location.hostname === 'localhost' ||
+                    window.location.hostname === '127.0.0.1';
+
+                if (isLocalHost && window.location.port === '5173') {
+                    // 로컬 개발 환경(Vite)에서는 프록시 (/ws) 사용
                     wsUrl = `${wsProtocol}//${window.location.host}/ws`;
                 } else {
-                    // 프로덕션 환경: 직접 포트 4000으로 연결
-                    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                    wsUrl = `${wsProtocol}//${window.location.hostname}:4000`;
+                    // 그 외 환경에서는 서버(4000)의 /ws 엔드포인트로 직접 연결
+                    wsUrl = `${wsProtocol}//${window.location.hostname}:4000/ws`;
                 }
                 
                 console.log('[WebSocket] Connecting to:', wsUrl);
@@ -1334,9 +1381,14 @@ export const useApp = () => {
                                     
                                     if (gameCategory === 'singleplayer') {
                                         setSinglePlayerGames(currentGames => {
+                                            const signature = stableStringify(game);
+                                            const previousSignature = singlePlayerGameSignaturesRef.current[gameId];
+                                            if (previousSignature === signature) {
+                                                return currentGames;
+                                            }
+                                            singlePlayerGameSignaturesRef.current[gameId] = signature;
                                             const updatedGames = { ...currentGames };
                                             updatedGames[gameId] = game;
-                                            console.log('[WebSocket] Single player game updated:', gameId, game.mode);
                                             
                                             // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
                                             if (currentUser && game.player1 && game.player2) {
@@ -1344,19 +1396,29 @@ export const useApp = () => {
                                                 const isPlayer2 = game.player2.id === currentUser.id;
                                                 
                                                 if (isPlayer1 || isPlayer2) {
-                                                    console.log('[WebSocket] Current user is a player in single player game, routing:', gameId);
-                                                    setTimeout(() => {
-                                                        window.location.hash = `#/game/${gameId}`;
-                                                    }, 100);
+                                                    const targetHash = `#/game/${gameId}`;
+                                                    if (window.location.hash !== targetHash) {
+                                                        console.log('[WebSocket] Routing to single player game:', gameId);
+                                                        setTimeout(() => {
+                                                            if (window.location.hash !== targetHash) {
+                                                                window.location.hash = targetHash;
+                                                            }
+                                                        }, 100);
+                                                    }
                                                 }
                                             }
                                             return updatedGames;
                                         });
                                     } else if (gameCategory === 'tower') {
                                         setTowerGames(currentGames => {
+                                            const signature = stableStringify(game);
+                                            const previousSignature = towerGameSignaturesRef.current[gameId];
+                                            if (previousSignature === signature) {
+                                                return currentGames;
+                                            }
+                                            towerGameSignaturesRef.current[gameId] = signature;
                                             const updatedGames = { ...currentGames };
                                             updatedGames[gameId] = game;
-                                            console.log('[WebSocket] Tower game updated:', gameId, game.mode);
                                             
                                             // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
                                             if (currentUser && game.player1 && game.player2) {
@@ -1364,35 +1426,49 @@ export const useApp = () => {
                                                 const isPlayer2 = game.player2.id === currentUser.id;
                                                 
                                                 if (isPlayer1 || isPlayer2) {
-                                                    console.log('[WebSocket] Current user is a player in tower game, routing:', gameId);
-                                                    setTimeout(() => {
-                                                        window.location.hash = `#/game/${gameId}`;
-                                                    }, 100);
+                                                    const targetHash = `#/game/${gameId}`;
+                                                    if (window.location.hash !== targetHash) {
+                                                        console.log('[WebSocket] Routing to tower game:', gameId);
+                                                        setTimeout(() => {
+                                                            if (window.location.hash !== targetHash) {
+                                                                window.location.hash = targetHash;
+                                                            }
+                                                        }, 100);
+                                                    }
                                                 }
                                             }
                                             return updatedGames;
                                         });
                                     } else {
                                         // normal 게임
-                                setLiveGames(currentGames => {
-                                    const updatedGames = { ...currentGames };
-                                        updatedGames[gameId] = game;
-                                            console.log('[WebSocket] Normal game updated:', gameId, game.mode);
-                                        
-                                        // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
-                                        if (currentUser && game.player1 && game.player2) {
-                                            const isPlayer1 = game.player1.id === currentUser.id;
-                                            const isPlayer2 = game.player2.id === currentUser.id;
-                                            
-                                            if (isPlayer1 || isPlayer2) {
-                                                console.log('[WebSocket] Current user is a player in this game, routing:', gameId);
-                                                // 즉시 라우팅 (USER_STATUS_UPDATE와 관계없이)
-                                                setTimeout(() => {
-                                                    window.location.hash = `#/game/${gameId}`;
-                                                }, 100);
+                                        setLiveGames(currentGames => {
+                                            const signature = stableStringify(game);
+                                            const previousSignature = liveGameSignaturesRef.current[gameId];
+                                            if (previousSignature === signature) {
+                                                return currentGames;
                                             }
-                                        }
-                                    return updatedGames;
+                                            liveGameSignaturesRef.current[gameId] = signature;
+                                            const updatedGames = { ...currentGames };
+                                            updatedGames[gameId] = game;
+                                            
+                                            // 현재 사용자가 이 게임의 플레이어인지 확인하고 라우팅
+                                            if (currentUser && game.player1 && game.player2) {
+                                                const isPlayer1 = game.player1.id === currentUser.id;
+                                                const isPlayer2 = game.player2.id === currentUser.id;
+                                                
+                                                if (isPlayer1 || isPlayer2) {
+                                                    const targetHash = `#/game/${gameId}`;
+                                                    if (window.location.hash !== targetHash) {
+                                                        console.log('[WebSocket] Routing to game:', gameId);
+                                                        setTimeout(() => {
+                                                            if (window.location.hash !== targetHash) {
+                                                                window.location.hash = targetHash;
+                                                            }
+                                                        }, 100);
+                                                    }
+                                                }
+                                            }
+                                            return updatedGames;
                                         });
                                     }
                                 });
@@ -1408,6 +1484,7 @@ export const useApp = () => {
                                             if (currentGames[deletedGameId]) {
                                                 const updatedGames = { ...currentGames };
                                                 delete updatedGames[deletedGameId];
+                                                delete singlePlayerGameSignaturesRef.current[deletedGameId];
                                                 console.log('[WebSocket] Single player game deleted:', deletedGameId);
                                                 return updatedGames;
                                             }
@@ -1418,6 +1495,7 @@ export const useApp = () => {
                                             if (currentGames[deletedGameId]) {
                                                 const updatedGames = { ...currentGames };
                                                 delete updatedGames[deletedGameId];
+                                                delete towerGameSignaturesRef.current[deletedGameId];
                                                 console.log('[WebSocket] Tower game deleted:', deletedGameId);
                                                 return updatedGames;
                                             }
@@ -1429,6 +1507,7 @@ export const useApp = () => {
                                             if (currentGames[deletedGameId]) {
                                         const updatedGames = { ...currentGames };
                                         delete updatedGames[deletedGameId];
+                                                delete liveGameSignaturesRef.current[deletedGameId];
                                                 console.log('[WebSocket] Normal game deleted:', deletedGameId);
                                         return updatedGames;
                                             }
@@ -1440,6 +1519,7 @@ export const useApp = () => {
                                             if (currentGames[deletedGameId]) {
                                                 const updatedGames = { ...currentGames };
                                                 delete updatedGames[deletedGameId];
+                                                delete singlePlayerGameSignaturesRef.current[deletedGameId];
                                                 console.log('[WebSocket] Single player game deleted (fallback):', deletedGameId);
                                                 return updatedGames;
                                             }
@@ -1450,6 +1530,7 @@ export const useApp = () => {
                                             if (currentGames[deletedGameId]) {
                                                 const updatedGames = { ...currentGames };
                                                 delete updatedGames[deletedGameId];
+                                                delete towerGameSignaturesRef.current[deletedGameId];
                                                 console.log('[WebSocket] Tower game deleted (fallback):', deletedGameId);
                                                 return updatedGames;
                                             }

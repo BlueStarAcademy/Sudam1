@@ -6,6 +6,9 @@ import { audioService } from '../../services/audioService.js';
 interface TurnDisplayProps {
     session: LiveGameSession;
     isPaused?: boolean;
+    isMobile?: boolean;
+    onOpenSidebar?: () => void;
+    sidebarNotification?: boolean;
 }
 
 function usePrevious<T>(value: T): T | undefined {
@@ -108,7 +111,13 @@ const getGameStatusText = (session: LiveGameSession): string => {
     }
 };
 
-const TurnDisplay: React.FC<TurnDisplayProps> = ({ session, isPaused = false }) => {
+const TurnDisplay: React.FC<TurnDisplayProps> = ({
+    session,
+    isPaused = false,
+    isMobile = false,
+    onOpenSidebar,
+    sidebarNotification = false,
+}) => {
     const [timeLeft, setTimeLeft] = useState(30);
     const [percentage, setPercentage] = useState(100);
     const [foulMessage, setFoulMessage] = useState<string | null>(null);
@@ -204,38 +213,79 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({ session, isPaused = false }) 
         ? "bg-stone-800/70 backdrop-blur-sm border-stone-700/50" 
         : "bg-secondary border-color";
     const textClass = isSinglePlayer ? "text-amber-300" : "text-highlight";
+
+    const showSidebarButton = Boolean(isMobile && onOpenSidebar);
+    const paddingClass = showSidebarButton ? 'pr-12' : '';
+
+    const sidebarToggle = showSidebarButton ? (
+        <button
+            type="button"
+            onClick={onOpenSidebar}
+            className="absolute top-1/2 -translate-y-1/2 right-1.5 w-9 h-10 sm:w-10 sm:h-12 bg-secondary/80 backdrop-blur-sm rounded-l-lg flex items-center justify-center text-primary shadow-lg hover:bg-secondary transition-colors"
+            aria-label="메뉴 열기"
+        >
+            <span className="relative font-bold text-lg sm:text-xl">
+                {'<'}
+                {sidebarNotification && (
+                    <span className="absolute -top-1.5 -right-1 w-2 h-2 bg-danger rounded-full border border-secondary"></span>
+                )}
+            </span>
+        </button>
+    ) : null;
+
+    const wrapContent = (containerClass: string, content: React.ReactNode) => (
+        <div className="relative w-full">
+            <div className={`${containerClass} ${paddingClass}`}>
+                {content}
+            </div>
+            {sidebarToggle}
+        </div>
+    );
     
     if (foulMessage) {
-        return (
-            <div className="flex-shrink-0 bg-danger rounded-lg flex items-center justify-center shadow-inner animate-pulse py-1 h-12 border-2 border-red-500">
-                <p className="font-bold text-white tracking-wider text-[clamp(0.875rem,3vmin,1.125rem)]">{foulMessage}</p>
-            </div>
+        return wrapContent(
+            "flex-shrink-0 bg-danger rounded-lg flex items-center justify-center shadow-inner animate-pulse py-1 h-12 border-2 border-red-500",
+            <p className="font-bold text-white tracking-wider text-[clamp(0.875rem,3vmin,1.125rem)]">{foulMessage}</p>
         );
     }
     
     if (session.mode === GameMode.Dice && session.gameStatus === 'dice_placing' && session.dice) {
-        return (
-            <div className={`${baseClasses} ${themeClasses} px-4 gap-1`}>
+        return wrapContent(
+            `${baseClasses} ${themeClasses} px-4 gap-1`,
+            <>
                 <div className="flex items-center gap-2">
-                    <span className={`font-bold text-tertiary text-[clamp(0.8rem,2.5vmin,1rem)]`}>주사위: <span className={`${textClass} text-[clamp(0.9rem,3vmin,1.1rem)]`}>{session.dice.dice1}</span></span>
+                    <span className={`font-bold text-tertiary text-[clamp(0.8rem,2.5vmin,1rem)]`}>
+                        주사위: <span className={`${textClass} text-[clamp(0.9rem,3vmin,1.1rem)]`}>{session.dice.dice1}</span>
+                    </span>
                     <div className={`w-px h-5 ${isSinglePlayer ? 'bg-stone-600' : 'bg-border-color'}`}></div>
-                    <span className={`font-bold text-tertiary text-[clamp(0.8rem,2.5vmin,1rem)]`}>남은 돌: <span className={`${textClass} text-[clamp(0.9rem,3vmin,1.1rem)]`}>{session.stonesToPlace}</span></span>
+                    <span className={`font-bold text-tertiary text-[clamp(0.8rem,2.5vmin,1rem)]`}>
+                        남은 돌: <span className={`${textClass} text-[clamp(0.9rem,3vmin,1.1rem)]`}>{session.stonesToPlace}</span>
+                    </span>
                 </div>
-                {isPlayfulTurn && <div className="w-full h-1 bg-tertiary rounded-full mt-1"><div className="h-1 bg-red-500 rounded-full" style={{width: `${percentage}%`}} /></div>}
-            </div>
-        )
+                {isPlayfulTurn && (
+                    <div className="w-full h-1 bg-tertiary rounded-full mt-1">
+                        <div className="h-1 bg-red-500 rounded-full" style={{ width: `${percentage}%` }} />
+                    </div>
+                )}
+            </>
+        );
     }
 
     if (session.mode === GameMode.Thief && session.gameStatus === 'thief_placing' && session.dice) {
         const { dice1, dice2 } = session.dice;
         const diceDisplay = dice2 > 0 ? `${dice1}, ${dice2}` : `${dice1}`;
-        return (
-             <div className={`${baseClasses} ${themeClasses} px-4 gap-2`}>
-                 <span className={`font-bold text-tertiary text-[clamp(0.8rem,2.5vmin,1rem)]`}>주사위: <span className={`${textClass} text-[clamp(0.9rem,3vmin,1.1rem)]`}>{diceDisplay}</span></span>
-                 <div className={`w-px h-5 ${isSinglePlayer ? 'bg-stone-600' : 'bg-border-color'}`}></div>
-                 <span className={`font-bold text-tertiary text-[clamp(0.8rem,2.5vmin,1rem)]`}>남은 착수: <span className={`${textClass} text-[clamp(0.9rem,3vmin,1.1rem)]`}>{session.stonesToPlace}</span></span>
-            </div>
-        )
+        return wrapContent(
+            `${baseClasses} ${themeClasses} px-4 gap-2`,
+            <>
+                <span className={`font-bold text-tertiary text-[clamp(0.8rem,2.5vmin,1rem)]`}>
+                    주사위: <span className={`${textClass} text-[clamp(0.9rem,3vmin,1.1rem)]`}>{diceDisplay}</span>
+                </span>
+                <div className={`w-px h-5 ${isSinglePlayer ? 'bg-stone-600' : 'bg-border-color'}`}></div>
+                <span className={`font-bold text-tertiary text-[clamp(0.8rem,2.5vmin,1rem)]`}>
+                    남은 착수: <span className={`${textClass} text-[clamp(0.9rem,3vmin,1.1rem)]`}>{session.stonesToPlace}</span>
+                </span>
+            </>
+        );
     }
 
     if (isItemMode) {
@@ -246,24 +296,30 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({ session, isPaused = false }) 
 
         const percentage = (timeLeft / 30) * 100;
 
-        return (
-            <div className={`${baseClasses} ${themeClasses} px-4 gap-2`}>
+        return wrapContent(
+            `${baseClasses} ${themeClasses} px-4 gap-2`,
+            <>
                 <span className={`font-bold ${textClass} tracking-wider flex-shrink-0 text-[clamp(0.8rem,2.5vmin,1rem)]`}>{itemText}</span>
                 <div className={`w-full bg-tertiary rounded-full h-[clamp(0.5rem,1.5vh,0.75rem)] relative overflow-hidden border-2 ${isSinglePlayer ? 'border-black/20' : 'border-tertiary'}`}>
                     <div className="absolute inset-0 bg-highlight rounded-full" style={{ width: `${percentage}%`, transition: 'width 0.5s linear' }}></div>
                 </div>
                 <span className={`font-mono font-bold text-primary w-[clamp(2rem,8vmin,2.5rem)] text-center text-[clamp(0.9rem,3vmin,1.1rem)]`}>{timeLeft}초</span>
-            </div>
+            </>
         );
     }
     
     const statusText = getGameStatusText(session);
 
-    return (
-        <div className={`${baseClasses} ${themeClasses}`}>
+    return wrapContent(
+        `${baseClasses} ${themeClasses}`,
+        <>
             <p className={`font-bold ${textClass} tracking-wider text-[clamp(0.8rem,2.5vmin,1rem)] text-center px-2`}>{statusText}</p>
-            {isPlayfulTurn && <div className="w-11/12 h-1 bg-tertiary rounded-full mt-1"><div className="h-1 bg-red-500 rounded-full" style={{width: `${percentage}%`}} /></div>}
-        </div>
+            {isPlayfulTurn && (
+                <div className="w-11/12 h-1 bg-tertiary rounded-full mt-1">
+                    <div className="h-1 bg-red-500 rounded-full" style={{ width: `${percentage}%` }} />
+                </div>
+            )}
+        </>
     );
 };
 

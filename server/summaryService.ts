@@ -143,7 +143,7 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
         // 실패시 보상: 재도전이고 기권이 아닌 경우에만 성공 보상의 10% 지급
         const isResign = game.winReason === 'resign';
         
-        if (isRepeatAttempt && !isResign) {
+        if (isRepeatAttempt && !isResign && !game.isAiGame) {
             // 재도전 실패 보상: 성공시 보상의 10% (골드, 경험치만)
             const successRewards = stage.rewards.repeatClear;
             

@@ -180,5 +180,5 @@ export const BLACKSMITH_DISASSEMBLY_JACKPOT_RATES: number[] = [
 export const BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP = (level: number): number => {
     if (level < 1) return 0; // No XP needed for level 0 or less
     if (level >= BLACKSMITH_MAX_LEVEL) return Infinity; // Max level, no more XP needed
-    return level * 2000;
+    return 1000 + level * 200;
 };

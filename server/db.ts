@@ -1,4 +1,3 @@
-import { getDb, initializeAndGetDb } from './db/connection.ts';
 import { User, LiveGameSession, AppState, UserCredentials, AdminLog, Announcement, OverrideAnnouncement, GameMode } from '../types.ts';
 import { getInitialState } from './initialData.ts';
 import {
@@ -83,7 +82,6 @@ const seedInitialData = async () => {
 
 export const initializeDatabase = async () => {
     if (isInitialized) return;
-    const db = await initializeAndGetDb();
     const existingUsers = await listUsers();
     if (existingUsers.length === 0) {
         await seedInitialData();
@@ -97,11 +95,11 @@ export const initializeDatabase = async () => {
 // --- Key-Value Store ---
 export const getKV = async <T>(key: string): Promise<T | null> => {
     const kvRepository = await import('./repositories/kvRepository.ts');
-    return kvRepository.getKV(await getDb(), key);
+    return kvRepository.getKV<T>(key);
 };
 export const setKV = async <T>(key: string, value: T): Promise<void> => {
     const kvRepository = await import('./repositories/kvRepository.ts');
-    return kvRepository.setKV(await getDb(), key, value);
+    return kvRepository.setKV(key, value);
 };
 
 // --- User Functions ---
@@ -189,7 +187,6 @@ export const deleteGame = async (id: string): Promise<void> => {
 
 // --- Full State Retrieval (for client sync) ---
 export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCredentials' | 'liveGames' | 'singlePlayerGames' | 'towerGames' | 'adminLogs' | 'announcements' | 'globalOverrideAnnouncement' | 'gameModeAvailability' | 'announcementInterval'>> => {
-    const db = await getDb();
     const users = await listUsers();
     const allGames = await getAllActiveGames();
     const kvRepository = await import('./repositories/kvRepository.ts');
@@ -210,21 +207,20 @@ export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCreden
         }
     }
     
-    const adminLogs = await kvRepository.getKV<AdminLog[]>(db, 'adminLogs') || [];
-    const announcements = await kvRepository.getKV<Announcement[]>(db, 'announcements') || [];
-    const globalOverrideAnnouncement = await kvRepository.getKV<OverrideAnnouncement | null>(db, 'globalOverrideAnnouncement');
-    const gameModeAvailability = await kvRepository.getKV<Record<GameMode, boolean>>(db, 'gameModeAvailability') || {};
-    const announcementInterval = await kvRepository.getKV<number>(db, 'announcementInterval') || 3;
+    const adminLogs = await kvRepository.getKV<AdminLog[]>('adminLogs') || [];
+    const announcements = await kvRepository.getKV<Announcement[]>('announcements') || [];
+    const globalOverrideAnnouncement = await kvRepository.getKV<OverrideAnnouncement | null>('globalOverrideAnnouncement');
+    const gameModeAvailability = await kvRepository.getKV<Record<GameMode, boolean>>('gameModeAvailability') || {};
+    const announcementInterval = await kvRepository.getKV<number>('announcementInterval') || 3;
     
     // 사용자 데이터 최적화: 공개 정보만 포함 (인벤토리, 메일, 퀘스트 등은 제외)
     const optimizedUsers: Record<string, any> = {};
     for (const user of users) {
-        // 전투력 계산을 위해 inventory와 equipment는 포함해야 함
-        // 다만 메일, 퀘스트 등은 개인 정보이므로 제외
+        const nickname = user.nickname && user.nickname.trim().length > 0 ? user.nickname : user.username;
         optimizedUsers[user.id] = {
             id: user.id,
             username: user.username,
-            nickname: user.nickname,
+            nickname,
             isAdmin: user.isAdmin,
             strategyLevel: user.strategyLevel,
             strategyXp: user.strategyXp,
@@ -240,10 +236,13 @@ export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCreden
             league: user.league,
             mbti: user.mbti,
             isMbtiPublic: user.isMbtiPublic,
-            inventory: user.inventory, // 전투력 계산을 위해 포함
-            equipment: user.equipment, // 전투력 계산을 위해 포함
-            baseStats: user.baseStats, // 전투력 계산을 위해 포함
-            spentStatPoints: user.spentStatPoints, // 전투력 계산을 위해 포함
+            inventory: user.inventory ?? [],
+            equipment: user.equipment ?? {},
+            baseStats: user.baseStats ?? {},
+            spentStatPoints: user.spentStatPoints ?? {},
+            cumulativeRankingScore: user.cumulativeRankingScore ?? {},
+            cumulativeTournamentScore: user.cumulativeTournamentScore ?? 0,
+            dailyRankings: user.dailyRankings ?? {},
         };
     }
     

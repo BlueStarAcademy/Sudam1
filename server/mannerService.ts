@@ -69,6 +69,11 @@ export const applyMannerRankChange = async (user: types.User, oldMannerScore: nu
     const newMannerScore = getMannerScore(user);
     const newRank = getMannerRank(newMannerScore).rank;
     user.mannerMasteryApplied = newRank === '마스터';
+
+    // Recalculate with the NEW manner score so that higher-tier 보너스/페널티가 즉시 반영되도록 함
+    const refreshedUser = await regenerateActionPoints(user as User);
+    user.actionPoints = refreshedUser.actionPoints;
+    user.lastActionPointUpdate = refreshedUser.lastActionPointUpdate;
 };
 
 export const handleMannerAction = async (volatileState: types.VolatileState, action: types.ServerAction & { userId: string }, user: types.User): Promise<types.HandleActionResult> => {

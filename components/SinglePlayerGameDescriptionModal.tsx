@@ -30,6 +30,7 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
     };
 
     const gameModeName = getGameModeName(session.mode);
+    const isSpeedMode = stage.timeControl.type === 'fischer';
     
     // 문양돌 개수 확인
     const blackPatternCount = stage.placements.blackPattern || 0;
@@ -38,6 +39,11 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
     
     // 승리 목표 설명
     const getWinCondition = (): string => {
+        // 스피드 바둑 (피셔 타이머)
+        if (isSpeedMode) {
+            return '계가 시 최종 점수가 더 높은 플레이어가 승리합니다. 남은 시간 5초마다 1점 보너스가 추가됩니다.';
+        }
+        
         // 살리기 바둑 모드
         if (stage.survivalTurns) {
             // 살리기 바둑: 백의 목표점수는 black 값 사용
@@ -168,11 +174,32 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
                             </div>
                         )}
 
+                        {/* 스피드 바둑 특수 규칙 */}
+                        {isSpeedMode && (
+                            <div>
+                                <h3 className="text-lg font-semibold text-yellow-400 mb-2 flex items-center gap-2">
+                                    <img src="/images/icon/timer.png" alt="타이머" className="w-4 h-4 object-contain" />
+                                    <span>특수 규칙</span>
+                                </h3>
+                                <div className="bg-gray-700/50 rounded-lg p-3 space-y-2">
+                                    <p className="text-gray-200">
+                                        각 플레이어는 수를 둘 때마다 <span className="text-blue-300 font-semibold">피셔 타이머</span>가 적용되어 일정 시간(증가 시간)이 추가됩니다.
+                                    </p>
+                                    <p className="text-gray-200">
+                                        경기 종료 시 <span className="text-green-300 font-semibold">남은 시간 5초마다 1점</span>이 추가되어 최종 점수를 결정합니다.
+                                    </p>
+                                    <p className="text-gray-300 text-sm">
+                                        목표 따냄 수는 없으며, 최종 점수가 더 높은 쪽이 승리합니다.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+
                         {/* 턴 제한 */}
                         {stage.blackTurnLimit && (
                             <div>
                                 <h3 className="text-lg font-semibold text-yellow-400 mb-2 flex items-center gap-2">
-                                    <span>⏱️</span>
+                                    <img src="/images/icon/timer.png" alt="타이머" className="w-4 h-4 object-contain" />
                                     <span>턴 제한</span>
                                 </h3>
                                 <div className="bg-gray-700/50 rounded-lg p-3">
@@ -187,7 +214,7 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
                         {stage.autoScoringTurns && stage.autoScoringTurns > 0 && (
                             <div>
                                 <h3 className="text-lg font-semibold text-yellow-400 mb-2 flex items-center gap-2">
-                                    <span>⏰</span>
+                                    <img src="/images/icon/timer.png" alt="타이머" className="w-4 h-4 object-contain" />
                                     <span>자동 계가</span>
                                 </h3>
                                 <div className="bg-gray-700/50 rounded-lg p-3">

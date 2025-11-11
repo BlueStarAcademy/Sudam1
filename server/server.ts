@@ -143,6 +143,11 @@ const startServer = async () => {
     app.use(cors());
     app.use(express.json({ limit: '10mb' }) as any);
     
+    // Ignore development tooling noise such as Vite/Esbuild status pings
+    app.use('/@esbuild', (_req, res) => {
+        res.status(204).end();
+    });
+    
     // TODO: compression 패키지 설치 후 압축 미들웨어 추가
     // npm install compression @types/compression
 
@@ -430,9 +435,21 @@ const startServer = async () => {
             // Save any game that has been modified by the update function and broadcast updates
             const gamesToBroadcast: Record<string, types.LiveGameSession> = {};
             for (let i = 0; i < updatedGames.length; i++) {
-                if (JSON.stringify(updatedGames[i]) !== originalGamesJson[i]) {
-                    await db.saveGame(updatedGames[i]);
-                    gamesToBroadcast[updatedGames[i].id] = updatedGames[i];
+                const updatedGame = updatedGames[i];
+                if (JSON.stringify(updatedGame) !== originalGamesJson[i]) {
+                    const currentMoveCount = updatedGame.moveHistory?.length ?? 0;
+                    const latestGame = await db.getLiveGame(updatedGame.id);
+                    const latestMoveCount = latestGame?.moveHistory?.length ?? 0;
+
+                    if (latestGame && latestMoveCount > currentMoveCount) {
+                        console.warn(`[Game Loop] Detected newer game state for ${updatedGame.id} (server has ${latestMoveCount} moves vs local ${currentMoveCount}). Skipping save to avoid overwriting player progress.`);
+                        gamesToBroadcast[updatedGame.id] = latestGame;
+                        updatedGames[i] = latestGame;
+                        continue;
+                    }
+
+                    await db.saveGame(updatedGame);
+                    gamesToBroadcast[updatedGame.id] = updatedGame;
                 }
             }
             

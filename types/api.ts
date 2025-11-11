@@ -168,7 +168,6 @@ export type ServerAction =
     | { type: 'DELETE_MAIL', payload: { mailId: string } }
     | { type: 'DELETE_ALL_CLAIMED_MAIL', payload?: never }
     | { type: 'MARK_MAIL_AS_READ', payload: { mailId: string } }
-    | { type: 'CLAIM_MBTI_REWARD', payload?: never }
     | { type: 'CLAIM_QUEST_REWARD', payload: { questId: string } }
     | { type: 'CLAIM_ACTIVITY_MILESTONE', payload: { milestoneIndex: number, questType: 'daily' | 'weekly' | 'monthly' } }
     // Shop
