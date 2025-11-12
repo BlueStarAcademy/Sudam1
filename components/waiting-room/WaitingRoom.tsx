@@ -52,10 +52,12 @@ const AiChallengePanel: React.FC<{ mode: GameMode | 'strategic' | 'playful'; onO
     );
 };
 
-const AnnouncementBoard: React.FC<{ mode: GameMode; }> = ({ mode }) => {
+const AnnouncementBoard: React.FC<{ mode: GameMode | 'strategic' | 'playful'; }> = ({ mode }) => {
     const { announcements, globalOverrideAnnouncement, announcementInterval } = useAppContext();
     const [currentIndex, setCurrentIndex] = useState(0);
     const announcementIds = useMemo(() => announcements.map(a => a.id).join(','), [announcements]);
+    const strategicModes = useMemo(() => SPECIAL_GAME_MODES.map(m => m.mode), []);
+    const playfulModes = useMemo(() => PLAYFUL_GAME_MODES.map(m => m.mode), []);
 
     useEffect(() => {
         if (!announcements || announcements.length <= 1) {
@@ -68,7 +70,14 @@ const AnnouncementBoard: React.FC<{ mode: GameMode; }> = ({ mode }) => {
         return () => clearInterval(timer);
     }, [announcementIds, announcements.length, announcementInterval]);
 
-    const relevantOverride = globalOverrideAnnouncement && (globalOverrideAnnouncement.modes === 'all' || globalOverrideAnnouncement.modes.includes(mode));
+    const relevantOverride = globalOverrideAnnouncement && (
+        globalOverrideAnnouncement.modes === 'all' ||
+        (Array.isArray(globalOverrideAnnouncement.modes) && globalOverrideAnnouncement.modes.some(m => {
+            if (mode === 'strategic') return strategicModes.includes(m);
+            if (mode === 'playful') return playfulModes.includes(m);
+            return m === mode;
+        }))
+    );
 
     if (relevantOverride) {
         return (
@@ -227,37 +236,41 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
           </button>
         </div>
         <div className='flex-1 text-center flex items-center justify-center'>
-          <div className="flex items-center gap-2 sm:gap-3">
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold">
+          <div className="flex items-center gap-2 sm:gap-3 flex-nowrap">
+            <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold whitespace-nowrap">
               {mode === 'strategic' ? '전략바둑 대기실' : mode === 'playful' ? '놀이바둑 대기실' : `${mode} 대기실`}
             </h1>
             {(mode === 'strategic' || mode === 'playful') && (
-              <div className="flex items-center gap-1 bg-secondary/40 border border-secondary/30 rounded-full px-1.5 py-0.5">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
+                  aria-label="전략바둑 대기실로 이동"
+                  title="전략바둑 대기실"
                   disabled={mode === 'strategic'}
                   onClick={() => { if (mode !== 'strategic') window.location.hash = '#/waiting/strategic'; }}
-                  className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs transition-all ${
+                  className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-primary/30 overflow-hidden transition-all duration-200 ${
                     mode === 'strategic'
-                      ? 'bg-primary/80 text-primary font-semibold shadow-sm cursor-default'
-                      : 'text-tertiary hover:bg-primary/40'
+                      ? 'scale-110 shadow-lg shadow-primary/40 cursor-default'
+                      : 'opacity-80 hover:opacity-100 hover:scale-110 hover:-rotate-6 active:scale-95'
                   }`}
-                  aria-label="전략바둑 대기실로 이동"
                 >
-                  전략바둑 대기실
+                  <img src="/images/simbols/simbol1.png" alt="" className="w-full h-full object-contain" />
+                  {mode === 'strategic' && <div className="absolute inset-0 rounded-full ring-2 ring-primary/70 pointer-events-none" />}
                 </button>
                 <button
                   type="button"
+                  aria-label="놀이바둑 대기실로 이동"
+                  title="놀이바둑 대기실"
                   disabled={mode === 'playful'}
                   onClick={() => { if (mode !== 'playful') window.location.hash = '#/waiting/playful'; }}
-                  className={`px-2 py-0.5 rounded-full text-[10px] sm:text-xs transition-all ${
+                  className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-primary/30 overflow-hidden transition-all duration-200 ${
                     mode === 'playful'
-                      ? 'bg-primary/80 text-primary font-semibold shadow-sm cursor-default'
-                      : 'text-tertiary hover:bg-primary/40'
+                      ? 'scale-110 shadow-lg shadow-primary/40 cursor-default'
+                      : 'opacity-80 hover:opacity-100 hover:scale-110 hover:rotate-6 active:scale-95'
                   }`}
-                  aria-label="놀이바둑 대기실로 이동"
                 >
-                  놀이바둑 대기실
+                  <img src="/images/simbols/simbolp1.png" alt="" className="w-full h-full object-contain" />
+                  {mode === 'playful' && <div className="absolute inset-0 rounded-full ring-2 ring-primary/70 pointer-events-none" />}
                 </button>
               </div>
             )}

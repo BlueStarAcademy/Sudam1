@@ -8,16 +8,16 @@ interface TierInfoModalProps {
 }
 
 const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
-    const requirementMap: Record<string, string> = {
-        '챌린저': '상위 0.1%',
-        '마스터': '상위 3%',
-        '다이아': '상위 5%',
-        '플래티넘': '상위 10%',
-        '골드': '상위 25%',
-        '실버': '상위 40%',
-        '브론즈': '상위 60%',
-        '루키': '상위 80%',
-        '새싹': '모든 플레이어',
+    const tierRequirements: Record<string, string> = {
+        '챌린저': '최소 점수 3500 이상 & 상위 100명 한정',
+        '마스터': '최소 점수 3000 이상',
+        '다이아': '최소 점수 2400 이상',
+        '플래티넘': '최소 점수 2000 이상',
+        '골드': '최소 점수 1700 이상',
+        '실버': '최소 점수 1500 이상',
+        '브론즈': '최소 점수 1400 이상',
+        '루키': '최소 점수 1300 이상',
+        '새싹': '1300 미만 또는 랭킹 대국 50판 미만',
     };
 
     const getItemImage = (itemName: string): string | null => {
@@ -83,7 +83,7 @@ const TierInfoModal: React.FC<TierInfoModalProps> = ({ onClose }) => {
                                 <img src={tier.icon} alt={tier.name} className="w-12 h-12 mr-4 flex-shrink-0" />
                                 <div className="flex-grow">
                                     <p className={`font-bold text-lg ${tier.color}`}>{tier.name}</p>
-                                    <p className="text-sm text-gray-400">{requirementMap[tier.name] || 'N/A'}</p>
+                                    <p className="text-sm text-gray-400">{tierRequirements[tier.name] || 'N/A'}</p>
                                 </div>
                             </div>
                             <div className="mt-2 pt-2 border-t border-gray-700/50">

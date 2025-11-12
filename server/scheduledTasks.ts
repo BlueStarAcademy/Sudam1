@@ -258,6 +258,44 @@ export async function resetAllUsersLeagueScoresForNewWeek(): Promise<void> {
     console.log(`[OneTimeReset] Reset ${updatedCount} users' tournament scores to 0 (total users: ${allUsers.length})`);
 }
 
+export async function resetAllChampionshipScoresToZero(): Promise<void> {
+    console.log(`[OneTimeReset] Resetting all championship cumulative scores to 0`);
+    const allUsers = await db.getAllUsers();
+    const now = Date.now();
+    let updatedCount = 0;
+
+    for (const user of allUsers) {
+        let hasChanges = false;
+
+        if ((user.cumulativeTournamentScore ?? 0) !== 0) {
+            user.cumulativeTournamentScore = 0;
+            hasChanges = true;
+        }
+
+        if (!user.dailyRankings) {
+            user.dailyRankings = {};
+            hasChanges = true;
+        }
+
+        const currentChampionship = user.dailyRankings.championship;
+        if (!currentChampionship || currentChampionship.score !== 0 || currentChampionship.rank !== 0) {
+            user.dailyRankings.championship = {
+                rank: 0,
+                score: 0,
+                lastUpdated: now
+            };
+            hasChanges = true;
+        }
+
+        if (hasChanges) {
+            await db.updateUser(user);
+            updatedCount++;
+        }
+    }
+
+    console.log(`[OneTimeReset] Reset championship scores to 0 for ${updatedCount} users (total users: ${allUsers.length})`);
+}
+
 export async function processWeeklyLeagueUpdates(user: types.User): Promise<types.User> {
     if (!isDifferentWeekKST(user.lastLeagueUpdate, Date.now())) {
         return user; // Not a new week, no update needed

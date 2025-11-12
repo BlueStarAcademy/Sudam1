@@ -517,9 +517,9 @@ const Profile: React.FC<ProfileProps> = () => {
             <div className="flex-grow flex flex-col min-h-0 border-t border-color mt-2 pt-2">
                 <div className="bg-tertiary/30 p-2 rounded-md text-center mb-2">
                     {currentUserWithStatus.guildId ? (
-                        <Button onClick={() => window.location.hash = '#/guild'} colorScheme="green" className="w-full">길드 입장</Button>
+                        <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="green" className="w-full">길드 입장</Button>
                     ) : (
-                        <Button onClick={() => window.location.hash = '#/guild'} colorScheme="blue" className="w-full">길드 가입</Button>
+                        <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="blue" className="w-full">길드 가입</Button>
                     )}
                 </div>
                  <div className="flex justify-between items-center mb-1 flex-shrink-0 whitespace-nowrap">
@@ -700,14 +700,14 @@ const Profile: React.FC<ProfileProps> = () => {
                 {/* --- MOBILE LAYOUT --- */}
                 <div className="lg:hidden flex flex-col h-full gap-1.5 relative">
                     <div className="flex flex-row gap-1.5 flex-shrink-0">
-                        <div className="flex-1 bg-panel border border-color text-on-panel rounded-lg p-1.5 flex flex-col gap-1">{ProfilePanelContent}</div>
-                        <div className="flex-1 bg-panel border border-color text-on-panel rounded-lg p-1.5 flex flex-col">
-                            <h3 className="text-center font-semibold text-secondary text-xs flex-shrink-0 mb-1">장착 장비</h3>
+                        <div className="basis-[45%] min-w-[140px] bg-panel border border-color text-on-panel rounded-lg p-1.5 flex flex-col gap-1">{ProfilePanelContent}</div>
+                        <div className="basis-[55%] min-w-[180px] bg-panel border border-color text-on-panel rounded-lg p-1.5 flex flex-col">
+                            <h3 className="text-center font-semibold text-secondary text-xs flex-shrink-0 mb-1 whitespace-nowrap">장착 장비</h3>
                             <div className="grid grid-cols-3 gap-1">
                                 {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
                                     const item = getItemForSlot(slot);
                                     return (
-                                        <div key={slot} className="w-full">
+                                        <div key={slot} className="w-full aspect-square">
                                             <EquipmentSlotDisplay
                                                 slot={slot}
                                                 item={item}
@@ -738,7 +738,7 @@ const Profile: React.FC<ProfileProps> = () => {
                         </div>
                     </div>
 
-                    <div className="flex-1 min-h-0 overflow-hidden">
+                    <div className="flex-1 min-h-0 overflow-y-auto pr-0.5">
                         {LobbyCards}
                     </div>
 

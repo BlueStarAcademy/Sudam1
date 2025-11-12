@@ -20,10 +20,10 @@ type SettingsTab = 'graphics' | 'sound' | 'features';
 
 const THEMES: { id: Theme; name: string; colors: string[] }[] = [
     { id: 'black', name: '슬레이트', colors: ['#0f172a', '#1e293b', '#e2e8f0', '#eab308'] },
-    { id: 'white', name: '라이트', colors: ['#e5e7eb', '#d1d5db', '#111827', '#eab308'] },
-    { id: 'sky', name: '데이브레이크', colors: ['#bfdbfe', '#7dd3fc', '#0c4a6e', '#fbbf24'] },
-    { id: 'blue', name: '파스텔 로즈', colors: ['#fef2f2', '#fee2e2', '#881337', '#eab308'] },
-    { id: 'green', name: '파스텔 그린', colors: ['#bbf7d0', '#86efac', '#14532d', '#eab308'] },
+    { id: 'white', name: '서리빛 노르딕', colors: ['#edf1f6', '#cbd5e1', '#1f2937', '#d4b373'] },
+    { id: 'sky', name: '안개 낀 새벽', colors: ['#1f2a37', '#3a465e', '#4ea8d1', '#f6c453'] },
+    { id: 'blue', name: '노을 빛 라벤더', colors: ['#1e1f2e', '#4c4b69', '#a887ff', '#f6d8a6'] },
+    { id: 'green', name: '깊은 숲의 숨', colors: ['#17251d', '#2c4632', '#7abf8b', '#e3c970'] },
 ];
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => {
@@ -90,7 +90,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => 
                                             onChange={() => updateTheme(theme.id)}
                                             className="w-5 h-5 text-accent bg-secondary border-color focus:ring-accent"
                                         />
-                                        <span className="ml-3 text-text-primary">{theme.name}</span>
+                                    <span className="ml-3 text-text-primary text-sm sm:text-base whitespace-nowrap">{theme.name}</span>
                                         <div className="ml-auto flex -space-x-2">
                                             {theme.colors.map((color, i) => (
                                                 <div key={i} style={{ backgroundColor: color }} className="w-6 h-6 rounded-full border-2 border-primary"></div>
@@ -102,31 +102,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => 
                         </div>
                         <div className="pt-4 border-t border-color">
                             <h3 className="text-lg font-semibold text-text-secondary mb-3">패널 엣지 스타일</h3>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {PANEL_EDGE_OPTIONS.map(option => (
-                                    <label
-                                        key={option.id}
-                                        className="flex items-center gap-3 p-3 bg-tertiary/50 rounded-lg cursor-pointer border-2 border-transparent has-[:checked]:border-accent has-[:checked]:ring-2 has-[:checked]:ring-accent"
-                                    >
-                                        <input
-                                            type="radio"
-                                            name="panelEdgeStyle"
-                                            value={option.id}
-                                            checked={(settings.graphics.panelEdgeStyle ?? 'default') === option.id}
-                                            onChange={() => updatePanelEdgeStyle(option.id)}
-                                            className="w-5 h-5 text-accent bg-secondary border-color focus:ring-accent"
-                                        />
-                                        <div className="flex flex-col gap-1">
-                                            <span className="text-text-primary text-sm font-semibold">{option.label}</span>
-                                            {option.description && (
-                                                <span className="text-xs text-text-secondary">{option.description}</span>
-                                            )}
-                                        </div>
-                                        <div className="ml-auto">
-                                            {renderEdgePreview(option.id)}
-                                        </div>
-                                    </label>
-                                ))}
+                            <div className="space-y-4">
+                                <div className="flex items-center justify-center p-6 bg-tertiary/60 border border-color rounded-xl">
+                                    {renderEdgePreview(settings.graphics.panelEdgeStyle ?? 'default')}
+                                </div>
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                                    {PANEL_EDGE_OPTIONS.map(option => (
+                                        <label
+                                            key={option.id}
+                                            className="flex items-center gap-2 rounded-lg bg-tertiary/40 border border-transparent transition-all cursor-pointer has-[:checked]:border-accent has-[:checked]:ring-2 has-[:checked]:ring-accent has-[:checked]:bg-tertiary/60 px-2.5 py-2"
+                                        >
+                                            <input
+                                                type="radio"
+                                                name="panelEdgeStyle"
+                                                value={option.id}
+                                                checked={(settings.graphics.panelEdgeStyle ?? 'default') === option.id}
+                                                onChange={() => updatePanelEdgeStyle(option.id)}
+                                                className="w-4 h-4 text-accent bg-secondary border-color focus:ring-accent flex-shrink-0"
+                                            />
+                                            <span className="text-sm text-text-primary whitespace-nowrap flex-1">{option.label}</span>
+                                        </label>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     </div>

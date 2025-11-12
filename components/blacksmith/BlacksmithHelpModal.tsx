@@ -11,7 +11,7 @@ interface BlacksmithHelpModalProps {
 
 const BlacksmithHelpModal: React.FC<BlacksmithHelpModalProps> = ({ onClose }) => {
     return (
-        <DraggableWindow title="대장간 도움말" onClose={onClose} windowId="blacksmith-help" initialWidth={700} zIndex={60}>
+        <DraggableWindow title="대장간 도움말" onClose={onClose} windowId="blacksmith-help" initialWidth={700} zIndex={60} variant="store">
             <div className="space-y-6 text-sm overflow-y-auto max-h-[600px] pr-2">
                 <div className="flex items-start gap-4">
                     <img src="/images/equipments/moru.png" alt="장비 강화" className="w-32 h-32 object-cover rounded-lg flex-shrink-0" />

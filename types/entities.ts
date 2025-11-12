@@ -294,15 +294,15 @@ export type User = {
   worldRewardClaimed?: boolean;
   lastWorldTournament?: TournamentState | null;
   weeklyCompetitors?: WeeklyCompetitor[];
-  lastWeeklyCompetitorsUpdate?: number;
-  lastLeagueUpdate?: number;
+  lastWeeklyCompetitorsUpdate?: number | null;
+  lastLeagueUpdate?: number | null;
   weeklyCompetitorsBotScores?: Record<string, { score: number; lastUpdate: number }>;
   monthlyGoldBuffExpiresAt?: number | null;
   mbti?: string | null;
   rejectedGameModes?: GameMode[];
   isMbtiPublic?: boolean;
   statResetCountToday?: number;
-  lastStatResetDate?: string;
+  lastStatResetDate?: string | null;
   singlePlayerProgress?: number;
   clearedSinglePlayerStages?: string[]; // 클리어한 스테이지 ID 배열 (최초 클리어 여부 추적용)
   bonusStatPoints?: number;
@@ -603,6 +603,7 @@ export type LiveGameSession = {
   whiteByoyomiPeriodsLeft: number;
   turnDeadline?: number;
   turnStartTime?: number;
+  nigiriStartTime?: number;
   canRequestNoContest?: { [playerId: string]: boolean };
   pausedTurnTimeLeft?: number;
   itemUseDeadline?: number;

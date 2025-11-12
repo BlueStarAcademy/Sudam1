@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import DraggableWindow from './DraggableWindow.js';
 import { MBTI_QUESTIONS } from '../constants/mbtiQuestions';
 import { useAppContext } from '../hooks/useAppContext.js';
@@ -34,8 +34,15 @@ const MbtiInfoModal: React.FC<MbtiInfoModalProps> = ({ onClose, isTopmost }) => 
     const [answers, setAnswers] = useState<Record<string, string>>({});
     const [showResult, setShowResult] = useState(false);
     const [calculatedMbti, setCalculatedMbti] = useState<string | null>(null);
+    const [hasClaimedReward, setHasClaimedReward] = useState<boolean>(() => !!currentUser?.mbti);
 
     const hasMbti = useMemo(() => !!currentUser?.mbti, [currentUser]);
+
+    useEffect(() => {
+        if (currentUser?.mbti) {
+            setHasClaimedReward(true);
+        }
+    }, [currentUser?.mbti]);
 
     const handleStartMbtiSetting = () => {
         setIsSettingMbti(true);
@@ -57,12 +64,15 @@ const MbtiInfoModal: React.FC<MbtiInfoModalProps> = ({ onClose, isTopmost }) => 
             const mbti = calculateMbti();
             setCalculatedMbti(mbti);
             // Dispatch action to update MBTI
-            const isFirstTime = !hasMbti;
+            const isFirstTime = !hasMbti && !hasClaimedReward;
             await handlers.handleAction({
                 type: 'UPDATE_MBTI',
                 payload: { mbti, isMbtiPublic: true, isFirstTime }
             });
             setShowResult(true);
+            if (isFirstTime) {
+                setHasClaimedReward(true);
+            }
             console.log('MBTI set:', mbti, 'MBTI reward processed.');
         }
     };
@@ -80,7 +90,7 @@ const MbtiInfoModal: React.FC<MbtiInfoModalProps> = ({ onClose, isTopmost }) => 
     return (
         <DraggableWindow title="MBTI 성향 안내" onClose={onClose} windowId="mbti-info" initialWidth={400} isTopmost={isTopmost}>
             <div className="max-h-[60vh] overflow-y-auto pr-2">
-                {!isSettingMbti && !hasMbti && (
+                {!isSettingMbti && !hasMbti && !hasClaimedReward && (
                     <div className="text-center mb-4">
                         <p className="text-lg font-bold text-white mb-2">MBTI란 무엇인가요?</p>
                         <p className="text-sm text-gray-300 mb-4">

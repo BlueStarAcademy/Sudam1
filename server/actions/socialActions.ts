@@ -9,6 +9,7 @@ import * as summaryService from '../summaryService.js';
 import { broadcast } from '../socket.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants.js';
 import { clearAiSession } from '../aiSessionManager.js';
+import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
 
 
 type HandleActionResult = { 
@@ -152,6 +153,11 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             if (text && GREETINGS.some(g => text.toLowerCase().includes(g))) {
                 updateQuestProgress(user, 'chat_greeting');
                 await db.updateUser(user);
+                const selectiveUpdate = getSelectiveUserUpdate(user, '', { includeAll: true });
+                broadcast({
+                    type: 'USER_UPDATE',
+                    payload: { [user.id]: selectiveUpdate }
+                });
             }
 
             // 채팅 메시지를 모든 클라이언트에 브로드캐스트

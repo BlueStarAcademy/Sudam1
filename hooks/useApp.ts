@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 // FIX: The main types barrel file now exports settings types. Use it for consistency.
-import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset } from '../types.js';
+import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, UserStatusInfo, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset } from '../types.js';
 import { audioService } from '../services/audioService.js';
 import { stableStringify, parseHash } from '../utils/appUtils.js';
 import { 
@@ -31,6 +31,7 @@ export const useApp = () => {
     // 강제 리렌더링을 위한 카운터
     const [updateTrigger, setUpdateTrigger] = useState(0);
     const currentUserRef = useRef<User | null>(null);
+    const currentUserStatusRef = useRef<UserWithStatus | null>(null);
     // HTTP 응답 후 일정 시간 내 WebSocket 업데이트 무시 (중복 방지)
     const lastHttpUpdateTime = useRef<number>(0);
     const lastHttpActionType = useRef<string | null>(null);
@@ -343,10 +344,21 @@ export const useApp = () => {
     const currentUserWithStatus: UserWithStatus | null = useMemo(() => {
         // updateTrigger를 dependency에 포함시켜 강제 리렌더링 보장
         if (!currentUser) return null;
-        if (!Array.isArray(onlineUsers)) return { ...currentUser, status: 'online' as UserStatus };
-        const statusInfo = onlineUsers.find(u => u && u.id === currentUser.id);
-        return { ...currentUser, ...(statusInfo || { status: 'online' as UserStatus }) };
+        const statusInfo = Array.isArray(onlineUsers)
+            ? onlineUsers.find(u => u && u.id === currentUser.id)
+            : null;
+        const statusData: UserStatusInfo = {
+            status: statusInfo?.status ?? ('online' as UserStatus),
+            mode: statusInfo?.mode,
+            gameId: statusInfo?.gameId,
+            spectatingGameId: statusInfo?.spectatingGameId,
+        };
+        return { ...currentUser, ...statusData };
     }, [currentUser, onlineUsers, updateTrigger]);
+
+    useEffect(() => {
+        currentUserStatusRef.current = currentUserWithStatus;
+    }, [currentUserWithStatus]);
 
     const activeGame = useMemo(() => {
         if (!currentUserWithStatus) return null;
@@ -483,6 +495,7 @@ export const useApp = () => {
             const res = await fetch('/api/action', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ ...action, userId: currentUserRef.current?.id }),
             });
 
@@ -508,6 +521,12 @@ export const useApp = () => {
                     showError(errorMessage);
                     return;
                 }
+                console.debug('[handleAction] Action response received', {
+                    actionType: action.type,
+                    hasUpdatedUser: !!result.updatedUser || !!result.clientResponse?.updatedUser,
+                    moveHistoryLength: Array.isArray(result.clientResponse?.game?.moveHistory) ? result.clientResponse.game.moveHistory.length : undefined,
+                    raw: result,
+                });
                 console.log(`[handleAction] ${action.type} - Response received:`, {
                     hasUpdatedUser: !!result.updatedUser,
                     hasClientResponse: !!result.clientResponse,
@@ -539,6 +558,7 @@ export const useApp = () => {
                         'CLAIM_TOURNAMENT_REWARD',
                         'CLAIM_ACTIVITY_MILESTONE',
                         'CLAIM_SINGLE_PLAYER_MISSION_REWARD',
+                        'SINGLE_PLAYER_REFRESH_PLACEMENT',
                         'BUY_SHOP_ITEM',
                         'BUY_MATERIAL_BOX',
                         'BUY_CONDITION_POTION',
@@ -562,6 +582,14 @@ export const useApp = () => {
                             inventoryItems: updatedUserFromResponse.inventory?.slice(0, 3).map((i: any) => i.name)
                         });
                     }
+
+                    if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' && updatedUserFromResponse.singlePlayerMissions) {
+                        try {
+                            updatedUserFromResponse.singlePlayerMissions = JSON.parse(JSON.stringify(updatedUserFromResponse.singlePlayerMissions));
+                        } catch (error) {
+                            console.warn('[handleAction] CLAIM_SINGLE_PLAYER_MISSION_REWARD - Failed to deep copy singlePlayerMissions', error);
+                        }
+                    }
                     
                     // applyUserUpdate는 이미 내부에서 flushSync를 사용하므로 모든 액션에서 즉시 UI 업데이트됨
                     // HTTP 응답의 updatedUser를 우선적으로 적용하고, WebSocket 업데이트는 일정 시간 동안 무시됨
@@ -577,11 +605,6 @@ export const useApp = () => {
                         diamonds: mergedUser?.diamonds,
                         actionPoints: mergedUser?.actionPoints
                     });
-                    
-                    if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD') {
-                        lastHttpHadUpdatedUser.current = false;
-                        lastHttpUpdateTime.current = 0;
-                    }
                     
                     // 보상 수령 액션의 경우 추가로 강제 업데이트
                     if (isInventoryCriticalAction) {
@@ -610,6 +633,7 @@ export const useApp = () => {
                         'CLAIM_ALL_MAIL_ATTACHMENTS', 'MARK_MAIL_AS_READ',
                         'CLAIM_QUEST_REWARD', 'CLAIM_ACTIVITY_MILESTONE',
                         'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST',
+                        'SINGLE_PLAYER_REFRESH_PLACEMENT',
                         'MANNER_ACTION'
                     ];
                     if (actionsThatShouldHaveUpdatedUser.includes(action.type)) {
@@ -768,6 +792,12 @@ export const useApp = () => {
                     const gameId = result.clientResponse.gameId;
                     console.log(`[handleAction] ${action.type} - gameId received:`, gameId);
                     
+                    const targetHash = `#/game/${gameId}`;
+                    if (window.location.hash !== targetHash) {
+                        console.log('[handleAction] Setting immediate route to new game:', targetHash);
+                        window.location.hash = targetHash;
+                    }
+                    
                     // WebSocket 업데이트를 기다리면서 여러 번 시도
                     let attempts = 0;
                     const maxAttempts = 30;
@@ -861,6 +891,7 @@ export const useApp = () => {
             const res = await fetch('/api/action', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ type: 'LOGOUT', userId }),
             });
             
@@ -1041,12 +1072,13 @@ export const useApp = () => {
                 
                 // Vite 개발 서버를 사용하는 경우 (포트가 5173이거나 hostname이 localhost/127.0.0.1인 경우)
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const isViteDevServer = window.location.port === '5173';
                 const isLocalHost =
                     window.location.hostname === 'localhost' ||
                     window.location.hostname === '127.0.0.1';
 
-                if (isLocalHost && window.location.port === '5173') {
-                    // 로컬 개발 환경(Vite)에서는 프록시 (/ws) 사용
+                if (isViteDevServer && isLocalHost) {
+                    // 로컬 Vite 개발 환경에서는 프록시 (/ws) 사용
                     wsUrl = `${wsProtocol}//${window.location.host}/ws`;
                 } else {
                     // 그 외 환경에서는 서버(4000)의 /ws 엔드포인트로 직접 연결
@@ -1421,12 +1453,37 @@ export const useApp = () => {
                                         singlePlayerGameSignaturesRef.current[gameId] = signature;
                                         const updatedGames = { ...currentGames };
                                         updatedGames[gameId] = game;
+                                const lastMoves = Array.isArray(game.moveHistory)
+                                    ? game.moveHistory.slice(Math.max(0, game.moveHistory.length - 4)).map((m: any) => ({
+                                        x: m?.x,
+                                        y: m?.y,
+                                        player: m?.player,
+                                    }))
+                                    : null;
+                                const boardSnapshot = Array.isArray(game.boardState)
+                                    ? game.boardState.map((row: any[]) => row?.join?.('') ?? row).slice(0, 3)
+                                    : undefined;
+                                console.debug('[WebSocket][SinglePlayer] GAME_UPDATE', {
+                                    gameId,
+                                    stageId: game.stageId,
+                                    serverRevision: game.serverRevision,
+                                    moveHistoryLength: Array.isArray(game.moveHistory) ? game.moveHistory.length : undefined,
+                                    currentPlayer: game.currentPlayer,
+                                    gameStatus: game.gameStatus,
+                                    lastMove: game.lastMove,
+                                    lastMoves,
+                                    boardSample: boardSnapshot,
+                                });
 
                                         if (currentUser && game.player1 && game.player2) {
                                             const isPlayer1 = game.player1.id === currentUser.id;
                                             const isPlayer2 = game.player2.id === currentUser.id;
+                                            const currentStatus = currentUserStatusRef.current;
+                                            const isActiveForGame = !!currentStatus &&
+                                                (currentStatus.gameId === gameId || currentStatus.spectatingGameId === gameId) &&
+                                                (currentStatus.status === 'in-game' || currentStatus.status === 'spectating');
 
-                                            if (isPlayer1 || isPlayer2) {
+                                            if ((isPlayer1 || isPlayer2) && isActiveForGame) {
                                                 const targetHash = `#/game/${gameId}`;
                                                 if (window.location.hash !== targetHash) {
                                                     console.log('[WebSocket] Routing to single player game:', gameId);
@@ -1454,8 +1511,12 @@ export const useApp = () => {
                                         if (currentUser && game.player1 && game.player2) {
                                             const isPlayer1 = game.player1.id === currentUser.id;
                                             const isPlayer2 = game.player2.id === currentUser.id;
+                                            const currentStatus = currentUserStatusRef.current;
+                                            const isActiveForGame = !!currentStatus &&
+                                                (currentStatus.gameId === gameId || currentStatus.spectatingGameId === gameId) &&
+                                                (currentStatus.status === 'in-game' || currentStatus.status === 'spectating');
 
-                                            if (isPlayer1 || isPlayer2) {
+                                            if ((isPlayer1 || isPlayer2) && isActiveForGame) {
                                                 const targetHash = `#/game/${gameId}`;
                                                 if (window.location.hash !== targetHash) {
                                                     console.log('[WebSocket] Routing to tower game:', gameId);
@@ -1483,8 +1544,12 @@ export const useApp = () => {
                                         if (currentUser && game.player1 && game.player2) {
                                             const isPlayer1 = game.player1.id === currentUser.id;
                                             const isPlayer2 = game.player2.id === currentUser.id;
+                                            const currentStatus = currentUserStatusRef.current;
+                                            const isActiveForGame = !!currentStatus &&
+                                                (currentStatus.gameId === gameId || currentStatus.spectatingGameId === gameId) &&
+                                                (currentStatus.status === 'in-game' || currentStatus.status === 'spectating');
 
-                                            if (isPlayer1 || isPlayer2) {
+                                            if ((isPlayer1 || isPlayer2) && isActiveForGame) {
                                                 const targetHash = `#/game/${gameId}`;
                                                 if (window.location.hash !== targetHash) {
                                                     console.log('[WebSocket] Routing to game:', gameId);

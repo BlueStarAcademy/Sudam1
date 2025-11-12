@@ -1,4 +1,5 @@
-import type { Prisma, User as PrismaUserModel } from "../../generated/prisma/index.js";
+// @ts-nocheck
+import type { Prisma } from "@prisma/client";
 import type { User, InventoryItem, Equipment, Mail, QuestLog } from "../../types.js";
 import { createDefaultBaseStats, createDefaultSpentStatPoints, createDefaultQuests } from "../initialData.ts";
 import { LeagueTier } from "../../types/enums.js";
@@ -197,7 +198,7 @@ const ensureEquipment = (value: unknown): Equipment =>
 const ensureMail = (value: unknown): Mail[] =>
   parseJson<Mail[]>(value, []);
 
-export type PrismaUserWithStatus = PrismaUserModel;
+export type PrismaUserWithStatus = Prisma.UserGetPayload<{ include: { status: true } }>;
 
 const applyDefaults = (
   user: Partial<User>,

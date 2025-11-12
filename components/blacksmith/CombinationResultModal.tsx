@@ -2,7 +2,7 @@
 import React from 'react';
 import DraggableWindow from '../DraggableWindow';
 import { InventoryItem, ItemGrade } from '../../types';
-import Button from '../Button';
+import ResourceActionButton from '../ui/ResourceActionButton';
 
 // This is the same detailed item display used in the EnhancementView
 const gradeStyles: Record<ItemGrade, { name: string; color: string; background: string; }> = {
@@ -87,6 +87,7 @@ const CombinationResultModal: React.FC<CombinationResultModalProps> = ({ result,
             onClose={onClose} 
             windowId="combination-result"
             initialWidth={400}
+            variant="store"
         >
             <div className="text-center flex flex-col items-center">
                 <div className="w-full max-w-xs">
@@ -100,7 +101,7 @@ const CombinationResultModal: React.FC<CombinationResultModalProps> = ({ result,
                     </div>
                 </div>
 
-                <Button onClick={onClose} className="w-full mt-6 py-2.5 max-w-xs">확인</Button>
+                <ResourceActionButton onClick={onClose} className="w-full mt-6 py-2.5 max-w-xs" variant="materials">확인</ResourceActionButton>
             </div>
         </DraggableWindow>
     );

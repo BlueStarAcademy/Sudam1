@@ -2,6 +2,7 @@
 import React, { useState, useMemo, useEffect, useRef, useCallback } from 'react';
 import { UserWithStatus, InventoryItem, ServerAction, ItemGrade, ItemOption } from '../../types.js';
 import Button from '../Button.js';
+import ResourceActionButton from '../ui/ResourceActionButton.js';
 import { ENHANCEMENT_SUCCESS_RATES, ENHANCEMENT_COSTS, MATERIAL_ITEMS, ENHANCEMENT_FAIL_BONUS_RATES, GRADE_LEVEL_REQUIREMENTS, calculateEnhancementGoldCost } from '../../constants';
 import { useAppContext } from '../../hooks/useAppContext.js';
 
@@ -325,7 +326,7 @@ useEffect(() => {
 
         clearEnhancementTimers();
 
-        const duration = 3000;
+        const duration = 2000;
         const targetItemId = selectedItem.id;
         const startTime = Date.now();
 
@@ -428,27 +429,22 @@ useEffect(() => {
                                 {failBonus > 0 && <span className="text-green-400 ml-1" style={{ fontSize: 'clamp(0.875rem, 2vw, 1.125rem)' }}>(+{failBonus.toFixed(1).replace(/\.0$/, '')}%)</span>}
                             </p>
                         </div>
-                        {isEnhancing && (
-                            <div className="bg-gray-900/60 p-2 rounded-lg flex flex-col gap-1">
-                                <span className="text-center text-xs text-tertiary font-medium">강화 중...</span>
-                                <div className="w-full bg-gray-800 rounded-full h-2 overflow-hidden">
-                                    <div
-                                        className="bg-yellow-400 h-full transition-[width] duration-100 ease-linear"
-                                        style={{ width: `${enhancementProgress}%` }}
-                                    />
-                                </div>
-                            </div>
-                        )}
                         <div className="flex items-center">
-                            <Button
+                            <ResourceActionButton
                                 onClick={handleEnhanceClick}
                                 disabled={!canEnhance || isEnhancing || selectedItem.stars >= 10}
-                                colorScheme="yellow"
+                                variant="gold"
                                 className="w-full py-2 whitespace-nowrap"
                                 style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }}
                             >
                                 {buttonText}
-                            </Button>
+                            </ResourceActionButton>
+                        </div>
+                        <div className="h-2 w-full bg-slate-800/80 rounded-full overflow-hidden border border-slate-700/60">
+                            <div
+                                className={`h-full bg-gradient-to-r from-amber-300 via-yellow-400 to-amber-500 transition-[width] duration-100 ease-linear ${isEnhancing ? '' : 'opacity-0'}`}
+                                style={{ width: `${isEnhancing ? enhancementProgress : 0}%` }}
+                            />
                         </div>
                     </div>
                 </div>

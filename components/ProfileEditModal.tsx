@@ -323,7 +323,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                     <div className="space-y-4 max-w-sm mx-auto p-4">
                         <div>
                             <label htmlFor="nickname-input" className="block text-sm font-medium text-gray-300 mb-1">
-                                새 닉네임 (2-12자)
+                                새 닉네임 (2-6자)
                             </label>
                             <input
                                 id="nickname-input"
@@ -331,7 +331,7 @@ const ProfileEditModal: React.FC<ProfileEditModalProps> = ({ currentUser, onClos
                                 value={newNickname}
                                 onChange={(e) => setNewNickname(e.target.value)}
                                 className="w-full bg-gray-900 border border-gray-600 rounded-md p-3 focus:ring-blue-500 focus:border-blue-500"
-                                maxLength={12}
+                                maxLength={6}
                                 minLength={2}
                             />
                         </div>

@@ -25,6 +25,8 @@ interface DraggableWindowProps {
 
     zIndex?: number;
 
+    variant?: 'default' | 'store';
+
 }
 
 
@@ -33,7 +35,7 @@ const SETTINGS_KEY = 'draggableWindowSettings';
 
 
 
-const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onClose, children, initialWidth = 500, initialHeight, modal = true, closeOnOutsideClick = true, isTopmost = true, headerContent, zIndex = 50 }) => {
+const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onClose, children, initialWidth = 500, initialHeight, modal = true, closeOnOutsideClick = true, isTopmost = true, headerContent, zIndex = 50, variant = 'default' }) => {
 
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
@@ -471,8 +473,21 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
     
 
     const headerCursor = isTopmost ? 'cursor-move' : '';
-
-    
+    const isStoreVariant = variant === 'store';
+    const containerBaseClass = 'fixed top-1/2 left-1/2 rounded-xl flex flex-col transition-shadow duration-200';
+    const containerVariantClass = isStoreVariant
+        ? 'text-slate-100 bg-gradient-to-br from-[#1f2239] via-[#101a34] to-[#060b12] border border-cyan-300/40 shadow-[0_40px_100px_-45px_rgba(34,211,238,0.65)]'
+        : 'text-on-panel bg-primary border border-color shadow-2xl';
+    const headerVariantClass = isStoreVariant
+        ? 'bg-gradient-to-r from-[#1b2645] via-[#15203b] to-[#1b2645] border-b border-cyan-300/30 text-cyan-100'
+        : 'bg-secondary text-secondary';
+    const footerVariantClass = isStoreVariant
+        ? 'bg-[#111a32] border-t border-cyan-300/30 text-cyan-200'
+        : 'bg-secondary border-color text-tertiary';
+    const bodyPaddingClass = isStoreVariant ? 'p-5' : 'p-4';
+    const closeButtonClass = isStoreVariant
+        ? 'w-10 h-10 flex items-center justify-center rounded-full bg-gradient-to-br from-rose-500/85 via-rose-500/75 to-rose-600/85 hover:from-rose-400 hover:via-rose-500 hover:to-rose-600 transition-colors shadow-[0_18px_38px_-24px_rgba(244,63,94,0.75)]'
+        : 'w-10 h-10 flex items-center justify-center rounded-full bg-tertiary hover:bg-danger transition-colors';
 
     return (
 
@@ -484,35 +499,36 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
             )}
 
-                            <div
+            <div
 
-                                ref={windowRef}
+                ref={windowRef}
 
-                                className={`fixed top-1/2 left-1/2 bg-primary rounded-xl shadow-2xl border border-color flex flex-col text-on-panel`}
+                className={`${containerBaseClass} ${containerVariantClass}`}
 
-                                style={{
+                style={{
 
-                                    width: isMobile ? '95vw' : (calculatedWidth ? `${calculatedWidth}px` : (initialWidth ? `${initialWidth}px` : undefined)),
+                    width: isMobile ? '95vw' : (calculatedWidth ? `${calculatedWidth}px` : (initialWidth ? `${initialWidth}px` : undefined)),
 
-                                    minWidth: isMobile ? '95vw' : (calculatedWidth ? `${calculatedWidth}px` : (initialWidth ? `${Math.max(400, initialWidth)}px` : '400px')),
+                    minWidth: isMobile ? '95vw' : (calculatedWidth ? `${calculatedWidth}px` : (initialWidth ? `${Math.max(400, initialWidth)}px` : '400px')),
 
-                                    maxWidth: isMobile ? '95vw' : 'calc(100vw - 40px)', // Re-enable maxWidth
+                    maxWidth: isMobile ? '95vw' : 'calc(100vw - 40px)', // Re-enable maxWidth
 
-                                    height: isMobile ? undefined : (calculatedHeight ? `${calculatedHeight}px` : (initialHeight ? `${initialHeight}px` : undefined)), // Use calculatedHeight or initialHeight
+                    height: isMobile ? undefined : (calculatedHeight ? `${calculatedHeight}px` : (initialHeight ? `${initialHeight}px` : undefined)), // Use calculatedHeight or initialHeight
 
-                                    maxHeight: isMobile ? '85vh' : '90vh',
+                    maxHeight: isMobile ? '85vh' : '90vh',
 
-                                    transform: transformStyle,
+                    transform: transformStyle,
 
-                                    transformOrigin: 'center',
+                    transformOrigin: 'center',
 
-                                    boxShadow: isDragging ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+                    boxShadow: !isStoreVariant && isDragging ? '0 25px 50px -12px rgba(0, 0, 0, 0.5)' : undefined,
 
-                                    zIndex: zIndex,
+                    zIndex: zIndex,
 
-                                }}
+                }}
 
-                            >                {!isTopmost && (
+            >
+                {!isTopmost && (
 
                     <div className="absolute inset-0 bg-black/30 z-20 rounded-xl cursor-not-allowed" />
 
@@ -520,7 +536,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
                 <div
 
-                    className={`bg-secondary p-3 rounded-t-xl flex justify-between items-center ${headerCursor}`}
+                    className={`${headerVariantClass} p-3 rounded-t-xl flex justify-between items-center ${headerCursor}`}
                     style={{ touchAction: 'none' }}
 
                     onMouseDown={handleMouseDown}
@@ -529,7 +545,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
                 >
 
-                    <h2 className="text-lg font-bold text-secondary select-none">{title}</h2>
+                    <h2 className="text-lg font-bold select-none">{title}</h2>
 
                     <div className="flex items-center gap-2">
 
@@ -542,7 +558,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
                                     e.stopPropagation();
                                     onClose();
                                 }} 
-                                className="w-10 h-10 flex items-center justify-center rounded-full bg-tertiary hover:bg-danger transition-colors z-30"
+                                className={`${closeButtonClass} z-30`}
                                 style={{ pointerEvents: 'auto', cursor: 'pointer' }}
                             >
 
@@ -556,15 +572,15 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
                 </div>
 
-                <div className="flex-grow h-full overflow-hidden flex flex-col p-4">
+                <div className={`flex-grow h-full overflow-hidden flex flex-col ${bodyPaddingClass}`}>
 
                     {children}
 
                 </div>
 
-                <div className="flex-shrink-0 p-2 border-t border-color flex justify-end items-center bg-secondary rounded-b-xl">
+                <div className={`flex-shrink-0 p-2 flex justify-end items-center rounded-b-xl ${footerVariantClass}`}>
 
-                    <label className="flex items-center text-xs text-tertiary gap-2 cursor-pointer select-none">
+                    <label className="flex items-center text-xs gap-2 cursor-pointer select-none">
 
                         <input
 

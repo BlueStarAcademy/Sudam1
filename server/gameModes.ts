@@ -4,6 +4,7 @@ import { NO_CONTEST_MOVE_THRESHOLD, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, STRA
 import * as types from '../types.js';
 import { analyzeGame } from './kataGoService.js';
 import type { LiveGameSession, AppState, Negotiation, ActionButton, GameMode } from '../types.js';
+import { GameCategory } from '../types.js';
 import { aiUserId, makeAiMove, getAiUser } from './aiPlayer.js';
 import { syncAiSession } from './aiSessionManager.js';
 // FIX: The imported functions were not found. They are now exported from `standard.ts` with the correct names.
@@ -215,7 +216,7 @@ export const initializeGame = async (neg: Negotiation): Promise<LiveGameSession>
     const game: LiveGameSession = {
         id: gameId,
         mode, settings, description: randomDescription, player1: challenger, player2: opponent, isAiGame,
-        gameCategory: 'normal',  // 일반 게임은 normal 카테고리
+        gameCategory: GameCategory.Normal,  // 일반 게임은 normal 카테고리
         boardState: Array(settings.boardSize).fill(0).map(() => Array(settings.boardSize).fill(types.Player.None)),
         moveHistory: [], captures: { [types.Player.None]: 0, [types.Player.Black]: 0, [types.Player.White]: 0 },
         baseStoneCaptures: { [types.Player.None]: 0, [types.Player.Black]: 0, [types.Player.White]: 0 }, 
@@ -255,7 +256,7 @@ export const resetGameForRematch = (game: LiveGameSession, negotiation: types.Ne
     newGame.mode = negotiation.mode;
     newGame.settings = negotiation.settings;
     // 게임 카테고리는 원래 게임의 카테고리 유지 (일반 게임의 리매치는 일반 게임)
-    newGame.gameCategory = game.gameCategory || 'normal';
+    newGame.gameCategory = game.gameCategory ?? GameCategory.Normal;
     
     const now = Date.now();
     const baseFields = {
@@ -290,95 +291,115 @@ export const resetGameForRematch = (game: LiveGameSession, negotiation: types.Ne
 };
 
 export const updateGameStates = async (games: LiveGameSession[], now: number): Promise<LiveGameSession[]> => {
-    const updatedGames: LiveGameSession[] = [];
-    for (const game of games) {
+    const processGame = async (game: LiveGameSession): Promise<LiveGameSession> => {
         // pending 상태의 게임은 아직 시작되지 않았으므로 게임 루프에서 처리하지 않음
         if (game.gameStatus === 'pending') {
-            updatedGames.push(game);
-            continue;
+            return game;
         }
 
-        if (game.disconnectionState && (now - game.disconnectionState.timerStartedAt > 90000)) {
-            game.winner = game.blackPlayerId === game.disconnectionState.disconnectedPlayerId ? types.Player.White : types.Player.Black;
-            game.winReason = 'disconnect';
-            game.gameStatus = 'ended';
-            game.disconnectionState = null;
-        }
+        try {
+            if (game.disconnectionState && (now - game.disconnectionState.timerStartedAt > 90000)) {
+                game.winner = game.blackPlayerId === game.disconnectionState.disconnectedPlayerId ? types.Player.White : types.Player.Black;
+                game.winReason = 'disconnect';
+                game.gameStatus = 'ended';
+                game.disconnectionState = null;
+            }
 
-        if (game.lastTimeoutPlayerIdClearTime && now >= game.lastTimeoutPlayerIdClearTime) {
-            game.lastTimeoutPlayerId = null;
-            game.lastTimeoutPlayerIdClearTime = undefined;
-        }
+            if (game.lastTimeoutPlayerIdClearTime && now >= game.lastTimeoutPlayerIdClearTime) {
+                game.lastTimeoutPlayerId = null;
+                game.lastTimeoutPlayerIdClearTime = undefined;
+            }
 
-        // Add null checks for players to prevent crashes on corrupted game data.
-        if (!game.player1 || !game.player2) {
-            console.warn(`[Game Loop] Skipping corrupted game ${game.id} with missing player data.`);
-            continue;
-        }
+            // Add null checks for players to prevent crashes on corrupted game data.
+            if (!game.player1 || !game.player2) {
+                console.warn(`[Game Loop] Skipping corrupted game ${game.id} with missing player data.`);
+                return game;
+            }
 
-        const p1 = await db.getUser(game.player1.id);
-        // 싱글플레이 게임의 경우 player2는 이미 스테이지별로 설정된 AI 유저이므로 덮어쓰지 않음
-        const p2 = game.isSinglePlayer 
-            ? game.player2  // 싱글플레이: 기존 player2 유지
-            : (game.player2.id === aiUserId ? getAiUser(game.mode) : await db.getUser(game.player2.id));
-        if (p1) game.player1 = p1;
-        if (p2 && !game.isSinglePlayer) game.player2 = p2;  // 싱글플레이가 아닌 경우에만 업데이트
+            const p1 = await db.getUser(game.player1.id);
+            // 싱글플레이 게임의 경우 player2는 이미 스테이지별로 설정된 AI 유저이므로 덮어쓰지 않음
+            const p2 = game.isSinglePlayer
+                ? game.player2  // 싱글플레이: 기존 player2 유지
+                : (game.player2.id === aiUserId ? getAiUser(game.mode) : await db.getUser(game.player2.id));
+            if (p1) game.player1 = p1;
+            if (p2 && !game.isSinglePlayer) game.player2 = p2;  // 싱글플레이가 아닌 경우에만 업데이트
 
-        const p1Id = game.player1.id;
-        const p2Id = game.player2.id;
-        const players = [game.player1, game.player2].filter(p => p.id !== aiUserId);
+            const players = [game.player1, game.player2].filter(p => p.id !== aiUserId);
 
-        // AI 세션을 현재 게임 상태와 동기화 (재시작/재연결 시 안전 장치)
-        syncAiSession(game, aiUserId);
+            // AI 세션을 현재 게임 상태와 동기화 (재시작/재연결 시 안전 장치)
+            syncAiSession(game, aiUserId);
 
-        const playableStatuses: types.GameStatus[] = [
-            'playing', 'hidden_placing', 'scanning', 'missile_selecting',
-            'alkkagi_playing',
-            'curling_playing',
-            'dice_rolling',
-            'dice_placing',
-            'thief_rolling',
-            'thief_placing',
-        ];
-        
-        if (playableStatuses.includes(game.gameStatus)) {
-            for (const player of players) {
-                const deadline = game.actionButtonCooldownDeadline?.[player.id];
-                if (typeof deadline !== 'number' || now >= deadline) {
-                    game.currentActionButtons[player.id] = getNewActionButtons(game);
-                    
-                    const effects = effectService.calculateUserEffects(player);
-                    const cooldown = (5 * 60 - (effects.mythicStatBonuses[types.MythicStat.MannerActionCooldown]?.flat || 0)) * 1000;
+            const playableStatuses: types.GameStatus[] = [
+                'playing', 'hidden_placing', 'scanning', 'missile_selecting',
+                'alkkagi_playing',
+                'curling_playing',
+                'dice_rolling',
+                'dice_placing',
+                'thief_rolling',
+                'thief_placing',
+            ];
 
-                    if (!game.actionButtonCooldownDeadline) game.actionButtonCooldownDeadline = {};
-                    game.actionButtonCooldownDeadline[player.id] = now + cooldown;
-                    if (game.actionButtonUsedThisCycle) {
-                        game.actionButtonUsedThisCycle[player.id] = false;
+            if (playableStatuses.includes(game.gameStatus)) {
+                for (const player of players) {
+                    const deadline = game.actionButtonCooldownDeadline?.[player.id];
+                    if (typeof deadline !== 'number' || now >= deadline) {
+                        game.currentActionButtons[player.id] = getNewActionButtons(game);
+
+                        const effects = effectService.calculateUserEffects(player);
+                        const cooldown = (5 * 60 - (effects.mythicStatBonuses[types.MythicStat.MannerActionCooldown]?.flat || 0)) * 1000;
+
+                        if (!game.actionButtonCooldownDeadline) game.actionButtonCooldownDeadline = {};
+                        game.actionButtonCooldownDeadline[player.id] = now + cooldown;
+                        if (game.actionButtonUsedThisCycle) {
+                            game.actionButtonUsedThisCycle[player.id] = false;
+                        }
                     }
                 }
             }
-        }
-        
-        const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None && 
-                        (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
-        const isFischerMode = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
-        
-        if (isAiTurn && game.gameStatus !== 'ended' && !['missile_animating', 'hidden_reveal_animating', 'alkkagi_animating', 'curling_animating'].includes(game.gameStatus)) {
-            if (!game.aiTurnStartTime) {
-                 game.aiTurnStartTime = now + (1000 + Math.random() * 1500);
+
+            const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None &&
+                (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
+
+            if (isAiTurn && game.gameStatus !== 'ended' && !['missile_animating', 'hidden_reveal_animating', 'alkkagi_animating', 'curling_animating'].includes(game.gameStatus)) {
+                if (!game.aiTurnStartTime) {
+                    if (game.isSinglePlayer) {
+                        const baseDelay = 250; // 빠른 반응을 위한 기본 지연 (ms)
+                        const extraDelay = Math.random() * 600; // 최대 추가 지연 0.6초
+                        game.aiTurnStartTime = now + baseDelay + extraDelay;
+                    } else {
+                        game.aiTurnStartTime = now + (1000 + Math.random() * 1500);
+                    }
+                }
+                if (now >= game.aiTurnStartTime) {
+                    const initialMoveCount = game.moveHistory?.length ?? 0;
+                    await makeAiMove(game);
+
+                    const moveCountAfter = game.moveHistory?.length ?? initialMoveCount;
+                    const aiActuallyMoved = moveCountAfter > initialMoveCount || game.gameStatus === 'ended';
+
+                    if (aiActuallyMoved) {
+                        game.aiTurnStartTime = undefined;
+                        if (!game.turnStartTime) {
+                            game.turnStartTime = now;
+                        }
+                    } else {
+                        game.aiTurnStartTime = now + 50;
+                    }
+                }
             }
-            if (now >= game.aiTurnStartTime) {
-                await makeAiMove(game);
-                game.aiTurnStartTime = undefined;
+
+            if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) || game.isSinglePlayer) {
+                await updateStrategicGameState(game, now);
+            } else if (PLAYFUL_GAME_MODES.some((m: { mode: GameMode }) => m.mode === game.mode)) {
+                await updatePlayfulGameState(game, now);
             }
+
+            return game;
+        } catch (error) {
+            console.error(`[Game Loop] Failed to update game ${game.id}:`, error);
+            return game;
         }
-        
-        if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) || game.isSinglePlayer) {
-            await updateStrategicGameState(game, now);
-        } else if (PLAYFUL_GAME_MODES.some((m: { mode: GameMode }) => m.mode === game.mode)) {
-            await updatePlayfulGameState(game, now);
-        }
-        updatedGames.push(game);
-    }
-    return updatedGames;
+    };
+
+    return Promise.all(games.map(game => processGame(game)));
 };

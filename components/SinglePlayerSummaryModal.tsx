@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { LiveGameSession, UserWithStatus, ServerAction, Player } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
@@ -20,10 +20,20 @@ const handleClose = (session: LiveGameSession, onClose: () => void) => {
     onClose();
 };
 
-const RewardItemDisplay: React.FC<{ item: any }> = ({ item }) => (
-    <div className="flex flex-col items-center justify-center text-center p-1 bg-gray-900/50 rounded-md" title={item.name}>
-        <img src={item.image} alt={item.name} className="w-12 h-12 object-contain" />
-        <span className="text-xs mt-1 text-gray-300 truncate w-full">{item.name}{item.quantity > 1 ? ` x${item.quantity}` : ''}</span>
+const RewardItemDisplay: React.FC<{ item: any; isMobile: boolean }> = ({ item, isMobile }) => (
+    <div
+        className="flex flex-col items-center justify-center text-center p-1 bg-gray-900/50 rounded-md"
+        title={item.name}
+    >
+        <img
+            src={item.image}
+            alt={item.name}
+            className={`${isMobile ? 'w-10 h-10' : 'w-12 h-12'} object-contain`}
+        />
+        <span className="text-xs mt-1 text-gray-300 truncate w-full">
+            {item.name}
+            {item.quantity > 1 ? ` x${item.quantity}` : ''}
+        </span>
     </div>
 );
 
@@ -59,6 +69,19 @@ const getXpRequirementForLevel = (level: number): number => {
 };
 
 const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ session, currentUser, onAction, onClose }) => {
+    const [viewportWidth, setViewportWidth] = useState<number | null>(null);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handleResize = () => setViewportWidth(window.innerWidth);
+        handleResize();
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+
+    const effectiveViewportWidth = viewportWidth ?? 1024;
+    const isMobileView = effectiveViewportWidth <= 768;
+    const initialWidth = isMobileView ? Math.max(Math.min(effectiveViewportWidth - 32, 420), 320) : 500;
     const isWinner = session.winner === Player.Black; // Human is always Black
     const summary = session.summary?.[currentUser.id];
 
@@ -75,6 +98,9 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
         if (isWinner) return null;
         switch (session.winReason) {
             case 'timeout':
+                if (currentStage?.blackTurnLimit) {
+                    return '제한 턴이 부족하여 미션에 실패했습니다.';
+                }
                 return '제한시간이 초과되어 미션에 실패했습니다.';
             case 'capture_limit':
                 return currentStage?.survivalTurns
@@ -107,26 +133,37 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
         }
     }, [isWinner, session.winReason, currentStage]);
 
-    const handleRetry = () => {
-        onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
-        onClose();
-    };
-
-    const handleNextStage = () => {
-        if (canTryNext) {
-            onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } });
+    const handleRetry = async () => {
+        try {
+            onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
             onClose();
+        } catch (error) {
+            console.error('[SinglePlayerSummaryModal] Failed to retry stage:', error);
         }
     };
 
-    const handleExitToLobby = () => {
+    const handleNextStage = async () => {
+        if (!canTryNext || !nextStage) return;
+        try {
+            onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } });
+            onClose();
+        } catch (error) {
+            console.error('[SinglePlayerSummaryModal] Failed to start next stage:', error);
+        }
+    };
+
+    const handleExitToLobby = async () => {
         sessionStorage.setItem('postGameRedirect', '#/singleplayer');
-        onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } });
-        onClose();
-        // 즉시 싱글플레이 로비로 이동 (WebSocket 업데이트를 기다리지 않음)
-        setTimeout(() => {
-            window.location.hash = '#/singleplayer';
-        }, 100);
+        try {
+            onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } });
+        } catch (error) {
+            console.error('[SinglePlayerSummaryModal] Failed to leave AI game:', error);
+        } finally {
+            onClose();
+            setTimeout(() => {
+                window.location.hash = '#/singleplayer';
+            }, 100);
+        }
     };
 
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === currentUser.avatarId)?.url, [currentUser.avatarId]);
@@ -141,31 +178,45 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
             title={isWinner ? "미션 클리어" : "미션 실패"} 
             onClose={() => handleClose(session, onClose)} 
             windowId="sp-summary-redesigned"
-            initialWidth={500}
+            initialWidth={initialWidth}
         >
-            <div className={`relative text-center p-4 rounded-lg overflow-hidden ${isWinner ? 'bg-gradient-to-br from-blue-900/50 to-gray-900' : 'bg-gradient-to-br from-red-900/50 to-gray-900'}`}>
+            <div
+                className={`relative text-center ${isMobileView ? 'p-3' : 'p-4'} rounded-lg ${
+                    isWinner ? 'bg-gradient-to-br from-blue-900/50 to-gray-900' : 'bg-gradient-to-br from-red-900/50 to-gray-900'
+                } ${isMobileView ? 'overflow-y-auto' : 'overflow-hidden'}`}
+                style={{ maxHeight: isMobileView ? '75vh' : undefined }}
+            >
                 {isWinner && (
                     <div className="absolute -top-1/2 -left-1/4 w-full h-full bg-yellow-400/20 rounded-full blur-3xl animate-pulse"></div>
                 )}
-                <h1 className={`text-5xl font-black ${isWinner ? 'mb-6' : 'mb-4'} tracking-widest ${isWinner ? 'text-yellow-300' : 'text-red-400'}`} style={{ textShadow: isWinner ? '0 0 15px rgba(250, 204, 21, 0.5)' : '0 0 10px rgba(220, 38, 38, 0.5)' }}>
+                <h1
+                    className={`${isMobileView ? 'text-3xl' : 'text-5xl'} font-black ${
+                        isWinner ? (isMobileView ? 'mb-4' : 'mb-6') : (isMobileView ? 'mb-3' : 'mb-4')
+                    } tracking-widest ${isWinner ? 'text-yellow-300' : 'text-red-400'}`}
+                    style={{ textShadow: isWinner ? '0 0 15px rgba(250, 204, 21, 0.5)' : '0 0 10px rgba(220, 38, 38, 0.5)' }}
+                >
                     {isWinner ? 'MISSION CLEAR' : 'MISSION FAILED'}
                 </h1>
                 {!isWinner && failureReason && (
                     <p className="mb-4 text-sm text-red-200 font-medium">{failureReason}</p>
                 )}
 
-                <div className="flex items-center gap-4 bg-black/40 backdrop-blur-sm border border-gray-700/60 rounded-2xl p-4 text-left mb-6">
+                <div
+                    className={`flex items-center ${
+                        isMobileView ? 'flex-col text-center gap-3' : 'gap-4 text-left'
+                    } bg-black/40 backdrop-blur-sm border border-gray-700/60 rounded-2xl ${isMobileView ? 'p-3' : 'p-4'} mb-6`}
+                >
                     <Avatar
                         userId={currentUser.id}
                         userName={currentUser.nickname}
                         avatarUrl={avatarUrl}
                         borderUrl={borderUrl}
-                        size={80}
-                        className="flex-shrink-0"
+                        size={isMobileView ? 64 : 80}
+                        className={isMobileView ? '' : 'flex-shrink-0'}
                     />
-                    <div className="flex-1">
-                        <div className="flex items-center justify-between flex-wrap gap-2 mb-2">
-                            <div className="text-lg font-bold text-white">{currentUser.nickname}</div>
+                    <div className="flex-1 w-full">
+                        <div className={`flex ${isMobileView ? 'flex-col items-center gap-1' : 'items-center justify-between flex-wrap gap-2'} mb-2`}>
+                            <div className="text-lg font-bold text-white truncate max-w-full">{currentUser.nickname}</div>
                             <div className="text-sm font-semibold text-primary-200 bg-primary/20 px-3 py-1 rounded-full border border-primary/40">
                                 전략 Lv.{currentUser.strategyLevel}
                             </div>
@@ -188,7 +239,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                 </div>
 
                 {summary && (
-                    <div className="bg-black/30 backdrop-blur-sm p-4 rounded-lg my-4 space-y-3 border border-gray-700/50">
+                    <div className={`bg-black/30 backdrop-blur-sm ${isMobileView ? 'p-3' : 'p-4'} rounded-lg my-4 space-y-3 border border-gray-700/50`}>
                         <div className="flex justify-center items-center gap-6 text-lg">
                             {summary.xp && summary.xp.change > 0 && 
                                 <div>
@@ -207,8 +258,10 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                         {summary.items && summary.items.length > 0 && (
                             <div className="pt-3 border-t border-gray-700/50">
                                 <h3 className="text-sm text-gray-400 mb-2">획득 보상</h3>
-                                <div className="grid grid-cols-5 gap-2 justify-items-center">
-                                    {summary.items.map(item => <RewardItemDisplay key={item.id} item={item} />)}
+                                <div className={`grid ${isMobileView ? 'grid-cols-4 gap-2' : 'grid-cols-5 gap-2'} justify-items-center`}>
+                                    {summary.items.map(item => (
+                                        <RewardItemDisplay key={item.id} item={item} isMobile={isMobileView} />
+                                    ))}
                                 </div>
                             </div>
                         )}
@@ -219,15 +272,59 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                     </div>
                 )}
                 
-                <div className="mt-8 grid grid-cols-2 gap-3">
-                    <Button onClick={handleNextStage} colorScheme="blue" className="w-full" disabled={!canTryNext}>
-                        다음 단계{nextStage ? `: ${nextStage.name.replace('스테이지 ', '')}` : ''}{nextStageActionPointCost > 0 && ` (⚡${nextStageActionPointCost})`}
+                <div className={`mt-6 grid ${isMobileView ? 'grid-cols-2 gap-2.5' : 'grid-cols-2 gap-3.5'}`}>
+                    <Button
+                        onClick={handleNextStage}
+                        colorScheme="none"
+                        style={{ fontSize: isMobileView ? 'clamp(0.68rem,2vw,0.8rem)' : 'clamp(0.82rem,1.5vw,0.95rem)' }}
+                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} ${canTryNext ? 'border-indigo-300/60 bg-gradient-to-br from-indigo-600/85 via-sky-500/80 to-cyan-400/80 text-white shadow-[0_18px_34px_-20px_rgba(59,130,246,0.6)] hover:-translate-y-0.5 hover:shadow-[0_22px_40px_-18px_rgba(56,189,248,0.55)]' : 'border-slate-500/60 bg-slate-800/70 text-slate-300 opacity-70 cursor-not-allowed'}`}
+                        disabled={!canTryNext}
+                    >
+                        <span className="uppercase tracking-[0.12em] text-[0.88em] text-white drop-shadow-sm">다음 단계</span>
+                        {nextStage && (
+                            <span className="text-[0.74em] font-medium text-sky-50/95 flex items-center gap-1 drop-shadow">
+                                {nextStage.name.replace('스테이지 ', '')}
+                                {nextStageActionPointCost > 0 && (
+                                    <span className="flex items-center gap-0.5 bg-sky-900/60 px-1.5 py-0.5 rounded-full border border-sky-400/50 shadow-inner text-[0.75em] font-semibold text-sky-100">
+                                        ⚡
+                                        <span>{nextStageActionPointCost}</span>
+                                    </span>
+                                )}
+                            </span>
+                        )}
                     </Button>
-                    <Button onClick={handleRetry} colorScheme="yellow" className="w-full">
-                        재도전{retryActionPointCost > 0 && ` (⚡${retryActionPointCost})`}
+                    <Button
+                        onClick={handleRetry}
+                        colorScheme="none"
+                        style={{ fontSize: isMobileView ? 'clamp(0.68rem,2vw,0.8rem)' : 'clamp(0.82rem,1.5vw,0.95rem)' }}
+                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} border-amber-300/70 bg-gradient-to-br from-amber-400/85 via-yellow-400/75 to-orange-400/80 text-slate-900 shadow-[0_18px_34px_-18px_rgba(251,191,36,0.45)] hover:-translate-y-0.5 hover:shadow-[0_22px_42px_-18px_rgba(251,191,36,0.55)]`}
+                    >
+                        <span className="uppercase tracking-[0.12em] text-[0.88em] text-slate-900">재도전</span>
+                        {retryActionPointCost > 0 && (
+                            <span className="text-[0.74em] font-semibold text-amber-900 flex items-center gap-0.5 bg-amber-200/80 px-1.5 py-0.5 rounded-full border border-amber-400/70 shadow-inner">
+                                ⚡
+                                {retryActionPointCost}
+                            </span>
+                        )}
                     </Button>
-                    <Button onClick={handleExitToLobby} colorScheme="gray" className="w-full">나가기</Button>
-                    <Button onClick={() => handleClose(session, onClose)} colorScheme="green" className="w-full">확인</Button>
+                    <Button
+                        onClick={handleExitToLobby}
+                        colorScheme="none"
+                        style={{ fontSize: isMobileView ? 'clamp(0.68rem,2vw,0.8rem)' : 'clamp(0.82rem,1.5vw,0.95rem)' }}
+                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} border-slate-500/60 bg-gradient-to-br from-slate-700/80 via-slate-800/80 to-slate-900/85 text-slate-100 shadow-[0_18px_32px_-20px_rgba(148,163,184,0.45)] hover:-translate-y-0.5 hover:shadow-[0_22px_40px_-20px_rgba(203,213,225,0.5)]`}
+                    >
+                        <span className="uppercase tracking-[0.12em] text-[0.88em]">나가기</span>
+                        <span className="text-[0.74em] font-medium opacity-70">싱글플레이 로비</span>
+                    </Button>
+                    <Button
+                        onClick={() => handleClose(session, onClose)}
+                        colorScheme="none"
+                        style={{ fontSize: isMobileView ? 'clamp(0.68rem,2vw,0.8rem)' : 'clamp(0.82rem,1.5vw,0.95rem)' }}
+                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} border-emerald-300/70 bg-gradient-to-br from-emerald-500/85 via-lime-500/75 to-green-500/80 text-slate-900 shadow-[0_18px_34px_-18px_rgba(16,185,129,0.45)] hover:-translate-y-0.5 hover:shadow-[0_22px_42px_-18px_rgba(74,222,128,0.55)]`}
+                    >
+                        <span className="uppercase tracking-[0.12em] text-[0.88em]">확인</span>
+                        <span className="text-[0.74em] font-medium opacity-80">결과 닫기</span>
+                    </Button>
                 </div>
             </div>
         </DraggableWindow>

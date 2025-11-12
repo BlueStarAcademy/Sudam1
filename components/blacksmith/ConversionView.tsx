@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { InventoryItem, ServerAction } from '../../types.js';
 import { useAppContext } from '../../hooks/useAppContext.js';
-import Button from '../Button.js';
+import ResourceActionButton from '../ui/ResourceActionButton.js';
 import DraggableWindow from '../DraggableWindow.js';
 import { MATERIAL_ITEMS } from '../../constants';
 import { BLACKSMITH_DISASSEMBLY_JACKPOT_RATES } from '../../constants/rules';
@@ -67,62 +67,89 @@ const CraftingDetailModal: React.FC<{
             title={isUpgrade ? '재료 합성' : '재료 분해'} 
             onClose={onClose} 
             windowId={`crafting-${materialName}-${craftType}`}
-            initialWidth={460}
-            initialHeight={480}
+            initialWidth={480}
+            initialHeight={600}
             isTopmost
+            variant="store"
         >
-            <div className="p-4 text-on-panel flex flex-col gap-4 h-full">
-                <div className="flex items-center justify-around text-center">
-                    <div className="flex flex-col items-center">
-                        <img src={sourceTemplate.image!} alt={sourceMaterialName} className="w-14 h-14 mb-1.5" />
-                        <span className="font-semibold text-sm">{sourceMaterialName}</span>
-                        <span className="text-xs text-tertiary mt-0.5">보유: {sourceMaterialCount.toLocaleString()}개</span>
+            <div className="flex flex-col gap-5 h-full text-slate-100">
+                <div className="grid gap-4">
+                    <div className="grid grid-cols-2 gap-3 bg-gradient-to-br from-[#1c2642] via-[#141f35] to-[#0c1424] border border-cyan-300/20 rounded-2xl p-4">
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-slate-900/40 border border-slate-500/40 shadow-inner">
+                                {sourceTemplate?.image && <img src={sourceTemplate.image} alt={sourceMaterialName} className="absolute inset-0 w-full h-full object-contain" />}
+                            </div>
+                            <span className="text-sm font-semibold">{sourceMaterialName}</span>
+                            <span className="text-xs text-cyan-200/80">보유 {sourceMaterialCount.toLocaleString()}개</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-2">
+                            <div className="relative w-16 h-16 rounded-xl overflow-hidden bg-emerald-900/30 border border-emerald-400/40 shadow-[0_0_25px_-12px_rgba(16,185,129,0.85)]">
+                                {targetTemplate?.image && <img src={targetTemplate.image} alt={targetMaterialName} className="absolute inset-0 w-full h-full object-contain" />}
+                            </div>
+                            <span className="text-sm font-semibold text-emerald-200">{targetMaterialName}</span>
+                            <span className="text-xs text-emerald-300/90">
+                                예상 획득{' '}
+                                {yieldMin === yieldMax
+                                    ? `${(quantity * yieldMin).toLocaleString()}개`
+                                    : `${(quantity * yieldMin).toLocaleString()} ~ ${(quantity * yieldMax).toLocaleString()}개`}
+                            </span>
+                        </div>
                     </div>
-                    <div className="text-3xl font-bold text-highlight mx-3">→</div>
-                    <div className="flex flex-col items-center">
-                        <img src={targetTemplate.image!} alt={targetMaterialName} className="w-14 h-14 mb-1.5" />
-                        <span className="font-semibold text-sm">{targetMaterialName}</span>
-                        <span className="text-sm text-green-400 mt-0.5">
-                            획득:{' '}
-                            {yieldMin === yieldMax
-                                ? `${(quantity * yieldMin).toLocaleString()}개`
-                                : `${(quantity * yieldMin).toLocaleString()} ~ ${(quantity * yieldMax).toLocaleString()}개`}
-                        </span>
+                    
+                    <div className="bg-gradient-to-br from-[#141f33] via-[#10192a] to-[#0b1221] border border-slate-500/30 rounded-2xl p-4 space-y-3">
+                        <p className="text-sm text-center text-cyan-200">
+                            {isUpgrade ? '합성' : '분해'}에 사용될 수량을 조절하세요.
+                        </p>
+                        <div className="flex flex-col gap-2">
+                            <label htmlFor="quantity-slider" className="text-xs font-medium text-slate-200 text-center">
+                                {sourceMaterialName} 소비{' '}
+                                <span className="text-amber-200 font-semibold">
+                                    {(quantity * conversionRate).toLocaleString()}
+                                </span>
+                                <span className="text-slate-400"> / {sourceMaterialCount.toLocaleString()}개</span>
+                            </label>
+                            <input
+                                id="quantity-slider"
+                                type="range"
+                                min="0"
+                                max={maxQuantity}
+                                value={quantity}
+                                onChange={handleQuantityChange}
+                                disabled={maxQuantity === 0}
+                                className="w-full h-2 rounded-full appearance-none bg-slate-800 accent-cyan-300"
+                            />
+                            <div className="flex justify-between text-[11px] text-slate-400 px-1">
+                                <span>0회</span>
+                                <span>{maxQuantity}회</span>
+                            </div>
+                            <div className="flex justify-between text-xs px-1 text-slate-200/90">
+                                <span>총 시도</span>
+                                <span className="font-semibold text-cyan-200">{quantity.toLocaleString()}회</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <div className="space-y-3">
-                    <label htmlFor="quantity-slider" className="block text-sm font-medium text-secondary text-center">
-                        {isUpgrade ? '합성' : '분해'}할 {sourceMaterialName}: <span className="font-bold text-highlight">{(quantity * conversionRate).toLocaleString()} / {sourceMaterialCount.toLocaleString()}</span>개
-                    </label>
-                    <input
-                        id="quantity-slider"
-                        type="range"
-                        min="0"
-                        max={maxQuantity}
-                        value={quantity}
-                        onChange={handleQuantityChange}
-                        disabled={maxQuantity === 0}
-                        className="w-full h-2 bg-secondary rounded-lg appearance-none cursor-pointer"
-                    />
-                    <div className="flex justify-between text-xs text-tertiary">
-                        <span>0회</span>
-                        <span>{maxQuantity}회</span>
-                    </div>
-                    <p className="text-center text-sm text-tertiary">
-                        {isUpgrade ? '합성' : '분해'} 횟수: {quantity.toLocaleString()}회
-                    </p>
+
+                <div className="bg-gradient-to-br from-[#101a2f] via-[#0c1527] to-[#09101d] border border-cyan-300/20 rounded-2xl p-4 text-center text-xs text-cyan-200/90">
+                    {isUpgrade ? '합성' : '분해'} 시{' '}
+                    <span className="text-emerald-300 font-semibold">
+                        {BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[Math.max(0, blacksmithLevel - 1)]}%
+                    </span>
+                    의 확률로 <span className="text-amber-200 font-semibold">'대박'</span>이 발생하여 보상이 2배가 됩니다.
                 </div>
 
-                <p className="text-xs text-cyan-300 text-center leading-snug">
-                    {isUpgrade ? '합성' : '분해'} 시 {BLACKSMITH_DISASSEMBLY_JACKPOT_RATES[blacksmithLevel - 1]}% 확률로 '대박'이 발생하여 획득량이 2배가 됩니다!
-                </p>
-
-                <div className="flex justify-end gap-3 mt-auto pt-1">
-                    <Button onClick={onClose} colorScheme="gray">취소</Button>
-                    <Button onClick={handleConfirm} colorScheme={isUpgrade ? 'blue' : 'orange'} disabled={quantity === 0}>
+                <div className="mt-auto flex justify-end gap-3">
+                    <ResourceActionButton onClick={onClose} variant="neutral" className="!w-auto !px-5 !py-2 text-sm">
+                        취소
+                    </ResourceActionButton>
+                    <ResourceActionButton
+                        onClick={handleConfirm}
+                        variant="materials"
+                        disabled={quantity === 0}
+                        className="!w-auto !px-6 !py-2 text-sm"
+                    >
                         {quantity}회 {isUpgrade ? '합성' : '분해'}
-                    </Button>
+                    </ResourceActionButton>
                 </div>
             </div>
         </DraggableWindow>
@@ -194,25 +221,25 @@ const ConversionView: React.FC<ConversionViewProps> = ({ onAction }) => {
                                 {index < row.length - 1 && (
                                     <div className="flex flex-col gap-1 items-center">
                                         <span className="text-[10px] text-secondary font-medium">합성</span>
-                                        <Button
+                                        <ResourceActionButton
                                             onClick={() => setCraftingDetails({ materialName, craftType: 'upgrade' })}
-                                            colorScheme="blue"
-                                            className="!text-xs !py-1.5 !px-3 whitespace-nowrap"
+                                            variant="accent"
+                                            className="!w-auto text-xs !px-3 !py-1.5 whitespace-nowrap"
                                             disabled={!materialExists || quantity < 10}
                                             title={`${materialName} 10개 → ${materialTiers[tierIndex + 1]} 합성`}
                                         >
                                             →
-                                        </Button>
-                                        <Button
+                                        </ResourceActionButton>
+                                        <ResourceActionButton
                                             onClick={() => setCraftingDetails({ materialName: materialTiers[tierIndex + 1], craftType: 'downgrade' })}
-                                            colorScheme="purple"
-                                            className="!text-xs !py-1.5 !px-3 whitespace-nowrap"
+                                            variant="neutral"
+                                            className="!w-auto text-xs !px-3 !py-1.5 whitespace-nowrap"
                                             disabled={!materialCategories[materialTiers[tierIndex + 1]] || 
                                                 (materialCategories[materialTiers[tierIndex + 1]]?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0) < 1}
                                             title={`${materialTiers[tierIndex + 1]} → ${materialName} 분해`}
                                         >
                                             ←
-                                        </Button>
+                                        </ResourceActionButton>
                                         <span className="text-[10px] text-secondary font-medium">분해</span>
                                     </div>
                                 )}
@@ -246,25 +273,25 @@ const ConversionView: React.FC<ConversionViewProps> = ({ onAction }) => {
                                 {index < row.length - 1 && (
                                     <div className="flex flex-col gap-1.5 items-center">
                                         <span className="text-[10px] text-secondary font-medium">합성</span>
-                                        <Button
+                                        <ResourceActionButton
                                             onClick={() => setCraftingDetails({ materialName, craftType: 'upgrade' })}
-                                            colorScheme="blue"
-                                            className="!text-xs !py-1.5 !px-3 whitespace-nowrap"
+                                            variant="accent"
+                                            className="!w-auto text-xs !px-3 !py-1.5 whitespace-nowrap"
                                             disabled={!materialExists || quantity < 10}
                                             title={`${materialName} 10개 → ${materialTiers[tierIndex + 1]} 합성`}
                                         >
                                             →
-                                        </Button>
-                                        <Button
+                                        </ResourceActionButton>
+                                        <ResourceActionButton
                                             onClick={() => setCraftingDetails({ materialName: materialTiers[tierIndex + 1], craftType: 'downgrade' })}
-                                            colorScheme="purple"
-                                            className="!text-xs !py-1.5 !px-3 whitespace-nowrap"
+                                            variant="neutral"
+                                            className="!w-auto text-xs !px-3 !py-1.5 whitespace-nowrap"
                                             disabled={!materialCategories[materialTiers[tierIndex + 1]] || 
                                                 (materialCategories[materialTiers[tierIndex + 1]]?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0) < 1}
                                             title={`${materialTiers[tierIndex + 1]} → ${materialName} 분해`}
                                         >
                                             ←
-                                        </Button>
+                                        </ResourceActionButton>
                                         <span className="text-[10px] text-secondary font-medium">분해</span>
                                     </div>
                                 )}

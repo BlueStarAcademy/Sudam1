@@ -822,9 +822,12 @@ export const skipToResults = (state: TournamentState, userId: string) => {
 
     const user = { id: userId } as User;
     let safety = 0; // prevent infinite loops
-    while (state.status !== 'complete' && safety < 20) {
+    while (safety < 20) {
+        if ((state.status as any) === 'complete') {
+            break;
+        }
         safety++;
-        
+
         // 현재 라운드의 모든 미완료 매치를 시뮬레이션하고 완료
         let hasUnfinishedMatches = false;
         state.rounds.forEach(round => {
@@ -935,18 +938,21 @@ export const advanceSimulation = (state: TournamentState, user: User): boolean =
         return true;
     }
 
-    // 마지막 시뮬레이션 시간 확인: 1초가 지나지 않았으면 실행하지 않음
     const now = Date.now();
-    if (state.lastSimulationTime !== undefined) {
+    if (state.lastSimulationTime === undefined) {
+        state.lastSimulationTime = now;
+    } else {
         const timeSinceLastSimulation = now - state.lastSimulationTime;
-        if (timeSinceLastSimulation < 1000) {
-            // 1초가 지나지 않았으면 실행하지 않음
+        if (timeSinceLastSimulation < 900) {
             return false;
         }
+
+        // 1초 단위로 시간 축을 유지하되 큰 지연 시 현재 시각으로 보정
+        state.lastSimulationTime += 1000;
+        if (now - state.lastSimulationTime > 2000) {
+            state.lastSimulationTime = now;
+        }
     }
-    
-    // 마지막 시뮬레이션 시간 업데이트
-    state.lastSimulationTime = now;
 
     if (state.timeElapsed === 0) {
         state.currentMatchScores = { player1: 0, player2: 0 };

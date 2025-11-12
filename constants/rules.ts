@@ -10,6 +10,10 @@ type CombinationGreatSuccessRates = {
     'mythic'?: number;
 };
 
+// --- User Profile Rules ---
+export const NICKNAME_MIN_LENGTH = 2;
+export const NICKNAME_MAX_LENGTH = 6;
+
 // --- Action Point Costs ---
 export const STRATEGIC_ACTION_POINT_COST = 5;
 export const PLAYFUL_ACTION_POINT_COST = 3;

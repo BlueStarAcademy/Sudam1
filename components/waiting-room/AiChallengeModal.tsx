@@ -608,7 +608,7 @@ const AiChallengeModal: React.FC<AiChallengeModalProps> = ({ lobbyType, onClose,
                     {/* Game Settings */}
                     <div className="flex-1 min-h-0 overflow-hidden">
                         <h4 className="font-semibold text-gray-300 mb-2 flex-shrink-0" style={{ fontSize: `${Math.max(10, Math.round(12 * mobileTextScale))}px` }}>대국 설정</h4>
-                        {renderGameSettings(mobileTextScale)}
+                        {renderGameSettings()}
                     </div>
 
                     {/* Bottom Buttons */}

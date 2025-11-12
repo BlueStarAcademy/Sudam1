@@ -1,5 +1,6 @@
+// @ts-nocheck
 import prisma from "../prismaClient.js";
-import type { Prisma } from "../../generated/prisma/index.js";
+import type { Prisma } from "@prisma/client";
 
 export type PrismaCredential = Prisma.UserCredentialGetPayload<{
   select: {

@@ -33,87 +33,87 @@
 }
 
 html[data-theme="white"] {
-  /* Light Theme - Premium Elegant */
-  --bg-primary: 229 231 235; /* gray-200 - darker, more comfortable */
-  --bg-secondary: 209 213 219; /* gray-300 - subtle depth */
-  --bg-tertiary: 156 163 175; /* gray-400 - more contrast */
-  --text-primary: 17 24 39; /* gray-900 - deep, readable */
-  --text-secondary: 31 41 55; /* gray-800 - balanced */
-  --text-tertiary: 55 65 81; /* gray-700 - subtle */
-  --accent: 99 102 241; /* indigo-500 - vibrant but elegant */
-  --accent-hover: 79 70 229; /* indigo-600 - deeper on hover */
-  --highlight: 234 179 8; /* yellow-500 - warm gold */
-  --border-color: 156 163 175; /* gray-400 - softer borders */
+  /* Nordic Frost Theme */
+  --bg-primary: 237 241 246; /* cool frost */
+  --bg-secondary: 203 213 225; /* muted steel */
+  --bg-tertiary: 148 163 184; /* misty fjord */
+  --text-primary: 31 41 55; /* deep slate */
+  --text-secondary: 55 65 81; /* balanced charcoal */
+  --text-tertiary: 79 90 105; /* softened graphite */
+  --accent: 129 140 248; /* gentle indigo */
+  --accent-hover: 99 102 241;
+  --highlight: 212 179 115; /* warm brass */
+  --border-color: 176 188 204;
   --ring-color: 99 102 241; /* indigo-500 */
   --danger: 220 38 38; /* red-600 */
   --danger-hover: 185 28 28; /* red-700 */
   --success: 22 163 74; /* green-600 */
 
-  --bg-panel: var(--custom-panel-bg, rgb(209 213 219 / 0.8)); /* gray-300/80 - darker panel */
-  --text-on-panel: var(--custom-text-color, rgb(17 24 39)); /* gray-900 */
+  --bg-panel: var(--custom-panel-bg, rgb(214 220 230 / 0.75));
+  --text-on-panel: var(--custom-text-color, rgb(31 41 55));
 }
 
 html[data-theme="blue"] {
-  /* Pastel Red Theme - Premium Rose */
-  --bg-primary: 254 242 242;      /* rose-50 - soft rose mist */
-  --bg-secondary: 254 226 226;    /* rose-100 - gentle petals */
-  --bg-tertiary: 252 165 165;     /* rose-300 - deeper rose */
-  --text-primary: 136 19 55;        /* rose-900 - deep rose */
-  --text-secondary: 190 18 60;      /* rose-700 - rich rose */
-  --text-tertiary: 244 63 94;      /* rose-500 - vibrant rose */
-  --accent: 244 63 94;            /* rose-500 - vibrant rose */
-  --accent-hover: 225 29 72;      /* rose-600 - deeper rose */
-  --highlight: 234 179 8;          /* yellow-500 - golden accent */
-  --border-color: 252 165 165;    /* rose-300 - soft borders */
-  --ring-color: 244 63 94;         /* rose-500 */
+  /* Lavender Dusk Theme */
+  --bg-primary: 30 31 46;      /* twilight plum */
+  --bg-secondary: 76 75 105;   /* evening lavender */
+  --bg-tertiary: 96 94 132;    /* dusk haze */
+  --text-primary: 245 242 255; /* soft moonlight */
+  --text-secondary: 212 196 232;
+  --text-tertiary: 172 153 214;
+  --accent: 168 135 255;       /* lilac glow */
+  --accent-hover: 148 113 237;
+  --highlight: 246 216 166;    /* soft amber */
+  --border-color: 99 97 140;
+  --ring-color: 168 135 255;
   --danger: 220 38 38;            /* red-600 */
   --danger-hover: 185 28 28;      /* red-700 */
   --success: 22 163 74;           /* green-600 */
   
-  --bg-panel: var(--custom-panel-bg, rgb(254 226 226 / 0.7));
-  --text-on-panel: var(--custom-text-color, rgb(136 19 55));
+  --bg-panel: var(--custom-panel-bg, rgb(68 66 102 / 0.75));
+  --text-on-panel: var(--custom-text-color, rgb(245 242 255));
 }
 
 html[data-theme="sky"] {
-  /* Daybreak Theme - Premium Dawn */
-    --bg-primary: 191 219 254; /* sky-200 - deeper dawn */
-    --bg-secondary: 125 211 252; /* sky-300 - deeper sky */
-    --bg-tertiary: 56 189 248; /* sky-400 - deep sky */
-    --text-primary: 12 74 110; /* sky-900 - deep ocean blue */
-    --text-secondary: 30 64 175; /* blue-800 - rich blue */
-    --text-tertiary: 59 130 246; /* blue-500 - medium blue */
-    --accent: 249 115 22; /* orange-500 - warm sunrise */
-    --accent-hover: 234 88 12; /* orange-600 - deeper sunrise */
-    --highlight: 251 191 36; /* amber-400 - golden hour */
-    --border-color: 125 211 252; /* sky-300 - softer sky border */
-    --ring-color: 249 115 22; /* orange-500 */
+  /* Misty Dawn Theme */
+    --bg-primary: 31 42 55;        /* deep dawn */
+    --bg-secondary: 54 72 90;      /* muted horizon */
+    --bg-tertiary: 79 117 145;     /* morning tide */
+    --text-primary: 221 239 255;   /* pale sky */
+    --text-secondary: 176 198 217;
+    --text-tertiary: 132 164 190;
+    --accent: 82 199 217;          /* soft teal */
+    --accent-hover: 62 171 189;
+    --highlight: 249 198 83;       /* sunrise amber */
+    --border-color: 94 124 148;
+    --ring-color: 82 199 217;
     --danger: 220 38 38; /* red-600 */
     --danger-hover: 185 28 28; /* red-700 */
     --success: 22 163 74; /* green-600 */
     
-    --bg-panel: var(--custom-panel-bg, rgb(125 211 252 / 0.6)); /* sky-300/60 */
-    --text-on-panel: var(--custom-text-color, rgb(12 74 110)); /* sky-900 */
+    --bg-panel: var(--custom-panel-bg, rgb(60 82 104 / 0.72));
+    --text-on-panel: var(--custom-text-color, rgb(221 239 255));
 }
 
 html[data-theme="green"] {
-  /* Pastel Green Theme - Premium Forest */
-    --bg-primary: 187 247 208;      /* green-200 - deeper forest mist */
-    --bg-secondary: 134 239 172;    /* green-300 - deeper leaves */
-    --bg-tertiary: 74 222 128;      /* green-400 - deep foliage */
-    --text-primary: 20 83 45;        /* green-900 - deep forest */
-    --text-secondary: 22 101 52;     /* green-800 - rich forest */
-    --text-tertiary: 34 197 94;      /* green-500 - vibrant nature */
-    --accent: 34 197 94;            /* green-500 - fresh nature */
-    --accent-hover: 22 163 74;      /* green-600 - deeper nature */
-    --highlight: 234 179 8;         /* yellow-500 - golden sunlight */
-    --border-color: 134 239 172;    /* green-300 - softer borders */
-    --ring-color: 34 197 94;        /* green-500 */
+  /* Deep Forest Theme */
+    --bg-primary: 23 37 29;      /* evergreen shade */
+    --bg-secondary: 44 70 51;    /* moss canopy */
+    --bg-tertiary: 66 96 72;     /* forest glade */
+    --text-primary: 224 245 225; /* soft fern */
+    --text-secondary: 191 219 193;
+    --text-tertiary: 156 192 162;
+    --accent: 122 191 139;       /* pine glow */
+    --accent-hover: 102 163 119;
+    --highlight: 227 201 112;    /* woodland amber */
+    --border-color: 77 110 86;
+    --ring-color: 122 191 139;
     --danger: 220 38 38;            /* red-600 */
     --danger-hover: 185 28 28;      /* red-700 */
     --success: 22 163 74;           /* green-600 */
 
-    --bg-panel: var(--custom-panel-bg, rgb(134 239 172 / 0.6));
-    --text-on-panel: var(--custom-text-color, rgb(20 83 45));
+    --bg-panel: var(--custom-panel-bg, rgb(52 78 60 / 0.78));
+    --text-on-panel: var(--custom-text-color, rgb(224 245 225));
 }
 
 
@@ -675,13 +675,6 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
   border-radius: 50%;
    border: 2px solid rgb(var(--bg-tertiary));
-}
-
-.bg-wood-pattern {
-    background-image: url('/images/wood_bg.png');
-    background-size: cover;
-    background-position: center;
-    background-color: rgb(var(--bg-tertiary)); /* Fallback color */
 }
 
 .bg-login-background {

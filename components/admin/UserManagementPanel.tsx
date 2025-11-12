@@ -168,7 +168,7 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ user, current
                 <div className="flex-grow overflow-y-auto pr-2">
                     {activeTab === 'general' && (
                         <div className="space-y-3">
-                            <div className="grid grid-cols-2 gap-2"><label>닉네임</label><input type="text" name="nickname" value={editedUser.nickname} onChange={handleTextInputChange} className="bg-tertiary p-1 rounded" /></div>
+                            <div className="grid grid-cols-2 gap-2"><label>닉네임</label><input type="text" name="nickname" value={editedUser.nickname} onChange={handleTextInputChange} className="bg-tertiary p-1 rounded" maxLength={6} /></div>
                             <div className="grid grid-cols-2 gap-2"><label>전략 레벨</label><input type="number" name="strategyLevel" value={editedUser.strategyLevel} onChange={handleInputChange} className="bg-tertiary p-1 rounded" /></div>
                             <div className="grid grid-cols-2 gap-2"><label>전략 XP</label><input type="number" name="strategyXp" value={editedUser.strategyXp} onChange={handleInputChange} className="bg-tertiary p-1 rounded" /></div>
                             <div className="grid grid-cols-2 gap-2"><label>놀이 레벨</label><input type="number" name="playfulLevel" value={editedUser.playfulLevel} onChange={handleInputChange} className="bg-tertiary p-1 rounded" /></div>
@@ -347,7 +347,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ allUsers, onA
                     <form onSubmit={handleCreateUser} className="space-y-4">
                         <input type="text" name="username" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="아이디" className="bg-secondary border border-color text-primary text-sm rounded-lg focus:ring-accent focus:border-accent block w-full p-2.5" />
                         <input type="password" name="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="비밀번호" className="bg-secondary border border-color text-primary text-sm rounded-lg focus:ring-accent focus:border-accent block w-full p-2.5" />
-                        <input type="text" name="nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="닉네임" className="bg-secondary border border-color text-primary text-sm rounded-lg focus:ring-accent focus:border-accent block w-full p-2.5" />
+                        <input type="text" name="nickname" value={nickname} onChange={(e) => setNickname(e.target.value)} placeholder="닉네임" className="bg-secondary border border-color text-primary text-sm rounded-lg focus:ring-accent focus:border-accent block w-full p-2.5" maxLength={6} />
                         <Button type="submit" className="w-full">생성하기</Button>
                     </form>
                 </div>

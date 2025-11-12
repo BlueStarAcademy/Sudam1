@@ -104,6 +104,8 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             
             // 게임 모드 결정
             let gameMode: GameMode;
+            const isSpeedMode = stage.timeControl.type === 'fischer';
+
             if (stage.hiddenCount !== undefined) {
                 gameMode = GameMode.Hidden;
             } else if (stage.missileCount !== undefined) {
@@ -111,7 +113,7 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             } else if (stage.blackTurnLimit !== undefined || stage.targetScore) {
                 // 따내기 바둑: blackTurnLimit이 있거나 targetScore가 있는 경우
                 gameMode = GameMode.Capture;
-            } else if (stage.timeControl.type === 'fischer') {
+            } else if (isSpeedMode) {
                 gameMode = GameMode.Speed;
             } else {
                 gameMode = GameMode.Standard;
@@ -139,10 +141,10 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             const isSurvivalMode = stage.survivalTurns !== undefined;
 
             // 시간룰 설정: 스피드바둑은 피셔, 나머지는 5분+초읽기30초 3회
-            const timeLimit = stage.timeControl.type === 'fischer' ? stage.timeControl.mainTime : 5;
-            const byoyomiTime = stage.timeControl.type === 'fischer' ? 0 : 30;
-            const byoyomiCount = stage.timeControl.type === 'fischer' ? 0 : 3;
-            const timeIncrement = stage.timeControl.type === 'fischer' ? stage.timeControl.increment ?? 0 : 0;
+            const enforcedMainTimeMinutes = isSpeedMode ? (stage.timeControl.mainTime ?? 5) : 5;
+            const enforcedByoyomiTimeSeconds = isSpeedMode ? (stage.timeControl.byoyomiTime ?? 0) : 30;
+            const enforcedByoyomiCount = isSpeedMode ? 0 : 3;
+            const enforcedIncrement = isSpeedMode ? (stage.timeControl.increment ?? 0) : 0;
 
             // AI 히든 아이템 사용 턴 결정
             let aiHiddenItemTurn: number | undefined;
@@ -157,9 +159,8 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             }
 
             const gameId = `sp-game-${randomUUID()}`;
-            const isSpeedMode = stage.timeControl.type === 'fischer';
-            const baseCaptureTargetBlack = isSpeedMode ? 999 : (stage.targetScore.black > 0 ? stage.targetScore.black : 999);
-            const baseCaptureTargetWhite = isSpeedMode ? 999 : (stage.targetScore.white > 0 ? stage.targetScore.white : 999);
+            const baseCaptureTargetBlack = stage.targetScore.black > 0 ? stage.targetScore.black : 999;
+            const baseCaptureTargetWhite = stage.targetScore.white > 0 ? stage.targetScore.white : 999;
 
             const game: LiveGameSession = {
                 id: gameId,
@@ -171,10 +172,10 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 settings: {
                     boardSize: stage.boardSize,
                     komi: 0.5,
-                    timeLimit: timeLimit,
-                    byoyomiTime: byoyomiTime,
-                    byoyomiCount: byoyomiCount,
-                    timeIncrement: timeIncrement,
+                    timeLimit: enforcedMainTimeMinutes,
+                    byoyomiTime: enforcedByoyomiTimeSeconds,
+                    byoyomiCount: enforcedByoyomiCount,
+                    timeIncrement: enforcedIncrement,
                     captureTarget: stage.targetScore.black, // Default for display, effective targets used in logic
                     aiDifficulty: aiLevel, // 스테이지별 AI 레벨 (1~10단계)
                     survivalTurns: stage.survivalTurns, // 살리기 바둑 모드: AI가 살아남아야 하는 턴 수
@@ -207,10 +208,10 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 scores: { [user.id]: 0, [aiUser.id]: 0 },
                 round: 1,
                 turnInRound: 1,
-                blackTimeLeft: timeLimit * 60,
-                whiteTimeLeft: timeLimit * 60,
-                blackByoyomiPeriodsLeft: byoyomiCount,
-                whiteByoyomiPeriodsLeft: byoyomiCount,
+                blackTimeLeft: enforcedMainTimeMinutes * 60,
+                whiteTimeLeft: enforcedMainTimeMinutes * 60,
+                blackByoyomiPeriodsLeft: enforcedByoyomiCount,
+                whiteByoyomiPeriodsLeft: enforcedByoyomiCount,
                 // pending 상태에서는 시간이 흐르지 않음 (게임 시작 시 설정)
                 turnStartTime: undefined,
                 turnDeadline: undefined,
@@ -262,15 +263,32 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             const now = Date.now();
             game.gameStatus = 'playing';
             game.turnStartTime = now;
-            const timeLimit = game.settings.timeLimit || 5;
-            game.turnDeadline = now + (timeLimit * 60 * 1000);
+            const isSpeedMode = game.mode === GameMode.Speed;
+            const enforcedMainTimeMinutes = isSpeedMode ? (game.settings.timeLimit || 5) : 5;
+            const enforcedByoyomiCount = isSpeedMode ? 0 : 3;
+            const enforcedByoyomiTimeSeconds = isSpeedMode ? (game.settings.byoyomiTime ?? 0) : 30;
+
+            // 비스피드 모드는 고정된 시간 제어를 강제 적용
+            if (!isSpeedMode) {
+                game.settings.timeLimit = enforcedMainTimeMinutes;
+                game.settings.byoyomiCount = enforcedByoyomiCount;
+                game.settings.byoyomiTime = enforcedByoyomiTimeSeconds;
+                game.settings.timeIncrement = 0;
+            }
+
+            game.turnDeadline = now + (enforcedMainTimeMinutes * 60 * 1000);
             
             // 시간 관련 필드 초기화 (pending 상태에서는 시간이 흐르지 않았으므로 처음부터 시작)
-            game.blackTimeLeft = timeLimit * 60;
-            game.whiteTimeLeft = timeLimit * 60;
-            const byoyomiCount = game.settings.byoyomiCount || 0;
+            game.blackTimeLeft = enforcedMainTimeMinutes * 60;
+            game.whiteTimeLeft = enforcedMainTimeMinutes * 60;
+            const byoyomiCount = game.settings.byoyomiCount ?? enforcedByoyomiCount;
             game.blackByoyomiPeriodsLeft = byoyomiCount;
             game.whiteByoyomiPeriodsLeft = byoyomiCount;
+            // 스피드가 아닌 경우 초읽기 시간도 보정
+            if (!isSpeedMode) {
+                game.blackByoyomiPeriodsLeft = enforcedByoyomiCount;
+                game.whiteByoyomiPeriodsLeft = enforcedByoyomiCount;
+            }
 
             await db.saveGame(game);
             broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });

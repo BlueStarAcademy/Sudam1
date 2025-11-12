@@ -1033,6 +1033,12 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus; tournament
                             }`}>
                                 {player.nickname}
                             </span>
+                            {match.isFinished && isWinner && winMarginText && (
+                                <span className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-xs px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1">
+                                    <span>🏆</span>
+                                    <span>{winMarginText}</span>
+                                </span>
+                            )}
                             {showTrophy && (
                                 <img 
                                     src="/images/championship/Ranking.png" 
@@ -1073,20 +1079,11 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus; tournament
                             }`}>
                                 {player.nickname}
                             </span>
-                            {isTournamentFormat ? (
-                                match.isFinished && isWinner && winMarginText && (
-                                    <span className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-xs px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1">
-                                        <span>🏆</span>
-                                        <span>{winMarginText}</span>
-                                    </span>
-                                )
-                            ) : (
-                                match.isFinished && isWinner && winMargin && (
-                                    <span className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-xs px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1">
-                                        <span>🏆</span>
-                                        <span>{winMargin}집 승</span>
-                                    </span>
-                                )
+                            {match.isFinished && isWinner && winMargin && (
+                                <span className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-xs px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1">
+                                    <span>🏆</span>
+                                    <span>{winMargin}집 승</span>
+                                </span>
                             )}
                             {showTrophy && (
                                 <img 

@@ -5,4 +5,4 @@ export * from './types/enums';
 export * from './types/entities';
 export * from './types/api';
 export * from './types/navigation';
-export type { Theme, SoundCategory, GraphicsSettings, SoundSettings, FeatureSettings, AppSettings } from './types/settings';
+export type { Theme, SoundCategory, GraphicsSettings, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle } from './types/settings';

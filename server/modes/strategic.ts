@@ -238,6 +238,21 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             if (!result.isValid) {
                 return { error: `Invalid move: ${result.reason}` };
             }
+
+            const prunePatternStones = () => {
+                if (game.blackPatternStones) {
+                    game.blackPatternStones = game.blackPatternStones.filter(point => {
+                        const occupant = game.boardState?.[point.y]?.[point.x];
+                        return occupant === types.Player.Black;
+                    });
+                }
+                if (game.whitePatternStones) {
+                    game.whitePatternStones = game.whitePatternStones.filter(point => {
+                        const occupant = game.boardState?.[point.y]?.[point.x];
+                        return occupant === types.Player.White;
+                    });
+                }
+            };
             
             const contributingHiddenStones: { point: types.Point, player: types.Player }[] = [];
             if (result.capturedStones.length > 0) {
@@ -313,6 +328,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         game.permanentlyRevealedStones!.push(s.point);
                     }
                 });
+                prunePatternStones();
             
                 if (game.turnDeadline) {
                     game.pausedTurnTimeLeft = (game.turnDeadline - now) / 1000;
@@ -373,6 +389,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     game.justCaptured.push({ point: stone, player: capturedPlayerEnum, wasHidden: wasHiddenForJustCaptured });
                 }
             }
+            prunePatternStones();
 
             const playerWhoMoved = myPlayerEnum;
             if (game.settings.timeLimit > 0) {

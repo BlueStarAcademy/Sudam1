@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { UserWithStatus, InventoryItem, ServerAction, InventoryItemType, ItemGrade, ItemOption, CoreStat, SpecialStat, MythicStat, EquipmentSlot, ItemOptionType } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
+import ResourceActionButton from './ui/ResourceActionButton.js';
 import { emptySlotImages, GRADE_LEVEL_REQUIREMENTS, ITEM_SELL_PRICES, MATERIAL_SELL_PRICES, gradeBackgrounds, gradeStyles, BASE_SLOTS_PER_CATEGORY, EXPANSION_AMOUNT, MAX_EQUIPMENT_SLOTS, MAX_CONSUMABLE_SLOTS, MAX_MATERIAL_SLOTS, ENHANCEMENT_COSTS } from '../constants/items';
 
 import { calculateUserEffects } from '../services/effectService.js';
@@ -25,7 +26,12 @@ interface InventoryModalProps {
 type Tab = 'all' | 'equipment' | 'consumable' | 'material';
 type SortKey = 'createdAt' | 'type' | 'grade';
 
-
+const TAB_LABELS: Record<Tab, string> = {
+    all: '전체',
+    equipment: '장비',
+    consumable: '소모품',
+    material: '재료',
+};
 
 const calculateExpansionCost = (currentCategorySlots: number): number => {
     const expansionsMade = Math.max(0, (currentCategorySlots - BASE_SLOTS_PER_CATEGORY) / EXPANSION_AMOUNT);
@@ -399,6 +405,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
     const [itemToUseBulk, setItemToUseBulk] = useState<InventoryItem | null>(null);
     const [itemToSell, setItemToSell] = useState<InventoryItem | null>(null);
     const [itemToSellBulk, setItemToSellBulk] = useState<InventoryItem | null>(null);
+    const [isExpandModalOpen, setIsExpandModalOpen] = useState(false);
     
     // 브라우저 크기 감지
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
@@ -466,7 +473,8 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
 
     const expansionCost = useMemo(() => {
         if (activeTab === 'all') return 0;
-        return calculateExpansionCost(inventorySlots[activeTab]);
+        const currentSlotsForCategory = inventorySlots?.[activeTab] ?? BASE_SLOTS_PER_CATEGORY;
+        return calculateExpansionCost(currentSlotsForCategory);
     }, [activeTab, inventorySlots]);
 
     const { coreStatBonuses } = useMemo(() => calculateUserEffects(currentUser), [currentUser]);
@@ -507,10 +515,18 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
     }, [selectedItem]);
 
     const handleExpand = () => {
-        if (activeTab === 'all') return;
-        if (window.confirm(`다이아 ${expansionCost}개를 사용하여 ${activeTab} 가방을 ${EXPANSION_AMOUNT}칸 확장하시겠습니까?`)) {
-            onAction({ type: 'EXPAND_INVENTORY', payload: { category: activeTab } });
+        if (activeTab === 'all' || !canExpand) return;
+        setIsExpandModalOpen(true);
+    };
+
+    const handleConfirmExpand = async () => {
+        if (activeTab === 'all' || !canExpand || expansionCost <= 0) return;
+        if (!hasEnoughDiamonds) {
+            alert('다이아가 부족합니다.');
+            return;
         }
+        await onAction({ type: 'EXPAND_INVENTORY', payload: { category: activeTab } });
+        setIsExpandModalOpen(false);
     };
 
     const handleOpenRenameModal = () => {
@@ -574,9 +590,9 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
     const currentSlots = useMemo(() => {
         const slots = inventorySlots || {};
         if (activeTab === 'all') {
-            return (slots.equipment || BASE_SLOTS_PER_CATEGORY) + (slots.consumable || BASE_SLOTS_PER_CATEGORY) + (slots.material || BASE_SLOTS_PER_CATEGORY);
+            return (slots.equipment ?? BASE_SLOTS_PER_CATEGORY) + (slots.consumable ?? BASE_SLOTS_PER_CATEGORY) + (slots.material ?? BASE_SLOTS_PER_CATEGORY);
         } else {
-            return slots[activeTab] || BASE_SLOTS_PER_CATEGORY;
+            return slots[activeTab] ?? BASE_SLOTS_PER_CATEGORY;
         }
     }, [inventorySlots, activeTab]);
     
@@ -587,10 +603,32 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
         return maxSlots;
     }, [activeTab]);
 
+    const currentCategorySlots = useMemo(() => {
+        if (activeTab === 'all') return 0;
+        return inventorySlots?.[activeTab] ?? BASE_SLOTS_PER_CATEGORY;
+    }, [activeTab, inventorySlots]);
+
+    const nextCategorySlots = useMemo(() => {
+        if (activeTab === 'all') return 0;
+        return Math.min(currentCategorySlots + EXPANSION_AMOUNT, maxSlotsForCurrentTab);
+    }, [activeTab, currentCategorySlots, maxSlotsForCurrentTab]);
+
     const canExpand = useMemo(() => {
         if (activeTab === 'all') return false;
-        return inventorySlots[activeTab] < maxSlotsForCurrentTab;
-    }, [activeTab, inventorySlots, maxSlotsForCurrentTab]);
+        return currentCategorySlots < maxSlotsForCurrentTab;
+    }, [activeTab, currentCategorySlots, maxSlotsForCurrentTab]);
+
+    const hasEnoughDiamonds = useMemo(() => {
+        if (expansionCost <= 0) return true;
+        return (currentUser.diamonds ?? 0) >= expansionCost;
+    }, [currentUser.diamonds, expansionCost]);
+
+    const slotsIncrease = useMemo(() => {
+        if (activeTab === 'all') return 0;
+        return Math.max(0, nextCategorySlots - currentCategorySlots);
+    }, [activeTab, nextCategorySlots, currentCategorySlots]);
+
+    const activeTabLabel = useMemo(() => TAB_LABELS[activeTab], [activeTab]);
 
     const isItemInAnyPreset = useCallback((itemId: string) => {
         return presets.some(preset => Object.values(preset.equipment).includes(itemId));
@@ -659,7 +697,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
     }, [selectedItem, currentUser]);
 
     return (
-        <DraggableWindow title="가방" onClose={onClose} windowId="inventory" isTopmost={isTopmost} initialWidth={calculatedWidth} initialHeight={calculatedHeight}>
+        <DraggableWindow title="가방" onClose={onClose} windowId="inventory" isTopmost={isTopmost} initialWidth={calculatedWidth} initialHeight={calculatedHeight} variant="store">
             <div 
                 className="flex flex-col h-full w-full overflow-hidden"
                 style={{ margin: 0, padding: 0 }}
@@ -962,7 +1000,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
                     onConfirm={(itemId, quantity) => {
                         onAction({ type: 'USE_ITEM', payload: { itemId, quantity } });
                     }}
-                    isTopmost={isTopmost && !isRenameModalOpen && !itemToSell && !itemToSellBulk}
+                    isTopmost={isTopmost && !isRenameModalOpen && !itemToSell && !itemToSellBulk && !isExpandModalOpen}
                 />
             )}
 
@@ -981,7 +1019,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
                         setItemToSell(null);
                         setSelectedItemId(null);
                     }}
-                    isTopmost={isTopmost && !isRenameModalOpen && !showUseQuantityModal && !itemToSellBulk}
+                    isTopmost={isTopmost && !isRenameModalOpen && !showUseQuantityModal && !itemToSellBulk && !isExpandModalOpen}
                 />
             )}
 
@@ -1009,12 +1047,57 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
                         setItemToSellBulk(null);
                         setSelectedItemId(null);
                     }}
-                    isTopmost={isTopmost && !isRenameModalOpen && !showUseQuantityModal && !itemToSell}
+                    isTopmost={isTopmost && !isRenameModalOpen && !showUseQuantityModal && !itemToSell && !isExpandModalOpen}
                 />
             )}
 
+            {isExpandModalOpen && activeTab !== 'all' && (
+                <DraggableWindow title="가방 확장" onClose={() => setIsExpandModalOpen(false)} windowId="expandInventory" isTopmost={isTopmost} variant="store">
+                    <div className="p-5 w-[min(320px,80vw)] text-center space-y-5">
+                        <div className="space-y-2">
+                            <p className="text-on-panel text-sm">{`${activeTabLabel} 가방을 확장하시겠습니까?`}</p>
+                            <div className="flex items-center justify-center gap-3 text-sm font-semibold">
+                                <span className="text-gray-400">{currentCategorySlots}칸</span>
+                                <span className="text-gray-500">→</span>
+                                <span className="text-emerald-300">{nextCategorySlots}칸</span>
+                                {slotsIncrease > 0 && (
+                                    <span className="text-emerald-400 text-xs">(+{slotsIncrease})</span>
+                                )}
+                            </div>
+                        </div>
+                        <div className="flex flex-col items-center gap-1">
+                            <span className="text-xs text-gray-400">필요 다이아</span>
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border ${hasEnoughDiamonds ? 'border-cyan-400/60 bg-cyan-500/10 text-cyan-100' : 'border-rose-500/60 bg-rose-500/10 text-rose-200'}`}>
+                                <img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 object-contain" />
+                                <span className="font-bold">{expansionCost.toLocaleString()}</span>
+                            </div>
+                            {!hasEnoughDiamonds && (
+                                <span className="text-xs text-rose-300">다이아가 부족합니다.</span>
+                            )}
+                        </div>
+                        <div className="flex justify-center gap-2">
+                            <Button onClick={() => setIsExpandModalOpen(false)} colorScheme="gray">
+                                취소
+                            </Button>
+                            <ResourceActionButton
+                                onClick={handleConfirmExpand}
+                                disabled={!hasEnoughDiamonds}
+                                variant="diamonds"
+                                className="flex items-center gap-2 px-4 py-2"
+                            >
+                                <span>확장</span>
+                                <span className="flex items-center gap-1 text-sm">
+                                    <img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4 object-contain" />
+                                    {expansionCost.toLocaleString()}
+                                </span>
+                            </ResourceActionButton>
+                        </div>
+                    </div>
+                </DraggableWindow>
+            )}
+
             {isRenameModalOpen && (
-                <DraggableWindow title="프리셋 이름 변경" onClose={() => setIsRenameModalOpen(false)} windowId="renamePreset" isTopmost={true}>
+                <DraggableWindow title="프리셋 이름 변경" onClose={() => setIsRenameModalOpen(false)} windowId="renamePreset" isTopmost={isTopmost && !isExpandModalOpen}>
                     <div className="p-4 flex flex-col items-center">
                         <p className="mb-4 text-on-panel">새로운 프리셋 이름을 입력하세요:</p>
                         <input

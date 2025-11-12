@@ -10,7 +10,10 @@ interface TrainingQuestLevelUpModalProps {
     canLevelUp: boolean;
     nextLevelUnlockStage?: string;
     currentUserGold: number;
-    onConfirm: () => void;
+    accumulatedCollection: number;
+    requiredCollection: number;
+    progressPercent: number;
+    onConfirm: () => Promise<void>;
     onClose: () => void;
 }
 
@@ -21,159 +24,208 @@ const TrainingQuestLevelUpModal: React.FC<TrainingQuestLevelUpModalProps> = ({
     canLevelUp,
     nextLevelUnlockStage,
     currentUserGold,
+    accumulatedCollection,
+    requiredCollection,
+    progressPercent,
     onConfirm,
     onClose,
 }) => {
-    // 레벨 0일 때는 현재 레벨 정보가 없으므로 기본값 사용
     const currentLevelInfo = currentLevel > 0 ? mission.levels[currentLevel - 1] : null;
     const nextLevelInfo = mission.levels && mission.levels[currentLevel];
-    
-    // 다음 레벨 정보가 없으면 모달을 표시하지 않음
+
     if (!nextLevelInfo) {
         return null;
     }
 
     const hasEnoughGold = currentUserGold >= upgradeCost;
-    // 레벨 0일 때는 변화량 계산 불가
     const productionRateChange = currentLevelInfo ? (currentLevelInfo.productionRateMinutes - nextLevelInfo.productionRateMinutes) : 0;
     const rewardAmountChange = currentLevelInfo ? (nextLevelInfo.rewardAmount - currentLevelInfo.rewardAmount) : nextLevelInfo.rewardAmount;
     const maxCapacityChange = currentLevelInfo ? (nextLevelInfo.maxCapacity - currentLevelInfo.maxCapacity) : nextLevelInfo.maxCapacity;
+
+    const normalizedRequired = Math.max(0, requiredCollection);
+    const normalizedAccumulated = Math.max(0, accumulatedCollection);
+    const xpPercent = normalizedRequired > 0
+        ? Math.min(100, Math.round((normalizedAccumulated / normalizedRequired) * 100))
+        : (canLevelUp ? 100 : Math.max(0, Math.round(progressPercent)));
+    const xpReady = normalizedRequired === 0 || normalizedAccumulated >= normalizedRequired;
+    const xpRemaining = xpReady ? 0 : Math.max(0, normalizedRequired - normalizedAccumulated);
+
+    const handleEnhance = async () => {
+        if (!canLevelUp || !hasEnoughGold) return;
+        await onConfirm();
+    };
 
     return (
         <DraggableWindow 
             title={`${mission.name} 강화`} 
             onClose={onClose} 
             windowId={`training-quest-levelup-${mission.id}`}
-            initialWidth={500}
-            initialHeight={600}
+            initialWidth={540}
+            initialHeight={620}
             isTopmost
         >
-            <div className="p-4 text-on-panel flex flex-col h-full overflow-y-auto">
-                {/* 현재 레벨 정보 */}
-                <div className="mb-2">
-                    <h3 className="text-lg font-semibold text-yellow-400 mb-2 flex items-center gap-2">
-                        <span className="bg-yellow-500/20 px-2 py-1 rounded">Lv.{currentLevel}</span>
-                        현재 레벨
-                    </h3>
-                    <div className="space-y-1.5 text-gray-200 text-sm bg-gray-900/50 p-2.5 rounded-lg">
-                        {currentLevelInfo ? (
-                            <>
-                                <div className="flex items-center gap-2">
-                                    <img src="/images/icon/timer.png" alt="생산 속도" className="w-5 h-5" />
-                                    <span>생산 속도: <strong className="text-yellow-300">{currentLevelInfo.productionRateMinutes}분</strong>마다</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    {mission.rewardType === 'gold' ? (
-                                        <img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5" />
-                                    ) : (
-                                        <img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5" />
-                                    )}
-                                    <span>생산량: <strong className="text-yellow-300">{currentLevelInfo.rewardAmount}</strong>{mission.rewardType === 'gold' ? '골드' : '다이아'}</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-5 h-5 bg-purple-500/50 rounded flex items-center justify-center text-xs font-bold">M</div>
-                                    <span>최대 생산량: <strong className="text-yellow-300">{currentLevelInfo.maxCapacity}</strong></span>
-                                </div>
-                            </>
-                        ) : (
-                            <div className="text-gray-400 italic">시작 전 상태입니다.</div>
-                        )}
-                    </div>
-                </div>
-
-                {/* 화살표 */}
-                <div className="flex justify-center my-1">
-                    <span className="text-2xl text-gray-400">↓</span>
-                </div>
-
-                {/* 다음 레벨 정보 */}
-                <div className="mb-2">
-                    <h3 className="text-lg font-semibold text-green-400 mb-2 flex items-center gap-2">
-                        <span className="bg-green-500/20 px-2 py-1 rounded">Lv.{currentLevel + 1}</span>
-                        다음 레벨
-                    </h3>
-                    <div className="space-y-1.5 text-gray-200 text-sm bg-gray-900/50 p-2.5 rounded-lg">
-                        <div className="flex items-center gap-2">
-                            <img src="/images/icon/timer.png" alt="생산 속도" className="w-5 h-5" />
-                            <span>
-                                생산 속도: <strong className="text-green-300">{nextLevelInfo.productionRateMinutes}분</strong>마다
-                                {productionRateChange > 0 && (
-                                    <span className="text-green-400 ml-1">(-{productionRateChange.toFixed(1)}분)</span>
-                                )}
-                                {productionRateChange === 0 && <span className="text-gray-400 ml-1">(변화없음)</span>}
-                            </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                            {mission.rewardType === 'gold' ? (
-                                <img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5" />
+            <div className="h-full flex flex-col bg-[#080d1c] text-slate-200 rounded-xl">
+                <div className="relative bg-gradient-to-r from-indigo-900/80 via-slate-900/90 to-slate-950/95 px-4 py-3.5 shadow-inner rounded-t-xl">
+                    <div className="absolute inset-0 opacity-40 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.45),transparent_65%)] pointer-events-none rounded-t-xl" />
+                    <div className="relative flex items-center gap-4">
+                        <div className="w-16 h-16 rounded-xl overflow-hidden bg-slate-900/60 border border-indigo-400/40 flex items-center justify-center shadow-[0_0_20px_-8px_rgba(129,140,248,0.8)]">
+                            {mission.image ? (
+                                <img src={mission.image} alt={mission.name} className="w-full h-full object-contain p-2 drop-shadow-[0_8px_15px_rgba(79,70,229,0.5)]" />
                             ) : (
-                                <img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5" />
+                                <span className="text-3xl">📜</span>
                             )}
-                            <span>
-                                생산량: <strong className="text-green-300">{nextLevelInfo.rewardAmount}</strong>{mission.rewardType === 'gold' ? '골드' : '다이아'}
-                                {rewardAmountChange > 0 && (
-                                    <span className="text-green-400 ml-1">(+{rewardAmountChange})</span>
-                                )}
-                                {rewardAmountChange === 0 && <span className="text-gray-400 ml-1">(변화없음)</span>}
-                            </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <div className="w-5 h-5 bg-purple-500/50 rounded flex items-center justify-center text-xs font-bold">M</div>
-                            <span>
-                                최대 생산량: <strong className="text-green-300">{nextLevelInfo.maxCapacity}</strong>
-                                {maxCapacityChange > 0 && (
-                                    <span className="text-green-400 ml-1">(+{maxCapacityChange})</span>
-                                )}
-                            </span>
+                        <div className="flex-1">
+                            <h2 className="text-2xl font-bold text-white drop-shadow-[0_4px_15px_rgba(79,70,229,0.5)]">{mission.name}</h2>
+                            <div className="mt-1 flex items-baseline gap-2">
+                                <span
+                                    className={`text-sm font-semibold text-indigo-100/80`}
+                                >
+                                    Lv.{currentLevel}
+                                </span>
+                                <span className="text-xs text-indigo-200/60">→ Lv.{currentLevel + 1}</span>
+                            </div>
                         </div>
                     </div>
                 </div>
 
-                {/* 강화 비용 */}
-                <div className="pt-2 border-t border-gray-600 mb-2">
-                    <div className="flex items-center justify-between mb-1.5">
-                        <span className="text-gray-300 font-semibold">강화 비용:</span>
-                        <div className="flex items-center gap-2">
-                            <img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5" />
-                            <span className={`font-bold text-base ${hasEnoughGold ? 'text-yellow-400' : 'text-red-400'}`}>
-                                {upgradeCost.toLocaleString()}
+                <div className="flex-1 px-4 py-3 space-y-3 overflow-y-auto">
+                    <div className="rounded-xl border border-emerald-400/40 bg-emerald-500/10 px-3.5 py-3 shadow-[0_18px_38px_-26px_rgba(16,185,129,0.65)]">
+                        <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs text-emerald-200">{xpPercent}%</span>
+                        </div>
+                        <div className="w-full h-2.5 rounded-full bg-emerald-900/40 overflow-hidden">
+                            <div
+                                className="h-full bg-gradient-to-r from-emerald-400 via-lime-400 to-yellow-300 transition-all duration-300"
+                                style={{ width: `${Math.min(100, xpPercent)}%` }}
+                            />
+                        </div>
+                        <div className="mt-1.5 flex items-center justify-between text-[11px] text-emerald-100/90">
+                            <span>
+                                {normalizedRequired > 0
+                                    ? `${Math.min(normalizedAccumulated, normalizedRequired).toLocaleString()} / ${normalizedRequired.toLocaleString()}`
+                                    : '요구 경험치 없음'}
+                            </span>
+                            <span>
+                                {xpReady ? '강화 준비 완료' : `남은 경험치 ${xpRemaining.toLocaleString()}`}
                             </span>
                         </div>
                     </div>
-                    {!hasEnoughGold && (
-                        <div className="text-red-400 text-xs flex items-center gap-1.5">
-                            <img src="/images/icon/Gold.png" alt="골드" className="w-3.5 h-3.5" />
-                            <span>골드가 부족합니다. (보유: {currentUserGold.toLocaleString()}골드)</span>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="rounded-xl border border-indigo-400/30 bg-slate-900/60 p-3.5 shadow-[0_20px_40px_-30px_rgba(99,102,241,0.8)]">
+                            <p className="text-[11px] uppercase tracking-[0.25em] text-indigo-200/70 mb-2">현재 레벨</p>
+                            {currentLevelInfo ? (
+                                <div className="space-y-2 text-sm">
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-slate-300/90 flex items-center gap-1.5">
+                                            <img src="/images/icon/timer.png" alt="생산 속도" className="w-4 h-4" />
+                                            생산 속도
+                                        </span>
+                                        <span className="font-semibold text-indigo-100">{currentLevelInfo.productionRateMinutes}분</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-slate-300/90 flex items-center gap-1.5">
+                                            <img src={mission.rewardType === 'gold' ? '/images/icon/Gold.png' : '/images/icon/Zem.png'} alt="보상" className="w-4 h-4" />
+                                            생산량
+                                        </span>
+                                        <span className="font-semibold text-indigo-100">{currentLevelInfo.rewardAmount.toLocaleString()}</span>
+                                    </div>
+                                    <div className="flex items-center justify-between">
+                                        <span className="text-slate-300/90 flex items-center gap-1.5">
+                                            <span className="w-4 h-4 rounded-full bg-purple-500/50 flex items-center justify-center text-[10px] font-bold text-purple-100">MAX</span>
+                                            최대 저장량
+                                        </span>
+                                        <span className="font-semibold text-indigo-100">{currentLevelInfo.maxCapacity.toLocaleString()}</span>
+                                    </div>
+                                </div>
+                            ) : (
+                                <p className="text-sm text-slate-400/80 italic">시작 전 상태입니다.</p>
+                            )}
+                        </div>
+
+                        <div className="rounded-xl border border-cyan-400/40 bg-slate-900/60 p-3.5 shadow-[0_20px_40px_-30px_rgba(34,211,238,0.8)]">
+                            <p className="text-[11px] uppercase tracking-[0.25em] text-cyan-200/70 mb-2">다음 레벨</p>
+                            <div className="space-y-2 text-sm">
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-300/90 flex items-center gap-1.5">
+                                        <img src="/images/icon/timer.png" alt="생산 속도" className="w-4 h-4" />
+                                        생산 속도
+                                    </span>
+                                    <span className="font-semibold text-cyan-100 flex items-center gap-1.5">
+                                        {nextLevelInfo.productionRateMinutes}분
+                                        {productionRateChange !== 0 && (
+                                            <span className="text-emerald-300 text-xs">
+                                                {productionRateChange > 0 ? `-${productionRateChange.toFixed(1)}` : `+${Math.abs(productionRateChange).toFixed(1)}`}분
+                                            </span>
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-300/90 flex items-center gap-1.5">
+                                        <img src={mission.rewardType === 'gold' ? '/images/icon/Gold.png' : '/images/icon/Zem.png'} alt="보상" className="w-4 h-4" />
+                                        생산량
+                                    </span>
+                                    <span className="font-semibold text-cyan-100 flex items-center gap-1.5">
+                                        {nextLevelInfo.rewardAmount.toLocaleString()}
+                                        {rewardAmountChange !== 0 && (
+                                            <span className="text-emerald-300 text-xs">
+                                                {rewardAmountChange > 0 ? `+${rewardAmountChange}` : rewardAmountChange}
+                                            </span>
+                                        )}
+                                    </span>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-slate-300/90 flex items-center gap-1.5">
+                                        <span className="w-4 h-4 rounded-full bg-purple-500/50 flex items-center justify-center text-[10px] font-bold text-purple-100">MAX</span>
+                                        최대 저장량
+                                    </span>
+                                    <span className="font-semibold text-cyan-100 flex items-center gap-1.5">
+                                        {nextLevelInfo.maxCapacity.toLocaleString()}
+                                        {maxCapacityChange !== 0 && (
+                                            <span className="text-emerald-300 text-xs">
+                                                {maxCapacityChange > 0 ? `+${maxCapacityChange}` : maxCapacityChange}
+                                            </span>
+                                        )}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {nextLevelUnlockStage && (
+                        <div className="rounded-xl border border-yellow-400/40 bg-yellow-500/10 px-3.5 py-2.5 text-sm text-yellow-100 flex items-center gap-2">
+                            <span className="text-lg">⚠️</span>
+                            <span>{nextLevelUnlockStage} 스테이지를 클리어해야 합니다.</span>
                         </div>
                     )}
                 </div>
 
-                {/* 오픈 조건 */}
-                {nextLevelUnlockStage && (
-                    <div className="pt-1.5 border-t border-gray-600 mb-2">
-                        <div className="text-yellow-400 text-xs flex items-center gap-1.5">
-                            <span className="text-lg">⚠️</span>
-                            <span>{nextLevelUnlockStage} 스테이지를 클리어해야 합니다.</span>
-                        </div>
-                    </div>
-                )}
-
-                {/* 버튼 - 항상 하단에 고정 */}
-                <div className="flex gap-3 mt-auto pt-3 border-t border-gray-600 flex-shrink-0">
+                <div className="px-4 py-3 border-t border-slate-700/70 bg-slate-950/40 flex gap-3 rounded-b-xl">
                     <Button 
                         onClick={onClose} 
-                        colorScheme="gray" 
-                        className="flex-1"
+                        colorScheme="none"
+                        className="flex-1 rounded-lg border border-slate-600/60 bg-slate-800/70 text-slate-200 hover:bg-slate-700/70"
                     >
                         취소
                     </Button>
                     <Button 
-                        onClick={onConfirm} 
-                        colorScheme="accent" 
-                        className="flex-1"
+                        onClick={handleEnhance} 
+                        colorScheme="none"
+                        className={`flex-1 justify-center rounded-lg border border-indigo-400/70 bg-gradient-to-r from-indigo-500 via-sky-500 to-cyan-400 text-white shadow-[0_18px_40px_-18px_rgba(99,102,241,0.9)] hover:from-indigo-400 hover:to-cyan-400 ${(!canLevelUp || !hasEnoughGold) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         disabled={!canLevelUp || !hasEnoughGold}
                     >
-                        {!canLevelUp ? '강화 불가' : !hasEnoughGold ? '골드 부족' : '강화하기'}
+                        {!canLevelUp
+                            ? '강화 조건 미충족'
+                            : !hasEnoughGold
+                                ? '골드 부족'
+                                : (
+                                    <span className="flex items-center gap-2 font-semibold tracking-wide">
+                                        <img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4 drop-shadow" />
+                                        <span>{upgradeCost.toLocaleString()}</span>
+                                        <span>강화하기</span>
+                                    </span>
+                                )}
                     </Button>
                 </div>
             </div>

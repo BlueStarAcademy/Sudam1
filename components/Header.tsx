@@ -1,18 +1,30 @@
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { memo, useEffect, useMemo, useState } from 'react';
 import { UserWithStatus } from '../types.js';
 import Button from './Button.js';
 import Avatar from './Avatar.js';
 import { getMannerEffects } from '../services/effectService.js';
 import { AVATAR_POOL, BORDER_POOL } from '../constants';
 import { useAppContext } from '../hooks/useAppContext.js';
+import { resourceIcons, ResourceIconKey } from './resourceIcons.js';
 
-const ResourceDisplay: React.FC<{ icon: React.ReactNode; value: string; className?: string }> = ({ icon, value, className }) => (
-    <div className={`flex items-center gap-1 sm:gap-2 bg-tertiary/50 rounded-full py-1 pl-1 pr-2 sm:pr-3 shadow-inner flex-shrink-0 ${className}`}>
-        <div className="bg-primary w-7 h-7 flex items-center justify-center rounded-full text-lg flex-shrink-0">{icon}</div>
-        <span className="font-bold text-[9px] sm:text-sm text-primary whitespace-nowrap">{value}</span>
-    </div>
-);
+const RESOURCE_LABEL: Record<ResourceIconKey, string> = {
+    gold: '골드',
+    diamonds: '다이아',
+};
+
+const ResourceDisplay = memo<{ icon: ResourceIconKey; value: number; className?: string }>(({ icon, value, className }) => {
+    const formattedValue = useMemo(() => value.toLocaleString(), [value]);
+    return (
+        <div className={`flex items-center gap-1 sm:gap-2 bg-tertiary/50 rounded-full py-1 pl-1 pr-2 sm:pr-3 shadow-inner flex-shrink-0 ${className ?? ''}`}>
+            <div className="bg-primary w-7 h-7 flex items-center justify-center rounded-full text-lg flex-shrink-0">
+                <img src={resourceIcons[icon]} alt={RESOURCE_LABEL[icon]} className="w-5 h-5 object-contain" loading="lazy" decoding="async" />
+            </div>
+            <span className="font-bold text-[9px] sm:text-sm text-primary whitespace-nowrap">{formattedValue}</span>
+        </div>
+    );
+});
+ResourceDisplay.displayName = 'ResourceDisplay';
 
 export const ActionPointTimer: React.FC<{ user: UserWithStatus }> = ({ user }) => {
     const { actionPoints, lastActionPointUpdate } = user;
@@ -68,7 +80,7 @@ const Header: React.FC = () => {
 
     return (
         <header className="flex-shrink-0 bg-primary/80 backdrop-blur-sm shadow-lg">
-            <div className="p-2.5 sm:p-3 flex justify-between items-center gap-2 h-[70px] sm:h-[75px] flex-nowrap overflow-x-auto">
+            <div className="p-2.5 sm:p-3 flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-2 sm:gap-3 min-h-[70px] sm:min-h-[75px]">
                 <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0 cursor-pointer relative" onClick={openProfileEditModal}>
                      <Avatar userId={currentUserWithStatus.id} userName={currentUserWithStatus.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={40} />
                      <div className="hidden sm:block min-w-0">
@@ -80,7 +92,7 @@ const Header: React.FC = () => {
                      )}
                 </div>
 
-                <div className="flex items-center justify-end flex-nowrap gap-1 sm:gap-2 flex-shrink-0">
+                <div className="flex-1 w-full sm:w-auto flex flex-wrap sm:flex-nowrap items-center justify-end gap-1 sm:gap-2">
                     <div className="flex items-center flex-shrink-0 gap-1 bg-tertiary/60 rounded-full pl-2 pr-1 py-1 border border-tertiary/40 shadow-inner">
                         <span className="flex items-center gap-1 font-bold text-[9px] sm:text-xs text-primary whitespace-nowrap">
                             <span className="text-base leading-none">⚡</span>
@@ -92,15 +104,24 @@ const Header: React.FC = () => {
                             className="flex-shrink-0 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-primary/70 hover:bg-primary transition-colors border border-primary/60 flex items-center justify-center"
                             title="행동력 충전 (상점)"
                         >
-                            <img src="/images/icon/applus.png" alt="행동력 충전" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" />
+                            <img src={resourceIcons.actionPlus} alt="행동력 충전" className="w-4 h-4 sm:w-5 sm:h-5 object-contain" loading="lazy" decoding="async" />
                         </button>
                     </div>
-                    <ResourceDisplay icon={<img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 object-contain" />} value={safeGold.toLocaleString()} className="flex-shrink-0" />
-                    <ResourceDisplay icon={<img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 object-contain" />} value={safeDiamonds.toLocaleString()} className="flex-shrink-0" />
+                    <ResourceDisplay icon="gold" value={safeGold} className="flex-shrink-0" />
+                    <ResourceDisplay icon="diamonds" value={safeDiamonds} className="flex-shrink-0" />
                     
                     <div className="h-9 w-px bg-border-color mx-1 sm:mx-2 flex-shrink-0"></div>
                     
-                    {isAdmin && <Button onClick={() => window.location.hash = '#/admin'} colorScheme="purple" className="text-[9px] sm:text-sm flex-shrink-0 whitespace-nowrap">관리자</Button>}
+                    {isAdmin && (
+                        <Button
+                            onClick={() => window.location.hash = '#/admin'}
+                            colorScheme="none"
+                            className="flex-shrink-0 whitespace-nowrap !px-3 !py-1.5 text-[9px] sm:text-xs rounded-lg border border-indigo-300/50 bg-gradient-to-r from-indigo-500/85 via-sky-500/80 to-cyan-400/80 text-white shadow-[0_10px_24px_-18px_rgba(59,130,246,0.55)] hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-18px_rgba(96,165,250,0.6)]"
+                            style={{ letterSpacing: '0.08em' }}
+                        >
+                            관리자
+                        </Button>
+                    )}
                     <button
                         onClick={openMailbox}
                         className="relative p-2 rounded-lg text-xl hover:bg-secondary transition-colors"
@@ -118,7 +139,14 @@ const Header: React.FC = () => {
                     >
                         ⚙️
                     </button>
-                    <Button onClick={handleLogout} colorScheme="red" className="text-xs sm:text-sm">로그아웃</Button>
+                    <Button
+                        onClick={handleLogout}
+                        colorScheme="none"
+                        className="whitespace-nowrap !px-3 !py-1.5 text-[9px] sm:text-xs rounded-lg border border-rose-300/55 bg-gradient-to-r from-rose-500/85 via-red-500/80 to-orange-400/80 text-white shadow-[0_10px_22px_-18px_rgba(248,113,113,0.55)] hover:-translate-y-0.5 hover:shadow-[0_16px_30px_-16px_rgba(248,113,113,0.6)]"
+                        style={{ letterSpacing: '0.08em' }}
+                    >
+                        로그아웃
+                    </Button>
                 </div>
             </div>
         </header>

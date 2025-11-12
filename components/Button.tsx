@@ -5,7 +5,7 @@ type ColorScheme = 'blue' | 'red' | 'gray' | 'green' | 'yellow' | 'purple' | 'or
 
 interface ButtonProps {
   children: React.ReactNode;
-  onClick?: (e?: React.MouseEvent<HTMLButtonElement>) => void;
+  onClick?: (e: React.MouseEvent<HTMLButtonElement>) => void | Promise<void>;
   colorScheme?: ColorScheme;
   disabled?: boolean;
   className?: string;
@@ -112,13 +112,9 @@ const Button: React.FC<ButtonProps> = ({
       setIsCoolingDown(true);
       try {
         const maybePromise = onClick(event);
-        if (maybePromise && typeof (maybePromise as Promise<unknown>).finally === 'function') {
-          (maybePromise as Promise<unknown>).finally(() => {
-            cooldownTimerRef.current = setTimeout(() => setIsCoolingDown(false), cooldownMs);
-          });
-        } else {
+        Promise.resolve(maybePromise).finally(() => {
           cooldownTimerRef.current = setTimeout(() => setIsCoolingDown(false), cooldownMs);
-        }
+        });
       } catch (error) {
         cooldownTimerRef.current = setTimeout(() => setIsCoolingDown(false), cooldownMs);
         throw error;

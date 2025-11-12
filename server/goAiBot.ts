@@ -104,13 +104,13 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         level: 5,
         name: '중급 AI (6급)',
         description: '중급단계의 6급 수준. 정석과 포석을 활용하며 전투 능력 향상',
-        captureTendency: 0.55,
-        territoryTendency: 0.55,
-        combatTendency: 0.55,
+        captureTendency: 0.7,
+        territoryTendency: 0.5,
+        combatTendency: 0.65,
         josekiUsage: 0.4,
         lifeDeathSkill: 0.6,
         movementSkill: 0.6,
-        mistakeRate: 0.2,
+        mistakeRate: 0.18,
         winFocus: 0.78,
         calculationDepth: 3,
     },
@@ -118,13 +118,13 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         level: 6,
         name: '중급 AI (3급)',
         description: '중급단계의 3급 수준. 영토와 전투의 균형잡힌 플레이',
-        captureTendency: 0.5,
-        territoryTendency: 0.6,
-        combatTendency: 0.6,
+        captureTendency: 0.72,
+        territoryTendency: 0.58,
+        combatTendency: 0.7,
         josekiUsage: 0.5,
         lifeDeathSkill: 0.7,
         movementSkill: 0.7,
-        mistakeRate: 0.15,
+        mistakeRate: 0.12,
         winFocus: 0.75,
         calculationDepth: 3,
     },
@@ -132,13 +132,13 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         level: 7,
         name: '고급 AI (1단)',
         description: '고급단계의 1단 수준. 정석과 포석을 잘 활용하며 사활 판단 능력 향상',
-        captureTendency: 0.45,
-        territoryTendency: 0.65,
-        combatTendency: 0.65,
+        captureTendency: 0.75,
+        territoryTendency: 0.6,
+        combatTendency: 0.75,
         josekiUsage: 0.6,
         lifeDeathSkill: 0.8,
         movementSkill: 0.8,
-        mistakeRate: 0.08,
+        mistakeRate: 0.05,
         winFocus: 0.72,
         calculationDepth: 4,
     },
@@ -146,13 +146,13 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         level: 8,
         name: '고급 AI (2단)',
         description: '고급단계의 2단 수준. 우수한 행마와 정석 활용',
-        captureTendency: 0.4,
-        territoryTendency: 0.7,
-        combatTendency: 0.7,
+        captureTendency: 0.7,
+        territoryTendency: 0.65,
+        combatTendency: 0.8,
         josekiUsage: 0.7,
         lifeDeathSkill: 0.85,
         movementSkill: 0.85,
-        mistakeRate: 0.06,
+        mistakeRate: 0.035,
         winFocus: 0.68,
         calculationDepth: 5,
     },
@@ -160,13 +160,13 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         level: 9,
         name: '유단자 AI (3단)',
         description: '유단자 수준의 3단. 전반적인 기술이 뛰어나며 정확한 판단',
-        captureTendency: 0.35,
-        territoryTendency: 0.75,
-        combatTendency: 0.75,
+        captureTendency: 0.68,
+        territoryTendency: 0.7,
+        combatTendency: 0.85,
         josekiUsage: 0.8,
         lifeDeathSkill: 0.9,
         movementSkill: 0.9,
-        mistakeRate: 0.04,
+        mistakeRate: 0.02,
         winFocus: 0.65,
         calculationDepth: 6,
     },
@@ -174,13 +174,13 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         level: 10,
         name: '유단자 AI (약 1단)',
         description: '유단자 수준의 약 1단. 영토, 전투, 행마, 정석, 포석, 사활 등 전반적인 모든 기술이 뛰어남',
-        captureTendency: 0.3, // 따내기보다는 전략적 플레이
-        territoryTendency: 0.8, // 영토 확보에 집중
-        combatTendency: 0.8, // 전투 능력 뛰어남
+        captureTendency: 0.6, // 적극적인 전투 선호
+        territoryTendency: 0.75, // 영토 확보에 집중
+        combatTendency: 0.9, // 전투 능력 뛰어남
         josekiUsage: 0.9, // 정석/포석을 잘 활용
         lifeDeathSkill: 0.95, // 사활 판단 매우 정확
         movementSkill: 0.95, // 행마 능력 매우 우수
-        mistakeRate: 0.015, // 실수 거의 없음
+        mistakeRate: 0.005, // 실수 거의 없음
         winFocus: 0.62, // 승리에 집중하되 전략적
         calculationDepth: 6, // 계산 깊이 최대
     },
@@ -274,7 +274,7 @@ export async function makeGoAiBotMove(
     }
 
     // 4. 선택된 수 실행
-    const result = processMove(
+    let result = processMove(
         game.boardState,
         { ...selectedMove, player: aiPlayerEnum },
         game.koInfo,
@@ -433,7 +433,10 @@ function scoreMovesByProfile(
 
         // 1. 따내기 성향 반영
         const captureScore = evaluateCaptureOpportunity(game, logic, point, aiPlayer, opponentPlayer);
-        score += captureScore * profile.captureTendency * 100;
+        if (captureScore > 0) {
+            score += 150; // 강력한 가중치 부여
+        }
+        score += captureScore * profile.captureTendency * 180;
 
         // 2. 영토 확보 성향 반영
         const territoryScore = evaluateTerritory(game, logic, point, aiPlayer);
@@ -441,27 +444,31 @@ function scoreMovesByProfile(
 
         // 3. 전투 성향 반영
         const combatScore = evaluateCombat(game, logic, point, aiPlayer, opponentPlayer);
-        score += combatScore * profile.combatTendency * 60;
+        score += combatScore * profile.combatTendency * 80;
 
-        // 4. 정석/포석 활용도 반영 (고수일수록 더 반영)
+        // 4. 아타리(단수) 기회 평가
+        const atariScore = evaluateAtariOpportunity(game, logic, point, aiPlayer, opponentPlayer);
+        score += atariScore * profile.captureTendency * 120;
+
+        // 5. 정석/포석 활용도 반영 (고수일수록 더 반영)
         if (profile.josekiUsage > 0.3) {
             const josekiScore = evaluateJoseki(game, point, aiPlayer);
             score += josekiScore * profile.josekiUsage * 40;
         }
 
-        // 5. 사활 판단 능력 반영
+        // 6. 사활 판단 능력 반영
         if (profile.lifeDeathSkill > 0.3) {
             const lifeDeathScore = evaluateLifeDeath(game, logic, point, aiPlayer, opponentPlayer);
             score += lifeDeathScore * profile.lifeDeathSkill * 80;
         }
 
-        // 6. 행마 능력 반영
+        // 7. 행마 능력 반영
         if (profile.movementSkill > 0.3) {
             const movementScore = evaluateMovement(game, logic, point, aiPlayer);
             score += movementScore * profile.movementSkill * 40;
         }
 
-        // 7. 승리 목적 달성도 반영 (목표 점수에 근접할수록 높은 점수)
+        // 8. 승리 목적 달성도 반영 (목표 점수에 근접할수록 높은 점수)
         if (profile.winFocus > 0.5 && (game.isSinglePlayer || game.mode === types.GameMode.Capture)) {
             const winFocusScore = evaluateWinFocus(game, logic, point, aiPlayer, opponentPlayer);
             score += winFocusScore * profile.winFocus * 150;
@@ -586,6 +593,58 @@ function evaluateCombat(
     }
 
     return combatScore;
+}
+
+/**
+ * 아타리(단수) 기회 평가
+ */
+function evaluateAtariOpportunity(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    let atariScore = 0;
+
+    const opponentGroupsBefore = logic.getAllGroups(opponentPlayer, game.boardState);
+    const opponentGroupsAfter = logic.getAllGroups(opponentPlayer, testResult.newBoardState);
+
+    for (const groupAfter of opponentGroupsAfter) {
+        const libertiesAfter = groupAfter.libertyPoints.size;
+        if (libertiesAfter > 2) continue;
+
+        const matchingBefore = opponentGroupsBefore.find(groupBefore =>
+            groupBefore.stones.some(beforeStone =>
+                groupAfter.stones.some(afterStone => afterStone.x === beforeStone.x && afterStone.y === beforeStone.y)
+            )
+        );
+
+        if (!matchingBefore) continue;
+
+        const libertiesBefore = matchingBefore.libertyPoints.size;
+        if (libertiesAfter === 1 && libertiesBefore > libertiesAfter) {
+            // 즉시 단수 상황
+            atariScore += 5;
+        } else if (libertiesAfter === 2 && libertiesBefore - libertiesAfter >= 2) {
+            // 빠르게 단수로 몰 수 있는 경우
+            atariScore += 3;
+        } else if (libertiesAfter < libertiesBefore) {
+            atariScore += 1.5;
+        }
+    }
+
+    return atariScore;
 }
 
 /**

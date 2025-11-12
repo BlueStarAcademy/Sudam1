@@ -566,9 +566,11 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                     case 'world': stateKey = 'lastWorldTournament'; break;
                     default: return { error: 'Invalid tournament type.' };
                 }
+
                 (user as any)[stateKey] = tournamentState;
                 await db.updateUser(user);
-                if (volatileState.activeTournaments) {
+
+                if (volatileState.activeTournaments && tournamentState.status !== 'round_in_progress') {
                     delete volatileState.activeTournaments[user.id];
                 }
             }

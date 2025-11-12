@@ -33,6 +33,28 @@ const ImageButton: React.FC<ImageButtonProps> = ({ src, alt, onClick, disabled =
     );
 };
 
+interface LabeledControlButtonProps extends ImageButtonProps {
+    label: string;
+    caption?: string;
+}
+
+const LabeledControlButton: React.FC<LabeledControlButtonProps> = ({ label, caption, ...buttonProps }) => {
+    const { disabled = false } = buttonProps;
+    return (
+        <div className="flex flex-col items-center gap-1 min-w-[4.5rem]">
+            <ImageButton {...buttonProps} />
+            <span className={`text-[10px] font-semibold tracking-wide ${disabled ? 'text-gray-500' : 'text-amber-100 drop-shadow-sm'}`}>
+                {label}
+            </span>
+            {caption && (
+                <span className={`text-[9px] font-medium ${disabled ? 'text-gray-500/80' : 'text-gray-300/90'}`}>
+                    {caption}
+                </span>
+            )}
+        </div>
+    );
+};
+
 interface GameControlsProps {
     session: LiveGameSession;
     isMyTurn: boolean;
@@ -208,30 +230,29 @@ const AlkkagiItemPanel: React.FC<{ session: LiveGameSession; isMyTurn: boolean; 
     const isSlowActive = myActiveItems.includes('slow');
     const isAimActive = myActiveItems.includes('aimingLine');
     const canUse = isMyTurn && gameStatus === 'alkkagi_playing';
-    const buttonClasses = "whitespace-nowrap text-[clamp(0.6rem,2.2vmin,0.875rem)] px-[clamp(0.4rem,1.8vmin,0.75rem)] py-[clamp(0.3rem,1.2vmin,0.625rem)]";
 
     const totalRounds = session.settings.alkkagiRounds || 1;
     if (totalRounds <= 1) {
         return (
-            <div className="flex items-center justify-center gap-2">
-                <Button
+            <div className="flex items-center justify-center gap-3">
+                <LabeledControlButton
+                    src="/images/button/slow.png"
+                    alt="슬로우"
+                    label="슬로우"
+                    caption={`${slowCount}개${isSlowActive ? ' · 사용중' : ''}`}
                     onClick={() => useItem('slow')}
                     disabled={!canUse || slowCount <= 0 || isSlowActive}
-                    colorScheme={isSlowActive ? 'green' : 'blue'}
-                    className={buttonClasses}
                     title={`파워 게이지 속도를 50% 감소시킵니다. 남은 개수: ${slowCount}`}
-                >
-                    슬로우 ({slowCount})
-                </Button>
-                <Button
+                />
+                <LabeledControlButton
+                    src="/images/button/target.png"
+                    alt="조준선"
+                    label="조준선"
+                    caption={`${aimCount}개${isAimActive ? ' · 사용중' : ''}`}
                     onClick={() => useItem('aimingLine')}
                     disabled={!canUse || aimCount <= 0 || isAimActive}
-                    colorScheme={isAimActive ? 'green' : 'purple'}
-                    className={buttonClasses}
                     title={`조준선 길이를 1000% 증가시킵니다. 남은 개수: ${aimCount}`}
-                >
-                    조준선 ({aimCount})
-                </Button>
+                />
             </div>
         );
     }
@@ -241,30 +262,30 @@ const AlkkagiItemPanel: React.FC<{ session: LiveGameSession; isMyTurn: boolean; 
     const myRefillsLeft = maxRefills - myRefillsUsed;
 
     return (
-        <div className="flex items-center justify-center gap-2">
-            <div className="flex flex-col text-center text-xs font-semibold">
-                <span className="text-yellow-300">리필: {myRefillsLeft} / {maxRefills}</span>
+        <div className="flex items-center justify-center gap-3">
+            <div className="flex flex-col text-center text-xs font-semibold text-yellow-300">
+                <span>리필: {myRefillsLeft} / {maxRefills}</span>
             </div>
-             <div className="h-8 w-px bg-gray-600 mx-2"></div>
-            <div className="flex items-center justify-center gap-2">
-                 <Button
+            <div className="h-8 w-px bg-gray-600 mx-2"></div>
+            <div className="flex items-center justify-center gap-3">
+                <LabeledControlButton
+                    src="/images/button/slow.png"
+                    alt="슬로우"
+                    label="슬로우"
+                    caption={`${slowCount}개${isSlowActive ? ' · 사용중' : ''}`}
                     onClick={() => useItem('slow')}
                     disabled={!canUse || slowCount <= 0 || isSlowActive}
-                    colorScheme={isSlowActive ? 'green' : 'blue'}
-                    className={buttonClasses}
                     title={`파워 게이지 속도를 50% 감소시킵니다. 남은 개수: ${slowCount}`}
-                >
-                    슬로우 ({slowCount})
-                </Button>
-                <Button
+                />
+                <LabeledControlButton
+                    src="/images/button/target.png"
+                    alt="조준선"
+                    label="조준선"
+                    caption={`${aimCount}개${isAimActive ? ' · 사용중' : ''}`}
                     onClick={() => useItem('aimingLine')}
                     disabled={!canUse || aimCount <= 0 || isAimActive}
-                    colorScheme={isAimActive ? 'green' : 'purple'}
-                    className={buttonClasses}
                     title={`조준선 길이를 1000% 증가시킵니다. 남은 개수: ${aimCount}`}
-                >
-                    조준선 ({aimCount})
-                </Button>
+                />
             </div>
         </div>
     );
@@ -337,28 +358,26 @@ const CurlingItemPanel: React.FC<{ session: LiveGameSession; isMyTurn: boolean; 
     const isSlowActive = myActiveItems.includes('slow');
     const isAimActive = myActiveItems.includes('aimingLine');
     const canUse = isMyTurn && gameStatus === 'curling_playing';
-    const buttonClasses = "whitespace-nowrap text-[clamp(0.6rem,2.2vmin,0.875rem)] px-[clamp(0.4rem,1.8vmin,0.75rem)] py-[clamp(0.3rem,1.2vmin,0.625rem)]";
-
     return (
-        <div className="flex items-center justify-center gap-2">
-            <Button
+        <div className="flex items-center justify-center gap-3">
+            <LabeledControlButton
+                src="/images/button/slow.png"
+                alt="슬로우"
+                label="슬로우"
+                caption={`${slowCount}개${isSlowActive ? ' · 사용중' : ''}`}
                 onClick={() => useItem('slow')}
                 disabled={!canUse || slowCount <= 0 || isSlowActive}
-                colorScheme={isSlowActive ? 'green' : 'blue'}
-                className={buttonClasses}
                 title={`파워 게이지 속도를 50% 감소시킵니다. 남은 개수: ${slowCount}`}
-            >
-                슬로우 ({slowCount})
-            </Button>
-            <Button
+            />
+            <LabeledControlButton
+                src="/images/button/target.png"
+                alt="조준선"
+                label="조준선"
+                caption={`${aimCount}개${isAimActive ? ' · 사용중' : ''}`}
                 onClick={() => useItem('aimingLine')}
                 disabled={!canUse || aimCount <= 0 || isAimActive}
-                colorScheme={isAimActive ? 'green' : 'purple'}
-                className={buttonClasses}
                 title={`조준선 길이를 1000% 증가시킵니다. 남은 개수: ${aimCount}`}
-            >
-                조준선 ({aimCount})
-            </Button>
+            />
         </div>
     );
 };
@@ -407,18 +426,88 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
         });
     }, [session.hiddenMoves, session.moveHistory, session.boardState, session.permanentlyRevealedStones, opponentPlayerEnum]);
     
-    const buttonClasses = "whitespace-nowrap text-[clamp(0.6rem,2.2vmin,0.875rem)] px-[clamp(0.4rem,1.8vmin,0.75rem)] py-[clamp(0.2rem,0.8vmin,0.4rem)]";
+    const luxuryButtonBase = "relative overflow-hidden whitespace-normal break-keep text-[clamp(0.6rem,2vmin,0.85rem)] px-[clamp(0.45rem,1.6vmin,0.85rem)] py-[clamp(0.32rem,1.1vmin,0.6rem)] rounded-xl backdrop-blur-sm font-semibold tracking-wide transition-all duration-200 flex items-center justify-center gap-1";
+
+    const getLuxuryButtonClasses = (variant: 'primary' | 'danger' | 'neutral' | 'accent' | 'success' = 'primary') => {
+        const variants: Record<typeof variant, string> = {
+            primary: `${luxuryButtonBase} border border-cyan-200/40 bg-gradient-to-br from-cyan-500/85 via-sky-500/80 to-indigo-500/80 text-white shadow-[0_18px_34px_-18px_rgba(59,130,246,0.55)] hover:-translate-y-0.5 hover:shadow-[0_24px_40px_-18px_rgba(96,165,250,0.6)]`,
+            danger: `${luxuryButtonBase} border border-rose-300/45 bg-gradient-to-br from-rose-600/90 via-red-500/85 to-amber-400/80 text-white shadow-[0_18px_36px_-16px_rgba(248,113,113,0.55)] hover:-translate-y-0.5 hover:shadow-[0_24px_42px_-18px_rgba(248,113,113,0.65)]`,
+            neutral: `${luxuryButtonBase} border border-slate-400/35 bg-gradient-to-br from-slate-800/85 via-slate-900/80 to-black/70 text-slate-100 shadow-[0_16px_32px_-20px_rgba(148,163,184,0.5)] hover:-translate-y-0.5 hover:shadow-[0_22px_40px_-18px_rgba(203,213,225,0.55)]`,
+            accent: `${luxuryButtonBase} border border-amber-300/55 bg-gradient-to-br from-amber-400/85 via-yellow-400/75 to-orange-400/80 text-slate-900 shadow-[0_18px_36px_-18px_rgba(251,191,36,0.5)] hover:-translate-y-0.5 hover:shadow-[0_24px_44px_-18px_rgba(251,191,36,0.6)]`,
+            success: `${luxuryButtonBase} border border-emerald-300/55 bg-gradient-to-br from-emerald-500/85 via-lime-500/75 to-green-500/80 text-slate-900 shadow-[0_18px_34px_-18px_rgba(74,222,128,0.45)] hover:-translate-y-0.5 hover:shadow-[0_24px_44px_-18px_rgba(74,222,128,0.6)]`,
+        };
+        return variants[variant];
+    };
 
     const renderItemButtons = () => {
-        const isHiddenMode = mode === GameMode.Hidden || (mode === GameMode.Mix && (session.settings.mixedModes || []).includes(GameMode.Hidden));
-        const isMissileMode = mode === GameMode.Missile || (mode === GameMode.Mix && (session.settings.mixedModes || []).includes(GameMode.Missile));
+        const hiddenCountSetting = session.settings.hiddenStoneCount ?? 0;
+        const scanCountSetting = session.settings.scanCount ?? 0;
+        const missileCountSetting = session.settings.missileCount ?? 0;
+
+        const isHiddenMode = (mode === GameMode.Hidden || (mode === GameMode.Mix && (session.settings.mixedModes || []).includes(GameMode.Hidden))) || (session.isSinglePlayer && hiddenCountSetting > 0);
+        const isMissileMode = (mode === GameMode.Missile || (mode === GameMode.Mix && (session.settings.mixedModes || []).includes(GameMode.Missile))) || (session.isSinglePlayer && missileCountSetting > 0);
         const p1Id = session.player1.id;
         const myHiddenUsed = currentUser.id === p1Id ? (session.hidden_stones_used_p1 ?? 0) : (session.hidden_stones_used_p2 ?? 0);
-        const myScansLeft = currentUser.id === p1Id ? session.scans_p1 : session.scans_p2;
-        const myMissilesLeft = currentUser.id === p1Id ? session.missiles_p1 : session.missiles_p2;
-        const hiddenLeft = (session.settings.hiddenStoneCount || 0) - myHiddenUsed;
-        
-        return ( <> {isHiddenMode && <Button onClick={() => handleUseItem('hidden')} disabled={!isMyTurn || isSpectator || gameStatus !== 'playing' || hiddenLeft <= 0} colorScheme="purple" className={buttonClasses}>히든 ({hiddenLeft})</Button>} {isHiddenMode && <Button onClick={() => handleUseItem('scan')} disabled={!isMyTurn || isSpectator || gameStatus !== 'playing' || (myScansLeft ?? 0) <= 0 || !canScan} colorScheme="purple" className={buttonClasses}>스캔 ({myScansLeft ?? 0})</Button>} {isMissileMode && <Button onClick={() => handleUseItem('missile')} disabled={!isMyTurn || isSpectator || gameStatus !== 'playing' || (myMissilesLeft ?? 0) <= 0} colorScheme="orange" className={buttonClasses}>미사일 ({myMissilesLeft ?? 0})</Button>} </> );
+        const totalHiddenAvailable = hiddenCountSetting;
+        const hiddenLeft = Math.max(0, totalHiddenAvailable - myHiddenUsed);
+        const myScansLeft = currentUser.id === p1Id
+            ? (session.scans_p1 ?? scanCountSetting)
+            : (session.scans_p2 ?? scanCountSetting);
+        const myMissilesLeft = currentUser.id === p1Id
+            ? (session.missiles_p1 ?? missileCountSetting)
+            : (session.missiles_p2 ?? missileCountSetting);
+
+        const buttons: React.ReactNode[] = [];
+
+        if (isHiddenMode) {
+            const hiddenDisabled = !isMyTurn || isSpectator || gameStatus !== 'playing' || hiddenLeft <= 0;
+            buttons.push(
+                <LabeledControlButton
+                    key="hidden"
+                    src="/images/button/hidden.png"
+                    alt="히든"
+                    label="히든"
+                    caption={`남음 ${hiddenLeft}`}
+                    onClick={() => handleUseItem('hidden')}
+                    disabled={hiddenDisabled}
+                    title="히든 스톤 배치"
+                />
+            );
+
+            const scansLeft = myScansLeft ?? 0;
+            const scanDisabled = !isMyTurn || isSpectator || gameStatus !== 'playing' || scansLeft <= 0 || !canScan;
+            buttons.push(
+                <LabeledControlButton
+                    key="scan"
+                    src="/images/button/scan.png"
+                    alt="스캔"
+                    label="스캔"
+                    caption={scansLeft > 0 ? `남음 ${scansLeft}` : '없음'}
+                    onClick={() => handleUseItem('scan')}
+                    disabled={scanDisabled}
+                    title="상대 히든 스톤 탐지"
+                />
+            );
+        }
+
+        if (isMissileMode) {
+            const missilesLeft = myMissilesLeft ?? 0;
+            const missileDisabled = !isMyTurn || isSpectator || gameStatus !== 'playing' || missilesLeft <= 0;
+            buttons.push(
+                <LabeledControlButton
+                    key="missile"
+                    src="/images/button/missile.png"
+                    alt="미사일"
+                    label="미사일"
+                    caption={missilesLeft > 0 ? `남음 ${missilesLeft}` : '없음'}
+                    onClick={() => handleUseItem('missile')}
+                    disabled={missileDisabled}
+                    title="미사일 발사"
+                />
+            );
+        }
+
+        return buttons;
     };
 
     const hasItems = (mode === GameMode.Hidden || mode === GameMode.Missile) || (mode === GameMode.Mix && (session.settings.mixedModes || []).some(m => [GameMode.Hidden, GameMode.Missile].includes(m)));
@@ -541,9 +630,9 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
         return (
             <footer className="responsive-controls flex-shrink-0 bg-gray-800 rounded-lg p-2 flex flex-col items-stretch justify-center gap-2 w-full min-h-[148px]">
                 {isMobile && settings.features.mobileConfirm && pendingMove && (
-                    <div className="flex gap-4 p-2 justify-center">
-                        <Button onClick={onCancelMove} colorScheme="red" className="!py-3 !px-6">취소</Button>
-                        <Button onClick={onConfirmMove} colorScheme="green" className="!py-3 !px-6 animate-pulse">착수</Button>
+                    <div className="flex gap-3 p-2 justify-center">
+                        <Button onClick={onCancelMove} colorScheme="none" className={`${getLuxuryButtonClasses('danger')} min-w-[96px] py-2`}>취소</Button>
+                        <Button onClick={onConfirmMove} colorScheme="none" className={`${getLuxuryButtonClasses('success')} min-w-[96px] py-2 animate-pulse`}>착수</Button>
                     </div>
                 )}
                 <div className="bg-gray-900/60 border border-stone-700 rounded-xl px-4 py-3 flex flex-row items-center justify-center gap-6 w-full">
@@ -578,9 +667,9 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
     return (
         <footer className="responsive-controls flex-shrink-0 bg-gray-800 rounded-lg p-1 flex flex-col items-stretch justify-center gap-1 w-full">
             {isMobile && settings.features.mobileConfirm && pendingMove && (
-                 <div className="flex gap-4 p-2 justify-center">
-                    <Button onClick={onCancelMove} colorScheme="red" className="!py-3 !px-6">취소</Button>
-                    <Button onClick={onConfirmMove} colorScheme="green" className="!py-3 !px-6 animate-pulse">착수</Button>
+                 <div className="flex gap-3 p-2 justify-center">
+                    <Button onClick={onCancelMove} colorScheme="none" className={`${getLuxuryButtonClasses('danger')} min-w-[96px] py-2`}>취소</Button>
+                    <Button onClick={onConfirmMove} colorScheme="none" className={`${getLuxuryButtonClasses('success')} min-w-[96px] py-2 animate-pulse`}>착수</Button>
                 </div>
             )}
             {/* Row 1: Manner Actions - 숨김 (싱글플레이에서는 AI봇과의 경기이므로) */}
@@ -598,13 +687,32 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                 {/* Panel 1: 대국 기능 */}
                 <div className="bg-gray-900/50 rounded-md p-2 flex flex-row items-center gap-4 flex-1 min-w-0">
                     <h3 className="text-xs font-bold text-gray-300 whitespace-nowrap">대국 기능</h3>
-                    <div className="flex items-center justify-center gap-2 flex-wrap flex-grow">
+                    <div className="flex items-center justify-center gap-3 flex-wrap flex-grow">
                         {isGameEnded ? (
-                            <Button onClick={() => setShowResultModal(true)} colorScheme="yellow" className={buttonClasses}>결과 보기</Button>
+                            <Button onClick={() => setShowResultModal(true)} colorScheme="none" className={getLuxuryButtonClasses('accent')}>결과 보기</Button>
                         ) : (
                             <>
-                                {isStrategic && mode !== GameMode.Capture && <Button onClick={handlePass} disabled={!isMyTurn || isSpectator || isPreGame} colorScheme="blue" className={buttonClasses}>통과</Button>}
-                                <Button onClick={handleResign} disabled={isSpectator || session.isAiGame || isPreGame} colorScheme="red" className={buttonClasses}>기권</Button>
+                                {isStrategic && mode !== GameMode.Capture && (
+                                    <LabeledControlButton
+                                        key="pass"
+                                        src="/images/button/pass.png"
+                                        alt="통과"
+                                        label="통과"
+                                        onClick={handlePass}
+                                        disabled={!isMyTurn || isSpectator || isPreGame}
+                                        title="한 수 쉬기"
+                                    />
+                                )}
+                                <LabeledControlButton
+                                    key="resign"
+                                    src="/images/button/giveup.png"
+                                    alt="기권"
+                                    label="기권"
+                                    onClick={handleResign}
+                                    disabled={isSpectator || session.isAiGame || isPreGame}
+                                    title="기권하기"
+                                    variant="danger"
+                                />
                             </>
                         )}
                     </div>
@@ -613,11 +721,16 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                 {/* Panel 2: 특수/놀이 기능 */}
                 <div className="bg-gray-900/50 rounded-md p-2 flex flex-row items-center gap-4 flex-1 min-w-0">
                     <h3 className="text-xs font-bold text-gray-300 whitespace-nowrap">{isStrategic ? '특수 기능' : '놀이 기능'}</h3>
-                    <div className="flex items-center justify-center gap-2 flex-wrap flex-grow">
+                    <div className="flex items-center justify-center gap-3 flex-wrap flex-grow">
                         {isStrategic ? (
-                            <>
-                                {!isGameEnded && hasItems && renderItemButtons()}
-                            </>
+                            (() => {
+                                if (isGameEnded || !hasItems) return null;
+                                const itemButtons = renderItemButtons();
+                                if (itemButtons.length === 0) {
+                                    return <span className="text-[10px] text-gray-400">사용 가능한 기능 없음</span>;
+                                }
+                                return itemButtons;
+                            })()
                         ) : (
                             mode === GameMode.Dice ? <DicePanel session={session} isMyTurn={isMyTurn} onAction={onAction} currentUser={currentUser} /> :
                             mode === GameMode.Thief ? <ThiefPanel session={session} isMyTurn={isMyTurn} onAction={onAction} currentUser={currentUser} /> :
@@ -639,8 +752,8 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                                     onAction({ type: 'ADMIN_FORCE_WIN', payload: { gameId, winnerId: player1.id } })
                                 }
                             }}
-                            colorScheme="purple"
-                            className={buttonClasses}
+                            colorScheme="none"
+                            className={getLuxuryButtonClasses('primary')}
                         >
                             {player1.nickname} 기권승
                         </Button>
@@ -650,8 +763,8 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                                     onAction({ type: 'ADMIN_FORCE_WIN', payload: { gameId, winnerId: player2.id } })
                                  }
                             }}
-                            colorScheme="purple"
-                            className={buttonClasses}
+                            colorScheme="none"
+                            className={getLuxuryButtonClasses('primary')}
                         >
                             {player2.nickname} 기권승
                         </Button>

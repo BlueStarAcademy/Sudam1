@@ -227,7 +227,20 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
         case 'LEAVE_AI_GAME': {
             const { gameId } = payload;
             const game = await db.getLiveGame(gameId);
-            if (!game) return { error: 'Game not found.' };
+            if (!game) {
+                const userStatus = volatileState.userStatuses[user.id];
+                if (userStatus) {
+                    userStatus.status = types.UserStatus.Waiting;
+                    delete userStatus.gameId;
+                    delete userStatus.spectatingGameId;
+                    if (!userStatus.mode) {
+                        userStatus.mode = GameMode.Standard;
+                    }
+                } else {
+                    volatileState.userStatuses[user.id] = { status: types.UserStatus.Waiting, mode: GameMode.Standard };
+                }
+                return {};
+            }
 
             if (volatileState.userStatuses[user.id]) {
                 volatileState.userStatuses[user.id] = { status: types.UserStatus.Waiting, mode: game.mode };

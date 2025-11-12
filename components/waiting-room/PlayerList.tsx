@@ -177,6 +177,7 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
                             const response = await fetch('/api/action', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
                                 body: JSON.stringify({
                                     ...createChallengeAction,
                                     userId: currentUser.id

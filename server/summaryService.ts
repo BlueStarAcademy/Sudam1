@@ -606,6 +606,8 @@ export const processGameSummary = async (game: LiveGameSession): Promise<void> =
 
     if (!game.summary) game.summary = {}; // Initialize summary object
 
+    const { broadcast } = await import('./socket.js');
+
     try {
         if (p1.id !== aiUserId) {
             const { summary: p1Summary, updatedPlayer: updatedP1 } = await processPlayerSummary(p1, p2, p1IsWinner, isDraw, game, isNoContest, p1IsNoContestInitiator);

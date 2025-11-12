@@ -222,7 +222,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                 case 'name':
                     return a.name.localeCompare(b.name, 'ko');
                 case 'date':
-                    return (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0);
+                    return ((typeof b.createdAt === 'number' ? b.createdAt : 0) - (typeof a.createdAt === 'number' ? a.createdAt : 0));
                 default:
                     return 0;
             }
@@ -260,6 +260,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                 initialHeight={900}
                 windowId="blacksmith"
                 zIndex={50}
+                variant="store"
             >
                 <div className="flex h-full min-h-0">
                     {/* Left Panel */}

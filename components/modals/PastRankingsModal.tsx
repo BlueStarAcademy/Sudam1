@@ -13,6 +13,9 @@ const PastRankingsModal: React.FC<PastRankingsModalProps> = ({ info, onClose, is
     const { user, mode } = info;
     const history = user.seasonHistory || {};
     const seasonNames = Object.keys(history).sort((a, b) => b.localeCompare(a));
+    const PRIMARY_SEASON = '2025-3';
+    const orderedSeasonNames = seasonNames.filter(season => season !== PRIMARY_SEASON);
+    orderedSeasonNames.unshift(PRIMARY_SEASON);
 
     // strategic/playful 모드인 경우 개별 게임 모드 랭킹을 표시할 수 없음
     if (mode === 'strategic' || mode === 'playful') {
@@ -34,9 +37,9 @@ const PastRankingsModal: React.FC<PastRankingsModalProps> = ({ info, onClose, is
         <DraggableWindow title="지난 시즌 랭킹" onClose={onClose} windowId="past-rankings" initialWidth={450} isTopmost={isTopmost}>
             <div className="max-h-[calc(var(--vh,1vh)*60)] overflow-y-auto pr-2">
                 <h3 className="text-lg font-bold text-center mb-4">{mode}</h3>
-                {seasonNames.length > 0 ? (
+                {orderedSeasonNames.length > 0 ? (
                     <ul className="space-y-2">
-                        {seasonNames.map(seasonName => {
+                        {orderedSeasonNames.map(seasonName => {
                             const tier = history[seasonName]?.[gameMode];
                             const tierInfo = RANKING_TIERS.find(t => t.name === tier);
                             return (
@@ -48,7 +51,7 @@ const PastRankingsModal: React.FC<PastRankingsModalProps> = ({ info, onClose, is
                                             <span className={`font-bold ${tierInfo.color}`}>{tier}</span>
                                         </div>
                                     ) : (
-                                        <span className="text-gray-500">기록 없음</span>
+                                        <span className="text-gray-500">티어없음</span>
                                     )}
                                 </li>
                             );

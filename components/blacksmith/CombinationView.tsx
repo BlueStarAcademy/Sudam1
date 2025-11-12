@@ -1,7 +1,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { InventoryItem, ServerAction, ItemGrade, EquipmentSlot, UserWithStatus } from '../../types.js';
-import Button from '../Button.js';
+import ResourceActionButton from '../ui/ResourceActionButton.js';
 import { BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES } from '../../constants/rules';
 
 const gradeStyles: Record<ItemGrade, { name: string; color: string; background: string; }> = {
@@ -26,8 +26,8 @@ const SLOT_NAMES_KO: Record<EquipmentSlot, string> = {
 const ItemSlot: React.FC<{ item: InventoryItem | null; onRemove: () => void; }> = ({ item, onRemove }) => {
     if (!item) {
         return (
-            <div className="w-1/3 h-32 border-2 border-dashed border-gray-500 rounded-lg flex items-center justify-center bg-black/20">
-                <span className="text-gray-400">재료</span>
+            <div className="w-1/3 h-28 border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center bg-slate-900/40 text-xs text-slate-400">
+                재료
             </div>
         );
     }
@@ -35,16 +35,16 @@ const ItemSlot: React.FC<{ item: InventoryItem | null; onRemove: () => void; }> 
     const styles = gradeStyles[item.grade];
 
     return (
-        <div className="w-1/3 h-32 rounded-lg bg-black/20 p-2 flex flex-col items-center justify-center text-center relative">
+        <div className="w-1/3 h-28 rounded-lg bg-slate-900/40 p-2 flex flex-col items-center justify-center text-center relative border border-slate-600/40 shadow-inner">
             <button onClick={onRemove} className="absolute top-1 right-1 text-red-500 hover:text-red-400 z-10">
                 &times;
             </button>
-            <div className="relative w-16 h-16 rounded-lg flex-shrink-0">
+            <div className="relative w-14 h-14 rounded-lg flex-shrink-0 overflow-hidden border border-slate-500/50">
                 <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
                 {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1"/>}
             </div>
-            <p className={`text-sm font-bold ${styles.color} whitespace-nowrap overflow-hidden text-ellipsis w-full`} title={item.name}>{item.name}</p>
-            <p className="text-xs text-gray-400">{SLOT_NAMES_KO[item.slot!] || '기타'}</p>
+            <p className={`text-xs font-bold ${styles.color} whitespace-nowrap overflow-hidden text-ellipsis w-full`} title={item.name}>{item.name}</p>
+            <p className="text-[11px] text-slate-400">{SLOT_NAMES_KO[item.slot!] || '기타'}</p>
         </div>
     );
 };
@@ -78,13 +78,13 @@ const OutcomeProbability: React.FC<{ items: (InventoryItem | null)[], isRandom: 
     if (probabilities.length === 0) return null;
 
     return (
-        <div className="w-full bg-black/20 p-3 rounded-lg mt-4">
-            <h4 className="font-semibold text-center mb-2">결과물 종류 확률</h4>
-            <div className="grid grid-cols-3 gap-x-4 gap-y-1 text-sm">
+        <div className="w-full bg-slate-900/40 border border-slate-600/30 p-3 rounded-lg mt-3">
+            <h4 className="font-semibold text-center mb-2 text-xs text-cyan-200">결과물 종류 확률</h4>
+            <div className="grid grid-cols-3 gap-x-3 gap-y-1 text-[11px]">
                 {probabilities.map(([slot, prob]) => (
                     <div key={slot} className="flex justify-between">
-                        <span className="text-gray-400">{SLOT_NAMES_KO[slot]}:</span>
-                        <span className="font-bold text-white">{(prob * 100).toFixed(1)}%</span>
+                        <span className="text-slate-400">{SLOT_NAMES_KO[slot]}:</span>
+                        <span className="font-semibold text-emerald-200">{(prob * 100).toFixed(1)}%</span>
                     </div>
                 ))}
             </div>
@@ -109,16 +109,16 @@ const GradeProbability: React.FC<{ items: (InventoryItem | null)[], currentUser:
     if (!probabilities) return null;
 
     return (
-        <div className="w-full bg-black/20 p-3 rounded-lg mt-2">
-            <h4 className="font-semibold text-center mb-2">결과물 등급 확률</h4>
-            <div className="grid grid-cols-2 gap-x-4 text-sm">
+        <div className="w-full bg-slate-900/40 border border-slate-600/30 p-3 rounded-lg mt-2">
+            <h4 className="font-semibold text-center mb-2 text-xs text-cyan-200">결과물 등급 확률</h4>
+            <div className="grid grid-cols-2 gap-x-4 text-[11px]">
                 <div className="flex justify-between">
-                    <span className="text-gray-400">성공:</span>
-                    <span className="font-bold text-white">{probabilities.successRate.toFixed(1)}%</span>
+                    <span className="text-slate-400">성공:</span>
+                    <span className="font-semibold text-emerald-200">{probabilities.successRate.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between">
                     <span className="text-yellow-400">대성공:</span>
-                    <span className="font-bold text-yellow-300">{probabilities.greatSuccessRate.toFixed(1)}%</span>
+                    <span className="font-semibold text-amber-200">{probabilities.greatSuccessRate.toFixed(1)}%</span>
                 </div>
             </div>
         </div>
@@ -145,33 +145,33 @@ const CombinationView: React.FC<CombinationViewProps> = ({ items, onRemoveItem, 
     const canCombine = items.every(item => item !== null) && new Set(items.map(i => i?.grade)).size === 1;
 
     return (
-        <div className="h-full flex flex-col items-center justify-between">
+        <div className="h-full flex flex-col items-center justify-between gap-3">
             <div className="w-full flex justify-around items-stretch gap-2">
                 {items.map((item, index) => (
                     <ItemSlot key={index} item={item} onRemove={() => onRemoveItem(index)} />
                 ))}
             </div>
 
-            <div className="w-full">
+            <div className="w-full space-y-2">
                 <OutcomeProbability items={items} isRandom={isRandom} />
                 <GradeProbability items={items} currentUser={currentUser} />
             </div>
 
-            <div className="w-full space-y-4 mt-4">
-                <div className="flex items-center justify-center">
+            <div className="w-full space-y-3 mt-2">
+                <div className="flex items-center justify-center gap-2 text-xs text-slate-300">
                     <input 
                         type="checkbox" 
                         id="random-combine" 
                         checked={isRandom} 
                         onChange={(e) => setIsRandom(e.target.checked)} 
-                        className="h-4 w-4 rounded text-accent bg-gray-700 border-gray-600 focus:ring-accent"
+                        className="h-4 w-4 rounded text-accent bg-slate-800 border-slate-600 focus:ring-accent"
                     />
-                    <label htmlFor="random-combine" className="ml-2 text-sm text-gray-300">완전 랜덤 종류로 받기</label>
+                    <label htmlFor="random-combine" className="text-xs text-slate-200">완전 랜덤 종류로 받기</label>
                 </div>
 
-                <Button onClick={handleCombine} disabled={!canCombine} colorScheme="blue" className="w-full">
+                <ResourceActionButton onClick={handleCombine} disabled={!canCombine} variant="materials" className="w-full text-sm py-2">
                     합성
-                </Button>
+                </ResourceActionButton>
             </div>
         </div>
     );

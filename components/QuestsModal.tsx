@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { UserWithStatus, Quest, ServerAction, QuestLog, QuestReward, InventoryItem } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
+import ResourceActionButton from './ui/ResourceActionButton.js';
 import { DAILY_MILESTONE_THRESHOLDS, WEEKLY_MILESTONE_THRESHOLDS, MONTHLY_MILESTONE_THRESHOLDS, DAILY_MILESTONE_REWARDS, WEEKLY_MILESTONE_REWARDS, MONTHLY_MILESTONE_REWARDS, CONSUMABLE_ITEMS } from '../constants';
 import { audioService } from '../services/audioService.js';
 import { useAppContext } from '../hooks/useAppContext.js';
@@ -51,14 +52,14 @@ const QuestItem: React.FC<{ quest: Quest, onClaim: (id: string) => void, isMobil
                         )}
                     </div>
                 </div>
-                <Button 
+                <ResourceActionButton 
                     onClick={handleClaimClick} 
                     disabled={!isComplete || quest.isClaimed} 
-                    colorScheme={isComplete && !quest.isClaimed ? 'green' : 'gray'}
+                    variant="gold"
                     className="w-full !text-sm !py-2"
                 >
                     {quest.isClaimed ? '완료' : (isComplete ? '보상 받기' : '진행 중')}
-                </Button>
+                </ResourceActionButton>
             </div>
         );
     }
@@ -75,14 +76,14 @@ const QuestItem: React.FC<{ quest: Quest, onClaim: (id: string) => void, isMobil
                 <p className="text-xs text-right text-gray-300 mt-1">{quest.progress} / {quest.target}</p>
             </div>
             <div className="w-28 text-center flex-shrink-0 flex flex-col items-center gap-1 relative">
-                <Button 
+                <ResourceActionButton 
                     onClick={handleClaimClick} 
                     disabled={!isComplete || quest.isClaimed} 
-                    colorScheme={isComplete && !quest.isClaimed ? 'green' : 'gray'}
+                    variant="gold"
                     className="w-full !text-sm !py-2"
                 >
                     {quest.isClaimed ? '완료' : (isComplete ? '보상 받기' : '진행 중')}
-                </Button>
+                </ResourceActionButton>
                 <div className="flex items-center justify-center gap-2 text-xs flex-wrap">
                     <span className="text-yellow-300 font-semibold flex items-center gap-1">📜 +{quest.activityPoints}</span>
                     {quest.reward.gold && (
@@ -119,11 +120,13 @@ const ActivityPanel: React.FC<{
 
     return (
         <div className="bg-gray-900/50 p-4 rounded-lg mb-4 flex-shrink-0">
-            <h3 className="text-lg font-bold text-center mb-2">{title}</h3>
+            <div className="flex items-center justify-between mb-2">
+                <h3 className="text-lg font-bold text-text-primary">{title}</h3>
+                <span className="text-sm font-semibold text-yellow-300">{activityProgress} / {maxProgress}</span>
+            </div>
             <div className="flex items-center gap-3 mb-3">
                 <div className="w-full bg-gray-700 rounded-full h-4 relative border border-gray-600">
                     <div className="bg-green-500 h-full rounded-full" style={{ width: `${Math.min(100, (activityProgress / maxProgress) * 100)}%` }}></div>
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold text-white">{activityProgress} / {maxProgress}</span>
                     {/* 마일스톤 마커 표시 (마지막 활약도 100 제외) */}
                     {thresholds.map((milestone, index) => {
                         if (!rewards[index]) return null;
@@ -227,7 +230,7 @@ const QuestsModal: React.FC<QuestsModalProps> = ({ currentUser: propCurrentUser,
     };
 
     return (
-        <DraggableWindow title="퀘스트" onClose={onClose} windowId="quests" initialWidth={isMobile ? window.innerWidth - 20 : 750} initialHeight={isMobile ? window.innerHeight - 40 : undefined} isTopmost={isTopmost}>
+        <DraggableWindow title="퀘스트" onClose={onClose} windowId="quests" initialWidth={isMobile ? window.innerWidth - 20 : 750} initialHeight={isMobile ? window.innerHeight - 40 : undefined} isTopmost={isTopmost} variant="store">
             <div className={`${isMobile ? 'h-[calc(100vh-80px)]' : 'h-[calc(var(--vh,1vh)*70)]'} flex flex-col`}>
                 <div className="flex bg-gray-900/70 p-1 rounded-lg mb-4 flex-shrink-0">
                     <button onClick={() => setActiveTab('daily')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === 'daily' ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}>일일</button>

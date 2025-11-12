@@ -4,6 +4,9 @@ import Button from './Button.js';
 import { containsProfanity } from '../profanity.js';
 import { useAppContext } from '../hooks/useAppContext.js';
 
+const NICKNAME_MIN_LENGTH = 2;
+const NICKNAME_MAX_LENGTH = 6;
+
 const Register: React.FC = () => {
     const { setCurrentUserAndRoute } = useAppContext();
     const [username, setUsername] = useState('');
@@ -31,6 +34,10 @@ const Register: React.FC = () => {
         }
         if (password !== passwordConfirm) {
             setError("비밀번호가 일치하지 않습니다.");
+            return;
+        }
+        if (nickname.trim().length < NICKNAME_MIN_LENGTH || nickname.trim().length > NICKNAME_MAX_LENGTH) {
+            setError(`닉네임은 ${NICKNAME_MIN_LENGTH}자 이상 ${NICKNAME_MAX_LENGTH}자 이하로 입력해주세요.`);
             return;
         }
         if (containsProfanity(username) || containsProfanity(nickname)) {
@@ -88,6 +95,8 @@ const Register: React.FC = () => {
                                 placeholder="아이디"
                                 value={username}
                                 onChange={e => setUsername(e.target.value)}
+                                minLength={NICKNAME_MIN_LENGTH}
+                                maxLength={NICKNAME_MAX_LENGTH}
                             />
                         </div>
                         <div>

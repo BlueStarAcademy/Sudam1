@@ -437,7 +437,7 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
                                                     onClick={() => handleLevelUpClick(quest.id)}
                                                     colorScheme="accent"
                                                     className="w-full !text-[10px] sm:!text-xs !py-0.5 sm:!py-1 flex items-center justify-center gap-1 relative !whitespace-nowrap"
-                                                    disabled={isMaxLevel || !levelUpInfo?.canLevelUp}
+                                                    disabled={isMaxLevel}
                                                 >
                                                     {levelUpInfo && !isMaxLevel ? (
                                                         <div className="w-full flex items-center gap-1 min-w-0">
@@ -475,6 +475,9 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
                     canLevelUp={selectedLevelUpInfo?.canLevelUp || false}
                     nextLevelUnlockStage={selectedLevelUpInfo?.nextLevelUnlockStage}
                     currentUserGold={currentUser.gold}
+                    accumulatedCollection={selectedLevelUpInfo?.accumulatedCollection ?? 0}
+                    requiredCollection={selectedLevelUpInfo?.requiredCollection ?? 0}
+                    progressPercent={selectedLevelUpInfo?.progress ?? 0}
                     onConfirm={() => handleLevelUpConfirm(selectedQuest.id)}
                     onClose={() => setSelectedMissionForUpgrade(null)}
                 />

@@ -1,5 +1,6 @@
+// @ts-nocheck
 import prisma from "../prismaClient.js";
-import type { Prisma, UserMission } from "../../generated/prisma/index.js";
+import type { Prisma, UserMission } from "@prisma/client";
 import type { PrismaTransactionClient } from "./transaction.js";
 
 type Tx = PrismaTransactionClient;

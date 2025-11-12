@@ -5,7 +5,7 @@ import * as types from '../../types.js';
 import { defaultStats, createDefaultBaseStats, createDefaultSpentStatPoints, createDefaultInventory, createDefaultQuests, createDefaultUser } from '../initialData.js';
 import * as summaryService from '../summaryService.js';
 import { createItemFromTemplate } from '../shop.js';
-import { EQUIPMENT_POOL, CONSUMABLE_ITEMS, MATERIAL_ITEMS, TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants';
+import { EQUIPMENT_POOL, CONSUMABLE_ITEMS, MATERIAL_ITEMS, TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH } from '../../constants';
 import * as mannerService from '../mannerService.js';
 import { containsProfanity } from '../../profanity.js';
 import { broadcast } from '../socket.js';
@@ -191,6 +191,9 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
         case 'ADMIN_CREATE_USER': {
             const { username, password, nickname } = payload;
             if (!username || !password || !nickname) { return { error: '모든 필드를 입력해야 합니다.' }; }
+            if (nickname.trim().length < NICKNAME_MIN_LENGTH || nickname.trim().length > NICKNAME_MAX_LENGTH) {
+                return { error: `닉네임은 ${NICKNAME_MIN_LENGTH}-${NICKNAME_MAX_LENGTH}자여야 합니다.` };
+            }
 
             const existingByUsername = await db.getUserCredentials(username);
             if (existingByUsername) return { error: '이미 사용 중인 아이디입니다.' };
@@ -481,8 +484,8 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             // NICKNAME CHANGE VALIDATION
             if (updatedDetails.nickname && updatedDetails.nickname !== targetUser.nickname) {
                 const newNickname = updatedDetails.nickname.trim();
-                if (newNickname.length < 2 || newNickname.length > 12) {
-                    return { error: '닉네임은 2-12자여야 합니다.' };
+                if (newNickname.length < NICKNAME_MIN_LENGTH || newNickname.length > NICKNAME_MAX_LENGTH) {
+                    return { error: `닉네임은 ${NICKNAME_MIN_LENGTH}-${NICKNAME_MAX_LENGTH}자여야 합니다.` };
                 }
                 if (containsProfanity(newNickname)) {
                     return { error: '닉네임에 부적절한 단어가 포함되어 있습니다.' };

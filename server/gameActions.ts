@@ -162,7 +162,7 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     const gameId = payload?.gameId;
 
     // Game Actions (require gameId)
-    if (gameId) {
+    if (gameId && type !== 'LEAVE_AI_GAME') {
         const game = await db.getLiveGame(gameId);
         if (!game) return { error: 'Game not found.' };
         

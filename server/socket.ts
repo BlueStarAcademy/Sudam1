@@ -86,8 +86,6 @@ export const createWebSocketServer = (server: Server) => {
                     return;
                 }
                 
-                // 데이터를 청크로 나누어 전송 (큰 메시지 문제 해결)
-                const MAX_CHUNK_SIZE = 256 * 1024; // 256KB 청크로 더 작게 설정
                 const payload = { 
                     ...allData, 
                     onlineUsers,
@@ -103,128 +101,13 @@ export const createWebSocketServer = (server: Server) => {
                 const testMessage = JSON.stringify({ type: 'INITIAL_STATE', payload });
                 const messageSize = Buffer.byteLength(testMessage, 'utf8');
                 console.log(`[WebSocket] Message size: ${(messageSize / 1024).toFixed(2)}KB`);
-                
-                if (messageSize > MAX_CHUNK_SIZE) {
-                    console.log(`[WebSocket] Large message detected (${(messageSize / 1024).toFixed(2)}KB), splitting data into chunks...`);
-                    
-                    // users를 제외한 다른 데이터 (첫 번째 청크에만 포함)
-                    const otherData = {
-                        onlineUsers: payload.onlineUsers,
-                        liveGames: payload.liveGames,
-                        singlePlayerGames: payload.singlePlayerGames,
-                        towerGames: payload.towerGames,
-                        negotiations: payload.negotiations,
-                        waitingRoomChats: payload.waitingRoomChats,
-                        gameChats: payload.gameChats,
-                        adminLogs: payload.adminLogs,
-                        announcements: payload.announcements,
-                        globalOverrideAnnouncement: payload.globalOverrideAnnouncement,
-                        gameModeAvailability: payload.gameModeAvailability,
-                        announcementInterval: payload.announcementInterval,
-                        userConnections: payload.userConnections,
-                        userStatuses: payload.userStatuses,
-                        userLastChatMessage: payload.userLastChatMessage
-                    };
-                    
-                    // 데이터를 청크로 나누기
-                    const usersArray = Object.values(payload.users);
-                    const usersChunks: any[][] = [];
-                    let currentChunk: any[] = [];
-                    let currentChunkSize = 0;
-                    
-                    for (const user of usersArray) {
-                        const userJson = JSON.stringify(user);
-                        const userSize = Buffer.byteLength(userJson, 'utf8');
-                        
-                        if (currentChunkSize + userSize > MAX_CHUNK_SIZE && currentChunk.length > 0) {
-                            usersChunks.push(currentChunk);
-                            currentChunk = [];
-                            currentChunkSize = 0;
-                        }
-                        
-                        currentChunk.push(user);
-                        currentChunkSize += userSize;
-                    }
-                    if (currentChunk.length > 0) {
-                        usersChunks.push(currentChunk);
-                    }
-                    
-                    const totalChunks = usersChunks.length;
-                    console.log(`[WebSocket] Split users into ${totalChunks} chunks`);
-                    
-                    try {
-                        // 각 청크를 순차적으로 전송
-                        for (let i = 0; i < usersChunks.length; i++) {
-                            if (!checkConnection()) {
-                                console.log(`[WebSocket] Connection closed while sending chunk ${i + 1}/${usersChunks.length}`);
-                                return;
-                            }
-                            
-                            // 각 청크에 해당하는 사용자 데이터만 포함
-                            const chunkUsers: Record<string, any> = {};
-                            usersChunks[i].forEach((user: any) => {
-                                chunkUsers[user.id] = user;
-                            });
-                            
-                            // 첫 번째 청크에만 다른 데이터 포함, 나머지는 users만
-                            const chunkPayload = i === 0 
-                                ? {
-                                    ...otherData,
-                                    users: chunkUsers,
-                                    chunkIndex: i,
-                                    totalChunks: totalChunks,
-                                    isLast: i === usersChunks.length - 1
-                                }
-                                : {
-                                    users: chunkUsers,
-                                    chunkIndex: i,
-                                    totalChunks: totalChunks,
-                                    isLast: i === usersChunks.length - 1
-                                };
-                            
-                            // 첫 번째 청크 이후에는 전송 전 딜레이 추가 (더 길게)
-                            if (i > 0) {
-                                await new Promise(resolve => setTimeout(resolve, 200));
-                            }
-                            
-                            // 메시지 전송 전 연결 상태 재확인
-                            if (!checkConnection()) {
-                                console.log(`[WebSocket] Connection closed before sending chunk ${i + 1}/${usersChunks.length}`);
-                                return;
-                            }
-                            
-                            try {
-                                // 메시지 전송
-                                ws.send(JSON.stringify({
-                                    type: i === 0 ? 'INITIAL_STATE_START' : 'INITIAL_STATE_CHUNK',
-                                    payload: chunkPayload
-                                }));
-                                
-                                // 전송 후 버퍼 정리를 위한 딜레이 (더 길게)
-                                await new Promise(resolve => setTimeout(resolve, 100));
-                            } catch (sendError: any) {
-                                console.error(`[WebSocket] Error sending chunk ${i + 1}:`, sendError.message);
-                                if (!checkConnection()) {
-                                    return;
-                                }
-                                // 재시도는 하지 않고 다음 청크로 진행
-                            }
-                        }
-                        
-                        console.log(`[WebSocket] Initial state sent successfully in ${totalChunks} chunks`);
-                    } catch (sendError) {
-                        console.error('[WebSocket] Error sending chunked message:', sendError);
-                        isClosed = true;
-                    }
-                } else {
-                    // 작은 메시지는 그대로 전송
-                    try {
-                        ws.send(JSON.stringify({ type: 'INITIAL_STATE', payload }));
-                        console.log('[WebSocket] Initial state sent successfully');
-                    } catch (sendError) {
-                        console.error('[WebSocket] Error sending message:', sendError);
-                        isClosed = true;
-                    }
+
+                try {
+                    ws.send(JSON.stringify({ type: 'INITIAL_STATE', payload }));
+                    console.log('[WebSocket] Initial state sent successfully (no chunking)');
+                } catch (sendError) {
+                    console.error('[WebSocket] Error sending message:', sendError);
+                    isClosed = true;
                 }
             } catch (error) {
                 console.error('[WebSocket] Error sending initial state:', error);

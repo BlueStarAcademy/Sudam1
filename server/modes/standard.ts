@@ -35,6 +35,7 @@ export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.
             } else {
                 initializeNigiri(game, now);
             }
+
             break;
         case types.GameMode.Capture:
             initializeCapture(game, now);
@@ -157,6 +158,18 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 !game.permanentlyRevealedStones?.some(p => p.x === x && p.y === y);
 
             if (stoneAtTarget !== types.Player.None && !isTargetHiddenOpponentStone) {
+                if (game.isSinglePlayer) {
+                    console.warn('[SinglePlayer][PLACE_STONE] Occupied point, rejecting move', {
+                        gameId: game.id,
+                        stageId: game.stageId,
+                        moveIndex: game.moveHistory.length,
+                        player: myPlayerEnum,
+                        x,
+                        y,
+                        stoneAtTarget,
+                        lastMove: game.lastMove,
+                    });
+                }
                 return {}; // Silently fail if placing on a visible stone
             }
 
@@ -178,6 +191,17 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 };
                 game.revealAnimationEndTime = now + 2000;
                 
+                if (game.isSinglePlayer) {
+                    console.debug('[SinglePlayer][PLACE_STONE] Revealed hidden opponent stone', {
+                        gameId: game.id,
+                        stageId: game.stageId,
+                        player: myPlayerEnum,
+                        x,
+                        y,
+                        hiddenIndex: moveIndexAtTarget,
+                    });
+                }
+
                 return {};
             }
 
@@ -195,8 +219,34 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             const result = processMove(game.boardState, move, game.koInfo, game.moveHistory.length);
 
             if (!result.isValid) {
+                if (game.isSinglePlayer) {
+                    console.warn('[SinglePlayer][PLACE_STONE] Invalid move rejected', {
+                        gameId: game.id,
+                        stageId: game.stageId,
+                        player: myPlayerEnum,
+                        x,
+                        y,
+                        reason: result.reason,
+                        moveHistoryLength: game.moveHistory.length,
+                    });
+                }
                 return { error: `Invalid move: ${result.reason}` };
             }
+
+        const prunePatternStones = () => {
+            if (game.blackPatternStones) {
+                game.blackPatternStones = game.blackPatternStones.filter(point => {
+                    const occupant = game.boardState?.[point.y]?.[point.x];
+                    return occupant === types.Player.Black;
+                });
+            }
+            if (game.whitePatternStones) {
+                game.whitePatternStones = game.whitePatternStones.filter(point => {
+                    const occupant = game.boardState?.[point.y]?.[point.x];
+                    return occupant === types.Player.White;
+                });
+            }
+        };
             
             const contributingHiddenStones: { point: types.Point, player: types.Player }[] = [];
             if (result.capturedStones.length > 0) {
@@ -272,6 +322,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         game.permanentlyRevealedStones!.push(s.point);
                     }
                 });
+                prunePatternStones();
             
                 if (game.turnDeadline) {
                     game.pausedTurnTimeLeft = (game.turnDeadline - now) / 1000;
@@ -333,6 +384,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     game.justCaptured.push({ point: stone, player: capturedPlayerEnum, wasHidden: wasHiddenForJustCaptured });
                 }
             }
+            prunePatternStones();
 
             const playerWhoMoved = myPlayerEnum;
             if (game.settings.timeLimit > 0) {
@@ -407,6 +459,27 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 }
             }
             
+            if (game.isSinglePlayer) {
+                const boardSampleTop = game.boardState?.slice(0, 3)?.map(row => Array.isArray(row) ? row.join('') : row);
+                const boardSampleMid = game.boardState?.slice(-3)?.map(row => Array.isArray(row) ? row.join('') : row);
+                const recentMoves = game.moveHistory.slice(Math.max(0, game.moveHistory.length - 4));
+                console.debug('[SinglePlayer][PLACE_STONE] Move applied', {
+                    gameId: game.id,
+                    stageId: game.stageId,
+                    player: myPlayerEnum,
+                    x,
+                    y,
+                    moveIndex: game.moveHistory.length - 1,
+                    captures: game.captures[myPlayerEnum],
+                    totalMoves: game.moveHistory.length,
+                    currentPlayer: game.currentPlayer,
+                    serverRevision: game.serverRevision,
+                    boardSampleTop,
+                    boardSampleMid,
+                    recentMoves,
+                });
+            }
+
             return {};
         }
         case 'PASS_TURN': {

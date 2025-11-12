@@ -67,9 +67,14 @@ const TimeBar: React.FC<{ timeLeft: number; totalTime: number; byoyomiTime: numb
              const turnTime = totalTime > 0 ? totalTime : byoyomiTime;
              return turnTime > 0 ? (timeLeft / turnTime) * 100 : 0;
         }
-        if (isInByoyomi) return byoyomiTime > 0 ? (timeLeft / byoyomiTime) * 100 : 0;
+        if (isInByoyomi) {
+            if (!isActive) return 100;
+            return byoyomiTime > 0 ? (timeLeft / byoyomiTime) * 100 : 0;
+        }
         return totalTime > 0 ? (timeLeft / totalTime) * 100 : 0;
-    }, [timeLeft, totalTime, byoyomiTime, isInByoyomi, isFoulMode]);
+    }, [timeLeft, totalTime, byoyomiTime, isInByoyomi, isFoulMode, isActive]);
+
+    const clampedPercent = Math.max(0, Math.min(100, percent));
 
     return (
         <div className="w-full relative">
@@ -78,7 +83,7 @@ const TimeBar: React.FC<{ timeLeft: number; totalTime: number; byoyomiTime: numb
                 {/* The bar fill */}
                 <div
                     className={`h-1.5 rounded-full ${isInByoyomi || isFoulMode ? 'bg-red-500' : 'bg-blue-500'} ${isActive && timeLeft < 5 ? 'animate-pulse' : ''}`}
-                    style={{ width: `${Math.min(100, percent)}%`, transition: 'width 0.2s linear' }}
+                    style={{ width: `${clampedPercent}%`, transition: 'width 0.2s linear' }}
                 />
             </div>
         </div>
@@ -373,7 +378,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
         
         // 자동계가: 자동계가까지 남은 턴
         if (stage.autoScoringTurns) {
-            const totalTurns = session.totalTurns || 0;
+            const totalTurns = session.totalTurns ?? session.moveHistory.filter(m => m.x !== -1 && m.player !== Player.None).length;
             const remainingTurns = Math.max(0, stage.autoScoringTurns - totalTurns);
             return {
                 type: 'auto_scoring' as const,

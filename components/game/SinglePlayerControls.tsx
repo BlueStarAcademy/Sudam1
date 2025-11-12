@@ -17,21 +17,32 @@ const SinglePlayerControls: React.FC<SinglePlayerControlsProps> = ({ session, on
         const retryActionPointCost = currentStage?.actionPointCost ?? 0;
         const nextStageActionPointCost = nextStage?.actionPointCost ?? 0;
 
-        const handleRetry = () => {
-            onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
-        };
-        const handleNextStage = () => {
-            if (canTryNext) {
-                onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } });
+        const handleRetry = async () => {
+            try {
+                await Promise.resolve(onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } }));
+            } catch (error) {
+                console.error('[SinglePlayerControls] Failed to retry stage:', error);
             }
         };
-        const handleExitToLobby = () => {
+        const handleNextStage = async () => {
+            if (!canTryNext || !nextStage) return;
+            try {
+                await Promise.resolve(onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } }));
+            } catch (error) {
+                console.error('[SinglePlayerControls] Failed to start next stage:', error);
+            }
+        };
+        const handleExitToLobby = async () => {
             sessionStorage.setItem('postGameRedirect', '#/singleplayer');
-            onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } });
-            // 즉시 싱글플레이 로비로 이동 (WebSocket 업데이트를 기다리지 않음)
-            setTimeout(() => {
-                window.location.hash = '#/singleplayer';
-            }, 100);
+            try {
+                await Promise.resolve(onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } }));
+            } catch (error) {
+                console.error('[SinglePlayerControls] Failed to leave AI game:', error);
+            } finally {
+                setTimeout(() => {
+                    window.location.hash = '#/singleplayer';
+                }, 100);
+            }
         };
 
         return (

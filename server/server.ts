@@ -14,9 +14,9 @@ import * as types from '../types/index.js';
 import { processGameSummary, endGame } from './summaryService.js';
 // FIX: Correctly import from the placeholder module.
 import * as aiPlayer from './aiPlayer.js';
-import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset, resetAllTournamentScores, resetAllUsersLeagueScoresForNewWeek, processDailyRankings, processDailyQuestReset } from './scheduledTasks.js';
+import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset, resetAllTournamentScores, resetAllUsersLeagueScoresForNewWeek, processDailyRankings, processDailyQuestReset, resetAllChampionshipScoresToZero } from './scheduledTasks.js';
 import * as tournamentService from './tournamentService.js';
-import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS } from '../constants';
+import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH } from '../constants';
 import { calculateTotalStats } from './statService.js';
 import { isSameDayKST, getKSTDate } from '../utils/timeUtils.js';
 import { createDefaultBaseStats, createDefaultUser } from './initialData.ts';
@@ -142,6 +142,7 @@ const startServer = async () => {
     
     // --- 1회성: 모든 유저의 리그 점수를 0으로 초기화하여 변화없음으로 표시되도록 함 ---
     await resetAllUsersLeagueScoresForNewWeek();
+    // await resetAllChampionshipScoresToZero(); // One-time Champ Score reset (disabled after manual run)
 
     const app = express();
     console.log(`[Server] process.env.PORT: ${process.env.PORT}`);
@@ -522,7 +523,7 @@ const startServer = async () => {
             for (const game of updatedGames) {
                 const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === game.mode);
                 const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === game.mode);
-                if ((isPlayful || isStrategic) && (game.gameStatus === 'ended' || game.gameStatus === 'no_contest') && !game.statsUpdated) {
+                if (!game.isSinglePlayer && (isPlayful || isStrategic) && (game.gameStatus === 'ended' || game.gameStatus === 'no_contest') && !game.statsUpdated) {
                     await processGameSummary(game);
                     game.statsUpdated = true;
                     await db.saveGame(game);
@@ -576,7 +577,7 @@ const startServer = async () => {
             const { username, nickname, password } = req.body;
             if (!username || !nickname || !password) return res.status(400).json({ message: '모든 필드를 입력해야 합니다.' });
             if (username.trim().length < 2 || password.trim().length < 4) return res.status(400).json({ message: '아이디는 2자 이상, 비밀번호는 4자 이상이어야 합니다.' });
-            if (nickname.trim().length < 2 || nickname.trim().length > 12) return res.status(400).json({ message: '닉네임은 2자 이상 12자 이하여야 합니다.' });
+            if (nickname.trim().length < NICKNAME_MIN_LENGTH || nickname.trim().length > NICKNAME_MAX_LENGTH) return res.status(400).json({ message: `닉네임은 ${NICKNAME_MIN_LENGTH}자 이상 ${NICKNAME_MAX_LENGTH}자 이하여야 합니다.` });
             if (containsProfanity(username) || containsProfanity(nickname)) return res.status(400).json({ message: '아이디 또는 닉네임에 부적절한 단어가 포함되어 있습니다.' });
     
             const existingByUsername = await db.getUserCredentials(username);
@@ -587,7 +588,9 @@ const startServer = async () => {
                 return res.status(409).json({ message: '이미 사용 중인 닉네임입니다.' });
             }
     
-            const newUser = createDefaultUser(`user-${randomUUID()}`, username, nickname, false);
+            let newUser = createDefaultUser(`user-${randomUUID()}`, username, nickname, false);
+
+            newUser = await resetAndGenerateQuests(newUser);
     
             await db.createUser(newUser);
             await db.createUserCredentials(username, password, newUser.id);

@@ -1,7 +1,7 @@
 import * as db from '../db.js';
 // FIX: Import the full namespace to access enums like CoreStat.
 import * as types from '../../types.js';
-import { AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES } from '../../constants';
+import { AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH } from '../../constants';
 import { containsProfanity } from '../../profanity.js';
 import { UserStatus } from '../../types/enums.js';
 import { broadcast } from '../socket.js';
@@ -54,7 +54,7 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             const { newNickname } = payload;
             const cost = 150;
             if (user.diamonds < cost && !user.isAdmin) return { error: '다이아가 부족합니다.' };
-            if (newNickname.trim().length < 2 || newNickname.trim().length > 12) return { error: '닉네임은 2-12자여야 합니다.' };
+            if (newNickname.trim().length < NICKNAME_MIN_LENGTH || newNickname.trim().length > NICKNAME_MAX_LENGTH) return { error: `닉네임은 ${NICKNAME_MIN_LENGTH}-${NICKNAME_MAX_LENGTH}자여야 합니다.` };
             if (containsProfanity(newNickname)) return { error: "닉네임에 부적절한 단어가 포함되어 있습니다." };
 
             const allUsers = await db.getAllUsers();

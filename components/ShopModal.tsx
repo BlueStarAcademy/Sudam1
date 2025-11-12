@@ -36,14 +36,33 @@ const isSameDayKST = (ts1: number, ts2: number): boolean => {
            d1.getUTCDate() === d2.getUTCDate();
 };
 
+const formatDescription = (desc: string): string => {
+    if (!desc) return '';
+    const cleaned = desc
+        .replace(/~/g, ' ~ ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    if (cleaned.endsWith('획득')) {
+        return `${cleaned}합니다.`;
+    }
+
+    if (!/[.!?]$/.test(cleaned)) {
+        return `${cleaned}.`;
+    }
+
+    return cleaned;
+};
+
 const ActionPointCard: React.FC<{ currentUser: UserWithStatus, onBuy: () => void }> = ({ currentUser, onBuy }) => {
     const now = Date.now();
     const purchasesToday = isSameDayKST(currentUser.lastActionPointPurchaseDate || 0, now) 
         ? (currentUser.actionPointPurchasesToday || 0) 
         : 0;
 
+    const costIndex = Math.min(purchasesToday, ACTION_POINT_PURCHASE_COSTS_DIAMONDS.length - 1);
+    const cost = ACTION_POINT_PURCHASE_COSTS_DIAMONDS[costIndex] ?? ACTION_POINT_PURCHASE_COSTS_DIAMONDS[ACTION_POINT_PURCHASE_COSTS_DIAMONDS.length - 1];
     const canPurchase = purchasesToday < MAX_ACTION_POINT_PURCHASES_PER_DAY;
-    const cost = canPurchase ? ACTION_POINT_PURCHASE_COSTS_DIAMONDS[purchasesToday] : 0;
     
     const handlePurchase = () => {
         if (!canPurchase) return;
@@ -56,27 +75,33 @@ const ActionPointCard: React.FC<{ currentUser: UserWithStatus, onBuy: () => void
     };
 
     return (
-        <div className="bg-gray-800/60 rounded-lg p-4 flex flex-col items-center text-center border-2 border-gray-700">
-            <div className="w-24 h-24 bg-gray-900/50 rounded-md mb-3 flex items-center justify-center text-6xl">⚡</div>
-            <h3 className="text-lg font-bold text-white">행동력 충전</h3>
-            <p className="text-xs text-gray-400 mt-1 flex-grow h-10">행동력 {ACTION_POINT_PURCHASE_REFILL_AMOUNT}개를 즉시 충전합니다. (최대치 초과 가능)</p>
-            <div className="flex flex-col items-center justify-center gap-2 my-3 w-full">
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1c1f3e]/95 via-[#0f172a]/95 to-[#060b15]/95 border border-cyan-400/30 shadow-[0_25px_60px_-25px_rgba(34,211,238,0.55)] p-5 flex flex-col items-center text-center transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_30px_70px_-30px_rgba(59,130,246,0.65)]">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-500 group-hover:opacity-20 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.3),transparent_55%)]" />
+            <div className="w-24 h-24 bg-gradient-to-br from-[#14b8a6]/30 via-[#06b6d4]/20 to-transparent rounded-xl mb-4 flex items-center justify-center text-5xl text-cyan-300 drop-shadow-[0_0_18px_rgba(14,165,233,0.35)]">
+                ⚡
+            </div>
+            <h3 className="text-xl font-bold tracking-wide text-white drop-shadow-lg">행동력 충전</h3>
+            <p className="text-sm text-slate-200/85 mt-2 leading-relaxed flex-grow">
+                행동력 {ACTION_POINT_PURCHASE_REFILL_AMOUNT.toLocaleString()}개를 즉시 주입합니다. 최대치를 넘어 충전되어도 소멸되지 않습니다.
+            </p>
+            <div className="mt-4 flex flex-col items-center justify-center gap-2 w-full">
                 <Button
                     onClick={handlePurchase}
                     disabled={!canPurchase}
-                    colorScheme="green"
-                    className="w-full"
+                    colorScheme="none"
+                    className={`w-full justify-center rounded-xl border border-cyan-400/60 bg-gradient-to-r from-cyan-400/90 via-sky-400/90 to-blue-500/90 text-slate-900 font-semibold tracking-wide shadow-[0_10px_30px_-12px_rgba(14,165,233,0.65)] hover:from-cyan-300 hover:to-blue-400 ${canPurchase ? '' : 'opacity-50 cursor-not-allowed'}`}
                 >
-                    <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                        <span>구매</span>
-                        <div className="flex items-center gap-1">(<img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" /> {cost.toLocaleString()})</div>
+                    <div className="flex items-center justify-center gap-2 text-sm sm:text-base">
+                        <img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 drop-shadow-md" />
+                        <span>{cost.toLocaleString()}</span>
                     </div>
                 </Button>
                 {!canPurchase && (
-                    <span className="text-xs text-gray-200">오늘 구매 한도 초과</span>
+                    <span className="text-xs text-cyan-100/80 italic mt-1">오늘 구매 한도에 도달했습니다.</span>
                 )}
             </div>
-             <p className="text-xs text-gray-400">오늘 구매 횟수: {purchasesToday}/{MAX_ACTION_POINT_PURCHASES_PER_DAY}</p>
+             <p className="mt-3 text-xs text-slate-300/80 tracking-wide uppercase">오늘 구매 {purchasesToday}/{MAX_ACTION_POINT_PURCHASES_PER_DAY}</p>
         </div>
     );
 };
@@ -89,7 +114,8 @@ const ShopItemCard: React.FC<{
     const { name, description, price, image, dailyLimit, weeklyLimit } = item;
     const isGold = !!price.gold;
     const priceAmount = price.gold || price.diamonds || 0;
-    const PriceIcon = isGold ? <img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" /> : <img src="/images/icon/Zem.png" alt="다이아" className="w-4 h-4" />;
+    const PriceIcon = isGold ? <img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 drop-shadow-md" /> : <img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 drop-shadow-md" />;
+    const refinedDescription = formatDescription(description);
 
     const now = Date.now();
     const purchaseRecord = currentUser.dailyShopPurchases?.[item.itemId];
@@ -115,21 +141,36 @@ const ShopItemCard: React.FC<{
     };
 
     return (
-        <div className="bg-gray-800/60 rounded-lg p-4 flex flex-col items-center text-center border-2 border-gray-700">
-            <div className="w-24 h-24 bg-gray-900/50 rounded-md mb-3 flex items-center justify-center">
-                <img src={image} alt={name} className="w-full h-full object-contain p-2" />
+        <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1f2239]/95 via-[#0f172a]/95 to-[#060b12]/95 p-4 border border-indigo-400/35 shadow-[0_22px_55px_-30px_rgba(99,102,241,0.65)] flex flex-col items-center text-center transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_30px_70px_-32px_rgba(129,140,248,0.65)] min-h-[230px]">
+            <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-indigo-300/80 to-transparent pointer-events-none" />
+            <div className="absolute inset-0 opacity-0 group-hover:opacity-20 transition-opacity duration-500 bg-[radial-gradient(circle_at_top,rgba(79,70,229,0.35),transparent_65%)] pointer-events-none" />
+            <div className="w-20 h-20 bg-gradient-to-br from-[#312e81]/35 via-[#1e1b4b]/20 to-transparent rounded-xl mb-3 flex items-center justify-center shadow-[0_0_25px_-8px_rgba(129,140,248,0.65)]">
+                <img src={image} alt={name} className="w-full h-full object-contain p-2 drop-shadow-[0_6px_12px_rgba(30,64,175,0.4)]" />
             </div>
-            <h3 className="text-lg font-bold text-white">{name}</h3>
-            <p className="text-xs text-gray-400 mt-1 flex-grow h-10">{description}</p>
-            <div className="flex flex-col items-stretch justify-center gap-2 my-3 w-full">
-                 <Button onClick={handleBuyClick} disabled={remaining === 0} colorScheme="green" className="w-full">
-                    <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
-                        <span>구매</span>
-                        <div className="flex items-center gap-1">({PriceIcon} {priceAmount.toLocaleString()})</div>
+            <h3 className="text-lg font-semibold tracking-wide text-white drop-shadow-[0_2px_12px_rgba(99,102,241,0.55)]">
+                {name}
+            </h3>
+            <p className="text-xs text-slate-200/80 mt-2 leading-relaxed line-clamp-2">
+                {refinedDescription}
+            </p>
+            {limit > 0 && (
+                <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-indigo-400/40 bg-indigo-500/10 px-2.5 py-0.5 text-[10px] tracking-wider text-indigo-200 uppercase">
+                    {limitText} 한도 {remaining}/{limit}
+                </span>
+            )}
+            <div className="flex flex-col items-stretch justify-center gap-2 mt-3 w-full">
+                <Button
+                    onClick={handleBuyClick}
+                    disabled={remaining === 0}
+                    colorScheme="none"
+                    className={`w-full justify-center rounded-xl border ${isGold ? 'border-amber-400/50 bg-gradient-to-r from-amber-400/90 via-amber-300/90 to-amber-500/90 text-slate-900 shadow-[0_12px_32px_-18px_rgba(251,191,36,0.85)] hover:from-amber-300 hover:to-amber-500' : 'border-sky-400/50 bg-gradient-to-r from-sky-400/90 via-blue-500/90 to-indigo-500/90 text-white shadow-[0_12px_32px_-18px_rgba(56,189,248,0.85)] hover:from-sky-300 hover:to-indigo-500'} ${remaining === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                >
+                    <div className="flex items-center justify-center gap-2 text-sm sm:text-base font-semibold tracking-wide">
+                        {PriceIcon}
+                        <span>{priceAmount.toLocaleString()}</span>
                     </div>
                 </Button>
             </div>
-            {limit > 0 && <p className="text-xs text-gray-400">{limitText} 구매 제한: {remaining}/{limit}</p>}
         </div>
     );
 };

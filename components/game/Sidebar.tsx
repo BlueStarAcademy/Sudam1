@@ -9,7 +9,8 @@ import {
     BORDER_POOL,
     ALKKAGI_GAUGE_SPEEDS,
     CURLING_GAUGE_SPEEDS,
-    SPECIAL_GAME_MODES
+    SPECIAL_GAME_MODES,
+    SINGLE_PLAYER_STAGES
 } from '../../constants.js';
 import Button from '../Button.js';
 import Avatar from '../Avatar.js';
@@ -64,6 +65,11 @@ export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () =>
         }
 
         details.push(renderSetting("게임 모드", gameModeDisplayName));
+        if (session.isSinglePlayer && session.stageId) {
+            const stage = SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
+            const stageDisplay = stage ? `${stage.level} · ${stage.name}` : session.stageId;
+            details.push(renderSetting("스테이지", stageDisplay));
+        }
         if (![GameMode.Alkkagi, GameMode.Curling, GameMode.Dice].includes(mode)) {
             details.push(renderSetting("판 크기", `${settings.boardSize}x${settings.boardSize}`));
         }
@@ -158,11 +164,23 @@ export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () =>
 
     return (
         <div className="bg-gray-800 p-2 rounded-md flex-shrink-0 border border-color">
-            <h3 className="text-base font-bold border-b border-gray-700 pb-1 mb-2 text-yellow-300 flex justify-between items-center">
-                대국 정보
-                {onClose && (
-                    <button onClick={onClose} className="text-xl font-bold text-gray-400 hover:text-white">×</button>
-                )}
+            <h3 className="text-base font-bold border-b border-gray-700 pb-1 mb-2 text-yellow-300 flex items-center justify-between">
+                <span>대국 정보</span>
+                <div className="flex items-center gap-1.5">
+                    {onOpenSettings && (
+                        <button
+                            onClick={onOpenSettings}
+                            className="text-lg p-1 rounded hover:bg-gray-700/50 transition-colors"
+                            title="설정"
+                            aria-label="대국 설정 열기"
+                        >
+                            ⚙️
+                        </button>
+                    )}
+                    {onClose && (
+                        <button onClick={onClose} className="text-xl font-bold text-gray-400 hover:text-white" aria-label="닫기">×</button>
+                    )}
+                </div>
             </h3>
             <div className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs">
                 {gameDetails}
@@ -446,18 +464,6 @@ const Sidebar: React.FC<SidebarProps> = (props) => {
     
     return (
         <div className="flex flex-col h-full gap-1.5 bg-gray-900/80 rounded-lg p-2 border border-color">
-            {/* 사이드바 헤더: 설정 버튼 */}
-            {props.onOpenSettings && (
-                <div className="flex-shrink-0 flex justify-end mb-1">
-                    <button 
-                        onClick={props.onOpenSettings} 
-                        className="text-xl p-1.5 rounded hover:bg-gray-700/50 transition-colors"
-                        title="설정"
-                    >
-                        ⚙️
-                    </button>
-                </div>
-            )}
             <div className="flex-shrink-0 space-y-2">
                 <GameInfoPanel session={session} onClose={props.onClose} onOpenSettings={props.onOpenSettings} />
                 <UserListPanel {...props} />
