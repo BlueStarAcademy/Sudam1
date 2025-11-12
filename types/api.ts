@@ -58,6 +58,10 @@ export interface VolatileState {
     userConsecutiveChatMessages?: Record<string, { content: string, count: number }>;
     activeTournaments?: Record<string, TournamentState>;
     activeTournamentViewers: Set<string>;
+    // 게임 상태 캐시 (DB 부하 감소를 위해)
+    gameCache?: Map<string, { game: LiveGameSession; lastUpdated: number }>;
+    // 사용자 정보 캐시 (DB 조회 최소화)
+    userCache?: Map<string, { user: User; lastUpdated: number }>;
 }
 
 export interface UserStatusInfo {

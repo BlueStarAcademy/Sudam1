@@ -60,6 +60,7 @@ export function getSelectiveUserUpdate(
         'START_TOURNAMENT_SESSION': ['lastNeighborhoodTournament', 'lastNationalTournament', 'lastWorldTournament', 'actionPoints'],
         'START_TOURNAMENT_ROUND': ['lastNeighborhoodTournament', 'lastNationalTournament', 'lastWorldTournament'],
         'ADMIN_RESET_TOURNAMENT_SESSION': ['lastNeighborhoodTournament', 'lastNationalTournament', 'lastWorldTournament'],
+        'CLAIM_TOURNAMENT_REWARD': ['inventory', 'gold', 'diamonds', 'tournamentScore', 'neighborhoodRewardClaimed', 'nationalRewardClaimed', 'worldRewardClaimed', 'lastNeighborhoodTournament', 'lastNationalTournament', 'lastWorldTournament'],
         
         // 싱글플레이어 관련
         'START_SINGLE_PLAYER_GAME': ['actionPoints', 'singlePlayerProgress'],

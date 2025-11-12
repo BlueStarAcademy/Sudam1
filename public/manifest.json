@@ -1,0 +1,42 @@
+{
+  "name": "SUDAM : The Ascending Masters",
+  "short_name": "SUDAM",
+  "description": "바둑 게임 - The Ascending Masters",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#1a1a1a",
+  "orientation": "any",
+  "scope": "/",
+  "icons": [
+    {
+      "src": "/images/Icon.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/Icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["games", "entertainment"],
+  "screenshots": [],
+  "shortcuts": [
+    {
+      "name": "홈",
+      "short_name": "홈",
+      "description": "홈 화면으로 이동",
+      "url": "/",
+      "icons": [
+        {
+          "src": "/images/Icon.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}
+

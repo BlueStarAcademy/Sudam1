@@ -86,7 +86,7 @@ export const rowToUser = (row: any): types.User | null => {
                 }
                 return parsed;
             })(),
-            tournamentScore: row.tournamentScore ?? 1200,
+            tournamentScore: row.tournamentScore ?? 0,
             league: row.league || types.LeagueTier.Sprout,
             mannerMasteryApplied: !!row.mannerMasteryApplied,
             mannerScore: row.mannerScore ?? 200,

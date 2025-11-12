@@ -714,11 +714,11 @@ export const startNextRound = (state: TournamentState, user: User) => {
         }
         
         // 다음 회차로 넘어갈 때 컨디션을 새롭게 부여 (40~100 사이 랜덤)
-        // 능력치는 토너먼트 생성 시점(0시)의 originalStats로 고정되어 있으므로 업데이트하지 않음
-        // PVE처럼 클론과 대결하는 구조이므로, 토너먼트 중 능력치 변경은 반영되지 않음
+        // 능력치는 START_TOURNAMENT_ROUND 액션에서 이미 최신 능력치로 업데이트되었으므로
+        // 여기서는 originalStats를 사용하여 stats를 복구 (최신 장비와 보너스 포인트 반영)
         const userPlayer = state.players.find(p => p.id === user.id);
         if (userPlayer && userPlayer.originalStats) {
-            // originalStats로 능력치 리셋 (토너먼트 생성 시점의 고정 능력치)
+            // originalStats로 능력치 복구 (START_TOURNAMENT_ROUND에서 최신 능력치로 업데이트됨)
             userPlayer.stats = JSON.parse(JSON.stringify(userPlayer.originalStats));
         }
         
@@ -767,11 +767,11 @@ export const startNextRound = (state: TournamentState, user: User) => {
     // 유저가 직접 경기 시작 버튼을 눌러야 함 (START_TOURNAMENT_ROUND 액션으로 처리)
     
     // 다음 라운드로 넘어갈 때 컨디션을 새롭게 부여 (40~100 사이 랜덤)
-    // 능력치는 토너먼트 생성 시점(0시)의 originalStats로 고정되어 있으므로 업데이트하지 않음
-    // PVE처럼 클론과 대결하는 구조이므로, 토너먼트 중 능력치 변경은 반영되지 않음
+    // 능력치는 START_TOURNAMENT_ROUND 액션에서 이미 최신 능력치로 업데이트되었으므로
+    // 여기서는 originalStats를 사용하여 stats를 복구 (최신 장비와 보너스 포인트 반영)
     const userPlayer = state.players.find(p => p.id === user.id);
     if (userPlayer && userPlayer.originalStats) {
-        // originalStats로 능력치 리셋 (토너먼트 생성 시점의 고정 능력치)
+        // originalStats로 능력치 복구 (START_TOURNAMENT_ROUND에서 최신 능력치로 업데이트됨)
         userPlayer.stats = JSON.parse(JSON.stringify(userPlayer.originalStats));
     }
     
@@ -940,26 +940,30 @@ export const advanceSimulation = (state: TournamentState, user: User): boolean =
 
     const now = Date.now();
     if (state.lastSimulationTime === undefined) {
+        // 첫 실행 시 초기화
         state.lastSimulationTime = now;
+        if (state.timeElapsed === 0) {
+            state.currentMatchScores = { player1: 0, player2: 0 };
+            state.lastScoreIncrement = null;
+        }
+        state.timeElapsed = 1;
     } else {
         const timeSinceLastSimulation = now - state.lastSimulationTime;
-        if (timeSinceLastSimulation < 900) {
+        
+        // 1초가 지나지 않았으면 진행하지 않음 (정확히 1초마다만 진행)
+        // 950ms 이상이면 1초로 간주 (약간의 여유를 둠)
+        if (timeSinceLastSimulation < 950) {
             return false;
         }
 
-        // 1초 단위로 시간 축을 유지하되 큰 지연 시 현재 시각으로 보정
-        state.lastSimulationTime += 1000;
-        if (now - state.lastSimulationTime > 2000) {
-            state.lastSimulationTime = now;
-        }
+        // 정확히 1초씩만 진행하도록 보장
+        // 여러 초가 지나갔어도 한 번에 1초씩만 진행
+        state.lastSimulationTime = state.lastSimulationTime + 1000; // 정확히 1초 증가
+        state.timeElapsed++;
+        
+        // 만약 실제로 2초 이상 지나갔다면, 다음 틱에서도 진행할 수 있도록
+        // 하지만 이번 틱에서는 1초만 진행하여 모든 데이터가 매 초마다 정확히 업데이트되도록 함
     }
-
-    if (state.timeElapsed === 0) {
-        state.currentMatchScores = { player1: 0, player2: 0 };
-        state.lastScoreIncrement = null;
-    }
-
-    state.timeElapsed++;
     
     const p1 = state.players.find(p => p.id === match.players[0]!.id);
     const p2 = state.players.find(p => p.id === match.players[1]!.id);
@@ -970,8 +974,14 @@ export const advanceSimulation = (state: TournamentState, user: User): boolean =
     }
 
     if (state.timeElapsed === 1) {
-        if (p1.originalStats) p1.stats = JSON.parse(JSON.stringify(p1.originalStats));
-        if (p2.originalStats) p2.stats = JSON.parse(JSON.stringify(p2.originalStats));
+        // 유저 플레이어의 경우 originalStats로 리셋하지 않음 (경기 시작 시 이미 최신 능력치로 업데이트됨)
+        // 상대방(봇 또는 다른 유저)만 originalStats로 리셋
+        if (p1.originalStats && p1.id !== user.id) {
+            p1.stats = JSON.parse(JSON.stringify(p1.originalStats));
+        }
+        if (p2.originalStats && p2.id !== user.id) {
+            p2.stats = JSON.parse(JSON.stringify(p2.originalStats));
+        }
 
         // 경기가 완료된 상태에서는 컨디션을 변경하지 않음
         // 컨디션은 이미 토너먼트 생성 시 랜덤 부여되었으므로 변경하지 않음
@@ -1387,3 +1397,4 @@ export const calculateRanks = (tournament: TournamentState): { id: string, nickn
     }
     return rankedPlayers;
 };
+

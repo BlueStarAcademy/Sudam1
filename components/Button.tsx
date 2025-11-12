@@ -24,7 +24,7 @@ const Button: React.FC<ButtonProps> = ({
   type = 'button',
   title,
   style,
-  cooldownMs = 400
+  cooldownMs = 1000
 }) => {
   const baseClasses = "px-4 py-2 font-bold rounded-lg transition-all duration-150 ease-in-out border-2 border-amber-400/60 shadow-[0_4px_6px_-1px_rgba(0,0,0,0.3),0_2px_4px_-1px_rgba(0,0,0,0.2),inset_0_1px_0_0_rgba(255,255,255,0.1)] active:translate-y-0.5 active:shadow-[0_2px_4px_-1px_rgba(0,0,0,0.2)] focus:outline-none focus:ring-2 focus:ring-amber-400/50 focus:ring-offset-2 focus:ring-offset-primary disabled:bg-secondary disabled:opacity-70 disabled:cursor-not-allowed whitespace-nowrap overflow-hidden";
 

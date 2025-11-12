@@ -163,7 +163,9 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
 
     // Game Actions (require gameId)
     if (gameId && type !== 'LEAVE_AI_GAME') {
-        const game = await db.getLiveGame(gameId);
+        // 캐시를 사용하여 DB 조회 최소화
+        const { getCachedGame, updateGameCache } = await import('./gameCache.js');
+        const game = await getCachedGame(gameId);
         if (!game) return { error: 'Game not found.' };
         
         let result: HandleActionResult | null | undefined = null;
@@ -174,7 +176,12 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
         }
 
         if (result !== null && result !== undefined) {
-            await db.saveGame(game);
+            // 캐시 업데이트
+            updateGameCache(game);
+            // DB 저장은 비동기로 처리하여 응답 지연 최소화
+            db.saveGame(game).catch(err => {
+                console.error(`[GameActions] Failed to save game ${game.id}:`, err);
+            });
             // 게임 상태 변경 후 실시간 브로드캐스트
             broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
             return result;

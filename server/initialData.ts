@@ -102,7 +102,7 @@ export const createDefaultUser = (id: string, username: string, nickname: string
         ownedBorders: ['default', 'simple_black'],
         previousSeasonTier: null,
         seasonHistory: {},
-        tournamentScore: 1200,
+        tournamentScore: 0,
         league: LeagueTier.Sprout,
         weeklyCompetitors: [],
         lastWeeklyCompetitorsUpdate: 0,
@@ -115,6 +115,7 @@ export const createDefaultUser = (id: string, username: string, nickname: string
         bonusStatPoints: 0,
         blacksmithLevel: 1,
         blacksmithXp: 0,
+        cumulativeTournamentScore: 0, // 챔피언십 누적 점수 초기값 0
         equipmentPresets: [
             { name: '프리셋 1', equipment: {} },
             { name: '프리셋 2', equipment: {} },

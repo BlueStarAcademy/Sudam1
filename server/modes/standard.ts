@@ -12,6 +12,8 @@ import { initializeMissile, updateMissileState, handleMissileAction } from './mi
 import { transitionToPlaying, handleSharedAction } from './shared.js';
 import { UserStatus } from '../../types.js';
 import { getCaptureTarget, NO_CAPTURE_TARGET } from '../utils/captureTargets.ts';
+import { aiUserId } from '../aiPlayer.js';
+import { broadcast } from '../socket.js';
 
 
 export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.Negotiation, now: number) => {
@@ -146,9 +148,24 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 return { error: '내 차례가 아닙니다.' };
             }
 
+            // 동시성 제어: 이미 처리 중인 수가 있으면 거부 (싱글플레이에서 빠른 착수 방지)
+            if (game.processingMove) {
+                const processingAge = now - game.processingMove.timestamp;
+                // 5초 이상 지난 처리 중인 수는 타임아웃으로 간주하고 해제
+                if (processingAge > 5000) {
+                    console.warn(`[PLACE_STONE] Clearing stale processingMove for game ${game.id} (age: ${processingAge}ms)`);
+                    game.processingMove = null;
+                } else {
+                    return { error: '이미 수를 처리 중입니다. 잠시 후 다시 시도해주세요.' };
+                }
+            }
+
             const { x, y, isHidden } = payload;
             const opponentPlayerEnum = myPlayerEnum === types.Player.Black ? types.Player.White : (myPlayerEnum === types.Player.White ? types.Player.Black : types.Player.None);
             const stoneAtTarget = game.boardState[y][x];
+
+            // 처리 중인 수로 표시
+            game.processingMove = { playerId: user.id, x, y, timestamp: now };
 
             const moveIndexAtTarget = game.moveHistory.findIndex(m => m.x === x && m.y === y);
             const isTargetHiddenOpponentStone =
@@ -170,6 +187,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         lastMove: game.lastMove,
                     });
                 }
+                game.processingMove = null; // 처리 중인 수 해제
                 return {}; // Silently fail if placing on a visible stone
             }
 
@@ -202,6 +220,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     });
                 }
 
+                game.processingMove = null; // 처리 중인 수 해제
                 return {};
             }
 
@@ -211,6 +230,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 const hiddenKey = user.id === game.player1.id ? 'hidden_stones_used_p1' : 'hidden_stones_used_p2';
                 const usedCount = game[hiddenKey] || 0;
                 if (usedCount >= game.settings.hiddenStoneCount!) {
+                    game.processingMove = null; // 처리 중인 수 해제
                     return { error: "No hidden stones left." };
                 }
                 game[hiddenKey] = usedCount + 1;
@@ -230,6 +250,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         moveHistoryLength: game.moveHistory.length,
                     });
                 }
+                game.processingMove = null; // 처리 중인 수 해제
                 return { error: `Invalid move: ${result.reason}` };
             }
 
@@ -478,6 +499,40 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     boardSampleMid,
                     recentMoves,
                 });
+            }
+
+            // 처리 중인 수 해제
+            game.processingMove = null;
+
+            // 싱글플레이인 경우 AI 수를 즉시 처리 (실시간 반응)
+            if (game.isSinglePlayer && game.gameStatus === 'playing' && game.currentPlayer !== types.Player.None) {
+                const aiPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId : game.whitePlayerId;
+                const isAiTurn = aiPlayerId === aiUserId;
+                
+                if (isAiTurn) {
+                    // AI 수를 즉시 처리 (비동기로 실행하여 응답 지연 방지)
+                    setImmediate(async () => {
+                        try {
+                            const { makeAiMove } = await import('../aiPlayer.js');
+                            const { getCachedGame } = await import('../gameCache.js');
+                            // 캐시에서 게임을 가져오기 (DB 조회 최소화)
+                            const freshGame = await getCachedGame(game.id);
+                            if (freshGame && freshGame.gameStatus === 'playing' && freshGame.currentPlayer !== types.Player.None) {
+                                const currentAiPlayerId = freshGame.currentPlayer === types.Player.Black ? freshGame.blackPlayerId : freshGame.whitePlayerId;
+                                if (currentAiPlayerId === aiUserId) {
+                                    await makeAiMove(freshGame);
+                                    // DB 저장은 비동기로 처리하여 응답 지연 최소화 (db.saveGame이 자동으로 캐시 업데이트)
+                                    db.saveGame(freshGame).catch(err => {
+                                        console.error(`[PLACE_STONE] Failed to save game ${freshGame.id}:`, err);
+                                    });
+                                    broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
+                                }
+                            }
+                        } catch (error) {
+                            console.error(`[PLACE_STONE] Error processing immediate AI move for game ${game.id}:`, error);
+                        }
+                    });
+                }
             }
 
             return {};

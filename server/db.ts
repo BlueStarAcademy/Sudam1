@@ -181,6 +181,14 @@ export const saveGame = async (game: LiveGameSession): Promise<void> => {
     game.serverRevision = (game.serverRevision ?? 0) + 1;
     game.lastSyncedAt = now;
     await prismaSaveGame(game);
+    // 캐시 자동 업데이트 (DB 저장 후 즉시 반영)
+    try {
+        const { updateGameCache } = await import('./gameCache.js');
+        updateGameCache(game);
+    } catch (error) {
+        // 캐시 업데이트 실패는 치명적이지 않으므로 로그만 남김
+        console.warn(`[DB] Failed to update game cache for ${game.id}:`, error);
+    }
 };
 export const deleteGame = async (id: string): Promise<void> => {
     const { deleteGame: prismaDeleteGame } = await import('./prisma/gameService.ts');

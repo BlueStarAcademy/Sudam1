@@ -183,29 +183,40 @@ const startServer = async () => {
 
         isProcessingTournamentTick = true;
         try {
-            for (const [userId, activeState] of Object.entries(volatileState.activeTournaments)) {
+            // 각 토너먼트를 독립적으로 병렬 처리 (PVE 게임처럼)
+            const tournamentEntries = Object.entries(volatileState.activeTournaments);
+            
+            // 각 토너먼트를 독립적으로 처리하는 함수
+            const processTournament = async ([userId, activeState]: [string, types.TournamentState]) => {
                 try {
-                    const user = await db.getUser(userId);
+                    // 캐시를 사용하여 DB 조회 최소화
+                    const { getCachedUser, updateUserCache } = await import('./gameCache.js');
+                    const user = await getCachedUser(userId);
                     if (!user) {
                         delete volatileState.activeTournaments[userId];
-                        continue;
+                        return;
                     }
 
                     const tournamentState = getTournamentStateByType(user, activeState.type);
                     if (!tournamentState || tournamentState.status !== 'round_in_progress') {
                         delete volatileState.activeTournaments[userId];
-                        continue;
+                        return;
                     }
 
                     const advanced = tournamentService.advanceSimulation(tournamentState, user);
                     if (!advanced) {
-                        continue;
+                        return;
                     }
 
                     // Keep volatile state reference updated
                     volatileState.activeTournaments[userId] = tournamentState;
 
-                    await db.updateUser(user);
+                    // 사용자 캐시 업데이트
+                    updateUserCache(user);
+                    // DB 저장은 비동기로 처리하여 응답 지연 최소화
+                    db.updateUser(user).catch(err => {
+                        console.error(`[TournamentTicker] Failed to save user ${userId}:`, err);
+                    });
 
                     const sanitizedUser = JSON.parse(JSON.stringify(user));
                     broadcast({ type: 'USER_UPDATE', payload: { [user.id]: sanitizedUser } });
@@ -216,7 +227,10 @@ const startServer = async () => {
                 } catch (error) {
                     console.error(`[TournamentTicker] Failed to advance simulation for user ${userId}`, error);
                 }
-            }
+            };
+
+            // 모든 토너먼트를 병렬로 처리 (각 토너먼트는 독립적)
+            await Promise.all(tournamentEntries.map(processTournament));
         } catch (error) {
             console.error('[TournamentTicker] Failed to process tournament simulations', error);
         } finally {
@@ -224,7 +238,17 @@ const startServer = async () => {
         }
     };
 
-    setInterval(processActiveTournamentSimulations, 1000);
+    // Tournament simulation ticker - 정확히 1초마다 실행되도록 setTimeout 체인 사용
+    const scheduleTournamentTick = () => {
+        const startTime = Date.now();
+        processActiveTournamentSimulations().finally(() => {
+            const elapsed = Date.now() - startTime;
+            // 다음 틱은 정확히 1초 후에 실행 (실행 시간 보정)
+            const nextDelay = Math.max(0, 1000 - elapsed);
+            setTimeout(scheduleTournamentTick, nextDelay);
+        });
+    };
+    scheduleTournamentTick();
 
     const scheduleMainLoop = (delay = 1000) => {
         setTimeout(async () => {
@@ -271,8 +295,18 @@ const startServer = async () => {
                 }
                 // --- END NEW OFFLINE AP REGEN LOGIC ---
 
+            // 캐시 정리 (주기적으로 실행)
+            const { cleanupExpiredCache } = await import('./gameCache.js');
+            cleanupExpiredCache();
+
             const activeGames = await db.getAllActiveGames();
             const originalGamesJson = activeGames.map(g => JSON.stringify(g));
+            
+            // 게임을 캐시에 미리 로드
+            const { updateGameCache } = await import('./gameCache.js');
+            for (const game of activeGames) {
+                updateGameCache(game);
+            }
             
             // Handle weekly league updates (Monday 0:00 KST) - 점수 리셋 전에 실행
             // 리그 업데이트는 각 사용자 로그인 시 processWeeklyLeagueUpdates에서 처리되지만,
@@ -407,7 +441,9 @@ const startServer = async () => {
                     }
 
                      if (neg.rematchOfGameId) {
-                         const originalGame = await db.getLiveGame(neg.rematchOfGameId);
+                         // 캐시에서 게임을 가져오기 (DB 조회 최소화)
+                         const { getCachedGame } = await import('./gameCache.js');
+                         const originalGame = await getCachedGame(neg.rematchOfGameId);
                          if (originalGame && originalGame.gameStatus === 'rematch_pending') {
                              originalGame.gameStatus = 'ended';
                              await db.saveGame(originalGame);
@@ -459,11 +495,30 @@ const startServer = async () => {
             const gamesToBroadcast: Record<string, types.LiveGameSession> = {};
             for (let i = 0; i < updatedGames.length; i++) {
                 const updatedGame = updatedGames[i];
+                
+                // 싱글플레이 게임은 게임 루프에서 변경사항이 거의 없으므로 저장/브로드캐스트 최소화
+                // (PLACE_STONE 액션에서 이미 저장되고 브로드캐스트됨)
+                if (updatedGame.isSinglePlayer) {
+                    // 게임 상태가 변경된 경우에만 브로드캐스트 (예: 타임아웃, 게임 종료 등)
+                    const originalGame = activeGames[i];
+                    const hasSignificantChange = !originalGame || 
+                                                 updatedGame.gameStatus !== originalGame.gameStatus ||
+                                                 updatedGame.winner !== originalGame.winner ||
+                                                 (updatedGame.disconnectionState !== originalGame.disconnectionState);
+                    if (hasSignificantChange) {
+                        gamesToBroadcast[updatedGame.id] = updatedGame;
+                    }
+                    continue;
+                }
+
+                // 멀티플레이 게임만 상세 처리
                 if (JSON.stringify(updatedGame) !== originalGamesJson[i]) {
                     const currentMoveCount = updatedGame.moveHistory?.length ?? 0;
                     const localRevision = updatedGame.serverRevision ?? 0;
                     const localSyncedAt = updatedGame.lastSyncedAt ?? 0;
-                    const latestGame = await db.getLiveGame(updatedGame.id);
+                    // 캐시에서 게임을 가져오기 (DB 조회 최소화)
+                    const { getCachedGame } = await import('./gameCache.js');
+                    const latestGame = await getCachedGame(updatedGame.id);
 
                     if (latestGame) {
                         const latestMoveCount = latestGame.moveHistory?.length ?? 0;
@@ -488,7 +543,13 @@ const startServer = async () => {
                         }
                     }
 
-                    await db.saveGame(updatedGame);
+                    // 멀티플레이 게임만 저장
+                    const { updateGameCache } = await import('./gameCache.js');
+                    updateGameCache(updatedGame);
+                    // DB 저장은 비동기로 처리하여 응답 지연 최소화
+                    db.saveGame(updatedGame).catch(err => {
+                        console.error(`[Game Loop] Failed to save game ${updatedGame.id}:`, err);
+                    });
                     syncAiSession(updatedGame, aiPlayer.aiUserId);
                     gamesToBroadcast[updatedGame.id] = updatedGame;
                 }
@@ -1009,7 +1070,9 @@ const startServer = async () => {
                     const isInTowerGames = dbState.towerGames[gameId];
                     
                     if (!isInLiveGames && !isInSinglePlayerGames && !isInTowerGames) {
-                        const endedGame = await db.getLiveGame(gameId);
+                        // 캐시에서 게임을 가져오기 (DB 조회 최소화)
+                        const { getCachedGame } = await import('./gameCache.js');
+                        const endedGame = await getCachedGame(gameId);
                         if (endedGame) {
                             // 게임 카테고리에 따라 올바른 객체에 추가
                             const category = endedGame.gameCategory || (endedGame.isSinglePlayer ? 'singleplayer' : 'normal');

@@ -13,6 +13,7 @@ import { handleRewardAction } from './rewardActions.js';
 import { generateNewItem } from './inventoryActions.js';
 import { broadcast } from '../socket.js';
 import { createDefaultQuests } from '../initialData.js';
+import { getCachedUser, updateUserCache } from '../gameCache.js';
 
 
 type HandleActionResult = { 
@@ -231,15 +232,20 @@ export const startTournamentSessionForUser = async (user: User, tournamentType: 
             userInTournament.borderId = user.borderId;
         }
         (user as any)[stateKey] = existingState;
-        await db.updateUser(user);
+        // 사용자 캐시 업데이트
+        updateUserCache(user);
+        // DB 저장은 비동기로 처리하여 응답 지연 최소화
+        db.updateUser(user).catch(err => {
+            console.error(`[TournamentActions] Failed to save user ${user.id}:`, err);
+        });
         return { success: true, updatedUser: user };
     }
 
     // forceNew가 true인 경우, 기존 토너먼트가 완료되지 않았어도 새로 시작
     // (매일 0시에 리셋 후 자동 시작하는 경우)
     
-    // 최신 유저 데이터 가져오기 (능력치가 최신 상태인지 확인)
-    const freshUser = await db.getUser(user.id);
+    // 최신 유저 데이터 가져오기 (능력치가 최신 상태인지 확인) - 캐시 사용
+    const freshUser = await getCachedUser(user.id);
     if (!freshUser) return { success: false, error: 'User not found in DB.' };
     
     const allUsers = await db.getAllUsers();
@@ -352,7 +358,12 @@ export const startTournamentSessionForUser = async (user: User, tournamentType: 
     (freshUser as any)[stateKey] = newState;
     (freshUser as any)[playedDateKey] = now;
     
-    await db.updateUser(freshUser);
+    // 사용자 캐시 업데이트
+    updateUserCache(freshUser);
+    // DB 저장은 비동기로 처리하여 응답 지연 최소화
+    db.updateUser(freshUser).catch(err => {
+        console.error(`[TournamentActions] Failed to save user ${freshUser.id}:`, err);
+    });
     
     // 깊은 복사로 updatedUser 생성
     const updatedUser = JSON.parse(JSON.stringify(freshUser));
@@ -411,7 +422,12 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                     userInTournament.borderId = user.borderId;
                 }
                 (user as any)[stateKey] = existingState; // Re-assign to mark for update
-                await db.updateUser(user);
+                // 사용자 캐시 업데이트
+                updateUserCache(user);
+                // DB 저장은 비동기로 처리하여 응답 지연 최소화
+                db.updateUser(user).catch(err => {
+                    console.error(`[TournamentActions] Failed to save user ${user.id}:`, err);
+                });
                 return { clientResponse: { redirectToTournament: type } };
             }
 
@@ -438,18 +454,36 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 default: return { error: 'Invalid tournament type.' };
             }
             
-            // Get the most up-to-date user data from DB, which includes the latest tournament state.
+            // Get the most up-to-date user data from DB (캐시 무시하고 직접 가져와서 최신 장비 정보 확보)
+            // 다음 경기 준비 시 최신 장비 정보가 반영되도록 DB에서 직접 가져옴
             const freshUser = await db.getUser(user.id);
             if (!freshUser) return { error: 'User not found in DB.' };
+            
+            // 캐시도 최신 정보로 업데이트
+            updateUserCache(freshUser);
 
             const tournamentState = (freshUser as any)[stateKey] as types.TournamentState | null;
             if (!tournamentState) return { error: '토너먼트 정보를 찾을 수 없습니다.' };
+            
+            // 다음 경기 준비 전: 유저의 최신 능력치를 계산하여 originalStats 업데이트
+            const userPlayer = tournamentState.players.find(p => p.id === freshUser.id);
+            if (userPlayer) {
+                // 유저의 최신 능력치를 계산하여 originalStats와 stats 업데이트
+                const latestStats = calculateTotalStats(freshUser);
+                userPlayer.originalStats = JSON.parse(JSON.stringify(latestStats));
+                userPlayer.stats = JSON.parse(JSON.stringify(latestStats));
+            }
             
             // Now that we have the fresh state, start the next round. This will mutate tournamentState.
             tournamentService.startNextRound(tournamentState, freshUser);
             
             // The state object on the user is already mutated, so just save the user.
-            await db.updateUser(freshUser);
+            // 사용자 캐시 업데이트
+    updateUserCache(freshUser);
+    // DB 저장은 비동기로 처리하여 응답 지연 최소화
+    db.updateUser(freshUser).catch(err => {
+        console.error(`[TournamentActions] Failed to save user ${freshUser.id}:`, err);
+    });
             
             // Update volatile state as well for immediate consistency
             if (!volatileState.activeTournaments) volatileState.activeTournaments = {};
@@ -474,7 +508,7 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 default: return { error: 'Invalid tournament type.' };
             }
             
-            const freshUser = await db.getUser(user.id);
+            const freshUser = await getCachedUser(user.id);
             if (!freshUser) return { error: 'User not found' };
         
             const tournamentState = (freshUser as any)[stateKey] as TournamentState | null;
@@ -484,7 +518,12 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 tournamentService.skipToResults(tournamentState, user.id);
             
                 (freshUser as any)[stateKey] = tournamentState;
-                await db.updateUser(freshUser);
+                // 사용자 캐시 업데이트
+    updateUserCache(freshUser);
+    // DB 저장은 비동기로 처리하여 응답 지연 최소화
+    db.updateUser(freshUser).catch(err => {
+        console.error(`[TournamentActions] Failed to save user ${freshUser.id}:`, err);
+    });
         
                 if (volatileState.activeTournaments?.[user.id]) {
                     delete volatileState.activeTournaments[user.id];
@@ -514,7 +553,12 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 tournamentService.forfeitTournament(tournamentState, user.id);
             
                 (user as any)[stateKey] = tournamentState;
-                await db.updateUser(user);
+                // 사용자 캐시 업데이트
+                updateUserCache(user);
+                // DB 저장은 비동기로 처리하여 응답 지연 최소화
+                db.updateUser(user).catch(err => {
+                    console.error(`[TournamentActions] Failed to save user ${user.id}:`, err);
+                });
 
                 if (volatileState.activeTournaments) {
                     delete volatileState.activeTournaments[user.id];
@@ -544,7 +588,12 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 tournamentService.forfeitCurrentMatch(tournamentState, user);
             
                 (user as any)[stateKey] = tournamentState;
-                await db.updateUser(user);
+                // 사용자 캐시 업데이트
+                updateUserCache(user);
+                // DB 저장은 비동기로 처리하여 응답 지연 최소화
+                db.updateUser(user).catch(err => {
+                    console.error(`[TournamentActions] Failed to save user ${user.id}:`, err);
+                });
 
                 if (volatileState.activeTournaments) {
                     volatileState.activeTournaments[user.id] = tournamentState;
@@ -600,7 +649,12 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 }
             }
 
-            await db.updateUser(user);
+            // 사용자 캐시 업데이트
+            updateUserCache(user);
+            // DB 저장은 비동기로 처리하여 응답 지연 최소화
+            db.updateUser(user).catch(err => {
+                console.error(`[TournamentActions] Failed to save user ${user.id}:`, err);
+            });
             return {};
         }
 
@@ -704,10 +758,15 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
 
             // Save tournament state and user
             try {
-                await db.updateUser(user);
+                // 사용자 캐시 업데이트
+                updateUserCache(user);
+                // DB 저장은 비동기로 처리하여 응답 지연 최소화
+                db.updateUser(user).catch(err => {
+                    console.error(`[TournamentActions] Failed to save user ${user.id}:`, err);
+                });
                 
                 // 저장 후 DB에서 다시 읽어서 검증 (인벤토리 변경사항이 확실히 반영되었는지 확인)
-                const savedUser = await db.getUser(user.id);
+                const savedUser = await getCachedUser(user.id);
                 if (!savedUser) {
                     console.error(`[USE_CONDITION_POTION] User not found after save: ${user.id}`);
                     return { error: '저장 후 사용자를 찾을 수 없습니다.' };
@@ -745,9 +804,13 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 default: return { error: 'Invalid tournament type.' };
             }
             
-            // Get the most up-to-date user data from DB
+            // Get the most up-to-date user data from DB (캐시 무시하고 직접 가져와서 최신 장비 정보 확보)
+            // 경기 시작 시 최신 장비 정보가 반영되도록 DB에서 직접 가져옴
             const freshUser = await db.getUser(user.id);
             if (!freshUser) return { error: 'User not found in DB.' };
+            
+            // 캐시도 최신 정보로 업데이트
+            updateUserCache(freshUser);
 
             const tournamentState = (freshUser as any)[stateKey] as types.TournamentState | null;
             if (!tournamentState) return { error: '토너먼트 정보를 찾을 수 없습니다.' };
@@ -827,10 +890,15 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             tournamentState.currentMatchCommentary = [];
             tournamentState.timeElapsed = 0;
             tournamentState.currentMatchScores = { player1: 0, player2: 0 };
-            tournamentState.lastSimulationTime = Date.now() - 1100; // 시뮬레이션 시작 직전 시간으로 설정하여 즉시 첫 틱 진행
+            tournamentState.lastSimulationTime = undefined; // 첫 틱에서 초기화되도록 undefined로 설정
 
             // Save tournament state
-            await db.updateUser(freshUser);
+            // 사용자 캐시 업데이트
+    updateUserCache(freshUser);
+    // DB 저장은 비동기로 처리하여 응답 지연 최소화
+    db.updateUser(freshUser).catch(err => {
+        console.error(`[TournamentActions] Failed to save user ${freshUser.id}:`, err);
+    });
             
             // Update volatile state
             if (!volatileState.activeTournaments) volatileState.activeTournaments = {};
@@ -841,7 +909,12 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             advanceSimulation(tournamentState, freshUser);
             
             // 시뮬레이션 진행 후 다시 저장
-            await db.updateUser(freshUser);
+            // 사용자 캐시 업데이트
+    updateUserCache(freshUser);
+    // DB 저장은 비동기로 처리하여 응답 지연 최소화
+    db.updateUser(freshUser).catch(err => {
+        console.error(`[TournamentActions] Failed to save user ${freshUser.id}:`, err);
+    });
 
             // WebSocket으로 사용자 업데이트 브로드캐스트
             const updatedUserCopy = JSON.parse(JSON.stringify(freshUser));

@@ -291,7 +291,38 @@ export const resetGameForRematch = (game: LiveGameSession, negotiation: types.Ne
 };
 
 export const updateGameStates = async (games: LiveGameSession[], now: number): Promise<LiveGameSession[]> => {
-    const processGame = async (game: LiveGameSession): Promise<LiveGameSession> => {
+    // 싱글플레이 게임과 멀티플레이 게임을 분리하여 처리
+    const singlePlayerGames: LiveGameSession[] = [];
+    const multiPlayerGames: LiveGameSession[] = [];
+    
+    for (const game of games) {
+        if (game.isSinglePlayer) {
+            singlePlayerGames.push(game);
+        } else {
+            multiPlayerGames.push(game);
+        }
+    }
+
+    // 싱글플레이 게임은 완전히 독립적으로 병렬 처리 (각 게임이 서로 영향을 주지 않음)
+    const processSinglePlayerGame = async (game: LiveGameSession): Promise<LiveGameSession> => {
+        return processGame(game, now);
+    };
+
+    // 멀티플레이 게임 처리
+    const processMultiPlayerGame = async (game: LiveGameSession): Promise<LiveGameSession> => {
+        return processGame(game, now);
+    };
+
+    // 싱글플레이와 멀티플레이를 병렬로 처리
+    const [singlePlayerResults, multiPlayerResults] = await Promise.all([
+        Promise.all(singlePlayerGames.map(processSinglePlayerGame)),
+        Promise.all(multiPlayerGames.map(processMultiPlayerGame)),
+    ]);
+
+    return [...singlePlayerResults, ...multiPlayerResults];
+};
+
+const processGame = async (game: LiveGameSession, now: number): Promise<LiveGameSession> => {
         // pending 상태의 게임은 아직 시작되지 않았으므로 게임 루프에서 처리하지 않음
         if (game.gameStatus === 'pending') {
             return game;
@@ -316,13 +347,58 @@ export const updateGameStates = async (games: LiveGameSession[], now: number): P
                 return game;
             }
 
-            const p1 = await db.getUser(game.player1.id);
-            // 싱글플레이 게임의 경우 player2는 이미 스테이지별로 설정된 AI 유저이므로 덮어쓰지 않음
-            const p2 = game.isSinglePlayer
-                ? game.player2  // 싱글플레이: 기존 player2 유지
-                : (game.player2.id === aiUserId ? getAiUser(game.mode) : await db.getUser(game.player2.id));
+            // 싱글플레이 게임 최적화: 최소한의 처리만 수행
+            if (game.isSinglePlayer) {
+                // 싱글플레이에서는 player1 정보만 필요시 업데이트 (액션 버튼 등)
+                // player2는 AI이므로 업데이트 불필요
+                const { getCachedUser } = await import('./gameCache.js');
+                const p1 = await getCachedUser(game.player1.id);
+                if (p1) game.player1 = p1;
+
+                const playableStatuses: types.GameStatus[] = [
+                    'playing', 'hidden_placing', 'scanning', 'missile_selecting',
+                    'alkkagi_playing',
+                    'curling_playing',
+                    'dice_rolling',
+                    'dice_placing',
+                    'thief_rolling',
+                    'thief_placing',
+                ];
+
+                // 액션 버튼 업데이트만 수행 (싱글플레이에서도 필요)
+                if (playableStatuses.includes(game.gameStatus)) {
+                    const deadline = game.actionButtonCooldownDeadline?.[game.player1.id];
+                    if (typeof deadline !== 'number' || now >= deadline) {
+                        game.currentActionButtons[game.player1.id] = getNewActionButtons(game);
+
+                        const effects = effectService.calculateUserEffects(game.player1);
+                        const cooldown = (5 * 60 - (effects.mythicStatBonuses[types.MythicStat.MannerActionCooldown]?.flat || 0)) * 1000;
+
+                        if (!game.actionButtonCooldownDeadline) game.actionButtonCooldownDeadline = {};
+                        game.actionButtonCooldownDeadline[game.player1.id] = now + cooldown;
+                        if (game.actionButtonUsedThisCycle) {
+                            game.actionButtonUsedThisCycle[game.player1.id] = false;
+                        }
+                    }
+                }
+
+                // 싱글플레이에서는 AI 수 처리를 게임 루프에서 하지 않음
+                // (PLACE_STONE 액션에서 setImmediate로 즉시 처리됨)
+                // 단, 타임아웃 체크 등 게임 상태 업데이트는 필요
+                if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) || game.isSinglePlayer) {
+                    await updateStrategicGameState(game, now);
+                }
+
+                return game;
+            }
+
+            // 멀티플레이 게임 처리 (기존 로직)
+            // 캐시를 사용하여 DB 조회 최소화
+            const { getCachedUser } = await import('./gameCache.js');
+            const p1 = await getCachedUser(game.player1.id);
+            const p2 = game.player2.id === aiUserId ? getAiUser(game.mode) : await getCachedUser(game.player2.id);
             if (p1) game.player1 = p1;
-            if (p2 && !game.isSinglePlayer) game.player2 = p2;  // 싱글플레이가 아닌 경우에만 업데이트
+            if (p2) game.player2 = p2;
 
             const players = [game.player1, game.player2].filter(p => p.id !== aiUserId);
 
@@ -360,15 +436,10 @@ export const updateGameStates = async (games: LiveGameSession[], now: number): P
             const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None &&
                 (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
 
+            // 멀티플레이 AI 게임의 경우에만 메인 루프에서 AI 수 처리
             if (isAiTurn && game.gameStatus !== 'ended' && !['missile_animating', 'hidden_reveal_animating', 'alkkagi_animating', 'curling_animating'].includes(game.gameStatus)) {
                 if (!game.aiTurnStartTime) {
-                    if (game.isSinglePlayer) {
-                        const baseDelay = 250; // 빠른 반응을 위한 기본 지연 (ms)
-                        const extraDelay = Math.random() * 600; // 최대 추가 지연 0.6초
-                        game.aiTurnStartTime = now + baseDelay + extraDelay;
-                    } else {
-                        game.aiTurnStartTime = now + (1000 + Math.random() * 1500);
-                    }
+                    game.aiTurnStartTime = now + (1000 + Math.random() * 1500);
                 }
                 if (now >= game.aiTurnStartTime) {
                     const initialMoveCount = game.moveHistory?.length ?? 0;
@@ -388,7 +459,7 @@ export const updateGameStates = async (games: LiveGameSession[], now: number): P
                 }
             }
 
-            if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) || game.isSinglePlayer) {
+            if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode)) {
                 await updateStrategicGameState(game, now);
             } else if (PLAYFUL_GAME_MODES.some((m: { mode: GameMode }) => m.mode === game.mode)) {
                 await updatePlayfulGameState(game, now);
@@ -399,7 +470,4 @@ export const updateGameStates = async (games: LiveGameSession[], now: number): P
             console.error(`[Game Loop] Failed to update game ${game.id}:`, error);
             return game;
         }
-    };
-
-    return Promise.all(games.map(game => processGame(game)));
 };

@@ -33,6 +33,7 @@ import CombinationResultModal from './components/blacksmith/CombinationResultMod
 import EnhancementModal from './components/EnhancementModal';
 import EquipmentEffectsModal from './components/EquipmentEffectsModal';
 import EnhancementResultModal from './components/modals/EnhancementResultModal.js';
+import InstallPrompt from './components/InstallPrompt.js';
 
 function usePrevious<T>(value: T): T | undefined {
     const ref = useRef<T | undefined>(undefined);
@@ -333,6 +334,7 @@ const AppContent: React.FC = () => {
                     {modals.isEquipmentEffectsModalOpen && <EquipmentEffectsModal onClose={handlers.closeEquipmentEffectsModal} isTopmost={topmostModalId === 'equipmentEffects'} mainOptionBonuses={mainOptionBonuses} combatSubOptionBonuses={combatSubOptionBonuses} specialStatBonuses={specialStatBonuses} aggregatedMythicStats={aggregatedMythicStats} />}
                 </>
             )}
+            <InstallPrompt />
         </div>
     );
 };

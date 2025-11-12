@@ -645,6 +645,7 @@ export type LiveGameSession = {
   hidden_stones_used_p2?: number;
   pendingCapture?: { stones: Point[]; move: Move; hiddenContributors: Point[] } | null;
   permanentlyRevealedStones?: Point[];
+  processingMove?: { playerId: string; x: number; y: number; timestamp: number } | null; // 동시성 제어를 위한 처리 중인 수
   missiles_p1?: number;
   missiles_p2?: number;
   missileUsedThisTurn?: boolean;

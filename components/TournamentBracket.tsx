@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { UserWithStatus, TournamentState, PlayerForTournament, ServerAction, User, CoreStat, Match, Round, CommentaryLine, TournamentType, LeagueTier } from '../types.js';
 import Button from './Button.js';
+import { useButtonClickThrottle } from '../hooks/useButtonClickThrottle.js';
 import { TOURNAMENT_DEFINITIONS, BASE_TOURNAMENT_REWARDS, TOURNAMENT_SCORE_REWARDS, CONSUMABLE_ITEMS, MATERIAL_ITEMS, AVATAR_POOL, BORDER_POOL, CORE_STATS_DATA, LEAGUE_DATA } from '../constants';
 import Avatar from './Avatar.js';
 import RadarChart from './RadarChart.js';
@@ -743,31 +744,31 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
     
     return (
         <div className="h-full flex flex-col min-h-0" style={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-            <h4 className="text-center font-bold text-base mb-2 text-gray-400 py-1 flex-shrink-0">획득 보상</h4>
-            <div className="flex-1 min-h-0 overflow-y-auto space-y-2 p-2 bg-gray-900/40 rounded-md" style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', flex: '1 1 0', minHeight: 0, maxHeight: '100%' }}>
+            <h4 className="text-center font-bold text-sm mb-1 text-gray-400 py-0.5 flex-shrink-0">획득 보상</h4>
+            <div className="flex-1 min-h-0 overflow-y-auto space-y-1 p-1.5 bg-gray-900/40 rounded-md" style={{ overflowY: 'auto', WebkitOverflowScrolling: 'touch', flex: '1 1 0', minHeight: 0, maxHeight: '100%' }}>
             {/* 수령 완료 메시지 - 경기 종료 후에만 표시 */}
             {(isTournamentFullyComplete || isUserEliminated) && isClaimed && (
-                <div className="mb-2 px-2 py-1.5 bg-green-900/30 rounded-lg border border-green-700/50">
-                    <p className="text-xs text-green-400 text-center font-semibold">✓ 보상을 수령했습니다.</p>
+                <div className="mb-1 px-1.5 py-1 bg-green-900/30 rounded-lg border border-green-700/50">
+                    <p className="text-[10px] text-green-400 text-center font-semibold">✓ 보상을 수령했습니다.</p>
                 </div>
             )}
             
             {/* 경기 진행 중 안내 */}
             {isInProgress && (
-                <div className="mb-2 px-2 py-1.5 bg-blue-900/30 rounded-lg border border-blue-700/50">
-                    <p className="text-xs text-blue-400 text-center">경기 진행 중 - 누적 보상 표시</p>
+                <div className="mb-1 px-1.5 py-1 bg-blue-900/30 rounded-lg border border-blue-700/50">
+                    <p className="text-[10px] text-blue-400 text-center">경기 진행 중 - 누적 보상 표시</p>
                 </div>
             )}
             
             {/* 랭킹 점수 (경기 진행 중에도 표시) */}
             {scoreReward > 0 && (
-                <div className={`mb-2 bg-green-900/30 px-2 py-2 rounded-lg border border-green-700/50 ${isClaimed ? 'opacity-75' : ''}`}>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xl">🏆</span>
+                <div className={`mb-1 bg-green-900/30 px-1.5 py-1 rounded-lg border border-green-700/50 ${isClaimed ? 'opacity-75' : ''}`}>
+                    <div className="flex items-center gap-1.5">
+                        <span className="text-base">🏆</span>
                         <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-green-300">랭킹 점수: +{scoreReward}점</div>
+                            <div className="text-xs font-semibold text-green-300">랭킹 점수: +{scoreReward}점</div>
                             {userRank > 0 && (
-                                <div className="text-xs text-gray-400">(현재 순위: {userRank}위)</div>
+                                <div className="text-[10px] text-gray-400">(현재 순위: {userRank}위)</div>
                             )}
                         </div>
                     </div>
@@ -776,11 +777,11 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
             
             {/* 누적 골드 (동네바둑리그, 경기 진행 중에도 표시) */}
             {accumulatedGold > 0 && (
-                <div className={`mb-2 bg-yellow-900/30 px-2 py-2 rounded-lg border border-yellow-700/50 ${isClaimed ? 'opacity-75' : ''}`}>
-                    <div className="flex items-center gap-2">
-                        <img src="/images/icon/Gold.png" alt="골드" className="w-6 h-6 flex-shrink-0" />
+                <div className={`mb-1 bg-yellow-900/30 px-1.5 py-1 rounded-lg border border-yellow-700/50 ${isClaimed ? 'opacity-75' : ''}`}>
+                    <div className="flex items-center gap-1.5">
+                        <img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 flex-shrink-0" />
                         <div className="flex-1 min-w-0">
-                            <div className="text-sm font-semibold text-yellow-300">경기 보상: {accumulatedGold.toLocaleString()} 골드</div>
+                            <div className="text-xs font-semibold text-yellow-300">경기 보상: {accumulatedGold.toLocaleString()} 골드</div>
                         </div>
                     </div>
                 </div>
@@ -788,19 +789,19 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
             
             {/* 누적 재료 (전국바둑대회, 경기 진행 중에도 표시) */}
             {Object.keys(accumulatedMaterials).length > 0 && (
-                <div className={`mb-2 ${isClaimed ? 'opacity-75' : ''}`}>
-                    <div className="text-sm font-semibold text-blue-300 mb-1.5">
+                <div className={`mb-1 ${isClaimed ? 'opacity-75' : ''}`}>
+                    <div className="text-xs font-semibold text-blue-300 mb-1">
                         경기 보상 (재료):
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1">
                         {Object.entries(accumulatedMaterials).map(([materialName, quantity]) => {
                             const materialTemplate = MATERIAL_ITEMS[materialName];
                             const imageUrl = materialTemplate?.image || '';
                             return (
-                                <div key={materialName} className="flex items-center gap-2 bg-blue-900/30 px-2 py-1.5 rounded-lg border border-blue-700/50">
-                                    <img src={imageUrl} alt={materialName} className="w-6 h-6 flex-shrink-0" />
+                                <div key={materialName} className="flex items-center gap-1.5 bg-blue-900/30 px-1.5 py-1 rounded-lg border border-blue-700/50">
+                                    <img src={imageUrl} alt={materialName} className="w-5 h-5 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-semibold text-blue-300 truncate">{materialName} x{quantity}</div>
+                                        <div className="text-xs font-semibold text-blue-300 truncate">{materialName} x{quantity}</div>
                                     </div>
                                 </div>
                             );
@@ -811,19 +812,19 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
             
             {/* 누적 장비상자 (월드챔피언십, 경기 진행 중에도 표시) */}
             {Object.keys(accumulatedEquipmentBoxes).length > 0 && (
-                <div className={`mb-2 ${isClaimed ? 'opacity-75' : ''}`}>
-                    <div className="text-sm font-semibold text-purple-300 mb-1.5">
+                <div className={`mb-1 ${isClaimed ? 'opacity-75' : ''}`}>
+                    <div className="text-xs font-semibold text-purple-300 mb-1">
                         경기 보상 (장비상자):
                     </div>
-                    <div className="flex flex-col gap-1.5">
+                    <div className="flex flex-col gap-1">
                         {Object.entries(accumulatedEquipmentBoxes).map(([boxName, quantity]) => {
                             const boxTemplate = CONSUMABLE_ITEMS.find(i => i.name === boxName);
                             const imageUrl = boxTemplate?.image || '';
                             return (
-                                <div key={boxName} className="flex items-center gap-2 bg-purple-900/30 px-2 py-1.5 rounded-lg border border-purple-700/50">
-                                    <img src={imageUrl} alt={boxName} className="w-6 h-6 flex-shrink-0" />
+                                <div key={boxName} className="flex items-center gap-1.5 bg-purple-900/30 px-1.5 py-1 rounded-lg border border-purple-700/50">
+                                    <img src={imageUrl} alt={boxName} className="w-5 h-5 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                        <div className="text-sm font-semibold text-purple-300 truncate">{boxName} x{quantity}</div>
+                                        <div className="text-xs font-semibold text-purple-300 truncate">{boxName} x{quantity}</div>
                                     </div>
                                 </div>
                             );
@@ -834,9 +835,9 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
             
             {/* 최종 순위 보상 (경기 종료 후 또는 보상 수령 후에도 표시) - 가로 막대 형태 */}
             {((isTournamentFullyComplete || isUserEliminated || isClaimed) && reward) && (
-                <div className="mt-3 pt-3 border-t border-gray-700">
-                    <div className="text-sm font-semibold text-gray-300 mb-2 text-center">최종 순위 보상</div>
-                    <div className="flex flex-col gap-1.5">
+                <div className="mt-2 pt-2 border-t border-gray-700">
+                    <div className="text-xs font-semibold text-gray-300 mb-1 text-center">최종 순위 보상</div>
+                    <div className="flex flex-col gap-1">
                         {(reward.items || []).map((item, index) => {
                             const itemName = 'itemId' in item ? item.itemId : (item as any).name;
                             const itemTemplate = CONSUMABLE_ITEMS.find(i => i.name === itemName);
@@ -849,10 +850,10 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
                             const textColor = isGold ? 'text-yellow-300' : isDiamond ? 'text-blue-300' : 'text-purple-300';
                             
                             return (
-                                <div key={index} className={`flex items-center gap-2 ${bgColor} px-2 py-1.5 rounded-lg border ${borderColor} ${isClaimed ? 'opacity-75' : ''}`}>
-                                    <img src={imageUrl} alt={itemName} className="w-6 h-6 flex-shrink-0" />
+                                <div key={index} className={`flex items-center gap-1.5 ${bgColor} px-1.5 py-1 rounded-lg border ${borderColor} ${isClaimed ? 'opacity-75' : ''}`}>
+                                    <img src={imageUrl} alt={itemName} className="w-5 h-5 flex-shrink-0" />
                                     <div className="flex-1 min-w-0">
-                                        <div className={`text-sm font-semibold ${textColor} truncate`}>{itemName} x{item.quantity}</div>
+                                        <div className={`text-xs font-semibold ${textColor} truncate`}>{itemName} x{item.quantity}</div>
                                     </div>
                                 </div>
                             );
@@ -863,28 +864,28 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
             
             {/* 경기 진행 중이면서 최종 보상이 아직 없는 경우 */}
             {isInProgress && (!reward || (reward.items || []).length === 0) && (
-                <div className="mt-3 pt-3 border-t border-gray-700">
-                    <p className="text-xs text-gray-500 text-center">최종 순위 보상은 경기 종료 후 표시됩니다.</p>
+                <div className="mt-2 pt-2 border-t border-gray-700">
+                    <p className="text-[10px] text-gray-500 text-center">최종 순위 보상은 경기 종료 후 표시됩니다.</p>
                 </div>
             )}
             
             {/* 보상이 하나도 없는 경우 */}
             {scoreReward === 0 && accumulatedGold === 0 && Object.keys(accumulatedMaterials).length === 0 && Object.keys(accumulatedEquipmentBoxes).length === 0 && (!reward || (reward.items || []).length === 0) && (
                 <div className="flex items-center justify-center h-full">
-                    <p className="text-xs text-gray-500 text-center">획득한 보상이 없습니다.</p>
+                    <p className="text-[10px] text-gray-500 text-center">획득한 보상이 없습니다.</p>
                 </div>
             )}
             </div>
             
             {/* 하단 보상받기 버튼 영역 */}
-            <div className="flex-shrink-0 pt-2 border-t border-gray-700 mt-2">
+            <div className="flex-shrink-0 pt-1.5 border-t border-gray-700 mt-1.5">
                 {/* 경기 종료 후 보상받기 버튼 */}
                 {(isTournamentFullyComplete || isUserEliminated) && reward && (
                     <>
                         {isClaimed ? (
                             <button
                                 disabled
-                                className="w-full bg-green-600/50 text-green-300 py-2 px-4 rounded-lg font-semibold text-sm cursor-not-allowed opacity-75"
+                                className="w-full bg-green-600/50 text-green-300 py-1.5 px-3 rounded-lg font-semibold text-xs cursor-not-allowed opacity-75"
                             >
                                 ✓ 보상 수령 완료
                             </button>
@@ -892,7 +893,7 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
                             <button
                                 onClick={handleClaim}
                                 disabled={!canClaimReward}
-                                className={`w-full py-2 px-4 rounded-lg font-semibold text-sm transition-colors ${
+                                className={`w-full py-1.5 px-3 rounded-lg font-semibold text-xs transition-colors ${
                                     canClaimReward 
                                         ? 'bg-green-600 hover:bg-green-700 text-white cursor-pointer' 
                                         : 'bg-gray-600 text-gray-400 cursor-not-allowed'
@@ -906,7 +907,7 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
                 
                 {/* 경기 진행 중 또는 다음경기 버튼이 있을 때 안내 메시지 */}
                 {(isInProgress || isRoundComplete) && (
-                    <div className="w-full bg-blue-900/30 text-blue-300 py-2 px-4 rounded-lg font-semibold text-sm text-center border border-blue-700/50">
+                    <div className="w-full bg-blue-900/30 text-blue-300 py-1.5 px-3 rounded-lg font-semibold text-xs text-center border border-blue-700/50">
                         모든 경기 완료 후 보상수령
                     </div>
                 )}
@@ -1774,7 +1775,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         prevStatusRef.current = status;
     }, [tournament, safeRounds]);
     
-    const handleBackClick = useCallback(() => {
+    const handleBackClickRaw = useCallback(() => {
         if (tournament.status === 'round_in_progress') {
             if (window.confirm('경기가 진행 중입니다. 현재 경기를 기권하시겠습니까? 현재 경기는 패배 처리됩니다.')) {
                 onAction({ type: 'FORFEIT_CURRENT_MATCH', payload: { type: tournament.type } });
@@ -1784,11 +1785,15 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         }
     }, [onBack, onAction, tournament.status, tournament.type]);
 
-    const handleForfeitClick = useCallback(() => {
+    const handleForfeitClickRaw = useCallback(() => {
         if (window.confirm('토너먼트를 포기하고 나가시겠습니까? 오늘의 참가 기회는 사라집니다.')) {
             onAction({ type: 'FORFEIT_TOURNAMENT', payload: { type: tournament.type } });
         }
     }, [onAction, tournament.type]);
+
+    // 버튼 클릭 스로틀링 적용
+    const { onClick: handleBackClick } = useButtonClickThrottle(handleBackClickRaw);
+    const { onClick: handleForfeitClick } = useButtonClickThrottle(handleForfeitClickRaw);
 
     const isSimulating = tournament.status === 'round_in_progress';
     const currentSimMatch = isSimulating && tournament.currentSimulatingMatch 

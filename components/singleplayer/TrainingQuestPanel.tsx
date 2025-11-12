@@ -196,7 +196,10 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
                 }, 3000);
             }
             
-            setSelectedMissionForUpgrade(null);
+            // 모달을 닫지 않고 유지하여 강화된 정보로 동기화되도록 함
+            // WebSocket 업데이트를 기다려서 인벤토리가 업데이트되면 모달이 자동으로 강화된 정보를 표시
+            // 모달은 사용자가 직접 닫을 때까지 열려있음
+            await new Promise(resolve => setTimeout(resolve, 200)); // WebSocket 업데이트 대기
         } catch (error) {
             console.error('[TrainingQuestPanel] Level up error:', error);
         }

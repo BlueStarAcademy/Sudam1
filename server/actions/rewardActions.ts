@@ -17,6 +17,7 @@ import {
 } from '../../constants.js';
 import { calculateRanks } from '../tournamentService.js';
 import { addItemsToInventory, createItemInstancesFromReward } from '../../utils/inventoryUtils.js';
+import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
 
 
 type HandleActionResult = {
@@ -519,14 +520,22 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 // 보상 수령 후에도 토너먼트 상태를 유지하기 위해 DB에 저장
                 (freshUser as any)[tourneyKey] = tournamentState;
                 
-                await db.updateUser(freshUser);
+                // 사용자 캐시 업데이트 (즉시 반영)
+                const { updateUserCache } = await import('../gameCache.js');
+                updateUserCache(freshUser);
                 
-                // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
-                const updatedUser = JSON.parse(JSON.stringify(freshUser));
+                // 선택적 필드만 반환 (메시지 크기 최적화)
+                const updatedUser = getSelectiveUserUpdate(freshUser, 'CLAIM_TOURNAMENT_REWARD', { includeAll: true });
                 
-                // WebSocket으로 사용자 업데이트 브로드캐스트
+                // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+                const fullUserForBroadcast = JSON.parse(JSON.stringify(freshUser));
                 const { broadcast } = await import('../socket.js');
-                broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUser } });
+                broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: fullUserForBroadcast } });
+                
+                // DB 저장은 비동기로 처리하여 응답 지연 최소화
+                db.updateUser(freshUser).catch((error: any) => {
+                    console.error(`[CLAIM_TOURNAMENT_REWARD] Error updating user ${freshUser.id}:`, error);
+                });
                 
                 const allObtainedItems: any[] = [...accumulatedMaterials, ...accumulatedEquipmentBoxes];
                 if (accumulatedGold > 0) {
@@ -584,14 +593,22 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             // 보상 수령 후에도 토너먼트 상태를 유지하기 위해 DB에 저장
             (freshUser as any)[tourneyKey] = tournamentState;
             
-            await db.updateUser(freshUser);
+            // 사용자 캐시 업데이트 (즉시 반영)
+            const { updateUserCache } = await import('../gameCache.js');
+            updateUserCache(freshUser);
             
-            // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
-            const updatedUser = JSON.parse(JSON.stringify(freshUser));
+            // 선택적 필드만 반환 (메시지 크기 최적화)
+            const updatedUser = getSelectiveUserUpdate(freshUser, 'CLAIM_TOURNAMENT_REWARD', { includeAll: true });
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(freshUser));
             const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUser } });
+            broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: fullUserForBroadcast } });
+            
+            // DB 저장은 비동기로 처리하여 응답 지연 최소화
+            db.updateUser(freshUser).catch((error: any) => {
+                console.error(`[CLAIM_TOURNAMENT_REWARD] Error updating user ${freshUser.id}:`, error);
+            });
 
             const allObtainedItems: InventoryItem[] = itemsToCreate.map(item => ({
                 ...item,

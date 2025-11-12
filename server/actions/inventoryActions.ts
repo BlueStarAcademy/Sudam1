@@ -576,31 +576,23 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             user.actionPoints.max = effects.maxActionPoints;
             user.actionPoints.current = Math.min(user.actionPoints.current, user.actionPoints.max);
             
-            try {
-                // 데이터베이스에 저장
-                await db.updateUser(user);
-                
-                // 저장 후 DB에서 다시 읽어서 검증
-                const savedUser = await db.getUser(user.id);
-                if (!savedUser) {
-                    console.error(`[TOGGLE_EQUIP_ITEM] User not found after save: ${user.id}`);
-                    return { error: '저장 후 사용자를 찾을 수 없습니다.' };
-                }
-                
-                // 저장된 사용자 데이터 사용 (DB에 실제로 저장된 것)
-                user = savedUser;
-            } catch (error: any) {
-                console.error(`[TOGGLE_EQUIP_ITEM] Error updating user ${user.id}:`, error);
-                console.error(`[TOGGLE_EQUIP_ITEM] Error stack:`, error.stack);
-                return { error: '데이터 저장 중 오류가 발생했습니다.' };
-            }
+            // 사용자 캐시 업데이트 (즉시 반영)
+            const { updateUserCache } = await import('../gameCache.js');
+            updateUserCache(user);
             
             // 선택적 필드만 반환 (메시지 크기 최적화)
             const updatedUser = getSelectiveUserUpdate(user, 'TOGGLE_EQUIP_ITEM', { includeAll: true });
             
             // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+            // 캐시에 업데이트된 사용자 데이터를 사용하여 즉시 반영
             const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
+            
+            // DB 저장은 비동기로 처리하여 응답 지연 최소화
+            db.updateUser(user).catch((error: any) => {
+                console.error(`[TOGGLE_EQUIP_ITEM] Error updating user ${user.id}:`, error);
+                console.error(`[TOGGLE_EQUIP_ITEM] Error stack:`, error.stack);
+            });
             
             return { clientResponse: { updatedUser } };
         }

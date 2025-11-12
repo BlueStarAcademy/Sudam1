@@ -70,6 +70,7 @@ const getXpRequirementForLevel = (level: number): number => {
 
 const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ session, currentUser, onAction, onClose }) => {
     const [viewportWidth, setViewportWidth] = useState<number | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -134,30 +135,71 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
     }, [isWinner, session.winReason, currentStage]);
 
     const handleRetry = async () => {
+        if (isProcessing) return;
+        setIsProcessing(true);
         try {
-            onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
+            // onAction이 완료될 때까지 기다림 (gameId 반환 가능)
+            const result = await onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
+            const gameId = (result as any)?.gameId;
+            
+            if (gameId) {
+                // gameId를 받았으면 즉시 라우팅 업데이트
+                const targetHash = `#/game/${gameId}`;
+                if (window.location.hash !== targetHash) {
+                    window.location.hash = targetHash;
+                }
+                // 라우팅 업데이트 후 모달 닫기
+                await new Promise(resolve => setTimeout(resolve, 100));
+            } else {
+                // gameId가 없으면 WebSocket 업데이트를 기다림
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
             onClose();
         } catch (error) {
             console.error('[SinglePlayerSummaryModal] Failed to retry stage:', error);
+            setIsProcessing(false);
         }
     };
 
     const handleNextStage = async () => {
-        if (!canTryNext || !nextStage) return;
+        if (!canTryNext || !nextStage || isProcessing) return;
+        setIsProcessing(true);
         try {
-            onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } });
+            // onAction이 완료될 때까지 기다림 (gameId 반환 가능)
+            const result = await onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } });
+            const gameId = (result as any)?.gameId;
+            
+            if (gameId) {
+                // gameId를 받았으면 즉시 라우팅 업데이트
+                const targetHash = `#/game/${gameId}`;
+                if (window.location.hash !== targetHash) {
+                    window.location.hash = targetHash;
+                }
+                // 라우팅 업데이트 후 모달 닫기
+                await new Promise(resolve => setTimeout(resolve, 100));
+            } else {
+                // gameId가 없으면 WebSocket 업데이트를 기다림
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
             onClose();
         } catch (error) {
             console.error('[SinglePlayerSummaryModal] Failed to start next stage:', error);
+            setIsProcessing(false);
         }
     };
 
     const handleExitToLobby = async () => {
+        if (isProcessing) return;
+        setIsProcessing(true);
         sessionStorage.setItem('postGameRedirect', '#/singleplayer');
         try {
-            onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } });
+            // onAction이 완료될 때까지 기다림 (Promise 반환)
+            await onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } });
+            // 상태 업데이트를 위한 짧은 지연 (WebSocket 업데이트 대기)
+            await new Promise(resolve => setTimeout(resolve, 200));
         } catch (error) {
             console.error('[SinglePlayerSummaryModal] Failed to leave AI game:', error);
+            setIsProcessing(false);
         } finally {
             onClose();
             setTimeout(() => {
@@ -277,8 +319,8 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                         onClick={handleNextStage}
                         colorScheme="none"
                         style={{ fontSize: isMobileView ? 'clamp(0.68rem,2vw,0.8rem)' : 'clamp(0.82rem,1.5vw,0.95rem)' }}
-                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} ${canTryNext ? 'border-indigo-300/60 bg-gradient-to-br from-indigo-600/85 via-sky-500/80 to-cyan-400/80 text-white shadow-[0_18px_34px_-20px_rgba(59,130,246,0.6)] hover:-translate-y-0.5 hover:shadow-[0_22px_40px_-18px_rgba(56,189,248,0.55)]' : 'border-slate-500/60 bg-slate-800/70 text-slate-300 opacity-70 cursor-not-allowed'}`}
-                        disabled={!canTryNext}
+                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} ${canTryNext && !isProcessing ? 'border-indigo-300/60 bg-gradient-to-br from-indigo-600/85 via-sky-500/80 to-cyan-400/80 text-white shadow-[0_18px_34px_-20px_rgba(59,130,246,0.6)] hover:-translate-y-0.5 hover:shadow-[0_22px_40px_-18px_rgba(56,189,248,0.55)]' : 'border-slate-500/60 bg-slate-800/70 text-slate-300 opacity-70 cursor-not-allowed'}`}
+                        disabled={!canTryNext || isProcessing}
                     >
                         <span className="uppercase tracking-[0.12em] text-[0.88em] text-white drop-shadow-sm">다음 단계</span>
                         {nextStage && (
@@ -297,7 +339,8 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                         onClick={handleRetry}
                         colorScheme="none"
                         style={{ fontSize: isMobileView ? 'clamp(0.68rem,2vw,0.8rem)' : 'clamp(0.82rem,1.5vw,0.95rem)' }}
-                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} border-amber-300/70 bg-gradient-to-br from-amber-400/85 via-yellow-400/75 to-orange-400/80 text-slate-900 shadow-[0_18px_34px_-18px_rgba(251,191,36,0.45)] hover:-translate-y-0.5 hover:shadow-[0_22px_42px_-18px_rgba(251,191,36,0.55)]`}
+                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} ${!isProcessing ? 'border-amber-300/70 bg-gradient-to-br from-amber-400/85 via-yellow-400/75 to-orange-400/80 text-slate-900 shadow-[0_18px_34px_-18px_rgba(251,191,36,0.45)] hover:-translate-y-0.5 hover:shadow-[0_22px_42px_-18px_rgba(251,191,36,0.55)]' : 'border-slate-500/60 bg-slate-800/70 text-slate-300 opacity-70 cursor-not-allowed'}`}
+                        disabled={isProcessing}
                     >
                         <span className="uppercase tracking-[0.12em] text-[0.88em] text-slate-900">재도전</span>
                         {retryActionPointCost > 0 && (
@@ -311,7 +354,8 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                         onClick={handleExitToLobby}
                         colorScheme="none"
                         style={{ fontSize: isMobileView ? 'clamp(0.68rem,2vw,0.8rem)' : 'clamp(0.82rem,1.5vw,0.95rem)' }}
-                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} border-slate-500/60 bg-gradient-to-br from-slate-700/80 via-slate-800/80 to-slate-900/85 text-slate-100 shadow-[0_18px_32px_-20px_rgba(148,163,184,0.45)] hover:-translate-y-0.5 hover:shadow-[0_22px_40px_-20px_rgba(203,213,225,0.5)]`}
+                        className={`group relative w-full flex flex-col items-center justify-center rounded-xl border-2 backdrop-blur-sm font-semibold leading-tight tracking-wide whitespace-normal break-keep transition-all duration-200 ${isMobileView ? 'px-2 py-1.5 gap-0.5' : 'px-3.5 py-2.5 gap-1'} ${!isProcessing ? 'border-slate-500/60 bg-gradient-to-br from-slate-700/80 via-slate-800/80 to-slate-900/85 text-slate-100 shadow-[0_18px_32px_-20px_rgba(148,163,184,0.45)] hover:-translate-y-0.5 hover:shadow-[0_22px_40px_-20px_rgba(203,213,225,0.5)]' : 'border-slate-500/60 bg-slate-800/70 text-slate-300 opacity-70 cursor-not-allowed'}`}
+                        disabled={isProcessing}
                     >
                         <span className="uppercase tracking-[0.12em] text-[0.88em]">나가기</span>
                         <span className="text-[0.74em] font-medium opacity-70">싱글플레이 로비</span>

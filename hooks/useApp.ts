@@ -62,8 +62,8 @@ export const useApp = () => {
             ...patch,
             // inventory는 배열이므로 완전히 교체 (새로운 참조로)
             inventory: mergedInventory,
-            // equipment는 객체이므로 병합
-            equipment: patch.equipment !== undefined ? { ...base.equipment, ...patch.equipment } : base.equipment,
+            // equipment는 객체이므로 완전히 교체 (서버에서 보내는 equipment는 항상 전체 상태)
+            equipment: patch.equipment !== undefined ? (patch.equipment || {}) : base.equipment,
             // actionPoints는 객체이므로 병합
             actionPoints: patch.actionPoints !== undefined ? { ...base.actionPoints, ...patch.actionPoints } : base.actionPoints,
             // stats 객체들도 병합
@@ -470,7 +470,7 @@ export const useApp = () => {
     }, [currentUser]);
 
     // --- Action Handler ---
-    const handleAction = useCallback(async (action: ServerAction) => {
+    const handleAction = useCallback(async (action: ServerAction): Promise<{ gameId?: string } | void> => {
         if (action.type === 'CLEAR_TOURNAMENT_SESSION' && currentUserRef.current) {
             applyUserUpdate({
                     lastNeighborhoodTournament: null,
@@ -792,13 +792,14 @@ export const useApp = () => {
                     const gameId = result.clientResponse.gameId;
                     console.log(`[handleAction] ${action.type} - gameId received:`, gameId);
                     
+                    // 즉시 라우팅 업데이트 (게임이 생성되었으므로)
                     const targetHash = `#/game/${gameId}`;
                     if (window.location.hash !== targetHash) {
                         console.log('[handleAction] Setting immediate route to new game:', targetHash);
                         window.location.hash = targetHash;
                     }
                     
-                    // WebSocket 업데이트를 기다리면서 여러 번 시도
+                    // WebSocket 업데이트를 기다리면서 여러 번 시도 (백그라운드에서)
                     let attempts = 0;
                     const maxAttempts = 30;
                     const tryRoute = () => {
@@ -836,7 +837,9 @@ export const useApp = () => {
                                             if (isInGame || hasStatus) {
                                                 console.log('[handleAction] Game found and user status confirmed, routing:', gameId);
                                     setTimeout(() => {
-                                        window.location.hash = `#/game/${gameId}`;
+                                        if (window.location.hash !== targetHash) {
+                                            window.location.hash = targetHash;
+                                        }
                                     }, 100);
                                             }
                                         } else {
@@ -863,13 +866,18 @@ export const useApp = () => {
                                     // 최대 시도 횟수에 도달했어도 라우팅 시도 (게임이 생성되었으므로)
                                     console.warn('[handleAction] Max attempts reached, routing anyway:', gameId);
                                     setTimeout(() => {
-                                        window.location.hash = `#/game/${gameId}`;
+                                        if (window.location.hash !== targetHash) {
+                                            window.location.hash = targetHash;
+                                        }
                                     }, 100);
                                 }
                     };
                     
                     // 첫 시도는 200ms 후에 (WebSocket 메시지를 받을 시간을 줌)
                     setTimeout(tryRoute, 200);
+                    
+                    // gameId를 반환하여 컴포넌트에서 사용할 수 있도록 함
+                    return { gameId };
                 }
             }
         } catch (err: any) {

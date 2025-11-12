@@ -70,6 +70,22 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
         }
     }, [currentUserWithStatus.inventory, activeTab]);
 
+    // Sync disassembly selection with inventory (remove items that no longer exist)
+    useEffect(() => {
+        if (activeTab === 'disassemble') {
+            setSelectedForDisassembly(prev => {
+                const newSet = new Set<string>();
+                prev.forEach(itemId => {
+                    // Only keep items that still exist in inventory
+                    if (currentUserWithStatus.inventory.find(item => item.id === itemId)) {
+                        newSet.add(itemId);
+                    }
+                });
+                return newSet;
+            });
+        }
+    }, [currentUserWithStatus.inventory, activeTab]);
+
     const handleSelectItem = useCallback((item: InventoryItem) => {
         if (activeTab === 'combine') {
             const emptyIndex = combinationItems.findIndex(i => i === null);
