@@ -47,6 +47,33 @@ let lastOfflineRegenAt = 0;
 const DAILY_TASK_CHECK_INTERVAL_MS = 60_000; // 1 minute
 let lastDailyTaskCheckAt = 0;
 
+// 만료된 negotiation 정리 함수
+const cleanupExpiredNegotiations = (volatileState: types.VolatileState, now: number): void => {
+    const expiredNegIds: string[] = [];
+    
+    for (const [negId, neg] of Object.entries(volatileState.negotiations)) {
+        if (neg.deadline && now > neg.deadline && neg.status === 'pending') {
+            expiredNegIds.push(negId);
+            
+            // 사용자 상태 복구
+            if (volatileState.userStatuses[neg.challenger.id]?.status === types.UserStatus.Negotiating) {
+                volatileState.userStatuses[neg.challenger.id].status = types.UserStatus.Waiting;
+            }
+            if (volatileState.userStatuses[neg.opponent.id]?.status === types.UserStatus.Negotiating) {
+                volatileState.userStatuses[neg.opponent.id].status = types.UserStatus.Waiting;
+            }
+        }
+    }
+    
+    for (const negId of expiredNegIds) {
+        delete volatileState.negotiations[negId];
+    }
+    
+    if (expiredNegIds.length > 0) {
+        broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
+    }
+};
+
 const processSinglePlayerMissions = (user: types.User): types.User => {
     const now = Date.now();
     if (!user.singlePlayerMissions) {
@@ -177,14 +204,15 @@ const startServer = async () => {
 
     const processActiveTournamentSimulations = async () => {
         if (isProcessingTournamentTick) return;
-        if (!volatileState.activeTournaments || Object.keys(volatileState.activeTournaments).length === 0) {
+        const activeTournaments = volatileState.activeTournaments;
+        if (!activeTournaments || Object.keys(activeTournaments).length === 0) {
             return;
         }
 
         isProcessingTournamentTick = true;
         try {
             // 각 토너먼트를 독립적으로 병렬 처리 (PVE 게임처럼)
-            const tournamentEntries = Object.entries(volatileState.activeTournaments);
+            const tournamentEntries = Object.entries(activeTournaments);
             
             // 각 토너먼트를 독립적으로 처리하는 함수
             const processTournament = async ([userId, activeState]: [string, types.TournamentState]) => {
@@ -193,13 +221,13 @@ const startServer = async () => {
                     const { getCachedUser, updateUserCache } = await import('./gameCache.js');
                     const user = await getCachedUser(userId);
                     if (!user) {
-                        delete volatileState.activeTournaments[userId];
+                        delete activeTournaments[userId];
                         return;
                     }
 
                     const tournamentState = getTournamentStateByType(user, activeState.type);
                     if (!tournamentState || tournamentState.status !== 'round_in_progress') {
-                        delete volatileState.activeTournaments[userId];
+                        delete activeTournaments[userId];
                         return;
                     }
 
@@ -209,7 +237,7 @@ const startServer = async () => {
                     }
 
                     // Keep volatile state reference updated
-                    volatileState.activeTournaments[userId] = tournamentState;
+                    activeTournaments[userId] = tournamentState;
 
                     // 사용자 캐시 업데이트
                     updateUserCache(user);
@@ -222,7 +250,7 @@ const startServer = async () => {
                     broadcast({ type: 'USER_UPDATE', payload: { [user.id]: sanitizedUser } });
 
                     if (tournamentState.status !== 'round_in_progress') {
-                        delete volatileState.activeTournaments[userId];
+                        delete activeTournaments[userId];
                     }
                 } catch (error) {
                     console.error(`[TournamentTicker] Failed to advance simulation for user ${userId}`, error);
@@ -238,17 +266,17 @@ const startServer = async () => {
         }
     };
 
-    // Tournament simulation ticker - 정확히 1초마다 실행되도록 setTimeout 체인 사용
-    const scheduleTournamentTick = () => {
-        const startTime = Date.now();
-        processActiveTournamentSimulations().finally(() => {
-            const elapsed = Date.now() - startTime;
-            // 다음 틱은 정확히 1초 후에 실행 (실행 시간 보정)
-            const nextDelay = Math.max(0, 1000 - elapsed);
-            setTimeout(scheduleTournamentTick, nextDelay);
-        });
-    };
-    scheduleTournamentTick();
+    // Tournament simulation ticker - 클라이언트에서 실행하도록 변경되어 비활성화
+    // const scheduleTournamentTick = () => {
+    //     const startTime = Date.now();
+    //     processActiveTournamentSimulations().finally(() => {
+    //         const elapsed = Date.now() - startTime;
+    //         // 다음 틱은 정확히 1초 후에 실행 (실행 시간 보정)
+    //         const nextDelay = Math.max(0, 1000 - elapsed);
+    //         setTimeout(scheduleTournamentTick, nextDelay);
+    //     });
+    // };
+    // scheduleTournamentTick();
 
     const scheduleMainLoop = (delay = 1000) => {
         setTimeout(async () => {
@@ -298,6 +326,9 @@ const startServer = async () => {
             // 캐시 정리 (주기적으로 실행)
             const { cleanupExpiredCache } = await import('./gameCache.js');
             cleanupExpiredCache();
+            
+            // 만료된 negotiation 정리
+            cleanupExpiredNegotiations(volatileState, now);
 
             const activeGames = await db.getAllActiveGames();
             const originalGamesJson = activeGames.map(g => JSON.stringify(g));

@@ -19,6 +19,10 @@ import SinglePlayerInfoPanel from './components/game/SinglePlayerInfoPanel.js';
 import SinglePlayerGameDescriptionModal from './components/SinglePlayerGameDescriptionModal.js';
 import SinglePlayerSidebar from './components/game/SinglePlayerSidebar.js';
 import { useClientTimer } from './hooks/useClientTimer.js';
+import { calculateSimpleAiMove } from './client/goAiBotClient.js';
+
+// AI 유저 ID (싱글플레이에서 AI 차례 판단용)
+const AI_USER_ID = 'ai-player-01';
 
 function usePrevious<T>(value: T): T | undefined {
   const ref = useRef<T | undefined>(undefined);
@@ -63,6 +67,10 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     const pauseCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [pauseButtonCooldown, setPauseButtonCooldown] = useState(0);
     const clientTimes = useClientTimer(session, session.isSinglePlayer ? { isPaused } : {});
+    
+    // 보드 잠금 메커니즘: AI가 돌을 둔 직후 최신 serverRevision을 받을 때까지 보드 잠금
+    const [lastReceivedServerRevision, setLastReceivedServerRevision] = useState<number>(session.serverRevision ?? 0);
+    const [isBoardLocked, setIsBoardLocked] = useState(false);
     
     const prevGameStatus = usePrevious(gameStatus);
     const prevCurrentPlayer = usePrevious(currentPlayer);
@@ -112,6 +120,13 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         if (shouldShowModal) {
             setShowResultModal(true);
             if (gameStatus === 'ended') {
+                setShowFinalTerritory(true);
+            }
+        }
+        
+        // 계가가 완료되었을 때(analysisResult가 있을 때) 영토 표시 활성화
+        if (gameStatus === 'ended' || gameStatus === 'scoring') {
+            if (session.analysisResult?.['system']) {
                 setShowFinalTerritory(true);
             }
         }
@@ -223,6 +238,10 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         audioService.stopTimerWarning();
         if (isSpectator || gameStatus === 'missile_animating') return;
         if (session.isSinglePlayer && isPaused) return;
+        if (session.isSinglePlayer && isBoardLocked) {
+            console.log('[Game] Board is locked, ignoring click', { isBoardLocked, serverRevision: session.serverRevision });
+            return;
+        }
 
         if (isMobile && settings.features.mobileConfirm && isMyTurn && !isItemModeActive) {
             if (pendingMove && pendingMove.x === x && pendingMove.y === y) return;
@@ -247,8 +266,22 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
             if (payload.isHidden) audioService.stopScanBgm();
         }
 
-        if (actionType) handlers.handleAction({ type: actionType, payload } as ServerAction);
-    }, [isSpectator, gameStatus, isMyTurn, gameId, handlers.handleAction, currentUser.id, player1.id, session.baseStones_p1, session.baseStones_p2, session.settings.baseStones, mode, isMobile, settings.features.mobileConfirm, pendingMove, isItemModeActive, session.isSinglePlayer, isPaused]);
+        if (actionType) {
+            console.log('[Game] Sending action:', { actionType, payload, isMyTurn, myPlayerEnum, currentPlayer, gameStatus });
+            handlers.handleAction({ type: actionType, payload } as ServerAction);
+        } else {
+            console.log('[Game] No action type determined', { 
+                isMyTurn, 
+                myPlayerEnum, 
+                currentPlayer, 
+                gameStatus,
+                mode,
+                blackPlayerId: session.blackPlayerId,
+                whitePlayerId: session.whitePlayerId,
+                currentUser: currentUser.id
+            });
+        }
+    }, [isSpectator, gameStatus, isMyTurn, gameId, handlers.handleAction, currentUser.id, player1.id, session.baseStones_p1, session.baseStones_p2, session.settings.baseStones, mode, isMobile, settings.features.mobileConfirm, pendingMove, isItemModeActive, session.isSinglePlayer, isPaused, isBoardLocked]);
 
     const handleConfirmMove = useCallback(() => {
         audioService.stopTimerWarning();
@@ -390,7 +423,172 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         setPauseButtonCooldown(0);
         pauseStartedAtRef.current = null;
         clearPauseCountdown();
-    }, [session.id, clearPauseCountdown]);
+        // 게임이 변경되면 보드 잠금 상태 초기화
+        setIsBoardLocked(false);
+        setLastReceivedServerRevision(session.serverRevision ?? 0);
+    }, [session.id, clearPauseCountdown, session.serverRevision]);
+
+    // currentPlayer 변경 감지: AI가 돌을 둔 경우 보드 잠금
+    useEffect(() => {
+        if (session.isSinglePlayer && prevCurrentPlayer !== undefined) {
+            // 싱글플레이에서는 blackPlayerId가 사용자, whitePlayerId가 AI
+            const myPlayerEnum = blackPlayerId === currentUser.id ? Player.Black : (whitePlayerId === currentUser.id ? Player.White : Player.None);
+            const wasMyTurn = prevCurrentPlayer === myPlayerEnum;
+            const isNowMyTurn = currentPlayer === myPlayerEnum;
+            
+            // AI가 돌을 둔 경우 (내 턴이 아니었다가 내 턴이 된 경우는 제외)
+            if (wasMyTurn && !isNowMyTurn) {
+                console.log('[Game] AI moved, locking board until serverRevision update', { 
+                    prevCurrentPlayer, 
+                    currentPlayer, 
+                    myPlayerEnum,
+                    wasMyTurn,
+                    isNowMyTurn
+                });
+                setIsBoardLocked(true);
+            }
+        }
+    }, [currentPlayer, prevCurrentPlayer, session.isSinglePlayer, currentUser.id, blackPlayerId, whitePlayerId]);
+
+    // serverRevision 변경 감지: 최신 상태를 받은 경우 보드 잠금 해제
+    useEffect(() => {
+        if (session.isSinglePlayer && session.serverRevision !== undefined) {
+            const newRevision = session.serverRevision;
+            if (newRevision > lastReceivedServerRevision) {
+                setLastReceivedServerRevision(newRevision);
+                // 최신 상태를 받았으므로 잠금 해제
+                if (isBoardLocked) {
+                    console.log('[Game] Received latest serverRevision, unlocking board');
+                    setIsBoardLocked(false);
+                }
+            }
+        }
+    }, [session.serverRevision, session.isSinglePlayer, lastReceivedServerRevision, isBoardLocked]);
+
+    // 싱글플레이: 클라이언트 측 AI 자동 처리 (서버 부하 최소화)
+    // 보드 잠금은 사용자 입력만 막는 것이므로, AI 수 계산은 보드 잠금과 독립적으로 실행
+    const aiMoveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const lastAiMoveRef = useRef<{ gameId: string; moveHistoryLength: number; player: Player } | null>(null);
+    
+    useEffect(() => {
+        // 이전 timeout이 있으면 취소
+        if (aiMoveTimeoutRef.current) {
+            clearTimeout(aiMoveTimeoutRef.current);
+            aiMoveTimeoutRef.current = null;
+        }
+        
+        // 게임이 종료되었거나 일시정지되었거나 플레이 중이 아니면 AI 수를 보내지 않음
+        if (!session.isSinglePlayer || isPaused || gameStatus !== 'playing') {
+            lastAiMoveRef.current = null;
+            return;
+        }
+        if (currentPlayer === Player.None) {
+            lastAiMoveRef.current = null;
+            return;
+        }
+        
+        // 게임이 제대로 초기화되지 않았으면 AI 수를 보내지 않음
+        if (!session.boardState || !Array.isArray(session.boardState) || session.boardState.length === 0) return;
+        if (!session.blackPlayerId || !session.whitePlayerId) return;
+        
+        // 게임 ID가 유효한지 확인 (재도전 시 게임 ID가 변경될 수 있음)
+        if (!session.id || typeof session.id !== 'string') return;
+
+        const aiPlayerId = currentPlayer === Player.Black ? session.blackPlayerId : session.whitePlayerId;
+        const isAiTurn = aiPlayerId === AI_USER_ID;
+
+        if (isAiTurn) {
+            const moveHistoryLength = session.moveHistory?.length || 0;
+            
+            // 이미 같은 게임, 같은 moveHistory 길이, 같은 플레이어에 대해 AI 수를 보냈는지 확인
+            // (중복 전송 방지)
+            if (lastAiMoveRef.current &&
+                lastAiMoveRef.current.gameId === session.id &&
+                lastAiMoveRef.current.moveHistoryLength === moveHistoryLength &&
+                lastAiMoveRef.current.player === currentPlayer) {
+                // 이미 이 상태에 대해 AI 수를 보냈으므로 무시
+                return;
+            }
+            
+            // 클라이언트 측에서 AI 수 계산
+            const aiLevel = session.settings.aiDifficulty || 1;
+            const opponentPlayer = currentPlayer === Player.Black ? Player.White : Player.Black;
+            
+            // 현재 게임 ID와 상태를 저장 (timeout 내에서 사용)
+            const currentGameId = session.id;
+            const currentGameStatus = session.gameStatus;
+            const currentPlayerAtCalculation = currentPlayer;
+            const moveHistoryLengthAtCalculation = moveHistoryLength;
+            
+            // 보드 상태를 깊은 복사하여 계산 시점의 상태를 보존
+            const boardStateAtCalculation = JSON.parse(JSON.stringify(session.boardState));
+            const koInfoAtCalculation = session.koInfo ? JSON.parse(JSON.stringify(session.koInfo)) : null;
+            
+            const aiMove = calculateSimpleAiMove(
+                boardStateAtCalculation,
+                currentPlayer,
+                opponentPlayer,
+                koInfoAtCalculation,
+                moveHistoryLengthAtCalculation,
+                aiLevel
+            );
+
+            if (aiMove) {
+                // AI 수를 보냈다는 것을 기록 (중복 전송 방지)
+                lastAiMoveRef.current = {
+                    gameId: currentGameId,
+                    moveHistoryLength: moveHistoryLengthAtCalculation,
+                    player: currentPlayerAtCalculation
+                };
+                
+                // 약 1초 지연 후 AI 수 전송 (봇도 시간을 사용해야 하므로)
+                const delay = 1000; // 1초 고정
+                aiMoveTimeoutRef.current = setTimeout(() => {
+                    // 게임 상태가 여전히 'playing'이고 AI 차례인지 다시 확인
+                    // 게임 ID가 변경되지 않았는지도 확인
+                    // moveHistory 길이가 변경되지 않았는지 확인 (다른 수가 이미 둬졌는지 확인)
+                    const currentMoveHistoryLength = session.moveHistory?.length || 0;
+                    if (session.gameStatus === 'playing' && 
+                        session.currentPlayer === currentPlayerAtCalculation &&
+                        session.id === currentGameId &&
+                        session.gameStatus === currentGameStatus &&
+                        currentMoveHistoryLength === moveHistoryLengthAtCalculation) {
+                        handlers.handleAction({
+                            type: 'PLACE_STONE',
+                            payload: {
+                                gameId: currentGameId,
+                                x: aiMove.x,
+                                y: aiMove.y,
+                                isClientAiMove: true, // 클라이언트가 계산한 AI 수임을 표시
+                            },
+                        } as ServerAction);
+                    } else {
+                        console.log('[Game] AI move cancelled due to state change:', {
+                            gameStatus: session.gameStatus,
+                            currentPlayer: session.currentPlayer,
+                            gameId: session.id,
+                            moveHistoryLength: currentMoveHistoryLength,
+                            expectedLength: moveHistoryLengthAtCalculation
+                        });
+                        // 상태가 변경되었으므로 lastAiMoveRef 초기화
+                        lastAiMoveRef.current = null;
+                    }
+                    aiMoveTimeoutRef.current = null;
+                }, delay);
+            }
+        } else {
+            // AI 차례가 아니면 lastAiMoveRef 초기화 (다음 AI 차례를 위해)
+            lastAiMoveRef.current = null;
+        }
+        
+        // cleanup: 게임 ID가 변경되거나 컴포넌트가 unmount될 때 timeout 취소
+        return () => {
+            if (aiMoveTimeoutRef.current) {
+                clearTimeout(aiMoveTimeoutRef.current);
+                aiMoveTimeoutRef.current = null;
+            }
+        };
+    }, [session.isSinglePlayer, isPaused, gameStatus, currentPlayer, session.blackPlayerId, session.whitePlayerId, session.boardState, session.koInfo, session.moveHistory?.length, session.settings.aiDifficulty, isBoardLocked, session.id, session.gameStatus, handlers.handleAction]);
     
     const globalChat = useMemo(() => waitingRoomChats['global'] || [], [waitingRoomChats]);
     
@@ -398,8 +596,12 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         // AI 게임의 경우 결과창 확인 시 모달만 닫고, 홈화면으로 이동하지 않음
         // 나가기 버튼을 통해 대기실로 이동할 수 있음
         setShowResultModal(false);
-        setShowFinalTerritory(false);
-    }, []);
+        // 계가가 완료된 경우(analysisResult가 있는 경우) 영토 표시는 유지
+        // 계가가 완료되지 않은 경우에만 영토 표시를 숨김
+        if (!session.analysisResult?.['system']) {
+            setShowFinalTerritory(false);
+        }
+    }, [session.analysisResult]);
 
     // 싱글플레이 게임 설명창 표시 여부
     const showGameDescription = isSinglePlayer && gameStatus === 'pending';
@@ -465,6 +667,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                         showLastMoveMarker={settings.features.lastMoveMarker}
                                         isSinglePlayerPaused={isPaused}
                                         resumeCountdown={resumeCountdown}
+                                        isBoardLocked={isBoardLocked}
                                     />
                                 </div>
                             </div>
@@ -474,6 +677,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                     isPaused={isPaused}
                                     isMobile={isMobile}
                                     onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+                                    onAction={handlers.handleAction}
                                 />
                                 <GameControls {...gameControlsProps} isSinglePlayer={true} isSinglePlayerPaused={isPaused} />
                             </div>
@@ -577,6 +781,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                 isMobile={isMobile}
                                 onOpenSidebar={isMobile ? openMobileSidebar : undefined}
                                 sidebarNotification={hasNewMessage}
+                                onAction={handlers.handleAction}
                             />
                             <GameControls {...gameControlsProps} />
                         </div>

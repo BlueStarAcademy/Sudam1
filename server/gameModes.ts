@@ -233,6 +233,7 @@ export const initializeGame = async (neg: Negotiation): Promise<LiveGameSession>
         round: 1, turnInRound: 1, newlyRevealed: [], scores: { [challenger.id]: 0, [opponent.id]: 0 },
         analysisResult: null, isAnalyzing: false,
         gameStatus: 'pending', blackPlayerId: null, whitePlayerId: null, currentPlayer: types.Player.None,
+        gameStartTime: undefined, // 게임이 실제로 시작될 때 설정됨
     };
 
     if (SPECIAL_GAME_MODES.some(m => m.mode === mode)) {

@@ -1,6 +1,6 @@
 
 // FIX: Import missing types from the centralized types file.
-import { LiveGameSession, Player, User, GameSummary, StatChange, GameMode, InventoryItem, SpecialStat, WinReason, SinglePlayerStageInfo, QuestReward } from '../types.js';
+import { LiveGameSession, Player, User, GameSummary, StatChange, GameMode, InventoryItem, SpecialStat, WinReason, SinglePlayerStageInfo, QuestReward, Mail } from '../types.js';
 import * as db from './db.js';
 import { clearAiSession } from './aiSessionManager.js';
 import { SPECIAL_GAME_MODES, NO_CONTEST_MANNER_PENALTY, NO_CONTEST_RANKING_PENALTY, CONSUMABLE_ITEMS, PLAYFUL_GAME_MODES, SINGLE_PLAYER_STAGES } from '../constants';
@@ -194,9 +194,35 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
     if (game.gameStatus === 'ended' || game.gameStatus === 'no_contest') {
         return; // Game already ended, do nothing
     }
+    
+    const now = Date.now();
+    const gameStartTime = game.gameStartTime || game.createdAt || now;
+    const gameDuration = now - gameStartTime;
+    const moveCount = game.moveHistory?.filter(m => m.x !== -1 && m.y !== -1).length || 0;
+    
+    // 조기 종료 조건 확인 (10턴 이내 또는 1분 이내 기권/접속 끊김)
+    const isEarlyTermination = (moveCount <= 10 || gameDuration < 60000) && 
+                                (winReason === 'resign' || winReason === 'disconnect');
+    
+    // 비매너 행동자 식별 (조기 종료를 한 사람)
+    let badMannerPlayerId: string | null = null;
+    if (isEarlyTermination) {
+        if (winReason === 'resign') {
+            // 기권한 사람이 비매너 행동자
+            badMannerPlayerId = winner === Player.Black ? game.whitePlayerId! : game.blackPlayerId!;
+        } else if (winReason === 'disconnect') {
+            // 접속 끊긴 사람이 비매너 행동자
+            const disconnectedPlayerId = game.lastTimeoutPlayerId || 
+                                        (winner === Player.Black ? game.whitePlayerId! : game.blackPlayerId!);
+            badMannerPlayerId = disconnectedPlayerId;
+        }
+    }
+    
     game.winner = winner;
     game.winReason = winReason;
     game.gameStatus = 'ended';
+    game.isEarlyTermination = isEarlyTermination; // 조기 종료 플래그
+    game.badMannerPlayerId = badMannerPlayerId ?? undefined; // 비매너 행동자 ID
 
     if (game.isSinglePlayer) {
         await processSinglePlayerGameSummary(game);
@@ -212,9 +238,135 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
     await db.saveGame(game);
     clearAiSession(game.id);
     
+    // AI 처리 큐에서도 제거
+    if (game.isSinglePlayer) {
+        const { aiProcessingQueue } = await import('./aiProcessingQueue.js');
+        aiProcessingQueue.dequeue(game.id);
+    }
+    
+    // 조기 종료인 경우 행동력 환불 처리 및 패널티 메일 발송
+    if (isEarlyTermination && !game.isSinglePlayer) {
+        await refundActionPointsForEarlyTermination(game, badMannerPlayerId);
+        if (badMannerPlayerId) {
+            await sendBadMannerPenaltyMail(game, badMannerPlayerId);
+        }
+    }
+    
     // 게임 종료 및 분석 결과 브로드캐스트
     const { broadcast } = await import('./socket.js');
     broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+};
+
+// 행동력 환불 함수
+const refundActionPointsForEarlyTermination = async (
+    game: LiveGameSession, 
+    badMannerPlayerId: string | null
+): Promise<void> => {
+    const { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, STRATEGIC_ACTION_POINT_COST, PLAYFUL_ACTION_POINT_COST } = await import('../constants');
+    
+    const getActionPointCost = (mode: GameMode): number => {
+        if (SPECIAL_GAME_MODES.some(m => m.mode === mode)) {
+            return STRATEGIC_ACTION_POINT_COST;
+        }
+        if (PLAYFUL_GAME_MODES.some(m => m.mode === mode)) {
+            return PLAYFUL_ACTION_POINT_COST;
+        }
+        return STRATEGIC_ACTION_POINT_COST;
+    };
+    
+    const cost = getActionPointCost(game.mode);
+    const player1 = await db.getUser(game.player1.id);
+    const player2 = await db.getUser(game.player2.id);
+    
+    if (!player1 || !player2) return;
+    
+    // 비매너 행동자가 아닌 사람에게만 환불
+    if (badMannerPlayerId !== player1.id && !player1.isAdmin) {
+        player1.actionPoints.current = Math.min(
+            player1.actionPoints.max, 
+            player1.actionPoints.current + cost
+        );
+        player1.lastActionPointUpdate = Date.now();
+        await db.updateUser(player1);
+    }
+    
+    if (badMannerPlayerId !== player2.id && !player2.isAdmin) {
+        player2.actionPoints.current = Math.min(
+            player2.actionPoints.max, 
+            player2.actionPoints.current + cost
+        );
+        player2.lastActionPointUpdate = Date.now();
+        await db.updateUser(player2);
+    }
+    
+    // 환불된 사용자에게 브로드캐스트
+    const { broadcast } = await import('./socket.js');
+    if (badMannerPlayerId !== player1.id) {
+        broadcast({ type: 'USER_UPDATE', payload: { [player1.id]: player1 } });
+    }
+    if (badMannerPlayerId !== player2.id) {
+        broadcast({ type: 'USER_UPDATE', payload: { [player2.id]: player2 } });
+    }
+};
+
+// 패널티 메일 발송 함수
+const sendBadMannerPenaltyMail = async (
+    game: LiveGameSession,
+    badMannerPlayerId: string
+): Promise<void> => {
+    const badMannerPlayer = await db.getUser(badMannerPlayerId);
+    if (!badMannerPlayer) return;
+    
+    const opponent = game.player1.id === badMannerPlayerId ? 
+                     await db.getUser(game.player2.id) : 
+                     await db.getUser(game.player1.id);
+    
+    if (!opponent) return;
+    
+    const moveCount = game.moveHistory?.filter(m => m.x !== -1 && m.y !== -1).length || 0;
+    const gameStartTime = game.gameStartTime || game.createdAt || Date.now();
+    const gameDuration = Date.now() - gameStartTime;
+    
+    let penaltyReason = '';
+    if (moveCount <= 10) {
+        penaltyReason = `게임 시작 후 10턴 이내에 종료하여`;
+    } else if (gameDuration < 60000) {
+        penaltyReason = `게임 시작 후 1분 이내에 종료하여`;
+    }
+    
+    if (game.winReason === 'resign') {
+        penaltyReason += ' 기권';
+    } else if (game.winReason === 'disconnect') {
+        penaltyReason += ' 접속 끊김';
+    }
+    
+    const penaltyMail: Mail = {
+        id: `mail-penalty-${randomUUID()}`,
+        from: '시스템',
+        title: '비매너 행동 패널티 안내',
+        message: `안녕하세요, ${badMannerPlayer.nickname}님.\n\n` +
+                 `대국 중 비매너 행동으로 인해 패널티가 적용되었습니다.\n\n` +
+                 `[패널티 사유]\n` +
+                 `${penaltyReason}로 인해 게임이 조기 종료되었습니다.\n\n` +
+                 `[적용된 패널티]\n` +
+                 `- 매너 점수 감소\n` +
+                 `- 행동력 환불 불가 (상대방에게만 환불됨)\n\n` +
+                 `정상적인 게임 진행을 위해 협조 부탁드립니다.`,
+        receivedAt: Date.now(),
+        expiresAt: undefined, // 무제한
+        isRead: false,
+        attachmentsClaimed: false,
+    };
+    
+    if (!badMannerPlayer.mail) {
+        badMannerPlayer.mail = [];
+    }
+    badMannerPlayer.mail.unshift(penaltyMail);
+    
+    await db.updateUser(badMannerPlayer);
+    
+    const { broadcast } = await import('./socket.js');
+    broadcast({ type: 'USER_UPDATE', payload: { [badMannerPlayer.id]: badMannerPlayer } });
 };
 
 const createConsumableItemInstance = (name: string): InventoryItem | null => {
@@ -527,6 +679,43 @@ const processPlayerSummary = async (
     }
     
     updatedPlayer.stats[mode] = gameStats;
+    
+    // --- Update cumulativeRankingScore for strategic/playful modes ---
+    if (!isNoContest && !isAiGame) {
+        if (!updatedPlayer.cumulativeRankingScore) {
+            updatedPlayer.cumulativeRankingScore = {};
+        }
+        
+        if (isStrategic) {
+            // 전략바둑: 모든 전략바둑 모드의 rankingScore 평균 계산
+            let totalScore = 0;
+            let modeCount = 0;
+            for (const strategicMode of SPECIAL_GAME_MODES) {
+                const modeStats = updatedPlayer.stats?.[strategicMode.mode];
+                if (modeStats && modeStats.rankingScore !== undefined) {
+                    totalScore += modeStats.rankingScore;
+                    modeCount++;
+                }
+            }
+            if (modeCount > 0) {
+                updatedPlayer.cumulativeRankingScore['standard'] = Math.round(totalScore / modeCount);
+            }
+        } else if (isPlayful) {
+            // 놀이바둑: 모든 놀이바둑 모드의 rankingScore 평균 계산
+            let totalScore = 0;
+            let modeCount = 0;
+            for (const playfulMode of PLAYFUL_GAME_MODES) {
+                const modeStats = updatedPlayer.stats?.[playfulMode.mode];
+                if (modeStats && modeStats.rankingScore !== undefined) {
+                    totalScore += modeStats.rankingScore;
+                    modeCount++;
+                }
+            }
+            if (modeCount > 0) {
+                updatedPlayer.cumulativeRankingScore['playful'] = Math.round(totalScore / modeCount);
+            }
+        }
+    }
     
     // Apply rewards
     const itemDropBonus = effects.specialStatBonuses[SpecialStat.ItemDropRate].percent;

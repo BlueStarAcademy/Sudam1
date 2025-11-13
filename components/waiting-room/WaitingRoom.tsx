@@ -235,44 +235,35 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
             <img src="/images/button/back.png" alt="Back" className="w-full h-full" />
           </button>
         </div>
-        <div className='flex-1 text-center flex items-center justify-center'>
-          <div className="flex items-center gap-2 sm:gap-3 flex-nowrap">
+        <div className='flex-1 text-center flex items-center justify-center h-full'>
+          <div className="flex items-center gap-2 sm:gap-3 flex-nowrap h-full">
             <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold whitespace-nowrap">
               {mode === 'strategic' ? '전략바둑 대기실' : mode === 'playful' ? '놀이바둑 대기실' : `${mode} 대기실`}
             </h1>
             {(mode === 'strategic' || mode === 'playful') && (
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  aria-label="전략바둑 대기실로 이동"
-                  title="전략바둑 대기실"
-                  disabled={mode === 'strategic'}
-                  onClick={() => { if (mode !== 'strategic') window.location.hash = '#/waiting/strategic'; }}
-                  className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-primary/30 overflow-hidden transition-all duration-200 ${
-                    mode === 'strategic'
-                      ? 'scale-110 shadow-lg shadow-primary/40 cursor-default'
-                      : 'opacity-80 hover:opacity-100 hover:scale-110 hover:-rotate-6 active:scale-95'
-                  }`}
-                >
-                  <img src="/images/simbols/simbol1.png" alt="" className="w-full h-full object-contain" />
-                  {mode === 'strategic' && <div className="absolute inset-0 rounded-full ring-2 ring-primary/70 pointer-events-none" />}
-                </button>
-                <button
-                  type="button"
-                  aria-label="놀이바둑 대기실로 이동"
-                  title="놀이바둑 대기실"
-                  disabled={mode === 'playful'}
-                  onClick={() => { if (mode !== 'playful') window.location.hash = '#/waiting/playful'; }}
-                  className={`relative w-10 h-10 sm:w-12 sm:h-12 rounded-full border border-primary/30 overflow-hidden transition-all duration-200 ${
-                    mode === 'playful'
-                      ? 'scale-110 shadow-lg shadow-primary/40 cursor-default'
-                      : 'opacity-80 hover:opacity-100 hover:scale-110 hover:rotate-6 active:scale-95'
-                  }`}
-                >
-                  <img src="/images/simbols/simbolp1.png" alt="" className="w-full h-full object-contain" />
-                  {mode === 'playful' && <div className="absolute inset-0 rounded-full ring-2 ring-primary/70 pointer-events-none" />}
-                </button>
-              </div>
+              <button
+                type="button"
+                aria-label={mode === 'strategic' ? '놀이바둑 대기실로 이동' : '전략바둑 대기실로 이동'}
+                title={mode === 'strategic' ? '놀이바둑 대기실로 이동' : '전략바둑 대기실로 이동'}
+                onClick={() => {
+                  const targetMode = mode === 'strategic' ? 'playful' : 'strategic';
+                  window.location.hash = `#/waiting/${targetMode}`;
+                }}
+                className="w-8 sm:w-10 flex items-center justify-center rounded-lg transition-all duration-300 hover:scale-110 active:scale-95 text-on-panel relative overflow-hidden group"
+                style={{ 
+                  height: '60%',
+                  marginTop: '4px',
+                  background: 'linear-gradient(135deg, rgba(99, 102, 241, 0.3) 0%, rgba(139, 92, 246, 0.3) 100%)',
+                  border: '1px solid rgba(139, 92, 246, 0.4)',
+                  boxShadow: '0 2px 8px rgba(99, 102, 241, 0.2), inset 0 1px 0 rgba(255, 255, 255, 0.1)'
+                }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/0 via-purple-500/20 to-indigo-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <span className="text-base sm:text-lg font-bold flex flex-col items-center justify-center gap-0 relative z-10 drop-shadow-sm leading-none">
+                  <span className="transition-transform duration-300 group-hover:-translate-x-0.5 -mb-2.5">←</span>
+                  <span className="transition-transform duration-300 group-hover:translate-x-0.5 -mt-2.5">→</span>
+                </span>
+              </button>
             )}
           </div>
         </div>

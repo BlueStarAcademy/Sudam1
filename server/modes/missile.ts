@@ -18,6 +18,13 @@ export const updateMissileState = (game: types.LiveGameSession, now: number) => 
         const timedOutPlayerEnum = game.currentPlayer;
         const timedOutPlayerId = timedOutPlayerEnum === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
         
+        // 미사일 1개 소모
+        const missileKey = timedOutPlayerId === game.player1.id ? 'missiles_p1' : 'missiles_p2';
+        const currentMissiles = game[missileKey] ?? game.settings.missileCount ?? 0;
+        if (currentMissiles > 0) {
+            game[missileKey] = currentMissiles - 1;
+        }
+        
         game.foulInfo = { message: `${game.player1.id === timedOutPlayerId ? game.player1.nickname : game.player2.nickname}님의 아이템 시간 초과!`, expiry: now + 4000 };
         game.gameStatus = 'playing';
         // currentPlayer remains timedOutPlayerEnum
@@ -29,12 +36,18 @@ export const updateMissileState = (game: types.LiveGameSession, now: number) => 
             game.turnDeadline = now + game[currentPlayerTimeKey] * 1000;
             game.turnStartTime = now;
         } else {
-             game.turnDeadline = undefined;
-             game.turnStartTime = undefined;
+            // 시간 제한이 없는 경우에도 게임이 계속 진행되도록 함
+            game.turnDeadline = undefined;
+            game.turnStartTime = undefined;
         }
         
+        // 아이템 사용 시간 초과 상태를 명확히 정리
         game.itemUseDeadline = undefined;
         game.pausedTurnTimeLeft = undefined;
+        
+        // 선택된 미사일 돌이 있다면 초기화 (클라이언트 동기화를 위해)
+        // 이는 게임 상태에 직접 저장되지 않지만, 클라이언트에서 처리되므로 서버에서는 상태만 복원
+        
         return;
     }
 
@@ -69,9 +82,15 @@ export const handleMissileAction = (game: types.LiveGameSession, action: types.S
     const isMyTurn = myPlayerEnum === game.currentPlayer;
 
     switch (type) {
-        case 'START_MISSILE_SELECTION':
+        case 'START_MISSILE_SELECTION': {
             if (!isMyTurn || game.gameStatus !== 'playing') return { error: "Not your turn to use an item." };
             if (game.missileUsedThisTurn) return { error: "You have already used a missile this turn." };
+            
+            // 미사일 개수 확인
+            const missileKey = user.id === game.player1.id ? 'missiles_p1' : 'missiles_p2';
+            const myMissilesLeft = game[missileKey] ?? game.settings.missileCount ?? 0;
+            if (myMissilesLeft <= 0) return { error: "No missiles left." };
+            
             game.gameStatus = 'missile_selecting';
             if(game.turnDeadline) {
                 game.pausedTurnTimeLeft = (game.turnDeadline - now) / 1000;
@@ -80,7 +99,8 @@ export const handleMissileAction = (game: types.LiveGameSession, action: types.S
             game.turnStartTime = undefined;
             game.itemUseDeadline = now + 30000;
             return {};
-        case 'LAUNCH_MISSILE':
+        }
+        case 'LAUNCH_MISSILE': {
             if (game.gameStatus !== 'missile_selecting') return { error: "Not in missile selection mode." };
             
             // Immediately disable the timeout timer to prevent race conditions.
@@ -190,9 +210,39 @@ export const handleMissileAction = (game: types.LiveGameSession, action: types.S
             game.gameStatus = 'missile_animating';
             game.missileUsedThisTurn = true;
             return {};
+        }
         case 'MISSILE_INVALID_SELECTION': {
             if (game.gameStatus !== 'missile_selecting') return { error: "Not in missile selection mode." };
             game.foulInfo = { message: '움직일 수 없는 돌입니다.', expiry: now + 4000 };
+            return {};
+        }
+        case 'CANCEL_MISSILE_SELECTION': {
+            if (game.gameStatus !== 'missile_selecting') return { error: "Not in missile selection mode." };
+            if (!isMyTurn) return { error: "Not your turn." };
+            
+            // 미사일 1개 소모
+            const missileKey = user.id === game.player1.id ? 'missiles_p1' : 'missiles_p2';
+            const currentMissiles = game[missileKey] ?? game.settings.missileCount ?? 0;
+            if (currentMissiles > 0) {
+                game[missileKey] = currentMissiles - 1;
+            }
+            
+            game.gameStatus = 'playing';
+            
+            // Restore the timer for the current player
+            if (game.settings.timeLimit > 0 && game.pausedTurnTimeLeft) {
+                const currentPlayerTimeKey = myPlayerEnum === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
+                game[currentPlayerTimeKey] = game.pausedTurnTimeLeft;
+                game.turnDeadline = now + game[currentPlayerTimeKey] * 1000;
+                game.turnStartTime = now;
+            } else {
+                game.turnDeadline = undefined;
+                game.turnStartTime = undefined;
+            }
+            
+            game.itemUseDeadline = undefined;
+            game.pausedTurnTimeLeft = undefined;
+            
             return {};
         }
     }

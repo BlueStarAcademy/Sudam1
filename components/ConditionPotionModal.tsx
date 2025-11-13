@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { User } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
@@ -62,6 +62,26 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
     // prop으로 받은 currentUser가 있으면 사용하고, 없으면 context에서 가져옴
     const currentUser = currentUserWithStatus || propCurrentUser;
     const [selectedPotionType, setSelectedPotionType] = useState<PotionType | null>(null);
+    const [previousCondition, setPreviousCondition] = useState<number | undefined>(currentCondition);
+    const [showConditionIncrease, setShowConditionIncrease] = useState(false);
+    const [conditionIncreaseAmount, setConditionIncreaseAmount] = useState(0);
+    const prevConditionRef = useRef<number>(currentCondition);
+
+    // 컨디션 변화 감지 및 애니메이션 트리거
+    useEffect(() => {
+        if (prevConditionRef.current !== undefined && currentCondition !== 1000 && prevConditionRef.current !== 1000) {
+            const increase = currentCondition - prevConditionRef.current;
+            if (increase > 0) {
+                setConditionIncreaseAmount(increase);
+                setShowConditionIncrease(true);
+                setTimeout(() => {
+                    setShowConditionIncrease(false);
+                }, 2000);
+            }
+        }
+        prevConditionRef.current = currentCondition;
+        setPreviousCondition(currentCondition);
+    }, [currentCondition]);
 
     if (!currentUser) {
         return null;
@@ -182,9 +202,21 @@ const ConditionPotionModal: React.FC<ConditionPotionModalProps> = ({
                 </div>
 
                 <div className="w-full bg-gray-800/50 rounded-lg p-4 border border-gray-700 flex-shrink-0">
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="flex justify-between items-center mb-2 relative">
                         <span className="text-gray-300">현재 컨디션:</span>
-                        <span className="text-yellow-300 font-bold text-lg">{currentCondition}</span>
+                        <span className={`text-yellow-300 font-bold text-lg relative transition-all duration-300 ${
+                            showConditionIncrease ? 'scale-125 text-green-300' : ''
+                        }`}>
+                            {currentCondition === 1000 ? '-' : currentCondition}
+                        </span>
+                        {showConditionIncrease && conditionIncreaseAmount > 0 && (
+                            <span className="absolute right-0 top-[-24px] text-base font-bold text-green-400 pointer-events-none whitespace-nowrap" style={{
+                                animation: 'fadeUp 2s ease-out forwards',
+                                textShadow: '0 0 8px rgba(34, 197, 94, 0.8)'
+                            }}>
+                                +{conditionIncreaseAmount}
+                            </span>
+                        )}
                     </div>
                     <div className="flex justify-between items-center">
                         <span className="text-gray-300">예상 회복 후 컨디션:</span>

@@ -55,7 +55,7 @@ const QuestItem: React.FC<{ quest: Quest, onClaim: (id: string) => void, isMobil
                 <ResourceActionButton 
                     onClick={handleClaimClick} 
                     disabled={!isComplete || quest.isClaimed} 
-                    variant="gold"
+                    variant={quest.isClaimed ? 'neutral' : (isComplete ? 'materials' : 'gold')}
                     className="w-full !text-sm !py-2"
                 >
                     {quest.isClaimed ? '완료' : (isComplete ? '보상 받기' : '진행 중')}
@@ -79,7 +79,7 @@ const QuestItem: React.FC<{ quest: Quest, onClaim: (id: string) => void, isMobil
                 <ResourceActionButton 
                     onClick={handleClaimClick} 
                     disabled={!isComplete || quest.isClaimed} 
-                    variant="gold"
+                    variant={quest.isClaimed ? 'neutral' : (isComplete ? 'materials' : 'gold')}
                     className="w-full !text-sm !py-2"
                 >
                     {quest.isClaimed ? '완료' : (isComplete ? '보상 받기' : '진행 중')}
@@ -154,7 +154,7 @@ const ActivityPanel: React.FC<{
                     })}
                 </div>
             </div>
-            <div className="flex justify-around items-end">
+            <div className="flex justify-around items-center">
                 {thresholds.map((milestone, index) => {
                     if (!rewards[index]) return null;
                     const progressMet = activityProgress >= milestone;

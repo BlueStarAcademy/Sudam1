@@ -666,6 +666,9 @@ export type LiveGameSession = {
   diceRollHistory?: { [playerId: string]: number[] };
   diceRoundSummary?: DiceRoundSummary;
   lastWhiteGroupInfo?: { size: number; liberties: number } | null;
+  gameStartTime?: number; // 게임 시작 시간 (초기화 시점)
+  isEarlyTermination?: boolean; // 조기 종료 여부
+  badMannerPlayerId?: string; // 비매너 행동자 ID
   diceGoItemUses?: { [playerId: string]: { odd: number; even: number } };
   diceGoBonuses?: { [playerId: string]: number };
   diceCapturesThisTurn?: number;

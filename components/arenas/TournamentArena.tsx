@@ -79,6 +79,15 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
         
         // 토너먼트 상태가 있으면 해당 키를 제거하고 타이머 정리 (다음에 다시 시작할 수 있도록)
         if (tournamentState) {
+            // bracket_ready 상태에서 컨디션이 1000이면 컨디션 부여를 위해 START_TOURNAMENT_ROUND 호출
+            if (tournamentState.status === 'bracket_ready' && 
+                tournamentState.players.some(p => p.condition === undefined || p.condition === null || p.condition === 1000)) {
+                handlersRef.current.handleAction({ 
+                    type: 'START_TOURNAMENT_ROUND', 
+                    payload: { type: type } 
+                });
+            }
+            
             // 토너먼트가 새로 생성된 경우 (undefined -> 값)에만 제거
             if (!prevTournamentState && startAttemptedRef.current.has(tournamentKey)) {
                 // 타이머 정리

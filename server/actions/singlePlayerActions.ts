@@ -235,6 +235,12 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 const { initializeHidden } = await import('../modes/hidden.js');
                 initializeHidden(game);
             }
+            
+            // 미사일바둑 초기화
+            if (gameMode === GameMode.Missile) {
+                const { initializeMissile } = await import('../modes/missile.js');
+                initializeMissile(game);
+            }
 
             await db.saveGame(game);
             await db.updateUser(user);
@@ -247,7 +253,9 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
 
-            return { clientResponse: { gameId: game.id, updatedUser: user } };
+            // 클라이언트가 즉시 게임을 로드할 수 있도록 게임 데이터를 응답에 포함
+            const gameCopy = JSON.parse(JSON.stringify(game));
+            return { clientResponse: { gameId: game.id, game: gameCopy, updatedUser: user } };
         }
         case 'CONFIRM_SINGLE_PLAYER_GAME_START': {
             const { gameId } = payload;

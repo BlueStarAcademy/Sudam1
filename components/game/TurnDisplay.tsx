@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { LiveGameSession, Player, GameStatus, GameMode, User } from '../../types.js';
+import { LiveGameSession, Player, GameStatus, GameMode, User, ServerAction } from '../../types.js';
 import { PLAYFUL_GAME_MODES, DICE_GO_MAIN_PLACE_TIME, DICE_GO_MAIN_ROLL_TIME, DICE_GO_LAST_CAPTURE_BONUS_BY_TOTAL_ROUNDS } from '../../constants';
 import { audioService } from '../../services/audioService.js';
 
@@ -9,6 +9,7 @@ interface TurnDisplayProps {
     isMobile?: boolean;
     onOpenSidebar?: () => void;
     sidebarNotification?: boolean;
+    onAction?: (action: ServerAction) => void;
 }
 
 function usePrevious<T>(value: T): T | undefined {
@@ -117,6 +118,7 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({
     isMobile = false,
     onOpenSidebar,
     sidebarNotification = false,
+    onAction,
 }) => {
     const [timeLeft, setTimeLeft] = useState(30);
     const [percentage, setPercentage] = useState(100);
@@ -193,6 +195,7 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({
 
     useEffect(() => {
         if (!isItemMode || !session.itemUseDeadline || isPaused) {
+            setTimeLeft(30); // Reset to default when not in item mode
             return;
         }
 
@@ -205,7 +208,7 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({
         const timerId = setInterval(updateTimer, 500);
 
         return () => clearInterval(timerId);
-    }, [isItemMode, session.itemUseDeadline, isPaused]);
+    }, [isItemMode, session.itemUseDeadline, isPaused, session.gameStatus]);
 
     const isSinglePlayer = session.isSinglePlayer;
     const baseClasses = "flex-shrink-0 rounded-lg flex flex-col items-center justify-center shadow-inner py-1 h-12 border";
@@ -292,18 +295,44 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({
         let itemText = "아이템 사용시간";
         if (session.gameStatus === 'hidden_placing') itemText = "히든 사용시간";
         if (session.gameStatus === 'scanning') itemText = "스캔 사용시간";
-        if (session.gameStatus === 'missile_selecting') itemText = "미사일 조준";
+        if (session.gameStatus === 'missile_selecting') {
+            itemText = "발사할 바둑돌을 선택하세요. 선택후 방향을 선택하면 날아갑니다.";
+        }
 
         const percentage = (timeLeft / 30) * 100;
+        
+        // 시간이 0초가 되었을 때 자동으로 취소 요청
+        const hasAutoCanceledRef = useRef(false);
+        useEffect(() => {
+            if (timeLeft <= 0 && session.gameStatus === 'missile_selecting' && session.itemUseDeadline && onAction && !hasAutoCanceledRef.current) {
+                hasAutoCanceledRef.current = true;
+                // 서버에 취소 요청 전송
+                onAction({ type: 'CANCEL_MISSILE_SELECTION', payload: { gameId: session.id } });
+            }
+            // 게임 상태가 변경되면 리셋
+            if (session.gameStatus !== 'missile_selecting') {
+                hasAutoCanceledRef.current = false;
+            }
+        }, [timeLeft, session.gameStatus, session.itemUseDeadline, session.id, onAction]);
 
         return wrapContent(
-            `${baseClasses} ${themeClasses} px-4 gap-2`,
+            `${baseClasses} ${themeClasses} px-4 gap-1.5 min-h-[3rem]`,
             <>
-                <span className={`font-bold ${textClass} tracking-wider flex-shrink-0 text-[clamp(0.8rem,2.5vmin,1rem)]`}>{itemText}</span>
-                <div className={`w-full bg-tertiary rounded-full h-[clamp(0.5rem,1.5vh,0.75rem)] relative overflow-hidden border-2 ${isSinglePlayer ? 'border-black/20' : 'border-tertiary'}`}>
+                <div className="flex items-center justify-center gap-2 w-full flex-shrink-0">
+                    <span className={`font-bold ${textClass} tracking-wider text-[clamp(0.7rem,2vmin,0.9rem)] text-center break-words overflow-hidden flex-1`} style={{ 
+                        wordBreak: 'keep-all',
+                        lineHeight: '1.2',
+                        display: '-webkit-box',
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
+                    }}>{itemText}</span>
+                    <span className={`font-mono font-bold text-primary flex-shrink-0 text-[clamp(0.9rem,3vmin,1.1rem)]`}>{timeLeft}초</span>
+                </div>
+                <div className={`w-full bg-tertiary rounded-full h-[clamp(0.5rem,1.5vh,0.75rem)] relative overflow-hidden border-2 ${isSinglePlayer ? 'border-black/20' : 'border-tertiary'} flex-shrink-0`}>
                     <div className="absolute inset-0 bg-highlight rounded-full" style={{ width: `${percentage}%`, transition: 'width 0.5s linear' }}></div>
                 </div>
-                <span className={`font-mono font-bold text-primary w-[clamp(2rem,8vmin,2.5rem)] text-center text-[clamp(0.9rem,3vmin,1.1rem)]`}>{timeLeft}초</span>
             </>
         );
     }

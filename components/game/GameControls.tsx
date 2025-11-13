@@ -13,9 +13,10 @@ interface ImageButtonProps {
     disabled?: boolean;
     title?: string;
     variant?: 'primary' | 'danger';
+    count?: number; // 아이템 남은 개수
 }
 
-const ImageButton: React.FC<ImageButtonProps> = ({ src, alt, onClick, disabled = false, title, variant = 'primary' }) => {
+const ImageButton: React.FC<ImageButtonProps> = ({ src, alt, onClick, disabled = false, title, variant = 'primary', count }) => {
     const variantClasses = variant === 'danger'
         ? 'border-red-400 shadow-red-500/40 focus:ring-red-400'
         : 'border-amber-400 shadow-amber-500/30 focus:ring-amber-300';
@@ -29,6 +30,11 @@ const ImageButton: React.FC<ImageButtonProps> = ({ src, alt, onClick, disabled =
             className={`relative w-16 h-16 md:w-20 md:h-20 rounded-xl border-2 transition-transform duration-200 ease-out overflow-hidden focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-900 ${variantClasses} ${disabled ? 'opacity-40 cursor-not-allowed border-gray-700 shadow-none' : 'hover:scale-105 active:scale-95 shadow-lg'}`}
         >
             <img src={src} alt={alt} className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+            {count !== undefined && (
+                <span className={`absolute bottom-1 right-1 bg-black/70 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center ${disabled ? 'opacity-60' : ''}`}>
+                    {count}
+                </span>
+            )}
         </button>
     );
 };
@@ -46,11 +52,7 @@ const LabeledControlButton: React.FC<LabeledControlButtonProps> = ({ label, capt
             <span className={`text-[10px] font-semibold tracking-wide ${disabled ? 'text-gray-500' : 'text-amber-100 drop-shadow-sm'}`}>
                 {label}
             </span>
-            {caption && (
-                <span className={`text-[9px] font-medium ${disabled ? 'text-gray-500/80' : 'text-gray-300/90'}`}>
-                    {caption}
-                </span>
-            )}
+            {/* caption은 제거하고 count로 대체 */}
         </div>
     );
 };
@@ -439,13 +441,15 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
         return variants[variant];
     };
 
-    const renderItemButtons = () => {
-        const hiddenCountSetting = session.settings.hiddenStoneCount ?? 0;
-        const scanCountSetting = session.settings.scanCount ?? 0;
-        const missileCountSetting = session.settings.missileCount ?? 0;
+    // 아이템 설정값 (함수 외부에서 선언하여 재사용)
+    const hiddenCountSetting = session.settings.hiddenStoneCount ?? 0;
+    const scanCountSetting = session.settings.scanCount ?? 0;
+    const missileCountSetting = session.settings.missileCount ?? 0;
 
+    const renderItemButtons = () => {
         const isHiddenMode = (mode === GameMode.Hidden || (mode === GameMode.Mix && (session.settings.mixedModes || []).includes(GameMode.Hidden))) || (session.isSinglePlayer && hiddenCountSetting > 0);
-        const isMissileMode = (mode === GameMode.Missile || (mode === GameMode.Mix && (session.settings.mixedModes || []).includes(GameMode.Missile))) || (session.isSinglePlayer && missileCountSetting > 0);
+        // 미사일 모드: 게임 모드가 Missile이거나, 싱글플레이에서 missileCount가 설정된 경우
+        const isMissileMode = (mode === GameMode.Missile || (mode === GameMode.Mix && (session.settings.mixedModes || []).includes(GameMode.Missile))) || (session.isSinglePlayer && (missileCountSetting > 0 || (session.settings as any)?.missileCount > 0));
         const p1Id = session.player1.id;
         const myHiddenUsed = currentUser.id === p1Id ? (session.hidden_stones_used_p1 ?? 0) : (session.hidden_stones_used_p2 ?? 0);
         const totalHiddenAvailable = hiddenCountSetting;
@@ -467,10 +471,10 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                     src="/images/button/hidden.png"
                     alt="히든"
                     label="히든"
-                    caption={`남음 ${hiddenLeft}`}
                     onClick={() => handleUseItem('hidden')}
                     disabled={hiddenDisabled}
                     title="히든 스톤 배치"
+                    count={hiddenLeft > 0 ? hiddenLeft : undefined}
                 />
             );
 
@@ -482,10 +486,10 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                     src="/images/button/scan.png"
                     alt="스캔"
                     label="스캔"
-                    caption={scansLeft > 0 ? `남음 ${scansLeft}` : '없음'}
                     onClick={() => handleUseItem('scan')}
                     disabled={scanDisabled}
                     title="상대 히든 스톤 탐지"
+                    count={scansLeft > 0 ? scansLeft : undefined}
                 />
             );
         }
@@ -499,10 +503,10 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                     src="/images/button/missile.png"
                     alt="미사일"
                     label="미사일"
-                    caption={missilesLeft > 0 ? `남음 ${missilesLeft}` : '없음'}
                     onClick={() => handleUseItem('missile')}
                     disabled={missileDisabled}
                     title="미사일 발사"
+                    count={missilesLeft > 0 ? missilesLeft : undefined}
                 />
             );
         }
@@ -510,7 +514,12 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
         return buttons;
     };
 
-    const hasItems = (mode === GameMode.Hidden || mode === GameMode.Missile) || (mode === GameMode.Mix && (session.settings.mixedModes || []).some(m => [GameMode.Hidden, GameMode.Missile].includes(m)));
+    // 싱글플레이어에서도 아이템이 있는지 확인
+    const hasSinglePlayerItems = session.isSinglePlayer && (hiddenCountSetting > 0 || scanCountSetting > 0 || missileCountSetting > 0);
+    
+    const hasItems = (mode === GameMode.Hidden || mode === GameMode.Missile) || 
+                     (mode === GameMode.Mix && (session.settings.mixedModes || []).some(m => [GameMode.Hidden, GameMode.Missile].includes(m))) ||
+                     hasSinglePlayerItems;
     if (isSpectator && !currentUser.isAdmin) return null;
 
     const usesLeft = (session.maxActionButtonUses ?? 0) - (session.actionButtonUses?.[currentUser.id] ?? 0);
@@ -627,6 +636,15 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
             );
         }
 
+        // 싱글플레이어 아이템 로직
+        const isHiddenMode = session.isSinglePlayer && hiddenCountSetting > 0;
+        const isMissileMode = session.isSinglePlayer && missileCountSetting > 0;
+        const p1Id = session.player1.id;
+        const myHiddenUsed = currentUser.id === p1Id ? (session.hidden_stones_used_p1 ?? 0) : (session.hidden_stones_used_p2 ?? 0);
+        const hiddenLeft = Math.max(0, hiddenCountSetting - myHiddenUsed);
+        const myScansLeft = currentUser.id === p1Id ? (session.scans_p1 ?? scanCountSetting) : (session.scans_p2 ?? scanCountSetting);
+        const myMissilesLeft = currentUser.id === p1Id ? (session.missiles_p1 ?? missileCountSetting) : (session.missiles_p2 ?? missileCountSetting);
+
         return (
             <footer className="responsive-controls flex-shrink-0 bg-gray-800 rounded-lg p-2 flex flex-col items-stretch justify-center gap-2 w-full min-h-[148px]">
                 {isMobile && settings.features.mobileConfirm && pendingMove && (
@@ -635,29 +653,83 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                         <Button onClick={onConfirmMove} colorScheme="none" className={`${getLuxuryButtonClasses('success')} min-w-[96px] py-2 animate-pulse`}>착수</Button>
                     </div>
                 )}
-                <div className="bg-gray-900/60 border border-stone-700 rounded-xl px-4 py-3 flex flex-row items-center justify-center gap-6 w-full">
-                    <div className="flex flex-col items-center gap-2">
-                        <ImageButton
-                            src="/images/button/giveup.png"
-                            alt="기권"
-                            title="기권하기"
-                            onClick={handleResignClick}
-                            disabled={!canResign}
-                            variant="danger"
-                        />
-                        <span className="text-[10px] text-red-300 font-semibold tracking-wide">기권</span>
+                <div className="bg-gray-900/60 border border-stone-700 rounded-xl px-4 py-3 flex flex-row items-center gap-4 w-full">
+                    {/* 좌측 패널: 기본 버튼 (중앙 정렬) */}
+                    <div className="flex-1 flex flex-row items-center justify-center gap-4">
+                        <div className="flex flex-col items-center gap-2">
+                            <ImageButton
+                                src="/images/button/giveup.png"
+                                alt="기권"
+                                title="기권하기"
+                                onClick={handleResignClick}
+                                disabled={!canResign}
+                                variant="danger"
+                            />
+                            <span className="text-[10px] text-red-300 font-semibold tracking-wide">기권</span>
+                        </div>
+                        <div className="flex flex-col items-center gap-2">
+                            <ImageButton
+                                src="/images/button/reflesh.png"
+                                alt="돌 재배치"
+                                title="돌 재배치"
+                                onClick={handleRefreshClick}
+                                disabled={refreshDisabled}
+                            />
+                            <span className="text-[10px] text-amber-200 font-semibold tracking-wide">
+                                {remainingRefreshes}/5 · {nextCost === 0 ? '무료' : `${nextCost.toLocaleString()}G`}
+                            </span>
+                        </div>
                     </div>
-                    <div className="flex flex-col items-center gap-2">
-                        <ImageButton
-                            src="/images/button/reflesh.png"
-                            alt="돌 재배치"
-                            title="돌 재배치"
-                            onClick={handleRefreshClick}
-                            disabled={refreshDisabled}
-                        />
-                        <span className="text-[10px] text-amber-200 font-semibold tracking-wide">
-                            {remainingRefreshes}/5 · {nextCost === 0 ? '무료' : `${nextCost.toLocaleString()}G`}
-                        </span>
+                    
+                    {/* 구분선 */}
+                    <div className="w-px h-12 bg-stone-600/50"></div>
+                    
+                    {/* 우측 패널: 특수 아이템 (중앙 정렬) */}
+                    <div className="flex-1 flex flex-row items-center justify-center gap-4">
+                        {/* 히든 아이템 */}
+                        {isHiddenMode && (
+                            <div className="flex flex-col items-center gap-2">
+                                <ImageButton
+                                    src="/images/button/hidden.png"
+                                    alt="히든"
+                                    title="히든 스톤 배치"
+                                    onClick={() => handleUseItem('hidden')}
+                                    disabled={!isMyTurn || gameStatus !== 'playing' || hiddenLeft <= 0}
+                                    count={hiddenLeft > 0 ? hiddenLeft : undefined}
+                                />
+                                <span className="text-[10px] text-amber-200 font-semibold tracking-wide">히든</span>
+                            </div>
+                        )}
+                        
+                        {/* 스캔 아이템 */}
+                        {isHiddenMode && (
+                            <div className="flex flex-col items-center gap-2">
+                                <ImageButton
+                                    src="/images/button/scan.png"
+                                    alt="스캔"
+                                    title="상대 히든 스톤 탐지"
+                                    onClick={() => handleUseItem('scan')}
+                                    disabled={!isMyTurn || gameStatus !== 'playing' || myScansLeft <= 0 || !canScan}
+                                    count={myScansLeft > 0 ? myScansLeft : undefined}
+                                />
+                                <span className="text-[10px] text-amber-200 font-semibold tracking-wide">스캔</span>
+                            </div>
+                        )}
+                        
+                        {/* 미사일 아이템 */}
+                        {isMissileMode && (
+                            <div className="flex flex-col items-center gap-2">
+                                <ImageButton
+                                    src="/images/button/missile.png"
+                                    alt="미사일"
+                                    title="미사일 발사"
+                                    onClick={() => handleUseItem('missile')}
+                                    disabled={!isMyTurn || gameStatus !== 'playing' || myMissilesLeft <= 0}
+                                    count={myMissilesLeft > 0 ? myMissilesLeft : undefined}
+                                />
+                                <span className="text-[10px] text-amber-200 font-semibold tracking-wide">미사일</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             </footer>

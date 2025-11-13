@@ -6,6 +6,7 @@ import { AVATAR_POOL, BORDER_POOL, emptySlotImages, SPECIAL_GAME_MODES, PLAYFUL_
 import { getMannerScore, getMannerRank, getMannerStyle } from '../services/manner.js';
 import { calculateTotalStats } from '../services/statService.js';
 import MbtiInfoModal from './MbtiInfoModal.js';
+import MbtiComparisonModal from './MbtiComparisonModal.js';
 import { useAppContext } from '../hooks/useAppContext.js';
 
 // Re-using components from Profile.tsx for consistency.
@@ -171,7 +172,8 @@ const StatsTab: React.FC<{ user: UserWithStatus, type: 'strategic' | 'playful', 
 const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onViewItem, isTopmost }) => {
     const { inventory, stats, nickname, avatarId, borderId, equipment } = user;
     const [showMbtiHelp, setShowMbtiHelp] = useState(false);
-    const { allUsers } = useAppContext();
+    const [showMbtiComparison, setShowMbtiComparison] = useState(false);
+    const { allUsers, currentUserWithStatus } = useAppContext();
     
     const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === avatarId)?.url, [avatarId]);
     const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === borderId)?.url, [borderId]);
@@ -259,6 +261,7 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onVi
     return (
         <DraggableWindow title={`${user.nickname}님의 프로필`} onClose={onClose} windowId={`view-user-${user.id}`} initialWidth={isMobile ? windowWidthForMobile : containerWidth} initialHeight={isMobile ? scaledHeight : 800} isTopmost={isTopmost}>
             {showMbtiHelp && <MbtiInfoModal onClose={() => setShowMbtiHelp(false)} isTopmost={true} />}
+            {showMbtiComparison && <MbtiComparisonModal opponentUser={user} onClose={() => setShowMbtiComparison(false)} isTopmost={true} />}
             {isMobile ? (
                 <div 
                     className="flex justify-center items-start"
@@ -293,14 +296,25 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onVi
                         </div>
                          <div className="flex items-center gap-2 text-base text-gray-400 mt-1">
                             <span>MBTI:</span>
-                            <span className="font-semibold text-gray-200 flex items-center gap-1">
-                                {user.mbti ? user.mbti : '미설정'}
-                                {!user.mbti && (
+                            {user.mbti ? (
+                                <button
+                                    onClick={() => {
+                                        if (currentUserWithStatus?.mbti) {
+                                            setShowMbtiComparison(true);
+                                        } else {
+                                            setShowMbtiHelp(true);
+                                        }
+                                    }}
+                                    className="font-semibold text-gray-200 hover:text-blue-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                >
+                                    {user.mbti}
+                                    <span className="w-5 h-5 text-sm bg-gray-600 rounded-full text-white flex items-center justify-center hover:bg-gray-500">?</span>
+                                </button>
+                            ) : (
+                                <span className="font-semibold text-gray-200 flex items-center gap-1">
+                                    미설정
                                     <span className="w-2 h-2 bg-red-500 rounded-full"></span>
-                                )}
-                            </span>
-                            {user.mbti && (
-                                <button onClick={() => setShowMbtiHelp(true)} className="w-5 h-5 text-sm bg-gray-600 rounded-full text-white flex items-center justify-center hover:bg-gray-500">?</button>
+                                </span>
                             )}
                         </div>
                         <div className="w-full bg-gray-700 rounded-full h-2.5 mt-2 border border-gray-900">
@@ -371,14 +385,25 @@ const UserProfileModal: React.FC<UserProfileModalProps> = ({ user, onClose, onVi
                             </div>
                             <div className="flex items-center gap-1.5 text-xs text-gray-400 mt-0.5">
                                 <span>MBTI:</span>
-                                <span className="font-semibold text-gray-200 flex items-center gap-1">
-                                    {user.mbti ? user.mbti : '미설정'}
-                                    {!user.mbti && (
+                                {user.mbti ? (
+                                    <button
+                                        onClick={() => {
+                                            if (currentUserWithStatus?.mbti) {
+                                                setShowMbtiComparison(true);
+                                            } else {
+                                                setShowMbtiHelp(true);
+                                            }
+                                        }}
+                                        className="font-semibold text-gray-200 hover:text-blue-300 transition-colors flex items-center gap-1 cursor-pointer"
+                                    >
+                                        {user.mbti}
+                                        <span className="w-3.5 h-3.5 text-[10px] bg-gray-600 rounded-full text-white flex items-center justify-center hover:bg-gray-500">?</span>
+                                    </button>
+                                ) : (
+                                    <span className="font-semibold text-gray-200 flex items-center gap-1">
+                                        미설정
                                         <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
-                                    )}
-                                </span>
-                                {user.mbti && (
-                                    <button onClick={() => setShowMbtiHelp(true)} className="w-3.5 h-3.5 text-[10px] bg-gray-600 rounded-full text-white flex items-center justify-center hover:bg-gray-500">?</button>
+                                    </span>
                                 )}
                             </div>
                             <div className="w-full bg-gray-700 rounded-full h-2 mt-1.5 border border-gray-900">

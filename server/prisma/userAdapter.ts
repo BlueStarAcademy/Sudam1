@@ -287,7 +287,7 @@ const applyDefaults = (
     blacksmithLevel: user.blacksmithLevel ?? 1,
     blacksmithXp: user.blacksmithXp ?? 0,
     cumulativeRankingScore: user.cumulativeRankingScore ?? {},
-    cumulativeTournamentScore: user.cumulativeTournamentScore ?? 0,
+    cumulativeTournamentScore: (user.cumulativeTournamentScore != null ? user.cumulativeTournamentScore : 0),
     inventorySlotsMigrated: user.inventorySlotsMigrated ?? false,
     dailyRankings: user.dailyRankings ?? {}
   };
@@ -512,8 +512,9 @@ export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
       safeNumber(legacy.blacksmithXp, 0),
     cumulativeRankingScore: parseJson(legacy.cumulativeRankingScore, {}),
     cumulativeTournamentScore:
-      status.leagueMetadata?.cumulativeTournamentScore ??
-      safeNumber(legacy.cumulativeTournamentScore, 0),
+      (status.leagueMetadata?.cumulativeTournamentScore != null 
+        ? safeNumber(status.leagueMetadata.cumulativeTournamentScore, 0)
+        : safeNumber(legacy.cumulativeTournamentScore, 0)),
     inventorySlotsMigrated:
       status.store?.inventorySlotsMigrated ??
       safeBoolean(legacy.inventorySlotsMigrated, false),
@@ -568,7 +569,7 @@ export function serializeUser(user: User): SerializedUserStatus {
       weeklyCompetitors: user.weeklyCompetitors ?? [],
       lastWeeklyCompetitorsUpdate: user.lastWeeklyCompetitorsUpdate ?? null,
       lastLeagueUpdate: user.lastLeagueUpdate ?? null,
-      cumulativeTournamentScore: user.cumulativeTournamentScore ?? 0,
+      cumulativeTournamentScore: (user.cumulativeTournamentScore != null ? user.cumulativeTournamentScore : 0),
       lastNeighborhoodPlayedDate: user.lastNeighborhoodPlayedDate ?? null,
       dailyNeighborhoodWins: user.dailyNeighborhoodWins ?? 0,
       neighborhoodRewardClaimed: user.neighborhoodRewardClaimed ?? false,

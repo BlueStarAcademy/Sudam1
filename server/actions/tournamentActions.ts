@@ -465,6 +465,12 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             const tournamentState = (freshUser as any)[stateKey] as types.TournamentState | null;
             if (!tournamentState) return { error: '토너먼트 정보를 찾을 수 없습니다.' };
             
+            // round_complete 상태에서만 startNextRound를 호출하여 다음 경기 준비
+            // bracket_ready 상태에서 컨디션이 1000이면 컨디션을 부여해야 함
+            const shouldStartNextRound = tournamentState.status === 'round_complete';
+            const needsConditionAssignment = tournamentState.status === 'bracket_ready' && 
+                tournamentState.players.some(p => p.condition === undefined || p.condition === null || p.condition === 1000);
+            
             // 다음 경기 준비 전: 유저의 최신 능력치를 계산하여 originalStats 업데이트
             const userPlayer = tournamentState.players.find(p => p.id === freshUser.id);
             if (userPlayer) {
@@ -474,8 +480,17 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 userPlayer.stats = JSON.parse(JSON.stringify(latestStats));
             }
             
-            // Now that we have the fresh state, start the next round. This will mutate tournamentState.
-            tournamentService.startNextRound(tournamentState, freshUser);
+            if (shouldStartNextRound) {
+                // Now that we have the fresh state, start the next round. This will mutate tournamentState.
+                tournamentService.startNextRound(tournamentState, freshUser);
+            } else if (needsConditionAssignment) {
+                // bracket_ready 상태에서 컨디션이 부여되지 않은 경우 컨디션 부여
+                tournamentState.players.forEach(p => {
+                    if (p.condition === undefined || p.condition === null || p.condition === 1000) {
+                        p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+                    }
+                });
+            }
             
             // The state object on the user is already mutated, so just save the user.
             // 사용자 캐시 업데이트
@@ -890,7 +905,10 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             tournamentState.currentMatchCommentary = [];
             tournamentState.timeElapsed = 0;
             tournamentState.currentMatchScores = { player1: 0, player2: 0 };
-            tournamentState.lastSimulationTime = undefined; // 첫 틱에서 초기화되도록 undefined로 설정
+            
+            // 첫 틱을 위한 시간 초기화 - 현재 시간으로 설정하여 클라이언트가 업데이트를 받을 때까지 시간이 점프되지 않도록 함
+            const now = Date.now();
+            tournamentState.lastSimulationTime = now;
 
             // Save tournament state
             // 사용자 캐시 업데이트
@@ -922,6 +940,61 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
 
             return { clientResponse: { redirectToTournament: type } };
         }
+
+        case 'ADVANCE_TOURNAMENT_SIMULATION': {
+            console.log(`[TournamentActions] ADVANCE_TOURNAMENT_SIMULATION received for user ${user.id}`);
+            const { type, timestamp } = payload as { type: TournamentType; timestamp: number };
+            let stateKey: keyof User;
+            switch (type) {
+                case 'neighborhood': stateKey = 'lastNeighborhoodTournament'; break;
+                case 'national': stateKey = 'lastNationalTournament'; break;
+                case 'world': stateKey = 'lastWorldTournament'; break;
+                default: return { error: 'Invalid tournament type.' };
+            }
+            
+            // Get the most up-to-date user data from DB
+            const freshUser = await db.getUser(user.id);
+            if (!freshUser) return { error: 'User not found in DB.' };
+            
+            // 캐시도 최신 정보로 업데이트
+            updateUserCache(freshUser);
+
+            const tournamentState = (freshUser as any)[stateKey] as types.TournamentState | null;
+            if (!tournamentState) return { error: '토너먼트 정보를 찾을 수 없습니다.' };
+            
+            // 클라이언트에서 시뮬레이션 진행
+            const { advanceSimulation } = await import('../tournamentService.js');
+            
+            // 클라이언트 타임스탬프를 시뮬레이션 함수에 전달
+            (tournamentState as any).__clientTimestamp = timestamp;
+            
+            const advanced = advanceSimulation(tournamentState, freshUser);
+            if (!advanced) {
+                return {}; // 아직 진행할 시간이 안 됨
+            }
+
+            // Keep volatile state reference updated
+            if (!volatileState.activeTournaments) volatileState.activeTournaments = {};
+            volatileState.activeTournaments[freshUser.id] = tournamentState;
+
+            // 사용자 캐시 업데이트
+            updateUserCache(freshUser);
+            // DB 저장은 비동기로 처리하여 응답 지연 최소화
+            db.updateUser(freshUser).catch(err => {
+                console.error(`[TournamentActions] Failed to save user ${freshUser.id}:`, err);
+            });
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUserCopy = JSON.parse(JSON.stringify(freshUser));
+            broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUserCopy } });
+
+            return { clientResponse: { updatedUser: updatedUserCopy } };
+        }
+
+        case 'ENTER_TOURNAMENT_VIEW':
+        case 'LEAVE_TOURNAMENT_VIEW':
+            // 단순히 뷰 진입/이탈을 추적하는 액션이므로 성공 응답만 반환
+            return {};
 
         default:
             return { error: `Action ${type} is not handled by tournamentActions.` };

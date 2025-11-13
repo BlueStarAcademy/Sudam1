@@ -1,15 +1,17 @@
 import React from 'react';
-import { GameProps, Player } from '../../types.js';
+import { GameProps, Player, Point } from '../../types.js';
 import GoBoard from '../GoBoard.js';
 
 interface SinglePlayerArenaProps extends GameProps {
     isMyTurn: boolean;
     myPlayerEnum: Player;
     handleBoardClick: (x: number, y: number) => void;
+    isItemModeActive: boolean;
     isMobile: boolean;
     showLastMoveMarker: boolean;
     isPaused?: boolean;
     resumeCountdown?: number;
+    isBoardLocked?: boolean;
 }
 
 const SinglePlayerArena: React.FC<SinglePlayerArenaProps> = (props) => {
@@ -20,10 +22,12 @@ const SinglePlayerArena: React.FC<SinglePlayerArenaProps> = (props) => {
         isMyTurn,
         myPlayerEnum,
         handleBoardClick,
+        isItemModeActive,
         isMobile,
         showLastMoveMarker,
         isPaused = false,
         resumeCountdown = 0,
+        isBoardLocked = false,
     } = props;
     
     const {
@@ -53,9 +57,12 @@ const SinglePlayerArena: React.FC<SinglePlayerArenaProps> = (props) => {
                     boardState={boardState}
                     boardSize={settings.boardSize}
                     onBoardClick={handleBoardClick}
+                    onMissileLaunch={(from: Point, direction: 'up' | 'down' | 'left' | 'right') => {
+                        props.onAction({ type: 'LAUNCH_MISSILE', payload: { gameId: session.id, from, direction } });
+                    }}
                     lastMove={lastMove}
                     lastTurnStones={lastTurnStones}
-                    isBoardDisabled={!isMyTurn || isSpectator || isPaused}
+                    isBoardDisabled={!isMyTurn || isSpectator || isPaused || isBoardLocked}
                     stoneColor={myPlayerEnum}
                     winningLine={winningLine}
                     mode={session.mode}
@@ -71,7 +78,7 @@ const SinglePlayerArena: React.FC<SinglePlayerArenaProps> = (props) => {
                     showLastMoveMarker={showLastMoveMarker}
                     blackPatternStones={blackPatternStones}
                     whitePatternStones={whitePatternStones}
-                    isItemModeActive={false} // No items in single player
+                    isItemModeActive={isItemModeActive}
                 />
             </div>
             {isPaused && (

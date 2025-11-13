@@ -8,7 +8,7 @@ import InventoryGrid from './blacksmith/InventoryGrid.js';
 import DisassemblyResultModal from './DisassemblyResultModal.js'; // New import
 import { useAppContext } from '../hooks/useAppContext.js';
 import { BLACKSMITH_MAX_LEVEL, BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL, BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES, BLACKSMITH_DISASSEMBLY_JACKPOT_RATES, BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP } from '../constants/rules';
-import { InventoryItem, EnhancementResult } from '../types.js';
+import { InventoryItem, EnhancementResult, ServerAction } from '../types.js';
 import type { ItemGrade } from '../types/enums.js';
 
 import BlacksmithHelpModal from './blacksmith/BlacksmithHelpModal.js';
@@ -183,6 +183,10 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
         { id: 'convert', label: '재료 변환' },
     ];
 
+    const handleActionWrapper = useCallback(async (action: ServerAction): Promise<void> => {
+        await handlers.handleAction(action);
+    }, [handlers.handleAction]);
+
     const renderContent = () => {
         switch (activeTab) {
             case 'enhance': return <EnhancementView 
@@ -199,17 +203,17 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                     newItems[index] = null;
                     setCombinationItems(newItems);
                 }}
-                onAction={handlers.handleAction} 
+                onAction={handleActionWrapper} 
                 currentUser={currentUserWithStatus}
             />;
             case 'disassemble': return (
                 <DisassemblyView
-                    onAction={handlers.handleAction}
+                    onAction={handleActionWrapper}
                     selectedForDisassembly={selectedForDisassembly}
                     onToggleDisassemblySelection={handleToggleDisassemblySelection}
                 />
             );
-            case 'convert': return <ConversionView onAction={handlers.handleAction} />;
+            case 'convert': return <ConversionView onAction={handleActionWrapper} />;
             default: return null;
         }
     };
@@ -273,7 +277,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                 onClose={onClose} 
                 isTopmost={isTopmost && !modals.isBlacksmithHelpOpen && !modals.disassemblyResult}
                 initialWidth={1100}
-                initialHeight={900}
+                initialHeight={activeTab === 'disassemble' ? 1000 : 900}
                 windowId="blacksmith"
                 zIndex={50}
                 variant="store"

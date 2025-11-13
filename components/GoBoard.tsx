@@ -47,9 +47,15 @@ const OwnershipOverlay: React.FC<{
 
                 if (prob < 0.3) return null; // Don't render low probabilities to reduce clutter
 
-                const size = cellSize * prob * 0.9; // Max size is 90% of the cell for better visual separation
-                const opacity = prob * 0.7;
-                const fill = value > 0 ? `rgba(0, 0, 0, ${opacity})` : `rgba(255, 255, 255, ${opacity})`;
+                // 더 작고 고급스러운 사각형 (60% 크기, 더 작은 모서리 반경)
+                const size = cellSize * prob * 0.6; // Max size is 60% of the cell (더 작게)
+                const opacity = Math.min(0.85, prob * 0.8 + 0.15); // 더 선명하게
+                const fill = value > 0 
+                    ? `rgba(0, 0, 0, ${opacity})` 
+                    : `rgba(255, 255, 255, ${opacity})`;
+                const stroke = value > 0 
+                    ? `rgba(0, 0, 0, ${opacity * 0.5})` 
+                    : `rgba(255, 255, 255, ${opacity * 0.5})`;
 
                 return (
                     <rect
@@ -59,7 +65,10 @@ const OwnershipOverlay: React.FC<{
                         width={size}
                         height={size}
                         fill={fill}
-                        rx={size * 0.3} // Add rounding to the corners for a softer look
+                        stroke={stroke}
+                        strokeWidth={size * 0.05}
+                        rx={size * 0.15} // 더 작은 모서리 반경 (더 고급스럽게)
+                        style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }}
                     />
                 );
             }))}
@@ -529,11 +538,35 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
             <g style={{ pointerEvents: 'none' }} className="animate-fade-in">
                 {analysisResult.deadStones.map((p, i) => {
                     const { cx, cy } = toSvgCoords(p);
-                    const crossSize = stone_radius * 0.7;
+                    // 사석의 색상 확인 (잡은 쪽의 색상)
+                    const deadStonePlayer = boardState[p.y][p.x];
+                    const capturingPlayer = deadStonePlayer === Player.Black ? Player.White : Player.Black;
+                    
+                    // 영토 표시 사각형 (잡은 쪽의 색상)
+                    const cellSize = (boardSizePx - padding * 2) / safeBoardSize;
+                    const size = cellSize * 0.6; // 영토 표시와 동일한 크기
+                    const opacity = 0.85;
+                    const fill = capturingPlayer === Player.Black 
+                        ? `rgba(0, 0, 0, ${opacity})` 
+                        : `rgba(255, 255, 255, ${opacity})`;
+                    const stroke = capturingPlayer === Player.Black 
+                        ? `rgba(0, 0, 0, ${opacity * 0.5})` 
+                        : `rgba(255, 255, 255, ${opacity * 0.5})`;
+
                     return (
-                        <g key={`ds-${i}`}>
-                            <line x1={cx - crossSize} y1={cy - crossSize} x2={cx + crossSize} y2={cy + crossSize} stroke="red" strokeWidth="3" strokeLinecap="round" />
-                            <line x1={cx - crossSize} y1={cy + crossSize} x2={cx + crossSize} y2={cy - crossSize} stroke="red" strokeWidth="3" strokeLinecap="round" />
+                        <g key={`ds-${i}`} style={{ zIndex: 10 }}>
+                            {/* 영토 표시 사각형 (잡은 쪽의 색상) - 돌 위에 표시 */}
+                            <rect
+                                x={cx - size / 2}
+                                y={cy - size / 2}
+                                width={size}
+                                height={size}
+                                fill={fill}
+                                stroke={stroke}
+                                strokeWidth={size * 0.05}
+                                rx={size * 0.15}
+                                style={{ filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.2))' }}
+                            />
                         </g>
                     );
                 })}

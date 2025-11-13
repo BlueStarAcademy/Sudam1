@@ -63,58 +63,59 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
             return result;
         } else {
             const mode = activeTab === 'strategic' ? 'strategic' : 'playful';
-            // 전략바둑/놀이바둑: dailyRankings가 있으면 사용, 없으면 실시간 계산
-            const hasDailyRankings = allUsers.some(user => user.dailyRankings?.[mode]);
+            const gameModes = mode === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
+            const scoreMode = mode === 'strategic' ? 'standard' : 'playful';
             
-            if (hasDailyRankings) {
-                // dailyRankings 사용
-                const result = allUsers
-                    .filter(user => user && user.id && user.dailyRankings?.[mode])
-                    .map(user => ({
-                        user,
-                        value: user.dailyRankings![mode]!.score,
-                        rank: user.dailyRankings![mode]!.rank
-                    }))
-                    .sort((a, b) => a.rank - b.rank)
-                    .slice(0, 50);
-                if (IS_DEV) {
-                    console.debug('[BadukRankingBoard]', mode, 'rankings (daily):', result.length, 'users');
-                }
-                return result;
-            } else {
-                // 실시간 계산 (cumulativeRankingScore 사용)
-                const gameModes = mode === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
-                const result = allUsers
-                    .filter(user => {
-                        if (!user || !user.id) return false;
-                        // 총 게임 수 계산
-                        let totalGames = 0;
-                        if (user.stats) {
-                            for (const gameMode of gameModes) {
-                                const gameStats = user.stats[gameMode.mode];
-                                if (gameStats) {
-                                    totalGames += (gameStats.wins || 0) + (gameStats.losses || 0);
-                                }
+            // 10판 이상의 대국을 한 유저는 모두 표시 (점수가 없어도 포함)
+            const result = allUsers
+                .filter(user => {
+                    if (!user || !user.id) return false;
+                    // 총 게임 수 계산 (모든 종류의 전략바둑 또는 놀이바둑 경기의 누적 판수)
+                    let totalGames = 0;
+                    if (user.stats) {
+                        for (const gameMode of gameModes) {
+                            const gameStats = user.stats[gameMode.mode];
+                            if (gameStats) {
+                                totalGames += (gameStats.wins || 0) + (gameStats.losses || 0);
                             }
                         }
-                        // 10판 이상 PVP를 한 유저만 랭킹에 포함
-                        return totalGames >= 10 && user.cumulativeRankingScore?.[mode] !== undefined;
-                    })
-                    .map(user => ({
-                        user,
-                        value: user.cumulativeRankingScore?.[mode] || 0
-                    }))
-                    .sort((a, b) => b.value - a.value)
-                    .slice(0, 50)
-                    .map((entry, index) => ({
-                        ...entry,
-                        rank: index + 1
-                    }));
-                if (IS_DEV) {
-                    console.debug('[BadukRankingBoard]', mode, 'rankings (realtime):', result.length, 'users');
-                }
-                return result;
+                    }
+                    // 10판 이상이면 포함 (점수와 무관)
+                    return totalGames >= 10;
+                })
+                .map(user => {
+                    // dailyRankings가 있으면 우선 사용
+                    if (user.dailyRankings?.[mode]) {
+                        return {
+                            user,
+                            value: user.dailyRankings[mode].score,
+                            rank: user.dailyRankings[mode].rank
+                        };
+                    } else {
+                        // 없으면 cumulativeRankingScore 사용 (없으면 0)
+                        return {
+                            user,
+                            value: user.cumulativeRankingScore?.[scoreMode] ?? 0
+                        };
+                    }
+                })
+                .sort((a, b) => {
+                    // rank가 있으면 rank 기준으로 정렬, 없으면 점수 기준으로 정렬
+                    if (a.rank !== undefined && b.rank !== undefined) {
+                        return a.rank - b.rank;
+                    }
+                    return b.value - a.value;
+                })
+                .slice(0, 50)
+                .map((entry, index) => ({
+                    ...entry,
+                    rank: entry.rank ?? (index + 1)
+                }));
+            
+            if (IS_DEV) {
+                console.debug('[BadukRankingBoard]', mode, 'rankings:', result.length, 'users');
             }
+            return result;
         }
     }, [allUsers, activeTab]);
 
@@ -127,7 +128,7 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
             return { user: currentUserWithStatus, value: rankings[rank].value, rank: rankings[rank].rank };
         }
         
-        // rankings에 없으면 값만 계산
+        // rankings에 없으면 값만 계산 (10판 이상이어야 표시)
         if (activeTab === 'championship') {
             // 누적랭킹점수 사용
             const cumulativeScore = currentUserWithStatus.cumulativeTournamentScore || 0;
@@ -140,13 +141,32 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
             return { user: currentUserWithStatus, value: cumulativeScore, rank: rank || 'N/A' };
         } else {
             const mode = activeTab === 'strategic' ? 'strategic' : 'playful';
+            const scoreMode = mode === 'strategic' ? 'standard' : 'playful';
+            const gameModes = mode === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
+            
+            // 총 게임 수 계산
+            let totalGames = 0;
+            if (currentUserWithStatus.stats) {
+                for (const gameMode of gameModes) {
+                    const gameStats = currentUserWithStatus.stats[gameMode.mode];
+                    if (gameStats) {
+                        totalGames += (gameStats.wins || 0) + (gameStats.losses || 0);
+                    }
+                }
+            }
+            
+            // 10판 미만이면 null 반환 (표시하지 않음)
+            if (totalGames < 10) {
+                return null;
+            }
+            
             const dailyRanking = currentUserWithStatus.dailyRankings?.[mode];
             if (dailyRanking) {
                 return { user: currentUserWithStatus, value: dailyRanking.score, rank: dailyRanking.rank };
             }
-            return { user: currentUserWithStatus, value: currentUserWithStatus.cumulativeRankingScore?.[mode] || 0, rank: 'N/A' };
+            return { user: currentUserWithStatus, value: currentUserWithStatus.cumulativeRankingScore?.[scoreMode] || 0, rank: 'N/A' };
         }
-    }, [currentUserWithStatus, activeTab, rankings]);
+    }, [currentUserWithStatus, activeTab, rankings, allUsers]);
 
     return (
         <div className="bg-panel border border-color text-on-panel rounded-lg p-2 flex flex-col gap-2 h-full">

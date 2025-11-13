@@ -95,11 +95,12 @@ export type ServerAction =
     | { type: 'START_AI_GAME', payload: { mode: GameMode, settings: any } }
     | { type: 'REQUEST_REMATCH', payload: { opponentId: string, originalGameId: string } }
     // Game
-    | { type: 'PLACE_STONE', payload: { gameId: string; x: number; y: number, isHidden?: boolean } }
+    | { type: 'PLACE_STONE', payload: { gameId: string; x: number; y: number, isHidden?: boolean, isClientAiMove?: boolean } }
     | { type: 'PASS_TURN', payload: { gameId: string } }
     | { type: 'RESIGN_GAME', payload: { gameId: string, andLeave?: boolean } }
     | { type: 'LEAVE_AI_GAME', payload: { gameId: string } }
     | { type: 'REQUEST_NO_CONTEST_LEAVE', payload: { gameId: string } }
+    | { type: 'EMERGENCY_EXIT', payload?: never }
     | { type: 'USE_ACTION_BUTTON', payload: { gameId: string; buttonName: string } }
     // Nigiri
     | { type: 'NIGIRI_GUESS', payload: { gameId: string; guess: 1 | 2 } }
@@ -119,6 +120,7 @@ export type ServerAction =
     | { type: 'START_MISSILE_SELECTION', payload: { gameId: string } }
     | { type: 'LAUNCH_MISSILE', payload: { gameId: string, from: Point, direction: 'up' | 'down' | 'left' | 'right' } }
     | { type: 'MISSILE_INVALID_SELECTION', payload: { gameId: string } }
+    | { type: 'CANCEL_MISSILE_SELECTION', payload: { gameId: string } }
     // Omok
     | { type: 'OMOK_PLACE_STONE', payload: { gameId: string, x: number, y: number } }
     // Turn Preference (Alkkagi, Curling, Omok, Ttamok)
@@ -204,6 +206,7 @@ export type ServerAction =
     | { type: 'START_TOURNAMENT_SESSION', payload: { type: TournamentType } }
     | { type: 'START_TOURNAMENT_ROUND', payload: { type: TournamentType } }
     | { type: 'START_TOURNAMENT_MATCH', payload: { type: TournamentType } }
+    | { type: 'ADVANCE_TOURNAMENT_SIMULATION', payload: { type: TournamentType; timestamp: number } }
     | { type: 'CLEAR_TOURNAMENT_SESSION', payload: { type?: TournamentType } }
     | { type: 'SAVE_TOURNAMENT_PROGRESS', payload: { type: TournamentType } }
     | { type: 'FORFEIT_TOURNAMENT', payload: { type: TournamentType } }

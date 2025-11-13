@@ -50,8 +50,8 @@ const DisassemblyPreviewPanel: React.FC<{
     }, [selectedIds, inventory]);
 
     return (
-        <div className="w-full h-full bg-gradient-to-br from-[#1d243b] via-[#121a2d] to-[#0b1120] border border-cyan-300/20 rounded-2xl p-5 flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+        <div className="w-full h-full bg-gradient-to-br from-[#1d243b] via-[#121a2d] to-[#0b1120] border border-cyan-300/20 rounded-2xl p-5 flex flex-col gap-4 min-h-0">
+            <div className="flex items-center justify-between flex-shrink-0">
                 <div className="text-left">
                     <p className="text-xs text-slate-300/80">선택된 장비</p>
                     <p className="text-lg font-semibold text-cyan-200">{itemCount.toLocaleString()}개</p>
@@ -61,7 +61,7 @@ const DisassemblyPreviewPanel: React.FC<{
                 </div>
             </div>
 
-            <div className="rounded-xl border border-slate-600/30 bg-[#0f1627] p-4 shadow-inner flex-1 flex flex-col gap-3">
+            <div className="rounded-xl border border-slate-600/30 bg-[#0f1627] p-4 shadow-inner flex-1 min-h-0 flex flex-col gap-3 overflow-y-auto">
                 {totalMaterials.length > 0 ? (
                     <div className="space-y-3">
                         {totalMaterials.map(({ name }) => {
@@ -236,14 +236,14 @@ const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction, selectedFor
                     onConfirm={handleAutoSelectConfirm}
                 />
             )}
-            <div className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-hidden">
                 <DisassemblyPreviewPanel 
                     selectedIds={selectedForDisassembly} 
                     inventory={inventory} 
                     blacksmithLevel={currentUserWithStatus.blacksmithLevel ?? 1}
                 />
             </div>
-            <div className="flex-shrink-0 mt-3 px-2">
+            <div className="flex-shrink-0 mt-3 px-2 pb-2">
                 <div className="flex items-center justify-between gap-3 bg-[#111a2f] border border-cyan-300/20 rounded-xl px-4 py-3">
                     <ResourceActionButton
                         onClick={() => setIsAutoSelectOpen(true)}

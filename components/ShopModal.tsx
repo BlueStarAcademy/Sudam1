@@ -78,12 +78,13 @@ const ActionPointCard: React.FC<{ currentUser: UserWithStatus, onBuy: () => void
         <div className="group relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#1c1f3e]/95 via-[#0f172a]/95 to-[#060b15]/95 border border-cyan-400/30 shadow-[0_25px_60px_-25px_rgba(34,211,238,0.55)] p-5 flex flex-col items-center text-center transition-transform duration-300 hover:-translate-y-1 hover:shadow-[0_30px_70px_-30px_rgba(59,130,246,0.65)]">
             <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-cyan-400/70 to-transparent pointer-events-none" />
             <div className="absolute inset-0 opacity-0 pointer-events-none transition-opacity duration-500 group-hover:opacity-20 bg-[radial-gradient(circle_at_top,rgba(34,211,238,0.3),transparent_55%)]" />
-            <div className="w-24 h-24 bg-gradient-to-br from-[#14b8a6]/30 via-[#06b6d4]/20 to-transparent rounded-xl mb-4 flex items-center justify-center text-5xl text-cyan-300 drop-shadow-[0_0_18px_rgba(14,165,233,0.35)]">
-                ⚡
+            <div className="w-24 h-24 bg-gradient-to-br from-[#14b8a6]/30 via-[#06b6d4]/20 to-transparent rounded-xl mb-4 flex items-center justify-center relative">
+                <span className="text-5xl text-cyan-300 drop-shadow-[0_0_18px_rgba(14,165,233,0.35)]">⚡</span>
+                <span className="absolute bottom-2 right-2 text-2xl font-bold text-cyan-200 drop-shadow-[0_0_8px_rgba(14,165,233,0.5)]">{ACTION_POINT_PURCHASE_REFILL_AMOUNT}</span>
             </div>
             <h3 className="text-xl font-bold tracking-wide text-white drop-shadow-lg">행동력 충전</h3>
             <p className="text-sm text-slate-200/85 mt-2 leading-relaxed flex-grow">
-                행동력 {ACTION_POINT_PURCHASE_REFILL_AMOUNT.toLocaleString()}개를 즉시 주입합니다. 최대치를 넘어 충전되어도 소멸되지 않습니다.
+                최대치 초과가능
             </p>
             <div className="mt-4 flex flex-col items-center justify-center gap-2 w-full">
                 <Button
@@ -222,20 +223,20 @@ const ShopModal: React.FC<ShopModalProps> = ({ currentUser: propCurrentUser, onC
 
     const renderContent = () => {
         const equipmentItems = [
-            { itemId: 'equipment_box_1', name: "장비 상자 I", description: "일반~희귀 등급 장비 획득", price: { gold: 500 }, image: "/images/Box/EquipmentBox1.png", type: 'equipment' as const },
-            { itemId: 'equipment_box_2', name: "장비 상자 II", description: "일반~에픽 등급 장비 획득", price: { gold: 1500 }, image: "/images/Box/EquipmentBox2.png", type: 'equipment' as const },
-            { itemId: 'equipment_box_3', name: "장비 상자 III", description: "고급~전설 등급 장비 획득", price: { gold: 5000 }, image: "/images/Box/EquipmentBox3.png", type: 'equipment' as const },
-            { itemId: 'equipment_box_4', name: "장비 상자 IV", description: "희귀~신화 등급 장비 획득", price: { gold: 10000 }, image: "/images/Box/EquipmentBox4.png", type: 'equipment' as const },
-            { itemId: 'equipment_box_5', name: "장비 상자 V", description: "에픽~신화 등급 장비 획득", price: { diamonds: 100 }, image: "/images/Box/EquipmentBox5.png", type: 'equipment' as const },
-            { itemId: 'equipment_box_6', name: "장비 상자 VI", description: "전설~신화 등급 장비 획득", price: { diamonds: 500 }, image: "/images/Box/EquipmentBox6.png", type: 'equipment' as const },
+            { itemId: 'equipment_box_1', name: "장비 상자 I", description: "일반~희귀 등급 장비", price: { gold: 500 }, image: "/images/Box/EquipmentBox1.png", type: 'equipment' as const },
+            { itemId: 'equipment_box_2', name: "장비 상자 II", description: "일반~에픽 등급 장비", price: { gold: 1500 }, image: "/images/Box/EquipmentBox2.png", type: 'equipment' as const },
+            { itemId: 'equipment_box_3', name: "장비 상자 III", description: "고급~전설 등급 장비", price: { gold: 5000 }, image: "/images/Box/EquipmentBox3.png", type: 'equipment' as const },
+            { itemId: 'equipment_box_4', name: "장비 상자 IV", description: "희귀~신화 등급 장비", price: { gold: 10000 }, image: "/images/Box/EquipmentBox4.png", type: 'equipment' as const },
+            { itemId: 'equipment_box_5', name: "장비 상자 V", description: "에픽~신화 등급 장비", price: { diamonds: 100 }, image: "/images/Box/EquipmentBox5.png", type: 'equipment' as const },
+            { itemId: 'equipment_box_6', name: "장비 상자 VI", description: "전설~신화 등급 장비", price: { diamonds: 500 }, image: "/images/Box/EquipmentBox6.png", type: 'equipment' as const },
         ];
         const materialItems = [
-            { itemId: "material_box_1", name: "재료 상자 I", description: "하급 ~ 상급 강화석 5개 획득", price: { gold: 500 }, image: "/images/Box/ResourceBox1.png", dailyLimit: 10, type: 'material' as const },
-            { itemId: "material_box_2", name: "재료 상자 II", description: "하급 ~ 상급 강화석 5개 획득", price: { gold: 1000 }, image: "/images/Box/ResourceBox2.png", dailyLimit: 10, type: 'material' as const },
-            { itemId: "material_box_3", name: "재료 상자 III", description: "하급 ~ 상급 강화석 5개 획득", price: { gold: 3000 }, image: "/images/Box/ResourceBox3.png", dailyLimit: 10, type: 'material' as const },
-            { itemId: "material_box_4", name: "재료 상자 IV", description: "중급 ~ 최상급 강화석 5개 획득", price: { gold: 5000 }, image: "/images/Box/ResourceBox4.png", dailyLimit: 10, type: 'material' as const },
-            { itemId: "material_box_5", name: "재료 상자 V", description: "상급 ~ 신비의 강화석 5개 획득", price: { gold: 10000 }, image: "/images/Box/ResourceBox5.png", dailyLimit: 10, type: 'material' as const },
-            { itemId: "material_box_6", name: "재료 상자 VI", description: "상급 ~ 신비의 강화석 5개 획득", price: { diamonds: 100 }, image: "/images/Box/ResourceBox6.png", dailyLimit: 10, type: 'material' as const },
+            { itemId: "material_box_1", name: "재료 상자 I", description: "하급~상급강화석 5개", price: { gold: 500 }, image: "/images/Box/ResourceBox1.png", dailyLimit: 10, type: 'material' as const },
+            { itemId: "material_box_2", name: "재료 상자 II", description: "하급~상급강화석 5개", price: { gold: 1000 }, image: "/images/Box/ResourceBox2.png", dailyLimit: 10, type: 'material' as const },
+            { itemId: "material_box_3", name: "재료 상자 III", description: "하급~상급강화석 5개", price: { gold: 3000 }, image: "/images/Box/ResourceBox3.png", dailyLimit: 10, type: 'material' as const },
+            { itemId: "material_box_4", name: "재료 상자 IV", description: "중급~최상급강화석 5개", price: { gold: 5000 }, image: "/images/Box/ResourceBox4.png", dailyLimit: 10, type: 'material' as const },
+            { itemId: "material_box_5", name: "재료 상자 V", description: "상급~신비의강화석 5개", price: { gold: 10000 }, image: "/images/Box/ResourceBox5.png", dailyLimit: 10, type: 'material' as const },
+            { itemId: "material_box_6", name: "재료 상자 VI", description: "상급~신비의강화석 5개", price: { diamonds: 100 }, image: "/images/Box/ResourceBox6.png", dailyLimit: 10, type: 'material' as const },
         ];
 
         switch (activeTab) {
@@ -260,9 +261,9 @@ const ShopModal: React.FC<ShopModalProps> = ({ currentUser: propCurrentUser, onC
             case 'consumables':
             default:
                 const consumableItems = [
-                    { itemId: 'condition_potion_small', name: "컨디션회복제(소)", description: "컨디션을 1~10 회복합니다.", price: { gold: 100 }, image: "/images/use/con1.png", dailyLimit: 3, type: 'consumable' as const },
-                    { itemId: 'condition_potion_medium', name: "컨디션회복제(중)", description: "컨디션을 10~20 회복합니다.", price: { gold: 150 }, image: "/images/use/con2.png", dailyLimit: 3, type: 'consumable' as const },
-                    { itemId: 'condition_potion_large', name: "컨디션회복제(대)", description: "컨디션을 20~30 회복합니다.", price: { gold: 200 }, image: "/images/use/con3.png", dailyLimit: 3, type: 'consumable' as const },
+                    { itemId: 'condition_potion_small', name: "컨디션회복제(소)", description: "컨디션 1~10회복", price: { gold: 100 }, image: "/images/use/con1.png", dailyLimit: 3, type: 'consumable' as const },
+                    { itemId: 'condition_potion_medium', name: "컨디션회복제(중)", description: "컨디션 10~20회복", price: { gold: 150 }, image: "/images/use/con2.png", dailyLimit: 3, type: 'consumable' as const },
+                    { itemId: 'condition_potion_large', name: "컨디션회복제(대)", description: "컨디션 20~30회복", price: { gold: 200 }, image: "/images/use/con3.png", dailyLimit: 3, type: 'consumable' as const },
                 ];
                 return (
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">

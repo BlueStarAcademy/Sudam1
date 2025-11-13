@@ -1,7 +1,7 @@
 import { GameMode } from '../types';
 
 export const SPECIAL_GAME_MODES = [
-  { mode: GameMode.Standard, name: "정통 바둑", description: "일반적인 정통 바둑입니다.", available: true, image: "/images/simbols/simbol1.png" },
+  { mode: GameMode.Standard, name: "클래식 바둑", description: "일반적인 클래식 바둑입니다.", available: true, image: "/images/simbols/simbol1.png" },
   { mode: GameMode.Capture, name: "따내기 바둑", description: "정해진 개수의 돌을 먼저 따내는 사람이 승리하는 바둑입니다.", available: true, image: "/images/simbols/simbol2.png" },
   { mode: GameMode.Speed, name: "스피드 바둑", description: "한 수를 둘 때마다 시간이 추가되는 피셔 방식입니다. 계가 시 남은 시간으로 보너스 집을 얻습니다.", available: true, image: "/images/simbols/simbol3.png" },
   { mode: GameMode.Base, name: "베이스 바둑", description: "각자 비밀리에 '베이스돌'을 놓아 독특한 시작 판을 만듭니다. 돌이 공개된 후, 초기 형세를 판단하여 흑/백과 덤을 결정하는 입찰을 진행합니다. 상대의 베이스돌을 따내면 보너스 점수를 얻는 전략적인 바둑입니다.", available: true, image: "/images/simbols/simbol4.png" },

@@ -502,10 +502,13 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 }
                 
                 (freshUser as any)[statusKey] = true;
+                const oldCumulativeScore = freshUser.cumulativeTournamentScore || 0;
+                freshUser.cumulativeTournamentScore = oldCumulativeScore + scoreReward;
+                // tournamentScore는 주간 점수로 유지 (주간 리셋용)
                 const oldScore = freshUser.tournamentScore || 0;
                 freshUser.tournamentScore = oldScore + scoreReward;
                 freshUser.gold += accumulatedGold;
-                console.log(`[CLAIM_TOURNAMENT_REWARD] Updated tournamentScore: ${oldScore} -> ${freshUser.tournamentScore}`);
+                console.log(`[CLAIM_TOURNAMENT_REWARD] Updated cumulativeTournamentScore: ${oldCumulativeScore} -> ${freshUser.cumulativeTournamentScore}, tournamentScore: ${oldScore} -> ${freshUser.tournamentScore}`);
                 if (accumulatedGold > 0) {
                     console.log(`[CLAIM_TOURNAMENT_REWARD] Added accumulated gold: ${accumulatedGold}`);
                 }
@@ -542,7 +545,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                     allObtainedItems.unshift({ name: `${accumulatedGold} 골드 (경기 보상)`, image: '/images/icon/Gold.png' });
                 }
                 
-                return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser, tournamentScoreChange: { oldScore: oldScore, newScore: freshUser.tournamentScore, scoreReward: scoreReward } }};
+                return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser, tournamentScoreChange: { oldScore: oldCumulativeScore, newScore: freshUser.cumulativeTournamentScore, scoreReward: scoreReward } }};
             }
 
             const itemsToCreate = itemReward.items ? createItemInstancesFromReward(itemReward.items as {itemId: string, quantity: number}[]) : [];
@@ -574,9 +577,12 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             
             // If we'vepassed the check, apply all changes
             (freshUser as any)[statusKey] = true;
+            const oldCumulativeScore = freshUser.cumulativeTournamentScore || 0;
+            freshUser.cumulativeTournamentScore = oldCumulativeScore + scoreReward;
+            // tournamentScore는 주간 점수로 유지 (주간 리셋용)
             const oldScore = freshUser.tournamentScore || 0;
             freshUser.tournamentScore = oldScore + scoreReward;
-            console.log(`[CLAIM_TOURNAMENT_REWARD] Updated tournamentScore: ${oldScore} -> ${freshUser.tournamentScore}`);
+            console.log(`[CLAIM_TOURNAMENT_REWARD] Updated cumulativeTournamentScore: ${oldCumulativeScore} -> ${freshUser.cumulativeTournamentScore}, tournamentScore: ${oldScore} -> ${freshUser.tournamentScore}`);
             
             // 동네바둑리그: 누적 골드 추가
             let accumulatedGold = 0;
@@ -677,7 +683,7 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 allObtainedItems.push(...fallbackDisplayItems);
             }
 
-            return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser, tournamentScoreChange: { oldScore: oldScore, newScore: freshUser.tournamentScore, scoreReward: scoreReward } }};
+            return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser, tournamentScoreChange: { oldScore: oldCumulativeScore, newScore: freshUser.cumulativeTournamentScore, scoreReward: scoreReward } }};
         }
         default:
             return { error: 'Unknown reward action.' };

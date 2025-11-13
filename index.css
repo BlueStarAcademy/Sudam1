@@ -736,6 +736,17 @@ input[type="range"]::-moz-range-thumb {
     }
 }
 
+@keyframes fadeUp {
+    0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(-30px) scale(1.2);
+    }
+}
+
 @keyframes glow-secondary {
   from {
     text-shadow: 0 0 5px #fff, 0 0 10px #fff, 0 0 15px #00ffff;

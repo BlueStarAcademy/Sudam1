@@ -9,6 +9,7 @@ import { getGoLogic, processMove } from './goLogic.js';
 import * as types from '../types.js';
 import * as summaryService from './summaryService.js';
 import { getCaptureTarget, NO_CAPTURE_TARGET } from './utils/captureTargets.ts';
+import * as db from './db.js';
 
 /**
  * AI 봇 단계별 특성 정의
@@ -132,56 +133,56 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         level: 7,
         name: '고급 AI (1단)',
         description: '고급단계의 1단 수준. 정석과 포석을 잘 활용하며 사활 판단 능력 향상',
-        captureTendency: 0.75,
-        territoryTendency: 0.6,
-        combatTendency: 0.75,
-        josekiUsage: 0.6,
-        lifeDeathSkill: 0.8,
-        movementSkill: 0.8,
-        mistakeRate: 0.05,
-        winFocus: 0.72,
+        captureTendency: 0.8, // 공격적 따내기 선호
+        territoryTendency: 0.55, // 영토보다 공격 우선
+        combatTendency: 0.8, // 공격적인 전투
+        josekiUsage: 0.55, // 정석 활용하되 공격 우선
+        lifeDeathSkill: 0.75, // 사활 판단 정확
+        movementSkill: 0.75, // 행마 능력 우수
+        mistakeRate: 0.04, // 실수 적음
+        winFocus: 0.7, // 승리에 집중
         calculationDepth: 4,
     },
     8: {
         level: 8,
         name: '고급 AI (2단)',
         description: '고급단계의 2단 수준. 우수한 행마와 정석 활용',
-        captureTendency: 0.7,
-        territoryTendency: 0.65,
-        combatTendency: 0.8,
-        josekiUsage: 0.7,
-        lifeDeathSkill: 0.85,
-        movementSkill: 0.85,
-        mistakeRate: 0.035,
-        winFocus: 0.68,
+        captureTendency: 0.85, // 공격적 따내기 선호
+        territoryTendency: 0.6, // 영토보다 공격 우선
+        combatTendency: 0.85, // 공격적인 전투
+        josekiUsage: 0.65, // 정석 활용하되 공격 우선
+        lifeDeathSkill: 0.8, // 사활 판단 정확
+        movementSkill: 0.8, // 행마 능력 우수
+        mistakeRate: 0.03, // 실수 적음
+        winFocus: 0.75, // 승리에 집중
         calculationDepth: 5,
     },
     9: {
         level: 9,
         name: '유단자 AI (3단)',
         description: '유단자 수준의 3단. 전반적인 기술이 뛰어나며 정확한 판단',
-        captureTendency: 0.68,
-        territoryTendency: 0.7,
-        combatTendency: 0.85,
-        josekiUsage: 0.8,
-        lifeDeathSkill: 0.9,
-        movementSkill: 0.9,
-        mistakeRate: 0.02,
-        winFocus: 0.65,
+        captureTendency: 0.9, // 공격적 따내기 선호
+        territoryTendency: 0.6, // 영토보다 공격 우선
+        combatTendency: 0.9, // 매우 공격적인 전투
+        josekiUsage: 0.7, // 정석 활용하되 공격 우선
+        lifeDeathSkill: 0.85, // 사활 판단 정확
+        movementSkill: 0.85, // 행마 능력 우수
+        mistakeRate: 0.015, // 실수 적음
+        winFocus: 0.8, // 승리에 집중 (공격적)
         calculationDepth: 6,
     },
     10: {
         level: 10,
         name: '유단자 AI (약 1단)',
         description: '유단자 수준의 약 1단. 영토, 전투, 행마, 정석, 포석, 사활 등 전반적인 모든 기술이 뛰어남',
-        captureTendency: 0.6, // 적극적인 전투 선호
-        territoryTendency: 0.75, // 영토 확보에 집중
-        combatTendency: 0.9, // 전투 능력 뛰어남
-        josekiUsage: 0.9, // 정석/포석을 잘 활용
-        lifeDeathSkill: 0.95, // 사활 판단 매우 정확
-        movementSkill: 0.95, // 행마 능력 매우 우수
-        mistakeRate: 0.005, // 실수 거의 없음
-        winFocus: 0.62, // 승리에 집중하되 전략적
+        captureTendency: 0.95, // 매우 적극적인 따내기 선호 (18급 수준으로 증가)
+        territoryTendency: 0.6, // 영토보다 공격 우선
+        combatTendency: 0.95, // 매우 공격적인 전투 능력
+        josekiUsage: 0.7, // 정석/포석 활용하되 공격 우선
+        lifeDeathSkill: 0.9, // 사활 판단 정확
+        movementSkill: 0.9, // 행마 능력 우수
+        mistakeRate: 0.01, // 실수 거의 없음
+        winFocus: 0.85, // 승리에 집중 (공격적)
         calculationDepth: 6, // 계산 깊이 최대
     },
 };
@@ -216,8 +217,14 @@ export async function makeGoAiBotMove(
     // 살리기 바둑 모드 확인
     const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
 
+    // 낮은 난이도(1-3)는 간단한 휴리스틱 사용으로 성능 최적화
+    const useFastHeuristic = aiLevel <= 3;
+
     // 1. 모든 유효한 수 찾기 (KataGo 사용 안함)
-    const allValidMoves = findAllValidMoves(game, logic, aiPlayerEnum);
+    // 낮은 난이도는 샘플링으로 유효한 수 찾기 (성능 최적화)
+    const allValidMoves = useFastHeuristic 
+        ? findAllValidMovesFast(game, logic, aiPlayerEnum)
+        : findAllValidMoves(game, logic, aiPlayerEnum);
     
     if (allValidMoves.length === 0) {
         console.log('[GoAiBot] No valid moves available. AI resigns.');
@@ -237,6 +244,9 @@ export async function makeGoAiBotMove(
             aiPlayerEnum,
             opponentPlayerEnum
         );
+    } else if (useFastHeuristic) {
+        // 낮은 난이도: 간단한 휴리스틱 점수화 (성능 최적화)
+        scoredMoves = scoreMovesFast(allValidMoves, game, profile, logic, aiPlayerEnum, opponentPlayerEnum);
     } else {
         // 일반 바둑: AI 프로필에 따라 수 선택
         scoredMoves = scoreMovesByProfile(
@@ -306,6 +316,11 @@ export async function makeGoAiBotMove(
     game.moveHistory.push({ player: aiPlayerEnum, x: selectedMove.x, y: selectedMove.y });
     game.koInfo = result.newKoInfo;
     game.passCount = 0;
+    
+    // 싱글플레이 턴 카운팅 업데이트 (AI가 수를 둘 때도 카운팅)
+    if (game.isSinglePlayer && game.stageId) {
+        game.totalTurns = game.moveHistory.length;
+    }
 
     // 6. 따낸 돌 처리
     if (result.capturedStones.length > 0) {
@@ -366,6 +381,21 @@ export async function makeGoAiBotMove(
         game[aiPlayerTimeKey] = timeRemaining;
     }
 
+    // 싱글플레이 자동 계가 트리거 체크 (AI가 수를 둔 후)
+    if (game.isSinglePlayer && game.stageId) {
+        const { SINGLE_PLAYER_STAGES } = await import('../constants/singlePlayerConstants.js');
+        const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+        const totalTurns = game.totalTurns ?? game.moveHistory.length;
+        if (stage?.autoScoringTurns && totalTurns >= stage.autoScoringTurns) {
+            const { getGameResult } = await import('./gameModes.js');
+            await getGameResult(game);
+            await db.saveGame(game);
+            const { broadcast } = await import('./socket.js');
+            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            return;
+        }
+    }
+
     game.currentPlayer = opponentPlayerEnum;
     if (game.settings.timeLimit > 0) {
         const timeKey = game.currentPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
@@ -385,7 +415,7 @@ export async function makeGoAiBotMove(
 }
 
 /**
- * 모든 유효한 수 찾기
+ * 모든 유효한 수 찾기 (전체 검사)
  */
 function findAllValidMoves(
     game: types.LiveGameSession,
@@ -415,6 +445,78 @@ function findAllValidMoves(
 }
 
 /**
+ * 빠른 휴리스틱으로 유효한 수 찾기 (낮은 난이도용, 성능 최적화)
+ * 주변에 돌이 있는 위치만 검사하여 계산량을 대폭 줄임
+ */
+function findAllValidMovesFast(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    aiPlayer: Player
+): Point[] {
+    const validMoves: Point[] = [];
+    const boardSize = game.settings.boardSize;
+    const checkedPoints = new Set<string>();
+
+    // 기존 돌 주변만 검사 (빈 보드의 경우 중앙 영역만 검사)
+    const occupiedPoints: Point[] = [];
+    for (let y = 0; y < boardSize; y++) {
+        for (let x = 0; x < boardSize; x++) {
+            if (game.boardState[y][x] !== Player.None) {
+                occupiedPoints.push({ x, y });
+            }
+        }
+    }
+
+    // 주변 위치 검사
+    if (occupiedPoints.length > 0) {
+        for (const point of occupiedPoints) {
+            const neighbors = logic.getNeighbors(point.x, point.y);
+            for (const neighbor of neighbors) {
+                const key = `${neighbor.x},${neighbor.y}`;
+                if (!checkedPoints.has(key) && game.boardState[neighbor.y][neighbor.x] === Player.None) {
+                    checkedPoints.add(key);
+                    const result = processMove(
+                        game.boardState,
+                        { x: neighbor.x, y: neighbor.y, player: aiPlayer },
+                        game.koInfo,
+                        game.moveHistory.length
+                    );
+                    if (result.isValid) {
+                        validMoves.push({ x: neighbor.x, y: neighbor.y });
+                    }
+                }
+            }
+        }
+    } else {
+        // 빈 보드: 중앙 영역만 검사 (3x3 ~ 5x5)
+        const centerStart = Math.floor(boardSize / 2) - 2;
+        const centerEnd = Math.floor(boardSize / 2) + 3;
+        for (let y = Math.max(0, centerStart); y < Math.min(boardSize, centerEnd); y++) {
+            for (let x = Math.max(0, centerStart); x < Math.min(boardSize, centerEnd); x++) {
+                if (game.boardState[y][x] === Player.None) {
+                    const result = processMove(
+                        game.boardState,
+                        { x, y, player: aiPlayer },
+                        game.koInfo,
+                        game.moveHistory.length
+                    );
+                    if (result.isValid) {
+                        validMoves.push({ x, y });
+                    }
+                }
+            }
+        }
+    }
+
+    // 최소한 몇 개는 있어야 함 (없으면 전체 검사)
+    if (validMoves.length < 5) {
+        return findAllValidMoves(game, logic, aiPlayer);
+    }
+
+    return validMoves;
+}
+
+/**
  * AI 프로필에 따라 수를 점수화
  */
 function scoreMovesByProfile(
@@ -431,12 +533,12 @@ function scoreMovesByProfile(
         let score = 0;
         const point: Point = { x: move.x, y: move.y };
 
-        // 1. 따내기 성향 반영
+        // 1. 따내기 성향 반영 (최우선, 매우 높은 점수)
         const captureScore = evaluateCaptureOpportunity(game, logic, point, aiPlayer, opponentPlayer);
         if (captureScore > 0) {
-            score += 150; // 강력한 가중치 부여
+            score += 2000 + captureScore * 500; // 매우 강력한 가중치
         }
-        score += captureScore * profile.captureTendency * 180;
+        score += captureScore * profile.captureTendency * 300;
 
         // 2. 영토 확보 성향 반영
         const territoryScore = evaluateTerritory(game, logic, point, aiPlayer);
@@ -448,7 +550,21 @@ function scoreMovesByProfile(
 
         // 4. 아타리(단수) 기회 평가
         const atariScore = evaluateAtariOpportunity(game, logic, point, aiPlayer, opponentPlayer);
-        score += atariScore * profile.captureTendency * 120;
+        if (atariScore > 0) {
+            score += 1000 + atariScore * profile.captureTendency * 200; // 높은 점수
+        }
+
+        // 4-1. 유저 돌 근처로 접근 (공격적 접근) - 싱글플레이에서 특히 중요
+        if (game.isSinglePlayer) {
+            const proximityScore = evaluateProximityToOpponent(game, logic, point, opponentPlayer);
+            score += proximityScore * profile.combatTendency * 250; // 유저 돌 근처로 가는 수
+        }
+
+        // 4-2. 공격 기회 평가 (유저 그룹 위협)
+        if (game.isSinglePlayer) {
+            const attackScore = evaluateAttackOpportunity(game, logic, point, aiPlayer, opponentPlayer);
+            score += attackScore * profile.combatTendency * 200; // 유저 그룹을 위협하는 수
+        }
 
         // 5. 정석/포석 활용도 반영 (고수일수록 더 반영)
         if (profile.josekiUsage > 0.3) {
@@ -823,6 +939,75 @@ function evaluateWinFocus(
 }
 
 /**
+ * 빠른 휴리스틱 점수화 (낮은 난이도용, 성능 최적화)
+ * 간단한 따내기와 기본적인 안전성만 평가
+ */
+function scoreMovesFast(
+    moves: Point[],
+    game: types.LiveGameSession,
+    profile: GoAiBotProfile,
+    logic: ReturnType<typeof getGoLogic>,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): Array<{ move: Point; score: number }> {
+    const scoredMoves: Array<{ move: Point; score: number }> = [];
+
+    for (const move of moves) {
+        let score = 0;
+        const point: Point = { x: move.x, y: move.y };
+
+        // 1. 즉시 따내기 기회 (가장 중요)
+        const captureScore = evaluateCaptureOpportunity(game, logic, point, aiPlayer, opponentPlayer);
+        if (captureScore > 0) {
+            score += 5000 + captureScore * 500; // 매우 높은 가중치
+        }
+
+        // 2. 아타리(단수) 기회
+        const atariScore = evaluateAtariOpportunity(game, logic, point, aiPlayer, opponentPlayer);
+        if (atariScore > 0) {
+            score += 2000 + atariScore * 200; // 높은 점수
+        }
+
+        // 2-1. 유저 돌 근처로 접근 (공격적 접근)
+        const proximityScore = evaluateProximityToOpponent(game, logic, point, opponentPlayer);
+        score += proximityScore * 300; // 유저 돌 근처로 가는 수
+
+        // 2-2. 공격 기회 평가 (유저 그룹 위협)
+        const attackScore = evaluateAttackOpportunity(game, logic, point, aiPlayer, opponentPlayer);
+        score += attackScore * 250; // 유저 그룹을 위협하는 수
+
+        // 3. 기본 안전성 (간단한 자유도 체크만)
+        const testResult = processMove(
+            game.boardState,
+            { ...point, player: aiPlayer },
+            game.koInfo,
+            game.moveHistory.length,
+            { ignoreSuicide: true }
+        );
+        if (testResult.isValid) {
+            const groups = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+            const pointGroup = groups.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
+            if (pointGroup) {
+                const libertyCount = pointGroup.libertyPoints.size;
+                if (libertyCount >= 3) score += 50;
+                else if (libertyCount >= 2) score += 30;
+                else if (libertyCount >= 1) score += 10;
+            }
+        }
+
+        // 4. 프로필 기반 가중치 적용
+        score *= (1 + profile.captureTendency * 0.5);
+
+        scoredMoves.push({ move, score });
+    }
+
+    // 점수 순으로 정렬
+    scoredMoves.sort((a, b) => b.score - a.score);
+
+    return scoredMoves;
+}
+
+/**
  * 살리기 바둑 모드: AI(백)가 유저(흑)의 돌을 적극적으로 잡으러 오는 전략으로 수를 점수화
  */
 function scoreMovesForAggressiveCapture(
@@ -843,19 +1028,21 @@ function scoreMovesForAggressiveCapture(
 
         // 1. 따내기 기회 평가 (최우선) - 유저의 돌을 잡을 수 있는 수
         const captureScore = evaluateCaptureOpportunity(game, logic, point, aiPlayer, opponentPlayer);
-        score += captureScore * 500; // 따내기가 최우선 (매우 높은 가중치로 증가)
+        if (captureScore > 0) {
+            score += 5000 + captureScore * 800; // 따내기가 최우선 (매우 높은 가중치)
+        }
 
         // 2. 공격 기회 평가 - 유저의 돌을 위협하는 수
         const attackScore = evaluateAttackOpportunity(game, logic, point, aiPlayer, opponentPlayer);
-        score += attackScore * 350; // 공격 기회도 높은 점수 (가중치 증가)
+        score += attackScore * 500; // 공격 기회도 매우 높은 점수
 
         // 3. 유저 돌과의 근접성 평가 - 유저 돌 근처로 가는 수
         const proximityScore = evaluateProximityToOpponent(game, logic, point, opponentPlayer);
-        score += proximityScore * 250; // 유저 돌 근처로 접근 (가중치 증가)
+        score += proximityScore * 400; // 유저 돌 근처로 접근 (높은 가중치)
 
         // 4. 유저 그룹을 포위하는 수 평가
         const surroundScore = evaluateSurroundOpportunity(game, logic, point, aiPlayer, opponentPlayer);
-        score += surroundScore * 200; // 유저 그룹 포위 (가중치 증가)
+        score += surroundScore * 350; // 유저 그룹 포위 (높은 가중치)
 
         // 5. 전투 성향 반영 - 유저와 전투를 벌이는 수
         const combatScore = evaluateCombat(game, logic, point, aiPlayer, opponentPlayer);
@@ -863,11 +1050,11 @@ function scoreMovesForAggressiveCapture(
 
         // 6. 자신의 안전성도 약간 고려 (너무 위험한 수는 피하기)
         const safetyScore = evaluateSafety(game, logic, point, aiPlayer);
-        score += safetyScore * 30; // 안전성은 낮은 가중치 (더 낮춤)
+        score += safetyScore * 20; // 안전성은 매우 낮은 가중치 (공격 우선)
 
         // 7. 실수 확률 적용 (공격 모드에서는 실수율 감소)
-        if (Math.random() < profile.mistakeRate * 0.5) { // 살리기 공격 모드에서는 실수율 더 감소
-            score *= 0.9; // 실수 시에도 점수 감소를 줄임
+        if (Math.random() < profile.mistakeRate * 0.3) { // 살리기 공격 모드에서는 실수율 더 감소
+            score *= 0.95; // 실수 시에도 점수 감소를 최소화
         }
 
         scoredMoves.push({ move, score });

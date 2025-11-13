@@ -41,7 +41,8 @@ const GameModals: React.FC<GameModalsProps> = (props) => {
             return <NegotiationModal negotiation={activeNegotiation} currentUser={currentUser} onAction={onAction} onlineUsers={onlineUsers} />;
         }
 
-        if (session.isSinglePlayer && showResultModal) {
+        // 싱글플레이: scoring 상태이거나 ended 상태일 때 SinglePlayerSummaryModal 표시
+        if (session.isSinglePlayer && (showResultModal || gameStatus === 'scoring')) {
             return <SinglePlayerSummaryModal session={session} currentUser={currentUser} onAction={onAction} onClose={onCloseResults} />;
         }
         

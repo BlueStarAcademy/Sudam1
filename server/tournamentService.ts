@@ -695,7 +695,9 @@ export const startNextRound = (state: TournamentState, user: User) => {
     
     if (state.type === 'neighborhood') {
         if (state.status === 'bracket_ready') {
-            state.currentRoundRobinRound = 1;
+            // bracket_ready 상태에서는 이미 컨디션이 부여된 상태이므로 startNextRound를 호출하지 않아야 함
+            // (뒤로가기 후 다시 들어온 경우 상태 유지)
+            return;
         } else if (state.status === 'round_complete') {
             state.currentRoundRobinRound = (state.currentRoundRobinRound || 0) + 1;
         }
@@ -722,14 +724,30 @@ export const startNextRound = (state: TournamentState, user: User) => {
             userPlayer.stats = JSON.parse(JSON.stringify(userPlayer.originalStats));
         }
         
-        // 모든 플레이어의 컨디션을 새롭게 부여 (40~100 사이 랜덤)
-        state.players.forEach(p => {
-            p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-            // 모든 플레이어의 능력치는 originalStats로 리셋 (토너먼트 생성 시점의 고정 능력치)
-            if (p.originalStats) {
-                p.stats = JSON.parse(JSON.stringify(p.originalStats));
-            }
-        });
+        // round_complete 상태에서 startNextRound가 호출되면 컨디션을 부여하고 bracket_ready로 변경
+        // (697번 줄에서 bracket_ready 상태는 이미 처리되고 return됨)
+        const isComingFromRoundComplete = state.status === 'round_complete';
+        
+        // round_complete 상태이거나 컨디션이 부여되지 않은 경우 컨디션 부여
+        const hasConditionAssigned = state.players.some(p => p.condition !== undefined && p.condition !== null && p.condition !== 1000 && p.condition >= 40 && p.condition <= 100);
+        
+        if (isComingFromRoundComplete || !hasConditionAssigned) {
+            // 모든 플레이어의 컨디션을 새롭게 부여 (40~100 사이 랜덤)
+            state.players.forEach(p => {
+                p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+                // 모든 플레이어의 능력치는 originalStats로 리셋 (토너먼트 생성 시점의 고정 능력치)
+                if (p.originalStats) {
+                    p.stats = JSON.parse(JSON.stringify(p.originalStats));
+                }
+            });
+        } else {
+            // 컨디션은 유지하되, 능력치는 originalStats로 리셋
+            state.players.forEach(p => {
+                if (p.originalStats) {
+                    p.stats = JSON.parse(JSON.stringify(p.originalStats));
+                }
+            });
+        }
         
         // 다음 회차로 넘어갈 때 중계 내용 초기화
         state.currentMatchCommentary = [];
@@ -775,14 +793,30 @@ export const startNextRound = (state: TournamentState, user: User) => {
         userPlayer.stats = JSON.parse(JSON.stringify(userPlayer.originalStats));
     }
     
-    // 모든 플레이어의 컨디션을 새롭게 부여 (40~100 사이 랜덤)
-    state.players.forEach(p => {
-        p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-        // 모든 플레이어의 능력치는 originalStats로 리셋 (토너먼트 생성 시점의 고정 능력치)
-        if (p.originalStats) {
-            p.stats = JSON.parse(JSON.stringify(p.originalStats));
-        }
-    });
+    // round_complete 상태에서 startNextRound가 호출되면 컨디션을 부여하고 bracket_ready로 변경
+    // bracket_ready 상태이고 컨디션이 이미 부여되어 있으면 다시 부여하지 않음
+    // (뒤로가기 후 다시 들어온 경우 컨디션 유지)
+    const isComingFromRoundComplete = state.status === 'round_complete';
+    const hasConditionAlreadyAssigned = state.status === 'bracket_ready' && 
+        state.players.some(p => p.condition !== undefined && p.condition !== null && p.condition !== 1000 && p.condition >= 40 && p.condition <= 100);
+    
+    if (isComingFromRoundComplete || !hasConditionAlreadyAssigned) {
+        // 모든 플레이어의 컨디션을 새롭게 부여 (40~100 사이 랜덤)
+        state.players.forEach(p => {
+            p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            // 모든 플레이어의 능력치는 originalStats로 리셋 (토너먼트 생성 시점의 고정 능력치)
+            if (p.originalStats) {
+                p.stats = JSON.parse(JSON.stringify(p.originalStats));
+            }
+        });
+    } else {
+        // 컨디션은 유지하되, 능력치는 originalStats로 리셋
+        state.players.forEach(p => {
+            if (p.originalStats) {
+                p.stats = JSON.parse(JSON.stringify(p.originalStats));
+            }
+        });
+    }
     
     // 다음 회차로 넘어갈 때 중계 내용 초기화
     state.currentMatchCommentary = [];
@@ -938,7 +972,12 @@ export const advanceSimulation = (state: TournamentState, user: User): boolean =
         return true;
     }
 
-    const now = Date.now();
+    // 클라이언트에서 전달된 타임스탬프 사용 (클라이언트에서 실행하므로)
+    // 클라이언트 타임스탬프는 ADVANCE_TOURNAMENT_SIMULATION 액션에서 전달됨
+    // 하지만 이 함수는 서버에서도 호출될 수 있으므로, 전달된 타임스탬프가 없으면 서버 시간 사용
+    const clientTimestamp = (state as any).__clientTimestamp as number | undefined;
+    const now = clientTimestamp !== undefined ? clientTimestamp : Date.now();
+    
     if (state.lastSimulationTime === undefined) {
         // 첫 실행 시 초기화
         state.lastSimulationTime = now;
@@ -948,22 +987,19 @@ export const advanceSimulation = (state: TournamentState, user: User): boolean =
         }
         state.timeElapsed = 1;
     } else {
-        const timeSinceLastSimulation = now - state.lastSimulationTime;
-        
-        // 1초가 지나지 않았으면 진행하지 않음 (정확히 1초마다만 진행)
-        // 950ms 이상이면 1초로 간주 (약간의 여유를 둠)
-        if (timeSinceLastSimulation < 950) {
-            return false;
+        // 클라이언트에서 정확히 1초마다 호출되므로, 항상 1초씩만 진행
+        if (state.timeElapsed === 0) {
+            state.timeElapsed = 1;
+            state.currentMatchScores = { player1: 0, player2: 0 };
+            state.lastScoreIncrement = null;
+        } else {
+            state.timeElapsed++;
         }
-
-        // 정확히 1초씩만 진행하도록 보장
-        // 여러 초가 지나갔어도 한 번에 1초씩만 진행
         state.lastSimulationTime = state.lastSimulationTime + 1000; // 정확히 1초 증가
-        state.timeElapsed++;
-        
-        // 만약 실제로 2초 이상 지나갔다면, 다음 틱에서도 진행할 수 있도록
-        // 하지만 이번 틱에서는 1초만 진행하여 모든 데이터가 매 초마다 정확히 업데이트되도록 함
     }
+    
+    // 클라이언트 타임스탬프 제거 (다음 호출을 위해)
+    delete (state as any).__clientTimestamp;
     
     const p1 = state.players.find(p => p.id === match.players[0]!.id);
     const p2 = state.players.find(p => p.id === match.players[1]!.id);

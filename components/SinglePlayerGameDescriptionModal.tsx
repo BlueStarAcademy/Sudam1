@@ -247,6 +247,62 @@ const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModa
                                 </div>
                             </div>
                         )}
+
+                        {/* 특수 아이템 */}
+                        {(stage.missileCount || stage.hiddenCount || stage.scanCount) && (
+                            <div>
+                                <h3 className="text-lg font-semibold text-yellow-400 mb-2 flex items-center gap-2">
+                                    <span>🎁</span>
+                                    <span>특수 아이템</span>
+                                </h3>
+                                <div className="bg-gray-700/50 rounded-lg p-3 space-y-3">
+                                    {/* 미사일 아이템 */}
+                                    {stage.missileCount && stage.missileCount > 0 && (
+                                        <div className="border-l-4 border-amber-400 pl-3">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <img src="/images/button/missile.png" alt="미사일" className="w-6 h-6 object-contain" />
+                                                <span className="font-semibold text-amber-300">미사일 ({stage.missileCount}개)</span>
+                                            </div>
+                                            <p className="text-gray-200 text-sm">
+                                                발사할 바둑돌을 선택한 후 방향을 선택하면 해당 방향으로 날아갑니다. 
+                                                <br />
+                                                <span className="text-gray-300 text-xs">• 아이템 사용 시 30초의 제한시간이 부여됩니다.</span>
+                                            </p>
+                                        </div>
+                                    )}
+                                    
+                                    {/* 히든 아이템 */}
+                                    {stage.hiddenCount && stage.hiddenCount > 0 && (
+                                        <div className="border-l-4 border-purple-400 pl-3">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <img src="/images/button/hidden.png" alt="히든" className="w-6 h-6 object-contain" />
+                                                <span className="font-semibold text-purple-300">히든 스톤 ({stage.hiddenCount}개)</span>
+                                            </div>
+                                            <p className="text-gray-200 text-sm">
+                                                상대방에게 보이지 않는 돌을 배치할 수 있습니다. 
+                                                <br />
+                                                <span className="text-gray-300 text-xs">• 아이템 사용 시 30초의 제한시간이 부여됩니다.</span>
+                                            </p>
+                                        </div>
+                                    )}
+                                    
+                                    {/* 스캔 아이템 */}
+                                    {stage.scanCount && stage.scanCount > 0 && (
+                                        <div className="border-l-4 border-blue-400 pl-3">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <img src="/images/button/scan.png" alt="스캔" className="w-6 h-6 object-contain" />
+                                                <span className="font-semibold text-blue-300">스캔 ({stage.scanCount}개)</span>
+                                            </div>
+                                            <p className="text-gray-200 text-sm">
+                                                상대방의 히든 스톤을 탐지할 수 있습니다. 
+                                                <br />
+                                                <span className="text-gray-300 text-xs">• 아이템 사용 시 30초의 제한시간이 부여됩니다.</span>
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* 버튼 */}

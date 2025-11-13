@@ -14,6 +14,7 @@ import QuickAccessSidebar from './QuickAccessSidebar.js';
 import ChatWindow from './waiting-room/ChatWindow.js';
 import GameRankingBoard from './GameRankingBoard.js';
 import BadukRankingBoard from './BadukRankingBoard.js';
+import MannerRankModal from './MannerRankModal.js';
 
 interface ProfileProps {
 }
@@ -243,6 +244,7 @@ const Profile: React.FC<ProfileProps> = () => {
     const [hasNewMessage, setHasNewMessage] = useState(false);
     const [towerTimeLeft, setTowerTimeLeft] = useState('');
     const [selectedPreset, setSelectedPreset] = useState(0);
+    const [showMannerRankModal, setShowMannerRankModal] = useState(false);
 
     useEffect(() => {
         const calculateTime = () => {
@@ -502,25 +504,47 @@ const Profile: React.FC<ProfileProps> = () => {
                 <div className="flex-grow space-y-1 bg-tertiary/30 p-2 rounded-md flex flex-col justify-center">
                     <XpBar level={currentUserWithStatus.strategyLevel} currentXp={currentUserWithStatus.strategyXp} label="전략" colorClass="bg-gradient-to-r from-blue-500 to-cyan-400" />
                     <XpBar level={currentUserWithStatus.playfulLevel} currentXp={currentUserWithStatus.playfulXp} label="놀이" colorClass="bg-gradient-to-r from-yellow-500 to-orange-400" />
-                    <div>
+                    <button
+                        onClick={() => setShowMannerRankModal(true)}
+                        className="w-full text-left hover:bg-tertiary/50 rounded-md p-1 transition-all"
+                        title="매너 등급 정보 보기"
+                    >
                         <div className="flex justify-between items-baseline mb-0.5 text-xs whitespace-nowrap">
                             <span className="font-semibold whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>매너 등급</span>
-                            <span className={`font-semibold text-xs whitespace-nowrap overflow-hidden ${mannerRank.color}`} style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>{totalMannerScore}점 ({mannerRank.rank})</span>
+                            <span className={`font-semibold text-xs whitespace-nowrap overflow-hidden ${mannerRank.color} cursor-pointer transition-all`} style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>
+                                {totalMannerScore}점 ({mannerRank.rank})
+                            </span>
                         </div>
                         <div className="w-full bg-tertiary/50 rounded-full h-2 border border-color">
                             <div className={`${mannerStyle.colorClass} h-full rounded-full`} style={{ width: `${mannerStyle.percentage}%` }}></div>
                         </div>
-                    </div>
+                    </button>
                 </div>
             </div>
 
             <div className="flex-grow flex flex-col min-h-0 border-t border-color mt-2 pt-2">
-                <div className="bg-tertiary/30 p-2 rounded-md text-center mb-2">
-                    {currentUserWithStatus.guildId ? (
-                        <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="green" className="w-full">길드 입장</Button>
-                    ) : (
-                        <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="blue" className="w-full">길드 가입</Button>
-                    )}
+                <div className="bg-tertiary/30 p-2 rounded-md mb-2">
+                    <div className="flex items-center gap-2">
+                        {/* 길드 아이콘 버튼 */}
+                        <button
+                            onClick={() => { window.location.hash = '#/guild'; }}
+                            className="flex-shrink-0 w-10 h-10 rounded-md bg-secondary/50 hover:bg-secondary/70 border border-color transition-colors flex items-center justify-center"
+                            title="길드"
+                        >
+                            <img src="/images/button/guild.png" alt="길드" className="w-8 h-8 object-contain" />
+                        </button>
+                        {/* 나머지 공간에 버튼들 */}
+                        <div className="flex-1 flex gap-2">
+                            {currentUserWithStatus.guildId ? (
+                                <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="green" className="flex-1">길드 입장</Button>
+                            ) : (
+                                <>
+                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="blue" className="flex-1">길드창설</Button>
+                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="blue" className="flex-1">길드가입</Button>
+                                </>
+                            )}
+                        </div>
+                    </div>
                 </div>
                  <div className="flex justify-between items-center mb-1 flex-shrink-0 whitespace-nowrap">
                     <h3 className="font-semibold text-secondary text-sm whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }}>능력치</h3>
@@ -576,7 +600,7 @@ const Profile: React.FC<ProfileProps> = () => {
                         <img src={TOURNAMENT_LOBBY_IMG} alt="챔피언십" className="w-full h-full object-cover" />
                     </div>
                     <div className="w-full bg-tertiary/50 rounded-md p-0.5 lg:p-1 text-[10px] lg:text-xs mt-1 lg:mt-2 whitespace-nowrap overflow-hidden" title="챔피언십 정보" style={{ fontSize: 'clamp(0.5rem, 1.2vw, 0.75rem)' }}>
-                         <span className="whitespace-nowrap overflow-hidden">점수: {(currentUserWithStatus.tournamentScore ?? 0).toLocaleString()} / 리그: {currentUserWithStatus.league || '없음'}</span>
+                         <span className="whitespace-nowrap overflow-hidden">점수: {(currentUserWithStatus.cumulativeTournamentScore ?? 0).toLocaleString()} / 리그: {currentUserWithStatus.league || '없음'}</span>
                         </div>
                     </div>
                 </div>
@@ -790,6 +814,13 @@ const Profile: React.FC<ProfileProps> = () => {
                     statsType={detailedStatsType}
                     onClose={() => setDetailedStatsType(null)}
                     onAction={handlers.handleAction}
+                />
+            )}
+            {showMannerRankModal && currentUserWithStatus && (
+                <MannerRankModal
+                    user={currentUserWithStatus}
+                    onClose={() => setShowMannerRankModal(false)}
+                    isTopmost={true}
                 />
             )}
         </div>

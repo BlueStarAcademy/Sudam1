@@ -26,7 +26,9 @@ const Router: React.FC = () => {
     }
     
     // If user is logged in, but their game is still active, force them into the game view
-    if (activeGame && currentRoute.view !== 'game') {
+    // 단, 라우트가 이미 게임 페이지(#/game/${gameId})로 설정되어 있으면 "재접속 중..."을 표시하지 않음
+    // (새 게임을 시작한 직후 activeGame이 아직 업데이트되지 않았을 수 있음)
+    if (activeGame && currentRoute.view !== 'game' && !currentRoute.params?.id) {
         // The logic in useApp hook will handle the redirect, we can show a loading state here
         return <div className="flex items-center justify-center h-full">재접속 중...</div>;
     }
@@ -55,6 +57,12 @@ const Router: React.FC = () => {
         case 'game':
              if (currentRoute.params.id && activeGame && activeGame.id === currentRoute.params.id) {
                 return <Game session={activeGame} />;
+            }
+            // 게임이 아직 로드되지 않았을 수 있으므로 잠시 대기 (WebSocket 업데이트 대기)
+            // 단, 너무 오래 기다리지 않도록 타임아웃 설정
+            if (currentRoute.params.id) {
+                // 게임 ID가 라우트에 있으면 WebSocket 업데이트를 기다림
+                return <div className="flex items-center justify-center h-full">게임 정보 동기화 중...</div>;
             }
             console.warn("Router: Mismatch between route and active game. Redirecting to profile.");
             setTimeout(() => {

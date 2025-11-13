@@ -201,7 +201,26 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                 userStatus.status = UserStatus.Online;
                 delete userStatus.mode; // 대기실 모드 정보 제거
             }
+            
+            // 사용자가 보낸 negotiation 정리
+            const userNegotiations = Object.keys(volatileState.negotiations).filter(negId => {
+                const neg = volatileState.negotiations[negId];
+                return neg.challenger.id === user.id && neg.status === 'pending';
+            });
+            
+            for (const negId of userNegotiations) {
+                const neg = volatileState.negotiations[negId];
+                // opponent 상태 복구
+                if (volatileState.userStatuses[neg.opponent.id]?.status === UserStatus.Negotiating) {
+                    volatileState.userStatuses[neg.opponent.id].status = UserStatus.Waiting;
+                }
+                delete volatileState.negotiations[negId];
+            }
+            
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
+            if (userNegotiations.length > 0) {
+                broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
+            }
             return {};
         }
         case 'ENTER_TOURNAMENT_VIEW': {
@@ -357,6 +376,75 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             return {};
         }
+        case 'EMERGENCY_EXIT': {
+            // 비상탈출: 모든 플레이 중인 게임을 강제 종료
+            const userStatus = volatileState.userStatuses[user.id];
+            const activeGameIds: string[] = [];
+            
+            // userStatuses에서 게임 ID 수집
+            if (userStatus?.gameId) {
+                activeGameIds.push(userStatus.gameId);
+            }
+            if (userStatus?.spectatingGameId && !activeGameIds.includes(userStatus.spectatingGameId)) {
+                activeGameIds.push(userStatus.spectatingGameId);
+            }
+            
+            // 모든 활성 게임을 확인하여 사용자가 참여 중인 게임 찾기
+            const allActiveGames = await db.getAllActiveGames();
+            for (const game of allActiveGames) {
+                if (game.gameStatus === 'ended' || game.gameStatus === 'no_contest') continue;
+                
+                const isPlayer = game.player1.id === user.id || game.player2.id === user.id;
+                const isSpectator = userStatus?.status === types.UserStatus.Spectating && userStatus.spectatingGameId === game.id;
+                
+                if (isPlayer || isSpectator) {
+                    if (!activeGameIds.includes(game.id)) {
+                        activeGameIds.push(game.id);
+                    }
+                }
+            }
+            
+            // 각 게임을 종료 처리
+            for (const gameId of activeGameIds) {
+                const game = await db.getLiveGame(gameId);
+                if (!game || game.gameStatus === 'ended' || game.gameStatus === 'no_contest') continue;
+                
+                const isPlayer = game.player1.id === user.id || game.player2.id === user.id;
+                const isSpectator = userStatus?.status === types.UserStatus.Spectating && userStatus.spectatingGameId === game.id;
+                
+                if (isPlayer) {
+                    // PVP 경기장에서는 기권패 처리
+                    if (!game.isSinglePlayer && !game.isAiGame) {
+                        const myPlayerEnum = game.player1.id === user.id ? types.Player.Black : types.Player.White;
+                        const winner = myPlayerEnum === types.Player.Black ? types.Player.White : types.Player.Black;
+                        await summaryService.endGame(game, winner, 'resign');
+                    } else {
+                        // 싱글플레이 또는 AI 게임은 그냥 종료
+                        if (game.isSinglePlayer) {
+                            // 싱글플레이 게임은 패배 처리
+                            await summaryService.endGame(game, types.Player.White, 'disconnect');
+                        } else if (game.isAiGame) {
+                            // AI 게임은 AI 승리 처리
+                            const aiPlayerEnum = game.player1.id === user.id ? types.Player.White : types.Player.Black;
+                            await summaryService.endGame(game, aiPlayerEnum, 'disconnect');
+                        }
+                    }
+                } else if (isSpectator) {
+                    // 관전 중이면 그냥 상태만 변경
+                    // (게임 종료는 필요 없음)
+                }
+            }
+            
+            // 사용자 상태를 대기 상태로 변경
+            if (volatileState.userStatuses[user.id]) {
+                volatileState.userStatuses[user.id] = { status: types.UserStatus.Waiting };
+            }
+            
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
+            
+            return { clientResponse: { redirectTo: '#/' } };
+        }
+
         default:
             return { error: 'Unknown social action.' };
     }

@@ -1,5 +1,5 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 // FIX: Import missing types from the centralized types file.
 import { User, ServerAction, AdminProps, LiveGameSession, GameMode, Quest, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentType } from '../../types/index.js';
 import DraggableWindow from '../DraggableWindow.js';
@@ -17,10 +17,18 @@ interface UserManagementModalProps {
 const UserManagementModal: React.FC<UserManagementModalProps> = ({ user, currentUser, onClose, onAction }) => {
     const [editedUser, setEditedUser] = useState<User>(JSON.parse(JSON.stringify(user)));
     const [activeTab, setActiveTab] = useState<'general' | 'strategic' | 'playful' | 'quests' | 'danger'>('general');
+    
+    // user prop이 변경되면 editedUser도 업데이트 (서버에서 업데이트된 데이터 반영)
+    useEffect(() => {
+        setEditedUser(JSON.parse(JSON.stringify(user)));
+    }, [user]);
 
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
-        setEditedUser(prev => ({ ...prev, [name]: Number(value) }));
+        const numValue = value === '' ? 0 : Number(value);
+        if (!isNaN(numValue)) {
+            setEditedUser(prev => ({ ...prev, [name]: numValue }));
+        }
     };
 
     const handleTextInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -176,6 +184,8 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ user, current
                             <div className="grid grid-cols-2 gap-2"><label>골드</label><input type="number" name="gold" value={editedUser.gold} onChange={handleInputChange} className="bg-tertiary p-1 rounded" /></div>
                             <div className="grid grid-cols-2 gap-2"><label>다이아</label><input type="number" name="diamonds" value={editedUser.diamonds} onChange={handleInputChange} className="bg-tertiary p-1 rounded" /></div>
                             <div className="grid grid-cols-2 gap-2"><label>매너 점수</label><input type="number" name="mannerScore" value={editedUser.mannerScore} onChange={handleInputChange} className="bg-tertiary p-1 rounded" /></div>
+                            <div className="grid grid-cols-2 gap-2"><label>챔피언십 누적 점수</label><input type="number" name="cumulativeTournamentScore" value={editedUser.cumulativeTournamentScore ?? 0} onChange={handleInputChange} className="bg-tertiary p-1 rounded" /></div>
+                            <div className="grid grid-cols-2 gap-2"><label>챔피언십 주간 점수</label><input type="number" name="tournamentScore" value={editedUser.tournamentScore ?? 0} onChange={handleInputChange} className="bg-tertiary p-1 rounded" /></div>
                              <div className="grid grid-cols-2 gap-2 items-center">
                                 <label>관리자 권한</label>
                                 <input
@@ -276,10 +286,13 @@ interface UserManagementPanelProps {
 const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ allUsers, onAction, onBack, currentUser }) => {
     const { handlers } = useAppContext();
     const [searchQuery, setSearchQuery] = useState('');
-    const [managingUser, setManagingUser] = useState<User | null>(null);
+    const [managingUserId, setManagingUserId] = useState<string | null>(null);
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [nickname, setNickname] = useState('');
+    
+    // managingUserId가 있으면 allUsers에서 최신 데이터를 가져옴
+    const managingUser = managingUserId ? allUsers.find(u => u.id === managingUserId) || null : null;
 
     const handleCreateUser = (e: React.FormEvent) => {
         e.preventDefault();
@@ -296,7 +309,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ allUsers, onA
 
     return (
         <div className="space-y-8 bg-primary text-primary">
-            {managingUser && <UserManagementModal user={managingUser} currentUser={currentUser} onClose={() => setManagingUser(null)} onAction={onAction} />}
+            {managingUser && <UserManagementModal user={managingUser} currentUser={currentUser} onClose={() => setManagingUserId(null)} onAction={onAction} />}
             <header className="flex justify-between items-center">
                 <h1 className="text-3xl font-bold">사용자 관리</h1>
                 <button onClick={onBack} className="p-0 flex items-center justify-center w-10 h-10 rounded-full transition-all duration-100 active:shadow-inner active:scale-95 active:translate-y-0.5">
@@ -334,7 +347,7 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ allUsers, onA
                                         <td className="px-6 py-4">{user.username}</td>
                                         <td className="px-6 py-4">S.{user.strategyLevel} / P.{user.playfulLevel}</td>
                                         <td className="px-6 py-4">
-                                            <button onClick={(e) => { e.stopPropagation(); setManagingUser(user); }} className="font-medium text-blue-500 hover:underline">관리</button>
+                                            <button onClick={(e) => { e.stopPropagation(); setManagingUserId(user.id); }} className="font-medium text-blue-500 hover:underline">관리</button>
                                         </td>
                                     </tr>
                                 ))}

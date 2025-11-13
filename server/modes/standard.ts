@@ -144,24 +144,87 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
     switch (type) {
         case 'PLACE_STONE': {
-            if (!isMyTurn || (game.gameStatus !== 'playing' && game.gameStatus !== 'hidden_placing')) {
-                return { error: '내 차례가 아닙니다.' };
-            }
-
-            // 동시성 제어: 이미 처리 중인 수가 있으면 거부 (싱글플레이에서 빠른 착수 방지)
-            if (game.processingMove) {
-                const processingAge = now - game.processingMove.timestamp;
-                // 5초 이상 지난 처리 중인 수는 타임아웃으로 간주하고 해제
-                if (processingAge > 5000) {
-                    console.warn(`[PLACE_STONE] Clearing stale processingMove for game ${game.id} (age: ${processingAge}ms)`);
-                    game.processingMove = null;
-                } else {
-                    return { error: '이미 수를 처리 중입니다. 잠시 후 다시 시도해주세요.' };
+            try {
+            const isClientAiMove = (payload as any).isClientAiMove === true;
+            
+            // 클라이언트가 계산한 AI 수인 경우 AI 차례인지 확인
+            if (isClientAiMove) {
+                const aiPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId : game.whitePlayerId;
+                if (aiPlayerId !== aiUserId) {
+                    return { error: 'AI 차례가 아닙니다.' };
+                }
+            } else {
+                // 사용자 수인 경우 내 차례인지 확인
+                if (!isMyTurn || (game.gameStatus !== 'playing' && game.gameStatus !== 'hidden_placing')) {
+                    return { error: '내 차례가 아닙니다.' };
                 }
             }
 
-            const { x, y, isHidden } = payload;
-            const opponentPlayerEnum = myPlayerEnum === types.Player.Black ? types.Player.White : (myPlayerEnum === types.Player.White ? types.Player.Black : types.Player.None);
+            // 동시성 제어: 이미 처리 중인 수가 있으면 거부 (싱글플레이에서 빠른 착수 방지)
+            // 단, AI 수(isClientAiMove)인 경우에는 processingMove를 무시하고 진행 (AI는 빠르게 처리되어야 함)
+            if (game.processingMove && !isClientAiMove) {
+                const processingAge = now - game.processingMove.timestamp;
+                // 3초 이상 지난 처리 중인 수는 타임아웃으로 간주하고 해제 (더 짧게 조정)
+                if (processingAge > 3000) {
+                    console.warn(`[PLACE_STONE] Clearing stale processingMove for game ${game.id} (age: ${processingAge}ms)`);
+                    game.processingMove = null;
+                } else {
+                    // 사용자 차례이고 내 차례인 경우에만 에러 반환
+                    if (isMyTurn) {
+                        return { error: '이미 수를 처리 중입니다. 잠시 후 다시 시도해주세요.' };
+                    } else {
+                        // 내 차례가 아니면 무시
+                        return {};
+                    }
+                }
+            }
+
+            const { x, y, isHidden = false } = payload;
+            
+            // 클라이언트 AI 수의 중복 처리 방지: 같은 위치에 이미 돌이 있으면 무시
+            if (isClientAiMove) {
+                const movePlayerEnum = game.currentPlayer;
+                // 이미 같은 위치에 같은 플레이어의 돌이 있는지 확인
+                if (game.boardState[y][x] === movePlayerEnum) {
+                    // 이미 돌이 있으면 중복 요청으로 간주하고 무시
+                    console.log(`[PLACE_STONE] Duplicate AI move ignored: ${movePlayerEnum} at (${x}, ${y}) already exists`);
+                    return {};
+                }
+                // moveHistory에 이미 같은 수가 있는지 확인
+                const existingMove = game.moveHistory.find(m => m.x === x && m.y === y && m.player === movePlayerEnum);
+                if (existingMove) {
+                    console.log(`[PLACE_STONE] Duplicate AI move ignored: move already in history at (${x}, ${y})`);
+                    return {};
+                }
+            }
+            
+            // x, y 유효성 검사
+            if (typeof x !== 'number' || typeof y !== 'number' || 
+                x < 0 || y < 0 || x >= game.settings.boardSize || y >= game.settings.boardSize) {
+                game.processingMove = null;
+                return { error: 'Invalid coordinates.' };
+            }
+            
+            // 클라이언트가 계산한 AI 수인 경우 AI 플레이어로 처리
+            const movePlayerEnum = isClientAiMove 
+                ? game.currentPlayer
+                : myPlayerEnum;
+            
+            // movePlayerEnum 유효성 검사
+            if (movePlayerEnum === types.Player.None) {
+                game.processingMove = null;
+                return { error: 'Invalid player.' };
+            }
+            
+            const opponentPlayerEnum = movePlayerEnum === types.Player.Black ? types.Player.White : (movePlayerEnum === types.Player.White ? types.Player.Black : types.Player.None);
+            
+            // boardState 유효성 검사
+            if (!game.boardState || !Array.isArray(game.boardState) || !game.boardState[y] || !Array.isArray(game.boardState[y])) {
+                game.processingMove = null;
+                console.error('[PLACE_STONE] Invalid boardState:', { gameId: game.id, boardState: game.boardState });
+                return { error: 'Invalid board state.' };
+            }
+            
             const stoneAtTarget = game.boardState[y][x];
 
             // 처리 중인 수로 표시
@@ -192,8 +255,8 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             }
 
             if (isTargetHiddenOpponentStone) {
-                game.captures[myPlayerEnum] += 5; // Hidden stones are worth 5 points
-                game.hiddenStoneCaptures[myPlayerEnum]++;
+                game.captures[movePlayerEnum] += 5; // Hidden stones are worth 5 points
+                game.hiddenStoneCaptures[movePlayerEnum]++;
                 
                 if (!game.justCaptured) game.justCaptured = [];
                 game.justCaptured.push({ point: { x, y }, player: opponentPlayerEnum, wasHidden: true });
@@ -213,7 +276,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     console.debug('[SinglePlayer][PLACE_STONE] Revealed hidden opponent stone', {
                         gameId: game.id,
                         stageId: game.stageId,
-                        player: myPlayerEnum,
+                        player: movePlayerEnum,
                         x,
                         y,
                         hiddenIndex: moveIndexAtTarget,
@@ -224,9 +287,10 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 return {};
             }
 
-            const move = { x, y, player: myPlayerEnum };
+            const move = { x, y, player: movePlayerEnum };
             
-            if (isHidden) {
+            // 클라이언트가 계산한 AI 수는 히든 스톤 사용 불가
+            if (isHidden && !isClientAiMove) {
                 const hiddenKey = user.id === game.player1.id ? 'hidden_stones_used_p1' : 'hidden_stones_used_p2';
                 const usedCount = game[hiddenKey] || 0;
                 if (usedCount >= game.settings.hiddenStoneCount!) {
@@ -272,7 +336,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             const contributingHiddenStones: { point: types.Point, player: types.Player }[] = [];
             if (result.capturedStones.length > 0) {
                 const boardAfterMove = JSON.parse(JSON.stringify(game.boardState));
-                boardAfterMove[y][x] = myPlayerEnum;
+                boardAfterMove[y][x] = movePlayerEnum;
                 const logic = getGoLogic({ ...game, boardState: boardAfterMove });
                 const checkedStones = new Set<string>();
 
@@ -280,7 +344,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     const neighbors = logic.getNeighbors(captured.x, captured.y);
                     for (const n of neighbors) {
                         const neighborKey = `${n.x},${n.y}`;
-                        if (checkedStones.has(neighborKey) || boardAfterMove[n.y][n.x] !== myPlayerEnum) continue;
+                        if (checkedStones.has(neighborKey) || boardAfterMove[n.y][n.x] !== movePlayerEnum) continue;
                         checkedStones.add(neighborKey);
                         const isCurrentMove = n.x === x && n.y === y;
                         let isHiddenStone = isCurrentMove ? isHidden : false;
@@ -290,7 +354,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         }
                         if (isHiddenStone) {
                             if (!game.permanentlyRevealedStones || !game.permanentlyRevealedStones.some(p => p.x === n.x && p.y === n.y)) {
-                                contributingHiddenStones.push({ point: { x: n.x, y: n.y }, player: myPlayerEnum });
+                                contributingHiddenStones.push({ point: { x: n.x, y: n.y }, player: movePlayerEnum });
                             }
                         }
                     }
@@ -391,23 +455,23 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         wasHiddenForJustCaptured = wasHidden; // pass to justCaptured
                         
                         if (isBaseStone) {
-                            game.baseStoneCaptures[myPlayerEnum]++;
+                            game.baseStoneCaptures[movePlayerEnum]++;
                             points = 5;
                         } else if (wasHidden) {
-                             game.hiddenStoneCaptures[myPlayerEnum]++;
+                             game.hiddenStoneCaptures[movePlayerEnum]++;
                              points = 5;
                              if (!game.permanentlyRevealedStones) game.permanentlyRevealedStones = [];
                              game.permanentlyRevealedStones.push(stone);
                         }
                     }
 
-                    game.captures[myPlayerEnum] += points;
+                    game.captures[movePlayerEnum] += points;
                     game.justCaptured.push({ point: stone, player: capturedPlayerEnum, wasHidden: wasHiddenForJustCaptured });
                 }
             }
             prunePatternStones();
 
-            const playerWhoMoved = myPlayerEnum;
+            const playerWhoMoved = movePlayerEnum;
             if (game.settings.timeLimit > 0) {
                 const timeKey = playerWhoMoved === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
                 const fischerIncrement = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed)) ? (game.settings.timeIncrement || 0) : 0;
@@ -426,9 +490,39 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             if (game.isSinglePlayer && game.stageId) {
                 game.totalTurns = game.moveHistory.length;
                 
-                // 자동 계가 트리거 체크
                 const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
                 const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+                
+                // 살리기 바둑 모드: 백의 턴 수 체크
+                const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
+                if (isSurvivalMode && stage?.survivalTurns) {
+                    // 백이 수를 둔 경우 whiteTurnsPlayed 증가
+                    if (movePlayerEnum === types.Player.White) {
+                        const whiteTurnsPlayed = ((game as any).whiteTurnsPlayed || 0) + 1;
+                        (game as any).whiteTurnsPlayed = whiteTurnsPlayed;
+                        const survivalTurns = stage.survivalTurns;
+                        
+                        // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
+                        const target = getCaptureTarget(game, types.Player.White);
+                        if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[types.Player.White] >= target) {
+                            const { endGame } = await import('../summaryService.js');
+                            await endGame(game, types.Player.White, 'capture_limit');
+                            return {};
+                        }
+                        
+                        // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
+                        const remainingTurns = survivalTurns - whiteTurnsPlayed;
+                        if (remainingTurns <= 0 && survivalTurns > 0) {
+                            if (game.gameStatus === 'playing') {
+                                const { endGame } = await import('../summaryService.js');
+                                await endGame(game, types.Player.Black, 'capture_limit');
+                                return {};
+                            }
+                        }
+                    }
+                }
+                
+                // 자동 계가 트리거 체크
                 if (stage?.autoScoringTurns && game.totalTurns >= stage.autoScoringTurns) {
                     const { getGameResult } = await import('../gameModes.js');
                     await getGameResult(game);
@@ -436,7 +530,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 }
                 
                 // 유단자 1~5 스테이지: 흑돌 개수제한 체크
-                if (stage?.blackTurnLimit && myPlayerEnum === types.Player.Black) {
+                if (stage?.blackTurnLimit && movePlayerEnum === types.Player.Black) {
                     const blackMovesCount = game.moveHistory.filter(m => m.player === types.Player.Black && m.x !== -1).length;
                     if (blackMovesCount >= stage.blackTurnLimit) {
                         // 흑돌 개수제한 도달 시 AI 승리
@@ -474,9 +568,9 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
             // After move logic
             if (game.mode === types.GameMode.Capture || game.isSinglePlayer) {
-                const target = getCaptureTarget(game, myPlayerEnum);
-                if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[myPlayerEnum] >= target) {
-                    await summaryService.endGame(game, myPlayerEnum, 'capture_limit');
+                const target = getCaptureTarget(game, movePlayerEnum);
+                if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[movePlayerEnum] >= target) {
+                    await summaryService.endGame(game, movePlayerEnum, 'capture_limit');
                 }
             }
             
@@ -487,55 +581,62 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 console.debug('[SinglePlayer][PLACE_STONE] Move applied', {
                     gameId: game.id,
                     stageId: game.stageId,
-                    player: myPlayerEnum,
+                    player: movePlayerEnum,
                     x,
                     y,
                     moveIndex: game.moveHistory.length - 1,
-                    captures: game.captures[myPlayerEnum],
+                    captures: game.captures[movePlayerEnum],
                     totalMoves: game.moveHistory.length,
                     currentPlayer: game.currentPlayer,
                     serverRevision: game.serverRevision,
                     boardSampleTop,
                     boardSampleMid,
                     recentMoves,
+                    isClientAiMove,
                 });
             }
 
             // 처리 중인 수 해제
             game.processingMove = null;
 
-            // 싱글플레이인 경우 AI 수를 즉시 처리 (실시간 반응)
+            // 싱글플레이인 경우 AI 수 처리
             if (game.isSinglePlayer && game.gameStatus === 'playing' && game.currentPlayer !== types.Player.None) {
                 const aiPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId : game.whitePlayerId;
                 const isAiTurn = aiPlayerId === aiUserId;
                 
                 if (isAiTurn) {
-                    // AI 수를 즉시 처리 (비동기로 실행하여 응답 지연 방지)
-                    setImmediate(async () => {
-                        try {
-                            const { makeAiMove } = await import('../aiPlayer.js');
-                            const { getCachedGame } = await import('../gameCache.js');
-                            // 캐시에서 게임을 가져오기 (DB 조회 최소화)
-                            const freshGame = await getCachedGame(game.id);
-                            if (freshGame && freshGame.gameStatus === 'playing' && freshGame.currentPlayer !== types.Player.None) {
-                                const currentAiPlayerId = freshGame.currentPlayer === types.Player.Black ? freshGame.blackPlayerId : freshGame.whitePlayerId;
-                                if (currentAiPlayerId === aiUserId) {
-                                    await makeAiMove(freshGame);
-                                    // DB 저장은 비동기로 처리하여 응답 지연 최소화 (db.saveGame이 자동으로 캐시 업데이트)
-                                    db.saveGame(freshGame).catch(err => {
-                                        console.error(`[PLACE_STONE] Failed to save game ${freshGame.id}:`, err);
-                                    });
-                                    broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
-                                }
-                            }
-                        } catch (error) {
-                            console.error(`[PLACE_STONE] Error processing immediate AI move for game ${game.id}:`, error);
-                        }
-                    });
+                    // 클라이언트가 계산한 AI 수인 경우 (isClientAiMove 플래그 확인)
+                    const isClientAiMove = (payload as any).isClientAiMove === true;
+                    
+                    if (isClientAiMove) {
+                        // 클라이언트가 계산한 AI 수를 검증만 수행 (서버 부하 없음)
+                        // 이미 PLACE_STONE으로 처리되었으므로 추가 작업 불필요
+                        // 단, 클라이언트가 잘못 계산한 경우를 대비해 검증은 이미 위에서 수행됨
+                        // 클라이언트에서 AI 수를 보내는 경우 1초 대기는 클라이언트에서 처리하므로 서버에서는 대기하지 않음
+                    } else {
+                        // 클라이언트가 AI 수를 계산하지 않은 경우에만 서버에서 처리
+                        // (하위 호환성을 위해 유지, 점진적으로 클라이언트 측 AI로 전환)
+                        const { aiProcessingQueue } = await import('../aiProcessingQueue.js');
+                        aiProcessingQueue.enqueue(game.id, Date.now());
+                    }
                 }
             }
 
             return {};
+            } catch (error: any) {
+                game.processingMove = null;
+                console.error('[PLACE_STONE] Error:', error);
+                console.error('[PLACE_STONE] Stack:', error?.stack);
+                console.error('[PLACE_STONE] Game state:', { 
+                    gameId: game.id, 
+                    stageId: game.stageId,
+                    currentPlayer: game.currentPlayer,
+                    gameStatus: game.gameStatus,
+                    boardState: game.boardState ? 'exists' : 'missing',
+                    payload 
+                });
+                return { error: error?.message || 'An error occurred while placing stone.' };
+            }
         }
         case 'PASS_TURN': {
             if (!isMyTurn || game.gameStatus !== 'playing') return { error: 'Not your turn to pass.' };

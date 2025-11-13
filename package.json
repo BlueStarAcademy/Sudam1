@@ -13,7 +13,6 @@
     "prisma:migrate:deploy": "npx prisma migrate deploy --schema prisma/schema.prisma",
     "prisma:migrate:dev": "npx prisma migrate dev --schema prisma/schema.prisma",
     "migrate": "npx tsx --tsconfig server/tsconfig.json server/migrateFromOldDb.ts",
-    "migrate:supabase": "npx tsx scripts/migrateSqliteToSupabase.ts",
     "restore-equipment": "npx tsx --tsconfig server/tsconfig.json server/restoreEquipment.ts",
     "force-restore-equipment": "npx tsx --tsconfig server/tsconfig.json server/forceRestoreEquipment.ts",
     "sync-equipment": "npx tsx --tsconfig server/tsconfig.json server/syncEquipmentInventory.ts",

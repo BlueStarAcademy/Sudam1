@@ -41,22 +41,46 @@ const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser
 
     const allRankedUsers = useMemo(() => {
         const gameModes = lobbyType === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
-        return [...allUsers]
-            .map(u => {
-                let totalScore = 0;
-                let gameCount = 0;
-                for (const game of gameModes) {
-                    const gameStats = u.stats?.[game.mode];
-                    if (gameStats) {
-                        totalScore += gameStats.rankingScore || 0;
-                        gameCount++;
+        const scoreMode = lobbyType === 'strategic' ? 'standard' : 'playful';
+        const mode = lobbyType;
+        
+        // 10판 이상의 대국을 한 유저는 모두 표시 (점수가 없어도 포함)
+        return allUsers
+            .filter(u => {
+                if (!u || !u.id) return false;
+                // 총 게임 수 계산 (모든 종류의 전략바둑 또는 놀이바둑 경기의 누적 판수)
+                let totalGames = 0;
+                if (u.stats) {
+                    for (const gameMode of gameModes) {
+                        const gameStats = u.stats[gameMode.mode];
+                        if (gameStats) {
+                            totalGames += (gameStats.wins || 0) + (gameStats.losses || 0);
+                        }
                     }
                 }
-                const avgScore = gameCount > 0 ? totalScore / gameCount : 0;
-                return { ...u, avgScore };
+                // 10판 이상이면 포함 (점수와 무관)
+                return totalGames >= 10;
             })
-            .filter(u => u.avgScore > 0)
-            .sort((a, b) => b.avgScore - a.avgScore);
+            .map(u => {
+                // dailyRankings가 있으면 우선 사용 (현재 시즌 랭킹점수)
+                if (u.dailyRankings?.[mode]) {
+                    return {
+                        ...u,
+                        avgScore: u.dailyRankings[mode].score,
+                        rank: u.dailyRankings[mode].rank
+                    };
+                } else {
+                    // 없으면 시즌 시작 시 초기값인 1200점 사용 (현재 시즌 랭킹점수)
+                    return { ...u, avgScore: 1200 };
+                }
+            })
+            .sort((a, b) => {
+                // rank가 있으면 rank 기준으로 정렬, 없으면 점수 기준으로 정렬
+                if ((a as any).rank !== undefined && (b as any).rank !== undefined) {
+                    return (a as any).rank - (b as any).rank;
+                }
+                return b.avgScore - a.avgScore;
+            });
     }, [allUsers, lobbyType]);
 
     const eligibleRankedUsers = useMemo(() => {
@@ -69,7 +93,7 @@ const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser
                     totalGames += (gameStats.wins || 0) + (gameStats.losses || 0);
                 }
             }
-            return totalGames >= 20;
+            return totalGames >= 10;
         });
     }, [allRankedUsers, lobbyType]);
     
@@ -77,9 +101,13 @@ const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser
     const sproutTier = RANKING_TIERS[RANKING_TIERS.length - 1];
 
     const myRankIndex = allRankedUsers.findIndex(u => u.id === currentUser.id);
-    const myRankData = myRankIndex !== -1 ? { user: allRankedUsers[myRankIndex], rank: myRankIndex + 1, score: allRankedUsers[myRankIndex].avgScore } : null;
+    const myRankData = myRankIndex !== -1 ? { 
+        user: allRankedUsers[myRankIndex], 
+        rank: (allRankedUsers[myRankIndex] as any).rank || (myRankIndex + 1), 
+        score: allRankedUsers[myRankIndex].avgScore 
+    } : null;
 
-    const topUsers = allRankedUsers.slice(0, 100);
+    const topUsers = allRankedUsers.slice(0, 50);
 
     const getTierForUser = useCallback((user: User & { avgScore: number }) => {
         const rankAmongEligible = eligibleRankedUsers.findIndex(u => u.id === user.id) + 1;
@@ -180,7 +208,10 @@ const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser
             )}
 
             <ul className="space-y-2 overflow-y-auto pr-2 h-72">
-                 {topUsers.length > 0 ? topUsers.map((user, index) => renderRankItem(user, index + 1, false)) : (
+                 {topUsers.length > 0 ? topUsers.map((user, index) => {
+                     const rank = (user as any).rank || (index + 1);
+                     return renderRankItem(user, rank, false);
+                 }) : (
                      <p className="text-center text-tertiary pt-8">랭킹 정보가 없습니다.</p>
                  )}
             </ul>

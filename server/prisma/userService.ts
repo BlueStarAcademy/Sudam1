@@ -1,4 +1,5 @@
 import prisma from "../prismaClient.js";
+import type { Prisma } from "@prisma/client";
 import type { User } from "../../types.js";
 import { deserializeUser, serializeUser, PrismaUserWithStatus } from "./userAdapter.js";
 
@@ -10,6 +11,8 @@ const toBigInt = (value: number | undefined): bigint => {
 
 const buildPersistentFields = (user: User) => {
   const status = serializeUser(user);
+  // Convert status to Prisma-compatible JSON type
+  const statusJson = JSON.parse(JSON.stringify(status)) as Prisma.InputJsonValue;
 
   return {
     nickname: user.nickname,
@@ -25,7 +28,7 @@ const buildPersistentFields = (user: User) => {
     diamonds: toBigInt(user.diamonds),
     league: user.league ?? null,
     tournamentScore: user.tournamentScore ?? 0,
-    status
+    status: statusJson
   };
 };
 

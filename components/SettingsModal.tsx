@@ -10,6 +10,7 @@ import ToggleSwitch from './ui/ToggleSwitch.js';
 import Slider from './ui/Slider.js';
 import ColorSwatch from './ui/ColorSwatch.js';
 import { getPanelEdgeImages } from '../constants/panelEdges.js';
+import { useNavigate } from 'react-router-dom';
 
 interface SettingsModalProps {
     onClose: () => void;
@@ -27,8 +28,23 @@ const THEMES: { id: Theme; name: string; colors: string[] }[] = [
 ];
 
 const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => {
-    const { settings, updateTheme, updateSoundSetting, updateFeatureSetting, updatePanelColor, updateTextColor, updatePanelEdgeStyle, resetGraphicsToDefault } = useAppContext();
+    const { settings, updateTheme, updateSoundSetting, updateFeatureSetting, updatePanelColor, updateTextColor, updatePanelEdgeStyle, resetGraphicsToDefault, handlers } = useAppContext();
     const [activeTab, setActiveTab] = useState<SettingsTab>('graphics');
+    
+    const handleEmergencyExit = async () => {
+        if (!window.confirm('비상탈출을 사용하시겠습니까?\n\n모든 플레이 중인 게임이 강제 종료되며, PVP 경기장에서는 기권패 처리됩니다.')) {
+            return;
+        }
+        
+        try {
+            await handlers.handleAction({ type: 'EMERGENCY_EXIT', payload: {} });
+            // 홈화면으로 이동
+            window.location.href = '#/';
+        } catch (error) {
+            console.error('Emergency exit failed:', error);
+            alert('비상탈출 실행 중 오류가 발생했습니다.');
+        }
+    };
     
     const tabs: { id: SettingsTab; label: string }[] = [
         { id: 'graphics', label: '그래픽' },
@@ -206,6 +222,19 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => 
                                 checked={settings.features.chatNotifications}
                                 onChange={(checked) => updateFeatureSetting('chatNotifications', checked)}
                             />
+                        </div>
+                        <h3 className="text-lg font-semibold text-text-secondary mb-4 pt-4 border-t border-color">비상 기능</h3>
+                        <div className="bg-red-900/30 border border-red-700/50 rounded-lg p-4">
+                            <p className="text-sm text-red-200 mb-3">
+                                비상탈출 버튼을 사용하면 모든 플레이 중인 게임이 강제 종료되며, PVP 경기장에서는 기권패 처리됩니다.
+                            </p>
+                            <Button 
+                                onClick={handleEmergencyExit}
+                                colorScheme="red"
+                                className="w-full"
+                            >
+                                🚨 비상탈출
+                            </Button>
                         </div>
                     </div>
                 );

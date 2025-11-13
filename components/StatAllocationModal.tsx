@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserWithStatus, CoreStat, ServerAction } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
@@ -13,8 +13,16 @@ interface StatAllocationModalProps {
 }
 
 const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, onClose, onAction, isTopmost }) => {
-    // 분배 버튼을 눌렀을 때는 항상 편집 모드로 시작
-    const [isEditing, setIsEditing] = useState(true);
+    // 초기화를 했을 때만 편집 모드로 시작, 저장 후에는 읽기 전용 모드
+    const [isEditing, setIsEditing] = useState(() => {
+        // spentStatPoints가 없거나 모두 0이면 편집 모드
+        if (!currentUser.spentStatPoints || Object.keys(currentUser.spentStatPoints).length === 0) {
+            return true;
+        }
+        const totalSpent = Object.values(currentUser.spentStatPoints).reduce((sum, points) => sum + points, 0);
+        // 분배된 포인트가 없으면 편집 모드
+        return totalSpent === 0;
+    });
     const [tempPoints, setTempPoints] = useState<Record<CoreStat, number>>(() => {
         if (currentUser.spentStatPoints && Object.keys(currentUser.spentStatPoints).length > 0) {
             return currentUser.spentStatPoints;
@@ -69,6 +77,21 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
         });
     };
 
+    // currentUser가 업데이트되면 isEditing 상태도 업데이트
+    useEffect(() => {
+        if (!currentUser.spentStatPoints || Object.keys(currentUser.spentStatPoints).length === 0) {
+            setIsEditing(true);
+        } else {
+            const totalSpent = Object.values(currentUser.spentStatPoints).reduce((sum, points) => sum + points, 0);
+            // 분배된 포인트가 없으면 편집 모드, 있으면 읽기 전용 모드
+            setIsEditing(totalSpent === 0);
+        }
+        // tempPoints도 업데이트
+        if (currentUser.spentStatPoints && Object.keys(currentUser.spentStatPoints).length > 0) {
+            setTempPoints(currentUser.spentStatPoints);
+        }
+    }, [currentUser.spentStatPoints]);
+
     const handleReset = () => {
         if (!canReset) {
             alert("능력치 초기화 조건을 충족하지 못했습니다. 골드가 부족하거나 일일 초기화 횟수를 초과했습니다.");
@@ -95,6 +118,7 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
 
     const handleConfirm = () => {
         onAction({ type: 'CONFIRM_STAT_ALLOCATION', payload: { newStatPoints: tempPoints } });
+        setIsEditing(false); // 저장 후 편집 모드 비활성화
         onClose();
     };
 
@@ -160,12 +184,22 @@ const StatAllocationModal: React.FC<StatAllocationModalProps> = ({ currentUser, 
                     </div>
                     <div className="flex justify-between mt-4 pt-4 border-t border-gray-700">
                         <div className="flex flex-col items-start">
-                            <Button onClick={handleReset} colorScheme="red" disabled={!canReset}>초기화 (<img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4 inline-block" />{resetCost})</Button>
+                            <Button onClick={handleReset} colorScheme="red" disabled={!canReset || isEditing}>초기화 (<img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4 inline-block" />{resetCost})</Button>
                             <p className="text-xs text-gray-400 mt-1">일일 변경제한: {maxDailyResets - statResetCountToday}/{maxDailyResets}</p>
+                            {!isEditing && (
+                                <p className="text-xs text-yellow-400 mt-1">초기화 후 재분배 가능</p>
+                            )}
+                            {isEditing && (
+                                <p className="text-xs text-green-400 mt-1">편집 모드: 능력치를 조정할 수 있습니다</p>
+                            )}
                         </div>
                         <div className="flex gap-2">
                             <Button onClick={onClose} colorScheme="gray">취소</Button>
-                            <Button onClick={handleConfirm} colorScheme="green" disabled={!isEditing || !hasChanges}>분배</Button>
+                            {isEditing ? (
+                                <Button onClick={handleConfirm} colorScheme="green" disabled={!hasChanges}>분배</Button>
+                            ) : (
+                                <Button onClick={onClose} colorScheme="gray">닫기</Button>
+                            )}
                         </div>
                     </div>
                 </div>

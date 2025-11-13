@@ -532,10 +532,16 @@ export const analyzeGame = async (session: LiveGameSession, options?: { maxVisit
 
     if (useBoardStateForAnalysis) {
         // For these modes, send the current board state directly.
+        // 미리 배치된 돌(baseStones)과 히든돌도 포함하여 정확한 계가 수행
         const initialStones: [string, string][] = [];
+        const processedPoints = new Set<string>();
+        
+        // 1. 현재 보드 상태의 모든 돌 추가
         for (let y = 0; y < session.settings.boardSize; y++) {
             for (let x = 0; x < session.settings.boardSize; x++) {
                 if (session.boardState[y][x] !== types.Player.None) {
+                    const pointKey = `${x},${y}`;
+                    processedPoints.add(pointKey);
                     initialStones.push([
                         session.boardState[y][x] === types.Player.Black ? 'B' : 'W',
                         pointToKataGoMove({ x, y }, session.settings.boardSize)
@@ -543,6 +549,40 @@ export const analyzeGame = async (session: LiveGameSession, options?: { maxVisit
                 }
             }
         }
+        
+        // 2. 베이스 돌 추가 (미리 배치된 돌, moveHistory에 없을 수 있음)
+        const baseStones_p1 = (session as any).baseStones_p1 || [];
+        const baseStones_p2 = (session as any).baseStones_p2 || [];
+        const blackPlayerId = session.blackPlayerId;
+        const whitePlayerId = session.whitePlayerId;
+        
+        for (const stone of baseStones_p1) {
+            const pointKey = `${stone.x},${stone.y}`;
+            if (!processedPoints.has(pointKey)) {
+                processedPoints.add(pointKey);
+                const player = session.player1.id === blackPlayerId ? 'B' : 'W';
+                initialStones.push([
+                    player,
+                    pointToKataGoMove({ x: stone.x, y: stone.y }, session.settings.boardSize)
+                ]);
+            }
+        }
+        
+        for (const stone of baseStones_p2) {
+            const pointKey = `${stone.x},${stone.y}`;
+            if (!processedPoints.has(pointKey)) {
+                processedPoints.add(pointKey);
+                const player = session.player2.id === blackPlayerId ? 'B' : 'W';
+                initialStones.push([
+                    player,
+                    pointToKataGoMove({ x: stone.x, y: stone.y }, session.settings.boardSize)
+                ]);
+            }
+        }
+        
+        // 3. 히든돌 처리: moveHistory에 있지만 boardState에 반영되지 않은 경우를 대비
+        // (히든돌은 이미 boardState에 반영되어 있으므로 추가 처리 불필요)
+        // 단, moveHistory를 기반으로 한 분석에서 누락될 수 있으므로 확인
         
         isCurrentPlayerWhite = session.currentPlayer === types.Player.White;
 
@@ -561,10 +601,49 @@ export const analyzeGame = async (session: LiveGameSession, options?: { maxVisit
         };
     } else {
         // For standard games, send the move history.
-        const moves: [string, string][] = session.moveHistory.map(move => [
-            move.player === Player.Black ? 'B' : 'W',
-            pointToKataGoMove({ x: move.x, y: move.y }, session.settings.boardSize)
-        ]);
+        // 베이스 돌과 히든돌도 고려하여 정확한 계가 수행
+        const moves: [string, string][] = [];
+        const processedPoints = new Set<string>();
+        
+        // 1. 베이스 돌을 먼저 추가 (게임 시작 전에 배치된 돌)
+        const baseStones_p1 = (session as any).baseStones_p1 || [];
+        const baseStones_p2 = (session as any).baseStones_p2 || [];
+        const blackPlayerId = session.blackPlayerId;
+        const whitePlayerId = session.whitePlayerId;
+        
+        for (const stone of baseStones_p1) {
+            const pointKey = `${stone.x},${stone.y}`;
+            processedPoints.add(pointKey);
+            const player = session.player1.id === blackPlayerId ? 'B' : 'W';
+            moves.push([
+                player,
+                pointToKataGoMove({ x: stone.x, y: stone.y }, session.settings.boardSize)
+            ]);
+        }
+        
+        for (const stone of baseStones_p2) {
+            const pointKey = `${stone.x},${stone.y}`;
+            processedPoints.add(pointKey);
+            const player = session.player2.id === blackPlayerId ? 'B' : 'W';
+            moves.push([
+                player,
+                pointToKataGoMove({ x: stone.x, y: stone.y }, session.settings.boardSize)
+            ]);
+        }
+        
+        // 2. moveHistory의 모든 수 추가 (히든돌 포함)
+        for (const move of session.moveHistory) {
+            if (move.x === -1 && move.y === -1) continue; // 패스는 제외
+            const pointKey = `${move.x},${move.y}`;
+            // 이미 베이스 돌로 처리된 위치는 제외 (중복 방지)
+            if (!processedPoints.has(pointKey)) {
+                processedPoints.add(pointKey);
+                moves.push([
+                    move.player === Player.Black ? 'B' : 'W',
+                    pointToKataGoMove({ x: move.x, y: move.y }, session.settings.boardSize)
+                ]);
+            }
+        }
         
         isCurrentPlayerWhite = moves.length % 2 !== 0;
 

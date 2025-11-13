@@ -509,6 +509,17 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             targetUser.diamonds = Number(updatedDetails.diamonds) || 0;
             targetUser.mannerScore = Number(updatedDetails.mannerScore) || 200;
             
+            // 챔피언십 점수 업데이트 (editedUser 전체를 보내므로 값이 있어야 함)
+            // 0도 유효한 값이므로 명시적으로 처리
+            if ('cumulativeTournamentScore' in updatedDetails) {
+                const numValue = Number(updatedDetails.cumulativeTournamentScore);
+                targetUser.cumulativeTournamentScore = isNaN(numValue) ? 0 : numValue;
+            }
+            if ('tournamentScore' in updatedDetails) {
+                const numValue = Number(updatedDetails.tournamentScore);
+                targetUser.tournamentScore = isNaN(numValue) ? 0 : numValue;
+            }
+            
             if (updatedDetails.quests) {
                 targetUser.quests = updatedDetails.quests;
             }
@@ -530,7 +541,13 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             const updatedUser = JSON.parse(JSON.stringify(targetUser));
             broadcast({ type: 'USER_UPDATE', payload: { [targetUser.id]: updatedUser } });
             
-            return {};
+            // HTTP 응답에도 업데이트된 사용자 데이터 포함 (관리자 패널에서 즉시 반영을 위해)
+            return {
+                clientResponse: {
+                    updatedUser,
+                    targetUserId: targetUser.id
+                }
+            };
         }
         
         case 'ADMIN_RESET_TOURNAMENT_SESSION': {

@@ -97,7 +97,8 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
                 return { ...competitor, liveScore, scoreChange };
             } else {
                 const liveData = allUsers.find(u => u.id === competitor.id);
-                const liveScore = liveData ? liveData.tournamentScore : competitor.initialScore;
+                // cumulativeTournamentScore를 사용하여 일주일 동안의 모든 경기장 점수 합계 표시
+                const liveScore = liveData ? (liveData.cumulativeTournamentScore || 0) : competitor.initialScore;
                 const scoreChange = liveScore - competitor.initialScore;
                 return { ...competitor, liveScore, scoreChange };
             }
@@ -228,7 +229,7 @@ const RankItem: React.FC<RankItemProps> = ({ user, rank, isMyRankDisplay }) => {
     const { currentUserWithStatus, handlers } = useAppContext();
     if (!currentUserWithStatus) return null;
 
-    const score = user.tournamentScore || 0;
+    const score = user.cumulativeTournamentScore || 0;
 
     const rankDisplay = useMemo(() => {
         if (rank === 1) return <span className="text-3xl" role="img" aria-label="Gold Trophy">🥇</span>;
@@ -283,15 +284,15 @@ const ChampionshipRankingPanel: React.FC<{ compactTierIcons?: boolean }> = ({ co
     const sortedUsers = useMemo(() => {
         if (!currentUserWithStatus) return [];
         return [...allUsers]
-            .filter(u => u.league === selectedTier && typeof u.tournamentScore === 'number')
-            .sort((a, b) => b.tournamentScore - a.tournamentScore);
+            .filter(u => u.league === selectedTier && typeof (u.cumulativeTournamentScore ?? 0) === 'number')
+            .sort((a, b) => (b.cumulativeTournamentScore || 0) - (a.cumulativeTournamentScore || 0));
     }, [allUsers, selectedTier, currentUserWithStatus]);
     
     const myOwnLeagueData = useMemo(() => {
         if (!currentUserWithStatus) return { rank: -1, user: null };
         const usersInMyLeague = [...allUsers]
-            .filter(u => u.league === currentUserWithStatus.league && typeof u.tournamentScore === 'number')
-            .sort((a, b) => b.tournamentScore - a.tournamentScore);
+            .filter(u => u.league === currentUserWithStatus.league && typeof (u.cumulativeTournamentScore ?? 0) === 'number')
+            .sort((a, b) => (b.cumulativeTournamentScore || 0) - (a.cumulativeTournamentScore || 0));
         const myRankIndex = usersInMyLeague.findIndex(u => u.id === currentUserWithStatus.id);
         return {
             rank: myRankIndex !== -1 ? myRankIndex + 1 : -1,

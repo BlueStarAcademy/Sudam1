@@ -297,7 +297,7 @@ export async function resetAllChampionshipScoresToZero(): Promise<void> {
 }
 
 export async function processWeeklyLeagueUpdates(user: types.User): Promise<types.User> {
-    if (!isDifferentWeekKST(user.lastLeagueUpdate, Date.now())) {
+    if (!isDifferentWeekKST(user.lastLeagueUpdate ?? undefined, Date.now())) {
         return user; // Not a new week, no update needed
     }
 
@@ -427,7 +427,7 @@ ${year}년 ${month}월 ${week}주차 주간 경쟁 결과, ${finalRankings.lengt
 
 export async function updateWeeklyCompetitorsIfNeeded(user: types.User, allUsers: types.User[]): Promise<types.User> {
     const now = Date.now();
-    if (!isDifferentWeekKST(user.lastWeeklyCompetitorsUpdate, now)) {
+    if (!isDifferentWeekKST(user.lastWeeklyCompetitorsUpdate ?? undefined, now)) {
         return user; // No update needed
     }
 
@@ -469,13 +469,6 @@ export async function updateBotLeagueScores(user: types.User): Promise<types.Use
     
     const now = Date.now();
     const kstNow = getKSTDate(now);
-    const dayOfWeekKST = kstNow.getUTCDay(); // 0: Sun, 1: Mon, ...
-
-    // 월요일 0시는 주간 초기화 직후이므로 봇 점수를 올리지 않음
-    if (dayOfWeekKST === 1) {
-        return user;
-    }
-
     const todayStart = getStartOfDayKST(now);
     
     // weeklyCompetitors에 봇 점수 업데이트 정보가 없으면 초기화
@@ -614,9 +607,12 @@ export async function processDailyRankings(): Promise<void> {
             score: entry.score
         }));
     
-    // 각 유저의 dailyRankings 업데이트
+    // 각 유저의 dailyRankings 업데이트 및 봇 점수 업데이트
     for (const user of allUsers) {
-        const updatedUser = JSON.parse(JSON.stringify(user));
+        let updatedUser = JSON.parse(JSON.stringify(user));
+        
+        // 봇의 리그 점수 업데이트 (매일 0시에 실행)
+        updatedUser = await updateBotLeagueScores(updatedUser);
         
         if (!updatedUser.dailyRankings) {
             updatedUser.dailyRankings = {};

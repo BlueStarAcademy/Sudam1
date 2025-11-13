@@ -30,13 +30,6 @@ const BlacksmithHelpModal: React.FC<BlacksmithHelpModalProps> = ({ onClose }) =>
                 </div>
 
                 <div className="flex items-start gap-4">
-                    <div className="flex gap-2 flex-shrink-0">
-                        <img src="/images/equipments/normalbgi.png" alt="장비 합성" className="w-16 h-16 object-cover rounded-lg" />
-                        <span className="text-2xl text-blue-400 self-center">+</span>
-                        <img src="/images/equipments/normalbgi.png" alt="장비 합성" className="w-16 h-16 object-cover rounded-lg" />
-                        <span className="text-2xl text-blue-400 self-center">+</span>
-                        <img src="/images/equipments/normalbgi.png" alt="장비 합성" className="w-16 h-16 object-cover rounded-lg" />
-                    </div>
                     <div className="flex-1">
                         <h3 className="text-xl font-bold text-blue-400 mb-2 border-b border-blue-400/30 pb-2">장비 합성</h3>
                         <div className="space-y-2 text-gray-300">
@@ -52,7 +45,6 @@ const BlacksmithHelpModal: React.FC<BlacksmithHelpModalProps> = ({ onClose }) =>
                 </div>
 
                 <div className="flex items-start gap-4">
-                    <img src="/images/materials/materials1.png" alt="장비 분해" className="w-32 h-32 object-cover rounded-lg flex-shrink-0" />
                     <div className="flex-1">
                         <h3 className="text-xl font-bold text-red-400 mb-2 border-b border-red-400/30 pb-2">장비 분해</h3>
                         <div className="space-y-2 text-gray-300">
@@ -68,11 +60,6 @@ const BlacksmithHelpModal: React.FC<BlacksmithHelpModalProps> = ({ onClose }) =>
                 </div>
 
                 <div className="flex items-start gap-4">
-                    <div className="flex flex-col gap-2 flex-shrink-0 items-center">
-                        <img src="/images/materials/materials1.png" alt="재료 변환" className="w-16 h-16 object-cover rounded-lg" />
-                        <span className="text-lg text-green-400">→</span>
-                        <img src="/images/materials/materials2.png" alt="재료 변환" className="w-16 h-16 object-cover rounded-lg" />
-                    </div>
                     <div className="flex-1">
                         <h3 className="text-xl font-bold text-green-400 mb-2 border-b border-green-400/30 pb-2">재료 변환</h3>
                         <div className="space-y-2 text-gray-300">
@@ -88,9 +75,6 @@ const BlacksmithHelpModal: React.FC<BlacksmithHelpModalProps> = ({ onClose }) =>
                 </div>
 
                 <div className="flex items-start gap-4">
-                    <div className="w-32 h-32 bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <span className="text-4xl font-bold text-yellow-300">Lv</span>
-                    </div>
                     <div className="flex-1">
                         <h3 className="text-xl font-bold text-purple-400 mb-2 border-b border-purple-400/30 pb-2">대장간 경험치</h3>
                         <div className="space-y-2 text-gray-300">

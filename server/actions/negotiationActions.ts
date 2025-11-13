@@ -193,6 +193,18 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
                 return { error: 'Cannot accept this negotiation now.' };
             }
             
+            // challenger가 이미 대기실을 나갔는지 확인
+            const challengerStatus = volatileState.userStatuses[negotiation.challenger.id];
+            if (!challengerStatus || (challengerStatus.status !== UserStatus.Negotiating && challengerStatus.status !== UserStatus.Waiting)) {
+                // challenger가 이미 나간 경우 negotiation 삭제 및 opponent 상태 복구
+                if (volatileState.userStatuses[negotiation.opponent.id]?.status === UserStatus.Negotiating) {
+                    volatileState.userStatuses[negotiation.opponent.id].status = UserStatus.Waiting;
+                }
+                delete volatileState.negotiations[negotiationId];
+                broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
+                return { error: '상대방이 대기실을 나갔습니다. 대국 신청이 취소되었습니다.' };
+            }
+            
             const challenger = await db.getUser(negotiation.challenger.id);
             const opponent = await db.getUser(negotiation.opponent.id);
             if (!challenger || !opponent) return { error: "One of the players could not be found." };

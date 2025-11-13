@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { SinglePlayerMissionInfo } from '../../types.js';
 import Button from '../Button.js';
 import DraggableWindow from '../DraggableWindow.js';
@@ -30,8 +30,50 @@ const TrainingQuestLevelUpModal: React.FC<TrainingQuestLevelUpModalProps> = ({
     onConfirm,
     onClose,
 }) => {
+    const [isLevelingUp, setIsLevelingUp] = useState(false);
+    const [displayLevel, setDisplayLevel] = useState(currentLevel);
+    const [showLevelUpEffect, setShowLevelUpEffect] = useState(false);
+
     const currentLevelInfo = currentLevel > 0 ? mission.levels[currentLevel - 1] : null;
     const nextLevelInfo = mission.levels && mission.levels[currentLevel];
+
+    // currentLevel이 변경되면 애니메이션 트리거
+    useEffect(() => {
+        if (currentLevel > displayLevel) {
+            setIsLevelingUp(true);
+            setShowLevelUpEffect(true);
+            
+            // 레벨 카운트업 애니메이션
+            const startLevel = displayLevel;
+            const endLevel = currentLevel;
+            const duration = 800; // 0.8초
+            const steps = 20;
+            const stepDuration = duration / steps;
+            let step = 0;
+
+            const interval = setInterval(() => {
+                step++;
+                const progress = step / steps;
+                const easeOutCubic = 1 - Math.pow(1 - progress, 3);
+                const current = Math.floor(startLevel + (endLevel - startLevel) * easeOutCubic);
+                setDisplayLevel(current);
+
+                if (step >= steps) {
+                    clearInterval(interval);
+                    setDisplayLevel(endLevel);
+                    setTimeout(() => {
+                        setIsLevelingUp(false);
+                        setTimeout(() => setShowLevelUpEffect(false), 500);
+                    }, 200);
+                }
+            }, stepDuration);
+
+            return () => clearInterval(interval);
+        } else if (currentLevel < displayLevel) {
+            // 레벨이 내려간 경우 (리셋 등) 즉시 동기화
+            setDisplayLevel(currentLevel);
+        }
+    }, [currentLevel, displayLevel]);
 
     if (!nextLevelInfo) {
         return null;
@@ -77,13 +119,27 @@ const TrainingQuestLevelUpModal: React.FC<TrainingQuestLevelUpModalProps> = ({
                         </div>
                         <div className="flex-1">
                             <h2 className="text-2xl font-bold text-white drop-shadow-[0_4px_15px_rgba(79,70,229,0.5)]">{mission.name}</h2>
-                            <div className="mt-1 flex items-baseline gap-2">
+                            <div className="mt-1 flex items-baseline gap-2 relative">
                                 <span
-                                    className={`text-sm font-semibold text-indigo-100/80`}
+                                    className={`text-sm font-semibold transition-all duration-300 ${
+                                        isLevelingUp 
+                                            ? 'text-green-400 scale-125 drop-shadow-[0_0_20px_rgba(34,197,94,0.8)]' 
+                                            : showLevelUpEffect
+                                                ? 'text-emerald-300 scale-110'
+                                                : 'text-indigo-100/80'
+                                    }`}
                                 >
-                                    Lv.{currentLevel}
+                                    Lv.{displayLevel}
                                 </span>
-                                <span className="text-xs text-indigo-200/60">→ Lv.{currentLevel + 1}</span>
+                                {showLevelUpEffect && (
+                                    <div className="absolute -top-2 -right-2 text-2xl animate-bounce">✨</div>
+                                )}
+                                {!isLevelingUp && displayLevel < currentLevel + 1 && (
+                                    <span className="text-xs text-indigo-200/60">→ Lv.{currentLevel + 1}</span>
+                                )}
+                                {isLevelingUp && (
+                                    <span className="text-xs text-green-300 animate-pulse">↑</span>
+                                )}
                             </div>
                         </div>
                     </div>

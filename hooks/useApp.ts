@@ -57,9 +57,13 @@ export const useApp = () => {
             : base.inventory;
         
         // 중첩된 객체들을 깊게 병합
+        // ID는 항상 이전 사용자의 ID로 유지 (다른 사용자 정보로 덮어씌워지는 것을 방지)
+        const prevId = prev.id;
         const merged: User = {
             ...base,
             ...patch,
+            // ID는 항상 이전 사용자의 ID로 강제 유지 (보안: 다른 사용자로 로그인 변경 방지)
+            id: prevId,
             // inventory는 배열이므로 완전히 교체 (새로운 참조로)
             inventory: mergedInventory,
             // equipment는 객체이므로 완전히 교체 (서버에서 보내는 equipment는 항상 전체 상태)
@@ -75,17 +79,25 @@ export const useApp = () => {
             singlePlayerMissions: patch.singlePlayerMissions !== undefined ? { ...base.singlePlayerMissions, ...patch.singlePlayerMissions } : base.singlePlayerMissions,
         };
         
-        // ID는 항상 유지
-        if (!merged.id && prev.id) {
-            merged.id = prev.id;
-        }
-        
         return merged;
     }, []);
 
     const applyUserUpdate = useCallback((updates: Partial<User>, source: string) => {
         const prevUser = currentUserRef.current;
+        
+        // 보안: 다른 사용자의 ID가 포함된 업데이트는 무시 (다른 사용자로 로그인 변경 방지)
+        if (prevUser && updates.id && updates.id !== prevUser.id) {
+            console.warn(`[applyUserUpdate] Rejected update from ${source}: ID mismatch (prev: ${prevUser.id}, update: ${updates.id})`);
+            return prevUser;
+        }
+        
         const mergedUser = mergeUserState(prevUser, updates);
+        
+        // 추가 보안: 병합 후에도 ID가 변경되지 않았는지 확인
+        if (prevUser && mergedUser.id !== prevUser.id) {
+            console.error(`[applyUserUpdate] CRITICAL: ID changed after merge! (prev: ${prevUser.id}, merged: ${mergedUser.id}). Restoring previous ID.`);
+            mergedUser.id = prevUser.id;
+        }
         
         // 실제 변경사항이 있는지 확인 (불필요한 리렌더링 방지)
         // 중요한 필드들을 직접 비교하여 더 정확한 변경 감지

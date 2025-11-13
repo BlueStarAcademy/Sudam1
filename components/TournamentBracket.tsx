@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react'
 import { UserWithStatus, TournamentState, PlayerForTournament, ServerAction, User, CoreStat, Match, Round, CommentaryLine, TournamentType, LeagueTier } from '../types.js';
 import Button from './Button.js';
 import { useButtonClickThrottle } from '../hooks/useButtonClickThrottle.js';
+import { useTournamentSimulation } from '../hooks/useTournamentSimulation.js';
 import { TOURNAMENT_DEFINITIONS, BASE_TOURNAMENT_REWARDS, TOURNAMENT_SCORE_REWARDS, CONSUMABLE_ITEMS, MATERIAL_ITEMS, AVATAR_POOL, BORDER_POOL, CORE_STATS_DATA, LEAGUE_DATA } from '../constants';
 import Avatar from './Avatar.js';
 import RadarChart from './RadarChart.js';
@@ -84,8 +85,26 @@ const PlayerProfilePanel: React.FC<{
     tournamentStatus?: string;
     isMobile?: boolean;
 }> = ({ player, initialPlayer, allUsers, currentUserId, onViewUser, highlightPhase, isUserMatch, onUseConditionPotion, onOpenShop, timeElapsed = 0, tournamentStatus, isMobile = false }) => {
+    const [previousCondition, setPreviousCondition] = useState<number | undefined>(player?.condition);
+    const [showConditionIncrease, setShowConditionIncrease] = useState(false);
+    const [conditionIncreaseAmount, setConditionIncreaseAmount] = useState(0);
     
     if (!player) return <div className="p-2 text-center text-gray-500 flex items-center justify-center h-full bg-gray-900/50 rounded-lg">선수 대기 중...</div>;
+    
+    // 컨디션 변화 감지 및 애니메이션 트리거
+    useEffect(() => {
+        if (previousCondition !== undefined && player.condition !== 1000 && previousCondition !== 1000) {
+            const increase = player.condition - previousCondition;
+            if (increase > 0) {
+                setConditionIncreaseAmount(increase);
+                setShowConditionIncrease(true);
+                setTimeout(() => {
+                    setShowConditionIncrease(false);
+                }, 2000);
+            }
+        }
+        setPreviousCondition(player.condition);
+    }, [player.condition, previousCondition]);
 
     const fullUserData = useMemo(() => allUsers.find(u => u.id === player.id), [allUsers, player.id]);
     const leagueInfo = useMemo(() => LEAGUE_DATA.find(league => league.tier === player.league), [player.league]);
@@ -226,12 +245,14 @@ const PlayerProfilePanel: React.FC<{
             <div className="flex items-center gap-1.5 md:gap-3 w-full flex-shrink-0">
                 {leagueInfo && (
                     <img
+                        key={`league-${player.id}-${leagueInfo.tier}`}
                         src={leagueInfo.icon}
                         alt={leagueInfo.name}
                         className="w-6 h-6 md:w-9 md:h-9 object-contain drop-shadow-lg"
+                        loading="lazy"
                     />
                 )}
-                 <Avatar userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={isMobile ? 24 : 32} className={`${isMobile ? 'w-6 h-6' : 'md:w-10 md:h-10'} flex-shrink-0`} />
+                 <Avatar key={`avatar-${player.id}`} userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={isMobile ? 24 : 32} className={`${isMobile ? 'w-6 h-6' : 'md:w-10 md:h-10'} flex-shrink-0`} />
                  <div className="min-w-0 flex-1">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1 md:gap-1.5">
                         <h4 className={`font-bold ${isMobile ? 'text-[10px]' : 'text-xs md:text-base'} truncate`}>{player.nickname}</h4>
@@ -243,7 +264,22 @@ const PlayerProfilePanel: React.FC<{
             {/* 경기가 종료된 후에는 컨디션 표시하지 않음 (물약 낭비 방지) */}
             {tournamentStatus !== 'complete' && tournamentStatus !== 'eliminated' && (
                 <div className={`font-bold ${isMobile ? 'text-[8px]' : 'text-xs md:text-sm'} mt-0.5 relative flex items-center gap-1 md:gap-2 w-full justify-center flex-shrink-0`}>
-                    <span className={isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}>컨디션:</span> <span className={`text-yellow-300 ${isMobile ? 'text-[8px]' : 'text-xs md:text-sm'}`}>{player.condition === 1000 ? '-' : player.condition}</span>
+                    <span className={isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}>컨디션:</span> 
+                    <span className={`text-yellow-300 ${isMobile ? 'text-[8px]' : 'text-xs md:text-sm'} relative transition-all duration-300 ${
+                        showConditionIncrease ? 'scale-125 text-green-300' : ''
+                    }`}>
+                        {player.condition === 1000 ? '-' : player.condition}
+                    </span>
+                    {showConditionIncrease && conditionIncreaseAmount > 0 && (
+                        <span className={`absolute ${isMobile ? 'text-[10px]' : 'text-sm md:text-base'} font-bold text-green-400 pointer-events-none whitespace-nowrap ${
+                            isMobile ? 'top-[-12px]' : 'top-[-16px] md:top-[-20px]'
+                        }`} style={{
+                            animation: 'fadeUp 2s ease-out forwards',
+                            textShadow: '0 0 8px rgba(34, 197, 94, 0.8)'
+                        }}>
+                            +{conditionIncreaseAmount}
+                        </span>
+                    )}
                     {isCurrentUser && player.condition !== 1000 && player.condition < 100 && tournamentStatus !== 'round_in_progress' && tournamentStatus !== 'complete' && tournamentStatus !== 'eliminated' && (
                         <button 
                             onClick={(e) => {
@@ -386,33 +422,62 @@ const ScoreGraph: React.FC<{
     p2Percent: number; 
     p1Nickname?: string; 
     p2Nickname?: string;
+    p1Cumulative?: number;
+    p2Cumulative?: number;
+    p1Player?: PlayerForTournament | null;
+    p2Player?: PlayerForTournament | null;
     lastScoreIncrement?: { 
         player1: { base: number; actual: number; isCritical: boolean } | null;
         player2: { base: number; actual: number; isCritical: boolean } | null;
     } | null;
-}> = ({ p1Percent, p2Percent, p1Nickname, p2Nickname, lastScoreIncrement }) => {
-    const [p1Animation, setP1Animation] = useState<{ value: number; isCritical: boolean; key: number; startX: number; graphRect?: DOMRect } | null>(null);
-    const [p2Animation, setP2Animation] = useState<{ value: number; isCritical: boolean; key: number; startX: number; graphRect?: DOMRect } | null>(null);
+}> = ({ p1Percent, p2Percent, p1Nickname, p2Nickname, p1Cumulative = 0, p2Cumulative = 0, p1Player, p2Player, lastScoreIncrement }) => {
+    const [p1Animation, setP1Animation] = useState<{ value: number; isCritical: boolean; key: number; startX: number; targetX: number; graphRect?: DOMRect } | null>(null);
+    const [p2Animation, setP2Animation] = useState<{ value: number; isCritical: boolean; key: number; startX: number; targetX: number; graphRect?: DOMRect } | null>(null);
     const prevP1ValueRef = useRef<number | null>(null);
     const prevP2ValueRef = useRef<number | null>(null);
     const graphRef = useRef<HTMLDivElement>(null);
+    const isFirstMountRef = useRef(true);
+    
+    const p1AvatarUrl = p1Player ? AVATAR_POOL.find(a => a.id === p1Player.avatarId)?.url : undefined;
+    const p1BorderUrl = p1Player ? BORDER_POOL.find(b => b.id === p1Player.borderId)?.url : undefined;
+    const p2AvatarUrl = p2Player ? AVATAR_POOL.find(a => a.id === p2Player.avatarId)?.url : undefined;
+    const p2BorderUrl = p2Player ? BORDER_POOL.find(b => b.id === p2Player.borderId)?.url : undefined;
+    
+    // 컴포넌트 마운트 시 이전 값 초기화 (뒤로가기 후 재진입 시 애니메이션 방지)
+    useEffect(() => {
+        if (isFirstMountRef.current) {
+            if (lastScoreIncrement?.player1) {
+                prevP1ValueRef.current = lastScoreIncrement.player1.actual;
+            }
+            if (lastScoreIncrement?.player2) {
+                prevP2ValueRef.current = lastScoreIncrement.player2.actual;
+            }
+            isFirstMountRef.current = false;
+        }
+    }, []);
     
     // lastScoreIncrement가 변경되면 애니메이션 트리거
     useEffect(() => {
+        // 첫 마운트 시에는 애니메이션 트리거하지 않음
+        if (isFirstMountRef.current) return;
+        
         if (lastScoreIncrement?.player1 && graphRef.current) {
             const currentValue = lastScoreIncrement.player1.actual;
             // 이전 값과 다르면 애니메이션 트리거
             if (prevP1ValueRef.current !== currentValue) {
                 const rect = graphRef.current.getBoundingClientRect();
+                // 흑은 왼쪽으로 이동 (그래프의 10% 위치)
+                const targetX = 10;
                 setP1Animation({ 
                     value: currentValue, 
                     isCritical: lastScoreIncrement.player1.isCritical,
                     key: Date.now(),
-                    startX: p1Percent,
+                    startX: 50, // 중앙에서 시작
+                    targetX: targetX,
                     graphRect: rect
                 });
-                // 1.5초 후 애니메이션 제거
-                setTimeout(() => setP1Animation(null), 1500);
+                // 3초 후 애니메이션 제거
+                setTimeout(() => setP1Animation(null), 3000);
                 prevP1ValueRef.current = currentValue;
             }
         } else if (!lastScoreIncrement?.player1) {
@@ -422,20 +487,26 @@ const ScoreGraph: React.FC<{
     }, [lastScoreIncrement?.player1?.actual, p1Percent]);
     
     useEffect(() => {
+        // 첫 마운트 시에는 애니메이션 트리거하지 않음
+        if (isFirstMountRef.current) return;
+        
         if (lastScoreIncrement?.player2 && graphRef.current) {
             const currentValue = lastScoreIncrement.player2.actual;
             // 이전 값과 다르면 애니메이션 트리거
             if (prevP2ValueRef.current !== currentValue) {
                 const rect = graphRef.current.getBoundingClientRect();
+                // 백은 오른쪽으로 이동 (그래프의 90% 위치)
+                const targetX = 90;
                 setP2Animation({ 
                     value: currentValue, 
                     isCritical: lastScoreIncrement.player2.isCritical,
                     key: Date.now(),
-                    startX: p2Percent,
+                    startX: 50, // 중앙에서 시작
+                    targetX: targetX,
                     graphRect: rect
                 });
-                // 1.5초 후 애니메이션 제거
-                setTimeout(() => setP2Animation(null), 1500);
+                // 3초 후 애니메이션 제거
+                setTimeout(() => setP2Animation(null), 3000);
                 prevP2ValueRef.current = currentValue;
             }
         } else if (!lastScoreIncrement?.player2) {
@@ -446,16 +517,34 @@ const ScoreGraph: React.FC<{
     
     return (
         <div>
-            {p1Nickname && p2Nickname && (
-                <div className="flex justify-between text-xs px-1 mb-0.5 font-bold">
-                    <span className="truncate max-w-[45%]">흑: {p1Nickname}</span>
-                    <span className="truncate max-w-[45%] text-right">백: {p2Nickname}</span>
+            {/* 플레이어 프로필 (왼쪽: 흑, 오른쪽: 백) */}
+            <div className="flex justify-between items-center mb-2 px-1">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                    {p1Player && (
+                        <>
+                            <Avatar userId={p1Player.id} userName={p1Nickname || ''} avatarUrl={p1AvatarUrl} borderUrl={p1BorderUrl} size={32} />
+                            <div className="min-w-0 flex-1">
+                                <div className="text-xs font-bold text-gray-200 truncate">흑: {p1Nickname}</div>
+                            </div>
+                        </>
+                    )}
                 </div>
-            )}
+                <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
+                    {p2Player && (
+                        <>
+                            <div className="min-w-0 flex-1 text-right">
+                                <div className="text-xs font-bold text-gray-200 truncate">백: {p2Nickname}</div>
+                            </div>
+                            <Avatar userId={p2Player.id} userName={p2Nickname || ''} avatarUrl={p2AvatarUrl} borderUrl={p2BorderUrl} size={32} />
+                        </>
+                    )}
+                </div>
+            </div>
+            
             <div className="relative">
                 <div className="flex justify-between text-xs px-1 mb-0.5 font-bold">
-                    <span className="text-gray-300">{p1Percent.toFixed(1)}%</span>
-                    <span className="text-gray-300">{p2Percent.toFixed(1)}%</span>
+                    <span className="text-gray-300">{p1Percent.toFixed(1)}% ({Math.round(p1Cumulative)}점)</span>
+                    <span className="text-gray-300">{p2Percent.toFixed(1)}% ({Math.round(p2Cumulative)}점)</span>
                 </div>
                 <div className="relative" style={{ paddingTop: '40px' }}>
                     <div ref={graphRef} className="flex w-full h-3 bg-gray-700 rounded-full overflow-hidden border-2 border-black/30 relative">
@@ -464,53 +553,61 @@ const ScoreGraph: React.FC<{
                         <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-gray-400/50" title="중앙"></div>
                     </div>
                     
-                    {/* 점수 증가 애니메이션 (흑/백 함께 표시) */}
-                    {((p1Animation && p1Animation.graphRect) || (p2Animation && p2Animation.graphRect)) && graphRef.current && (
+                    {/* 점수 증가 애니메이션 (각자의 진형으로 이동) */}
+                    {p1Animation && p1Animation.graphRect && graphRef.current && (
                         <div
-                            key={`${p1Animation?.key || 0}-${p2Animation?.key || 0}`}
+                            key={`p1-${p1Animation.key}`}
                             className="absolute pointer-events-none"
                             style={{
-                                left: '50%',
+                                left: `${p1Animation.startX}%`,
                                 top: '0px',
                                 transform: 'translateX(-50%)',
-                                animation: `slideToCenter 1.5s ease-out forwards`,
+                                animation: `slideToLeft 3s ease-out forwards`,
                                 zIndex: 99999,
-                            }}
+                                '--target-x': `${p1Animation.targetX}%`,
+                            } as React.CSSProperties & { '--target-x': string }}
                         >
-                            <div className="flex items-center gap-2">
-                                {/* 흑 (P1) */}
-                                {p1Animation && (
-                                    <div className={`px-3 py-1.5 rounded-lg ${
-                                        p1Animation.isCritical 
-                                            ? 'bg-black border-2 border-yellow-400 shadow-lg shadow-yellow-500/50' 
-                                            : 'bg-black border-2 border-gray-600 shadow-lg'
-                                    }`}>
-                                        <span className={`font-bold ${
-                                            p1Animation.isCritical 
-                                                ? 'text-yellow-300 text-xl animate-pulse' 
-                                                : 'text-white text-lg'
-                                        }`}>
-                                            {p1Animation.isCritical ? `+${Math.round(p1Animation.value)}! ⚡` : `+${Math.round(p1Animation.value)}`}
-                                        </span>
-                                    </div>
-                                )}
-                                
-                                {/* 백 (P2) */}
-                                {p2Animation && (
-                                    <div className={`px-3 py-1.5 rounded-lg ${
-                                        p2Animation.isCritical 
-                                            ? 'bg-white border-2 border-red-500 shadow-lg shadow-red-500/50' 
-                                            : 'bg-white border-2 border-gray-400 shadow-lg'
-                                    }`}>
-                                        <span className={`font-bold ${
-                                            p2Animation.isCritical 
-                                                ? 'text-red-600 text-xl animate-pulse' 
-                                                : 'text-black text-lg'
-                                        }`}>
-                                            {p2Animation.isCritical ? `+${Math.round(p2Animation.value)}! ⚡` : `+${Math.round(p2Animation.value)}`}
-                                        </span>
-                                    </div>
-                                )}
+                            <div className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${
+                                p1Animation.isCritical 
+                                    ? 'bg-black border-2 border-yellow-400 shadow-lg shadow-yellow-500/50' 
+                                    : 'bg-black border-2 border-gray-600 shadow-lg'
+                            }`}>
+                                <span className={`font-bold ${
+                                    p1Animation.isCritical 
+                                        ? 'text-yellow-300 text-xl animate-pulse' 
+                                        : 'text-white text-lg'
+                                }`}>
+                                    {p1Animation.isCritical ? `+${Math.round(p1Animation.value)}! ⚡` : `+${Math.round(p1Animation.value)}`}
+                                </span>
+                            </div>
+                        </div>
+                    )}
+                    
+                    {p2Animation && p2Animation.graphRect && graphRef.current && (
+                        <div
+                            key={`p2-${p2Animation.key}`}
+                            className="absolute pointer-events-none"
+                            style={{
+                                left: `${p2Animation.startX}%`,
+                                top: '0px',
+                                transform: 'translateX(-50%)',
+                                animation: `slideToRight 3s ease-out forwards`,
+                                zIndex: 99999,
+                                '--target-x': `${p2Animation.targetX}%`,
+                            } as React.CSSProperties & { '--target-x': string }}
+                        >
+                            <div className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${
+                                p2Animation.isCritical 
+                                    ? 'bg-white border-2 border-red-500 shadow-lg shadow-red-500/50' 
+                                    : 'bg-white border-2 border-gray-400 shadow-lg'
+                            }`}>
+                                <span className={`font-bold ${
+                                    p2Animation.isCritical 
+                                        ? 'text-red-600 text-xl animate-pulse' 
+                                        : 'text-black text-lg'
+                                }`}>
+                                    {p2Animation.isCritical ? `+${Math.round(p2Animation.value)}! ⚡` : `+${Math.round(p2Animation.value)}`}
+                                </span>
                             </div>
                         </div>
                     )}
@@ -518,26 +615,53 @@ const ScoreGraph: React.FC<{
             </div>
             
             <style>{`
-                @keyframes slideToCenter {
+                @keyframes slideToLeft {
                     0% {
                         opacity: 1;
                         transform: translateX(-50%) translateY(0) scale(1);
                         filter: brightness(1);
                     }
-                    30% {
+                    20% {
                         opacity: 1;
                         transform: translateX(-50%) translateY(-15px) scale(1.15);
                         filter: brightness(1.1);
                     }
                     60% {
                         opacity: 1;
-                        transform: translateX(-50%) translateY(-25px) scale(1.25);
-                        filter: brightness(1.2);
+                        left: var(--target-x);
+                        transform: translateX(-50%) translateY(-20px) scale(1.1);
+                        filter: brightness(1.05);
                     }
                     100% {
                         opacity: 0;
-                        transform: translateX(-50%) translateY(-40px) scale(0.7);
-                        filter: brightness(0.8);
+                        left: var(--target-x);
+                        transform: translateX(-50%) translateY(-30px) scale(0.8);
+                        filter: brightness(0.7);
+                    }
+                }
+                
+                @keyframes slideToRight {
+                    0% {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(0) scale(1);
+                        filter: brightness(1);
+                    }
+                    20% {
+                        opacity: 1;
+                        transform: translateX(-50%) translateY(-15px) scale(1.15);
+                        filter: brightness(1.1);
+                    }
+                    60% {
+                        opacity: 1;
+                        left: var(--target-x);
+                        transform: translateX(-50%) translateY(-20px) scale(1.1);
+                        filter: brightness(1.05);
+                    }
+                    100% {
+                        opacity: 0;
+                        left: var(--target-x);
+                        transform: translateX(-50%) translateY(-30px) scale(0.8);
+                        filter: brightness(0.7);
                     }
                 }
             `}</style>
@@ -1009,23 +1133,44 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus; tournament
             })() : null;
             
             return (
-                <div className={`flex flex-col items-center justify-center ${isWinner ? 'px-3 py-2' : 'px-2 py-1.5'} rounded-lg transition-all ${
+                <div className={`relative flex flex-col items-center justify-center ${isWinner ? 'px-3 py-2' : 'px-2 py-1.5'} rounded-lg transition-all ${
                     isWinner 
                         ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-400/50 shadow-lg shadow-yellow-500/20' 
                         : match.isFinished 
                             ? 'opacity-50' 
                             : 'hover:bg-gray-700/30'
                 }`}>
+                    {/* 승리 표시 오버레이 (우측 상단) */}
+                    {match.isFinished && isWinner && (winMarginText || showTrophy) && (
+                        <div className="absolute -top-2 -right-2 flex items-center gap-1 z-10">
+                            {winMarginText && (
+                                <span className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-[10px] px-1.5 py-0.5 rounded-full shadow-lg flex items-center gap-0.5 whitespace-nowrap flex-shrink-0">
+                                    <span>🏆</span>
+                                    <span>{winMarginText}</span>
+                                </span>
+                            )}
+                            {showTrophy && (
+                                <img 
+                                    key={`trophy-${player.id}-${match.id}`}
+                                    src="/images/championship/Ranking.png" 
+                                    alt="Trophy" 
+                                    className="w-5 h-5 flex-shrink-0 drop-shadow-lg" 
+                                    loading="lazy"
+                                />
+                            )}
+                        </div>
+                    )}
+                    
                     {/* Avatar */}
                     <div className="flex-shrink-0 mb-1.5">
-                        <Avatar userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={36} />
+                        <Avatar key={`avatar-${player.id}-${match.id}`} userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={36} />
                     </div>
                     
                     {/* 텍스트 영역 */}
                     <div className="flex flex-col items-center justify-center gap-1 w-full min-w-0">
-                        {/* 닉네임과 트로피 */}
-                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-                            <span className={`text-center font-semibold text-sm break-words ${
+                        {/* 닉네임 */}
+                        <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+                            <span className={`text-center font-semibold text-sm truncate ${
                                 isWinner 
                                     ? 'text-yellow-300 font-bold' 
                                     : match.isFinished 
@@ -1034,19 +1179,6 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus; tournament
                             }`}>
                                 {player.nickname}
                             </span>
-                            {match.isFinished && isWinner && winMarginText && (
-                                <span className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-xs px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1">
-                                    <span>🏆</span>
-                                    <span>{winMarginText}</span>
-                                </span>
-                            )}
-                            {showTrophy && (
-                                <img 
-                                    src="/images/championship/Ranking.png" 
-                                    alt="Trophy" 
-                                    className="w-4 h-4 flex-shrink-0" 
-                                />
-                            )}
                         </div>
                         
                         {/* 진행 상태 (전국바둑대회/월드챔피언십: 승자에게만 표시) */}
@@ -1060,17 +1192,49 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus; tournament
             );
         } else {
             // 동네바둑리그: 기본 레이아웃
+            const winMargin = isWinner && match.isFinished ? (() => {
+                if (!match.finalScore) return '';
+                const p1Percent = match.finalScore.player1;
+                const diffPercent = Math.abs(p1Percent - 50) * 2;
+                const scoreDiff = diffPercent / 2;
+                const roundedDiff = Math.round(scoreDiff);
+                const finalDiff = roundedDiff + 0.5;
+                const margin = finalDiff < 0.5 ? '0.5' : finalDiff.toFixed(1);
+                return margin;
+            })() : '';
+            
             return (
-                <div className={`flex items-center gap-2 ${isWinner ? 'px-2 py-2' : 'px-2 py-1.5'} rounded-md transition-all ${
+                <div className={`relative flex items-center gap-2 ${isWinner ? 'px-2 py-2' : 'px-2 py-1.5'} rounded-md transition-all ${
                     isWinner 
                         ? 'bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-400/50 shadow-lg shadow-yellow-500/20' 
                         : match.isFinished 
                             ? 'opacity-50' 
                             : 'hover:bg-gray-700/30'
                 }`}>
-                    <Avatar userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={32} />
+                    {/* 승리 표시 오버레이 (우측 상단) */}
+                    {match.isFinished && isWinner && (winMargin || showTrophy) && (
+                        <div className="absolute -top-2 -right-2 flex items-center gap-1 z-10">
+                            {winMargin && (
+                                <span className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-[10px] px-1.5 py-0.5 rounded-full shadow-lg flex items-center gap-0.5 whitespace-nowrap flex-shrink-0">
+                                    <span>🏆</span>
+                                    <span>{winMargin}집 승</span>
+                                </span>
+                            )}
+                            {showTrophy && (
+                                <img 
+                                    key={`trophy-${player.id}-${match.id}`}
+                                    src="/images/championship/Ranking.png" 
+                                    alt="Trophy" 
+                                    className="w-5 h-5 flex-shrink-0 drop-shadow-lg" 
+                                    loading="lazy"
+                                />
+                            )}
+                        </div>
+                    )}
+                    
+                    <Avatar key={`avatar-${player.id}-${match.id}`} userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={32} />
                     <div className="flex-1 min-w-0 flex flex-col gap-1">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 whitespace-nowrap">
                             <span className={`truncate font-semibold text-sm ${
                                 isWinner 
                                     ? 'text-yellow-300 font-bold' 
@@ -1080,19 +1244,6 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus; tournament
                             }`}>
                                 {player.nickname}
                             </span>
-                            {match.isFinished && isWinner && winMargin && (
-                                <span className="bg-gradient-to-r from-yellow-400 to-amber-500 text-black font-bold text-xs px-2 py-0.5 rounded-full shadow-lg flex items-center gap-1">
-                                    <span>🏆</span>
-                                    <span>{winMargin}집 승</span>
-                                </span>
-                            )}
-                            {showTrophy && (
-                                <img 
-                                    src="/images/championship/Ranking.png" 
-                                    alt="Trophy" 
-                                    className="w-4 h-4 flex-shrink-0" 
-                                />
-                            )}
                         </div>
                         {progressStatus && (
                             <span className="text-yellow-400 font-semibold text-xs truncate">
@@ -1129,7 +1280,7 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus; tournament
     const isTournamentFormat = isNationalTournament || isWorldTournament;
     
     return (
-        <div className={`relative w-full rounded-xl overflow-hidden transition-all duration-300 ${
+        <div className={`relative w-full rounded-xl overflow-visible transition-all duration-300 ${
             isMyMatch 
                 ? 'bg-gradient-to-br from-blue-900/60 via-blue-800/50 to-indigo-900/60 border-2 border-blue-500/70 shadow-lg shadow-blue-500/20' 
                 : 'bg-gradient-to-br from-gray-800/80 via-gray-700/70 to-gray-800/80 border border-gray-600/50 shadow-md'
@@ -1332,7 +1483,7 @@ const RoundRobinDisplay: React.FC<{
                                      }`}>
                                          {index + 1}
                                      </div>
-                                     <Avatar userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={36} />
+                                     <Avatar key={`avatar-rr-${player.id}`} userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={36} />
                                      <span className={`flex-grow font-semibold text-sm truncate ${
                                          isCurrentUser ? 'text-blue-200' : 'text-gray-200'
                                      }`}>
@@ -1340,9 +1491,11 @@ const RoundRobinDisplay: React.FC<{
                                      </span>
                                      {isWinner && (
                                          <img 
+                                             key={`trophy-rr-${player.id}`}
                                              src="/images/championship/Ranking.png" 
                                              alt="Trophy" 
                                              className="w-6 h-6 flex-shrink-0" 
+                                             loading="lazy"
                                          />
                                      )}
                                      <div className="flex items-baseline gap-2 text-xs font-semibold">
@@ -1634,14 +1787,14 @@ const TournamentRoundViewer: React.FC<{
                 const thirdPlaceMatch = tab.matches.filter(m => rounds.find(r => r.matches.includes(m))?.name === '3,4위전');
                 // 부모 컨테이너의 높이가 자동으로 조정되므로 h-full 사용
                 return (
-                    <div className="flex flex-col items-center justify-start gap-4 p-4 overflow-y-auto h-full">
+                    <div className="flex flex-col items-center justify-start gap-4 p-4 overflow-y-auto overflow-x-visible h-full">
                         {finalMatch.length > 0 && (
-                            <div className="w-full max-w-[280px]">
+                            <div className="w-full max-w-[280px] pb-2">
                                 <MatchBox match={finalMatch[0]} currentUser={currentUser} tournamentState={tournamentState} />
                             </div>
                         )}
                         {thirdPlaceMatch.length > 0 && (
-                            <div className="w-full max-w-[280px]">
+                            <div className="w-full max-w-[280px] pb-2">
                                 <MatchBox match={thirdPlaceMatch[0]} currentUser={currentUser} tournamentState={tournamentState} />
                             </div>
                         )}
@@ -1651,11 +1804,12 @@ const TournamentRoundViewer: React.FC<{
             
             // 16강, 8강, 4강전: 세로로 배치
             // 부모 컨테이너의 높이가 자동으로 조정되므로 h-full 사용하여 모든 공간 활용
+            // 승자 패널이 잘리지 않도록 overflow-x-visible 및 패딩 추가
             // 보상 패널은 사이드바 레이아웃에서 flex-shrink-0으로 고정되어 있어 자동으로 공간 확보됨
             return (
-                <div className="flex flex-col items-center justify-start gap-4 p-4 overflow-y-auto h-full">
+                <div className="flex flex-col items-center justify-start gap-4 p-4 overflow-y-auto overflow-x-visible h-full">
                     {tab.matches.map((match) => (
-                        <div key={match.id} className="w-full max-w-[280px]">
+                        <div key={match.id} className="w-full max-w-[280px] pb-2">
                             <MatchBox match={match} currentUser={currentUser} tournamentState={tournamentState} />
                         </div>
                     ))}
@@ -1700,7 +1854,9 @@ const TournamentRoundViewer: React.FC<{
                     <button
                         key={tab.name}
                         onClick={() => setActiveTab(index)}
-                        className={`flex-1 py-2 text-xs font-semibold rounded-lg transition-all duration-200 ${
+                        className={`flex-1 py-2 font-semibold rounded-lg transition-all duration-200 whitespace-nowrap ${
+                            tab.name === "결승&3/4위전" ? 'text-[10px]' : 'text-xs'
+                        } ${
                             activeTab === index 
                                 ? 'bg-gradient-to-r from-blue-600 to-indigo-600 text-white shadow-lg scale-105' 
                                 : 'text-gray-400 hover:bg-gray-700/50 hover:text-gray-200'
@@ -1711,7 +1867,7 @@ const TournamentRoundViewer: React.FC<{
                 ))}
             </div>
             {/* 대진표 내용 영역 - flex-grow로 남은 공간을 모두 사용하고, 스크롤 가능하도록 설정 */}
-            <div className="flex-1 overflow-hidden min-h-0">
+            <div className="flex-1 overflow-hidden overflow-x-visible min-h-0">
                 {activeTabData && renderBracketForTab(activeTabData)}
             </div>
         </div>
@@ -1728,6 +1884,10 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     const prevStatusRef = useRef(tournament.status);
     const [nextRoundTrigger, setNextRoundTrigger] = useState(0);
     const [sgfViewerSize, setSgfViewerSize] = useState<25 | 50>(50); // 모바일에서 SGF 뷰어 크기 (25=50% 표시, 50=100% 표시)
+    
+    // 클라이언트에서 시뮬레이션 실행
+    const simulatedTournament = useTournamentSimulation(tournament, currentUser);
+    const displayTournament = simulatedTournament || tournament;
     
     const safeRounds = useMemo(() => 
         Array.isArray(tournament.rounds) ? tournament.rounds : [], 
@@ -1795,9 +1955,9 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     const { onClick: handleBackClick } = useButtonClickThrottle(handleBackClickRaw);
     const { onClick: handleForfeitClick } = useButtonClickThrottle(handleForfeitClickRaw);
 
-    const isSimulating = tournament.status === 'round_in_progress';
-    const currentSimMatch = isSimulating && tournament.currentSimulatingMatch 
-        ? safeRounds[tournament.currentSimulatingMatch.roundIndex].matches[tournament.currentSimulatingMatch.matchIndex]
+    const isSimulating = displayTournament.status === 'round_in_progress';
+    const currentSimMatch = isSimulating && displayTournament.currentSimulatingMatch 
+        ? safeRounds[displayTournament.currentSimulatingMatch.roundIndex].matches[displayTournament.currentSimulatingMatch.matchIndex]
         : null;
         
     const lastFinishedUserMatch = useMemo(() => {
@@ -1964,20 +2124,20 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     }, [p1Stats, p2Stats]);
 
     const currentPhase = useMemo((): 'early' | 'mid' | 'end' | 'none' => {
-        if (tournament.status !== 'round_in_progress') return 'none';
-        const time = tournament.timeElapsed;
+        if (displayTournament.status !== 'round_in_progress') return 'none';
+        const time = displayTournament.timeElapsed;
         if (time <= 15) return 'early';
         if (time <= 35) return 'mid';
         if (time <= 50) return 'end';
         return 'none';
-    }, [tournament.timeElapsed, tournament.status]);
+    }, [displayTournament.timeElapsed, displayTournament.status]);
 
     // 서버에서 매초 누적된 능력치 점수를 가져옴
     // 초반(1-15초): 초반전 능력치 합계 누적
     // 중반(16-35초): 중반전 능력치 합계 누적
     // 종반(36-50초): 종반전 능력치 합계 누적
-    const p1Cumulative = tournament.currentMatchScores?.player1 || 0;
-    const p2Cumulative = tournament.currentMatchScores?.player2 || 0;
+    const p1Cumulative = displayTournament.currentMatchScores?.player1 || 0;
+    const p2Cumulative = displayTournament.currentMatchScores?.player2 || 0;
     const totalCumulative = p1Cumulative + p2Cumulative;
     
     // 누적 점수를 비율로 변환하여 그래프에 표시
@@ -2027,7 +2187,6 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                         >
                             다음경기
                         </Button>
-                        <Button onClick={handleForfeitClick} colorScheme="red" className="!text-sm !py-2 !px-4">포기</Button>
                     </>
                 );
             }
@@ -2060,7 +2219,6 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                         >
                             다음경기
                         </Button>
-                        <Button onClick={handleForfeitClick} colorScheme="red" className="!text-sm !py-2 !px-4">포기</Button>
                     </>
                 );
             }
@@ -2080,7 +2238,6 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                     >
                         경기 시작
                     </Button>
-                    <Button onClick={handleForfeitClick} colorScheme="red" className="!text-sm !py-2 !px-4">포기</Button>
                 </>
             );
         }
@@ -2265,9 +2422,13 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                                 p2Percent={p2Percent} 
                                 p1Nickname={p1?.nickname} 
                                 p2Nickname={p2?.nickname}
-                                lastScoreIncrement={tournament.lastScoreIncrement}
+                                p1Cumulative={p1Cumulative}
+                                p2Cumulative={p2Cumulative}
+                                p1Player={p1}
+                                p2Player={p2}
+                                lastScoreIncrement={displayTournament.lastScoreIncrement}
                             />
-                            <div className="mt-1.5"><SimulationProgressBar timeElapsed={tournament.timeElapsed} totalDuration={50} /></div>
+                            <div className="mt-1.5"><SimulationProgressBar timeElapsed={displayTournament.timeElapsed} totalDuration={50} /></div>
                         </section>
                         {/* 실시간 중계 + 획득 보상 (가로 분할) */}
                         <div 
@@ -2279,7 +2440,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                                 className={`${isMobile ? 'w-full' : 'flex-[2] min-w-0'} bg-gray-800/50 rounded-lg p-1 md:p-2 flex flex-col ${isMobile ? '' : 'overflow-hidden'}`}
                                 style={isMobile ? { height: '400px', minHeight: '400px', maxHeight: '500px', display: 'flex', flexDirection: 'column' } : { display: 'flex', flexDirection: 'column' }}
                             >
-                                <CommentaryPanel commentary={tournament.currentMatchCommentary} isSimulating={tournament.status === 'round_in_progress'} />
+                                <CommentaryPanel commentary={displayTournament.currentMatchCommentary} isSimulating={displayTournament.status === 'round_in_progress'} />
                             </div>
                             {/* 오른쪽: 획득 보상 (좁은 패널) */}
                             <div 

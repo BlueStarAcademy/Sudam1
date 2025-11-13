@@ -20,15 +20,16 @@ interface GameArenaProps extends GameProps {
     showLastMoveMarker: boolean;
     isSinglePlayerPaused?: boolean;
     resumeCountdown?: number;
+    isBoardLocked?: boolean;
 }
 
 const GameArena: React.FC<GameArenaProps> = (props) => {
-    const { session, isSinglePlayerPaused, resumeCountdown, ...restProps } = props;
+    const { session, isSinglePlayerPaused, resumeCountdown, isBoardLocked, ...restProps } = props;
     const sharedProps = { ...restProps, session };
     const { mode, isSinglePlayer } = session;
     
     if (isSinglePlayer) {
-        return <SinglePlayerArena {...sharedProps} isPaused={isSinglePlayerPaused} resumeCountdown={resumeCountdown} />;
+        return <SinglePlayerArena {...sharedProps} isPaused={isSinglePlayerPaused} resumeCountdown={resumeCountdown} isBoardLocked={isBoardLocked} />;
     }
 
     // This component is now a simple dispatcher.

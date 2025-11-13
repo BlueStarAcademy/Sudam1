@@ -21,6 +21,10 @@ export const transitionToPlaying = (game: types.LiveGameSession, now: number) =>
     game.gameStatus = 'playing';
     game.currentPlayer = types.Player.Black;
     game.turnStartTime = now;
+    // 게임 시작 시간 설정 (처음 playing 상태로 전환될 때만)
+    if (!game.gameStartTime) {
+        game.gameStartTime = now;
+    }
     if (game.settings.timeLimit > 0) {
         game.turnDeadline = now + game.blackTimeLeft * 1000;
     } else {

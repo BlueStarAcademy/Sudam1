@@ -15,7 +15,7 @@ const gradeStyles: Record<ItemGrade, { name: string; color: string; background: 
     mythic: { name: '신화', color: 'text-orange-400', background: '/images/equipments/mythicbgi.png' },
 };
 
-const renderStarDisplay = (stars: number) => {
+const renderStarDisplay = (stars: number, previousStars?: number, isAnimating?: boolean) => {
     if (stars === 0) return null;
 
     let starImage = '';
@@ -35,15 +35,43 @@ const renderStarDisplay = (stars: number) => {
         numberColor = "text-white";
     }
 
+    // 별 색상이 바뀌었는지 확인 (3→4, 6→7, 9→10)
+    const starTierChanged = previousStars !== undefined && (
+        (previousStars < 4 && stars >= 4) ||
+        (previousStars < 7 && stars >= 7) ||
+        (previousStars < 10 && stars >= 10)
+    );
+
     return (
         <div className="absolute top-0.5 left-0.5 flex items-center gap-0.5 bg-black/40 rounded-br-md px-1 py-0.5 z-10" style={{ textShadow: '1px 1px 2px black' }}>
-            <img src={starImage} alt="star" className="w-3 h-3" />
-            <span className={`font-bold text-xs leading-none ${numberColor}`}>{stars}</span>
+            <img 
+                src={starImage} 
+                alt="star" 
+                className={`w-3 h-3 transition-all duration-500 ${
+                    starTierChanged && isAnimating 
+                        ? 'animate-pulse scale-125 drop-shadow-[0_0_15px_currentColor]' 
+                        : ''
+                }`}
+                style={{
+                    filter: starTierChanged && isAnimating 
+                        ? 'drop-shadow(0 0 10px currentColor) brightness(1.3)' 
+                        : 'none'
+                }}
+            />
+            <span 
+                className={`font-bold text-xs leading-none transition-all duration-500 ${
+                    starTierChanged && isAnimating 
+                        ? 'scale-125 animate-pulse' 
+                        : ''
+                } ${numberColor}`}
+            >
+                {stars}
+            </span>
         </div>
     );
 };
 
-const ItemDisplay: React.FC<{ item: InventoryItem }> = ({ item }) => {
+const ItemDisplay: React.FC<{ item: InventoryItem; previousStars?: number; isAnimating?: boolean }> = ({ item, previousStars, isAnimating }) => {
     const { currentUserWithStatus } = useAppContext();
     const styles = gradeStyles[item.grade];
 
@@ -58,7 +86,7 @@ const ItemDisplay: React.FC<{ item: InventoryItem }> = ({ item }) => {
                 <div className="relative w-20 h-20 rounded-lg flex-shrink-0 mr-3">
                     <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
                     {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1"/>}
-                    {renderStarDisplay(item.stars)}
+                    {renderStarDisplay(item.stars, previousStars, isAnimating)}
                 </div>
                 <div className="flex-grow pt-2 min-w-0">
                     <h3 className={`text-base font-bold whitespace-nowrap overflow-hidden text-ellipsis ${styles.color}`} title={item.name}>{item.name}</h3>
@@ -175,6 +203,8 @@ interface EnhancementViewProps {
 const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, currentUser, onAction, enhancementOutcome, onOutcomeConfirm }) => {
     const [isEnhancing, setIsEnhancing] = useState(false);
     const [enhancementProgress, setEnhancementProgress] = useState(0);
+    const [previousStars, setPreviousStars] = useState<number | undefined>(undefined);
+    const [isStarAnimating, setIsStarAnimating] = useState(false);
     const enhancementIntervalRef = useRef<number | null>(null);
     const enhancementTimeoutRef = useRef<number | null>(null);
 
@@ -304,7 +334,34 @@ useEffect(() => {
         setIsEnhancing(false);
         setEnhancementProgress(0);
         clearEnhancementTimers();
+        setPreviousStars(undefined);
+        setIsStarAnimating(false);
     }, [selectedItem, clearEnhancementTimers]);
+
+    // 강화 결과가 나왔을 때 별 애니메이션 트리거
+    useEffect(() => {
+        if (enhancementOutcome?.success && selectedItem) {
+            const beforeStars = enhancementOutcome.itemBefore.stars;
+            const afterStars = enhancementOutcome.itemAfter.stars;
+            
+            // 별 색상이 바뀌었는지 확인 (3→4, 6→7, 9→10)
+            const starTierChanged = (
+                (beforeStars < 4 && afterStars >= 4) ||
+                (beforeStars < 7 && afterStars >= 7) ||
+                (beforeStars < 10 && afterStars >= 10)
+            );
+
+            if (starTierChanged) {
+                setPreviousStars(beforeStars);
+                setIsStarAnimating(true);
+                // 2초 후 애니메이션 종료
+                const timer = setTimeout(() => {
+                    setIsStarAnimating(false);
+                }, 2000);
+                return () => clearTimeout(timer);
+            }
+        }
+    }, [enhancementOutcome, selectedItem]);
 
     if (!selectedItem) {
         return (
@@ -358,10 +415,14 @@ useEffect(() => {
     };
 
     return (
-        <div className="relative h-full flex flex-col">
+            <div className="relative h-full flex flex-col">
             <div className="flex flex-row gap-4 h-full min-h-0">
                 <div className="w-[55%] flex flex-col bg-gray-900/40 p-2 rounded-lg h-full min-h-0">
-                    <ItemDisplay item={selectedItem} />
+                    <ItemDisplay 
+                        item={selectedItem} 
+                        previousStars={previousStars}
+                        isAnimating={isStarAnimating}
+                    />
                 </div>
 
                 <div className="flex-1 flex flex-col gap-2 h-full min-h-0">
