@@ -335,11 +335,11 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                             <div className={`${isMobile ? 'text-[10px]' : 'text-sm'} text-secondary space-y-2`}>
                                 <div className="bg-black/20 p-2 rounded-md">
                                     <div className="flex justify-between">
-                                        <span>합성 가능 등급</span>
+                                        <span>합성 가능 최대등급</span>
                                         <span>
-                                            {GRADE_NAMES_KO[BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL[currentLevelIndex]]}
+                                            {currentLevel === 6 ? 'D.신화' : GRADE_NAMES_KO[BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL[currentLevelIndex]]}
                                             {!isMaxLevel && 
-                                                <span className="text-yellow-400"> → {GRADE_NAMES_KO[BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL[nextLevelIndex]]}</span>
+                                                <span className="text-yellow-400"> → {nextLevelIndex + 1 === 6 ? 'D.신화' : GRADE_NAMES_KO[BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL[nextLevelIndex]]}</span>
                                             }
                                         </span>
                                     </div>
@@ -368,13 +368,16 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                 </div>
                                 <div className="bg-black/20 p-2 rounded-md">
                                     <p className="font-semibold">합성 대성공 확률:</p>
-                                    {GRADE_ORDER.map(grade => {
+                                    {GRADE_ORDER.slice(0, -1).map((grade, index) => {
                                         const rate = BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[currentLevelIndex]?.[grade] ?? 0;
                                         const nextRate = BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[nextLevelIndex]?.[grade];
+                                        const nextGrade = GRADE_ORDER[index + 1];
+                                        const currentGradeName = GRADE_NAMES_KO[grade];
+                                        const nextGradeName = GRADE_NAMES_KO[nextGrade];
 
                                         return (
                                             <div key={grade} className="flex justify-between pl-2">
-                                                <span>{GRADE_NAMES_KO[grade]}</span>
+                                                <span>{currentGradeName} → {nextGradeName}</span>
                                                 <span>
                                                     {rate}%
                                                     {!isMaxLevel && nextRate !== undefined &&
@@ -384,6 +387,26 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                             </div>
                                         );
                                     })}
+                                    {/* 신화 → D.신화 확률 추가 */}
+                                    {(() => {
+                                        const mythicRate = BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[currentLevelIndex]?.['mythic'] ?? 0;
+                                        const nextMythicRate = BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[nextLevelIndex]?.['mythic'];
+                                        
+                                        if (mythicRate > 0 || nextMythicRate !== undefined) {
+                                            return (
+                                                <div className="flex justify-between pl-2">
+                                                    <span>신화 → D.신화</span>
+                                                    <span>
+                                                        {mythicRate}%
+                                                        {!isMaxLevel && nextMythicRate !== undefined &&
+                                                            <span className="text-yellow-400"> → {nextMythicRate}%</span>
+                                                        }
+                                                    </span>
+                                                </div>
+                                            );
+                                        }
+                                        return null;
+                                    })()}
                                 </div>
                             </div>
                         </div>

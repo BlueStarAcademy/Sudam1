@@ -4,7 +4,7 @@ import * as db from './db.js';
 import * as types from '../types.js';
 import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, SEASONAL_TIER_BORDERS, DAILY_QUESTS, WEEKLY_QUESTS, MONTHLY_QUESTS, TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL } from '../constants';
 import { randomUUID } from 'crypto';
-import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST, isSameDayKST, getStartOfDayKST, isDifferentDayKST, isDifferentMonthKST } from '../utils/timeUtils.js';
+import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST, isSameDayKST, getStartOfDayKST, isDifferentDayKST, isDifferentMonthKST, getKSTDay, getKSTHours, getKSTMinutes, getKSTFullYear, getKSTMonth, getKSTDate_UTC } from '../utils/timeUtils.js';
 import { resetAndGenerateQuests } from './gameActions.js';
 import * as tournamentService from './tournamentService.js';
 import { calculateTotalStats } from './statService.js';
@@ -149,16 +149,18 @@ const processRewardsForSeason = async (season: SeasonInfo) => {
 
 export const processRankingRewards = async (volatileState: types.VolatileState): Promise<void> => {
     const now = Date.now();
-    const kstNow = getKSTDate(now);
+    const kstMonth = getKSTMonth(now);
+    const kstDate = getKSTDate_UTC(now);
+    const kstHours = getKSTHours(now);
     
     // Check if it's the start of a new season day
     const isNewSeasonDay = 
-        (kstNow.getUTCMonth() === 0 && kstNow.getUTCDate() === 1) || // Jan 1
-        (kstNow.getUTCMonth() === 3 && kstNow.getUTCDate() === 1) || // Apr 1
-        (kstNow.getUTCMonth() === 6 && kstNow.getUTCDate() === 1) || // Jul 1
-        (kstNow.getUTCMonth() === 9 && kstNow.getUTCDate() === 1);   // Oct 1
+        (kstMonth === 0 && kstDate === 1) || // Jan 1
+        (kstMonth === 3 && kstDate === 1) || // Apr 1
+        (kstMonth === 6 && kstDate === 1) || // Jul 1
+        (kstMonth === 9 && kstDate === 1);   // Oct 1
 
-    if (!isNewSeasonDay || kstNow.getUTCHours() !== 0) { // Only run at midnight KST
+    if (!isNewSeasonDay || kstHours !== 0) { // Only run at midnight KST
         return;
     }
 
@@ -187,40 +189,118 @@ export const processRankingRewards = async (volatileState: types.VolatileState):
     }
 };
 
-export async function processWeeklyTournamentReset(): Promise<void> {
+// 월요일 0시에 티어변동 후 새로운 경쟁상대를 매칭하고 모든 점수를 리셋하는 함수
+// 주의: 이 함수는 processWeeklyLeagueUpdates 이후에 호출되어야 함 (티어변동 후 새로운 경쟁상대 매칭)
+export async function processWeeklyResetAndRematch(): Promise<void> {
     const now = Date.now();
-    const kstNow = getKSTDate(now);
-    const isMondayMidnight = kstNow.getUTCDay() === 1 && kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
+    const kstDay = getKSTDay(now);
+    const kstHours = getKSTHours(now);
+    const kstMinutes = getKSTMinutes(now);
+    const isMondayMidnight = kstDay === 1 && kstHours === 0 && kstMinutes < 5;
+    
+    // 디버깅: 현재 KST 시간 정보 로그
+    if (process.env.NODE_ENV === 'development') {
+        console.log(`[WeeklyReset] Checking: KST Day=${kstDay}, Hours=${kstHours}, Minutes=${kstMinutes}, isMondayMidnight=${isMondayMidnight}`);
+    }
     
     // Check if we've already processed this Monday
-    if (lastWeeklyResetTimestamp !== null) {
-        const lastResetKst = getKSTDate(lastWeeklyResetTimestamp);
-        const lastResetMonday = lastResetKst.getUTCDay() === 1 ? 
-            new Date(lastResetKst.getUTCFullYear(), lastResetKst.getUTCMonth(), lastResetKst.getUTCDate()) :
-            null;
-        const currentMonday = new Date(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
+    // KST 기준으로 월요일인지 확인하고, 같은 월요일이면 이미 처리한 것으로 간주
+    if (lastWeeklyResetTimestamp !== null && isMondayMidnight) {
+        // 마지막 리셋 타임스탬프의 KST 기준 날짜와 현재 날짜를 비교
+        const lastResetDayStart = getStartOfDayKST(lastWeeklyResetTimestamp);
+        const currentDayStart = getStartOfDayKST(now);
         
-        if (lastResetMonday && lastResetMonday.getTime() === currentMonday.getTime()) {
+        // 같은 날이면 이미 처리한 것으로 간주
+        if (lastResetDayStart === currentDayStart) {
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[WeeklyReset] Already processed this Monday`);
+            }
             return; // Already processed this Monday
         }
     }
     
     if (isMondayMidnight) {
-        console.log(`[WeeklyReset] Processing weekly tournament score reset at Monday 0:00 KST`);
+        console.log(`[WeeklyReset] Processing weekly reset and rematch at Monday 0:00 KST`);
         const allUsers = await db.getAllUsers();
         
+        // 1. 새로운 경쟁상대 매칭 (티어변동 후 새로운 리그에 맞는 경쟁상대 매칭)
+        // 2. 모든 점수 리셋 (유저 점수 0, 봇 점수 0, yesterdayScore 0)
+        
+        // 티어변동 후 새로운 경쟁상대 매칭
         for (const user of allUsers) {
-            const weeklyScore = user.tournamentScore || 0;
-            // Add weekly score to cumulative (리그 업데이트는 이미 processWeeklyLeagueUpdates에서 처리됨)
-            user.cumulativeTournamentScore = (user.cumulativeTournamentScore || 0) + weeklyScore;
-            // Reset weekly score to 0 for new week
-            user.tournamentScore = 0;
-            await db.updateUser(user);
+            // 최신 유저 데이터 가져오기 (티어변동이 반영된 상태)
+            const freshUser = await db.getUser(user.id);
+            if (!freshUser) continue;
+            
+            let updatedUser = await updateWeeklyCompetitorsIfNeeded(freshUser, allUsers);
+            
+            // 모든 유저의 주간 점수를 0으로 리셋 (processWeeklyLeagueUpdates에서 이미 누적 점수에 추가됨)
+            updatedUser.tournamentScore = 0;
+            
+            // 월요일 0시에 유저의 yesterdayTournamentScore를 현재 누적 점수로 설정 (변화없음으로 시작)
+            // 이렇게 하면 누적 점수는 업데이트되어도 변화표에 "변화없음"으로 표시됨
+            // (liveScore - yesterdayScore = cumulativeTournamentScore - cumulativeTournamentScore = 0)
+            updatedUser.yesterdayTournamentScore = updatedUser.cumulativeTournamentScore || 0;
+            
+            // dailyRankings.championship도 초기화하여 변화표가 올바르게 표시되도록 함
+            if (!updatedUser.dailyRankings) {
+                updatedUser.dailyRankings = {};
+            }
+            // 월요일 0시에는 누적 점수가 업데이트된 상태이지만, 변화표는 변화없음으로 시작하도록 설정
+            // processDailyRankings에서 나중에 rank를 업데이트함
+            updatedUser.dailyRankings.championship = {
+                rank: 0, // processDailyRankings에서 나중에 업데이트됨
+                score: updatedUser.cumulativeTournamentScore || 0, // 누적 점수 유지
+                lastUpdated: now
+            };
+            
+            // 새로운 경쟁상대 매칭 시 updateWeeklyCompetitorsIfNeeded에서 weeklyCompetitorsBotScores가 {}로 리셋됨
+            // 새로운 경쟁상대에 봇이 포함된 경우를 대비해 초기화
+            if (!updatedUser.weeklyCompetitorsBotScores) {
+                updatedUser.weeklyCompetitorsBotScores = {};
+            }
+            
+            // 새로운 경쟁상대에 봇이 포함된 경우, 봇 점수를 0으로 초기화하고 yesterdayScore도 0으로 설정
+            if (updatedUser.weeklyCompetitors) {
+                for (const competitor of updatedUser.weeklyCompetitors) {
+                    if (competitor.id.startsWith('bot-')) {
+                        updatedUser.weeklyCompetitorsBotScores[competitor.id] = {
+                            score: 0,
+                            lastUpdate: now,
+                            yesterdayScore: 0 // 변화없음으로 표시
+                        };
+                    }
+                }
+            }
+            
+            // 기존 봇 점수가 있으면 0으로 리셋 (새로운 경쟁상대에 포함되지 않은 봇)
+            for (const botId in updatedUser.weeklyCompetitorsBotScores) {
+                const competitorExists = updatedUser.weeklyCompetitors?.some(c => c.id === botId);
+                if (!competitorExists) {
+                    // 새로운 경쟁상대에 포함되지 않은 봇은 삭제
+                    delete updatedUser.weeklyCompetitorsBotScores[botId];
+                } else {
+                    // 새로운 경쟁상대에 포함된 봇은 0으로 리셋
+                    updatedUser.weeklyCompetitorsBotScores[botId] = {
+                        score: 0,
+                        lastUpdate: now,
+                        yesterdayScore: 0 // 변화없음으로 표시
+                    };
+                }
+            }
+            
+            await db.updateUser(updatedUser);
         }
         
         lastWeeklyResetTimestamp = now;
-        console.log(`[WeeklyReset] Reset all tournament scores and updated cumulative scores`);
+        console.log(`[WeeklyReset] Reset all tournament scores, bot scores, and rematched competitors`);
     }
+}
+
+// 기존 함수는 호환성을 위해 유지 (월요일 0시 처리는 processWeeklyResetAndRematch로 대체)
+export async function processWeeklyTournamentReset(): Promise<void> {
+    // 월요일 0시 처리는 processWeeklyResetAndRematch에서 처리되므로 여기서는 아무것도 하지 않음
+    // 기존 코드와의 호환성을 위해 함수는 유지
 }
 
 // 1회성 챔피언십 점수 초기화 함수
@@ -309,6 +389,7 @@ export async function processWeeklyLeagueUpdates(user: types.User): Promise<type
         return user;
     }
     
+    const now = Date.now();
     const allUsers = await db.getAllUsers();
     const competitorMap = new Map(allUsers.map(u => [u.id, u]));
 
@@ -380,11 +461,17 @@ export async function processWeeklyLeagueUpdates(user: types.User): Promise<type
         user.league = newLeague;
     }
 
-    const now = Date.now();
-    const kstNow = getKSTDate(now);
-    const year = kstNow.getUTCFullYear().toString().slice(-2);
-    const month = kstNow.getUTCMonth() + 1;
-    const week = Math.ceil(kstNow.getUTCDate() / 7);
+    // 주간 점수를 누적 점수에 추가 (티어변동 계산 후)
+    const weeklyScore = user.tournamentScore || 0;
+    user.cumulativeTournamentScore = (user.cumulativeTournamentScore || 0) + weeklyScore;
+
+    // KST 기준으로 날짜 정보 가져오기
+    const kstYear = getKSTFullYear(now);
+    const kstMonth = getKSTMonth(now);
+    const kstDate = getKSTDate_UTC(now);
+    const year = kstYear.toString().slice(-2);
+    const month = kstMonth + 1;
+    const week = Math.ceil(kstDate / 7);
 
     const mailTitle = `${year}년 ${month}월 ${week}주차 리그 정산 보상`;
     const mailMessage = `
@@ -468,7 +555,6 @@ export async function updateBotLeagueScores(user: types.User): Promise<types.Use
     }
     
     const now = Date.now();
-    const kstNow = getKSTDate(now);
     const todayStart = getStartOfDayKST(now);
     
     // weeklyCompetitors에 봇 점수 업데이트 정보가 없으면 초기화
@@ -492,8 +578,13 @@ export async function updateBotLeagueScores(user: types.User): Promise<types.Use
                 // 어제 점수를 yesterdayScore로 저장 (0시 직전의 점수)
                 const yesterdayScore = currentScore;
                 
-                // 1-50 사이의 랜덤값 생성 (봇 ID와 날짜를 시드로 사용)
-                const seedStr = `${competitor.id}-${kstNow.toISOString().slice(0, 10)}`;
+                // 1-50 사이의 랜덤값 생성 (봇 ID와 KST 기준 날짜를 시드로 사용)
+                // KST 기준 날짜 문자열 생성 (YYYY-MM-DD 형식)
+                const kstYear = getKSTFullYear(now);
+                const kstMonth = getKSTMonth(now) + 1; // 0-based to 1-based
+                const kstDate = getKSTDate_UTC(now);
+                const dateStr = `${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDate).padStart(2, '0')}`;
+                const seedStr = `${competitor.id}-${dateStr}`;
                 let seed = 0;
                 for (let i = 0; i < seedStr.length; i++) {
                     seed = ((seed << 5) - seed) + seedStr.charCodeAt(i);
@@ -535,8 +626,14 @@ export async function updateBotLeagueScores(user: types.User): Promise<types.Use
 // 매일 0시에 랭킹 정산 (전략바둑, 놀이바둑, 챔피언십)
 export async function processDailyRankings(): Promise<void> {
     const now = Date.now();
-    const kstNow = getKSTDate(now);
-    const isMidnight = kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
+    const kstHours = getKSTHours(now);
+    const kstMinutes = getKSTMinutes(now);
+    const isMidnight = kstHours === 0 && kstMinutes < 5;
+    
+    // 디버깅: 현재 KST 시간 정보 로그
+    if (process.env.NODE_ENV === 'development' && kstHours === 0) {
+        console.log(`[DailyRanking] Checking: KST Hours=${kstHours}, Minutes=${kstMinutes}, isMidnight=${isMidnight}`);
+    }
     
     if (!isMidnight) {
         return;
@@ -544,7 +641,6 @@ export async function processDailyRankings(): Promise<void> {
     
     // 이미 오늘 처리했는지 확인
     if (lastDailyRankingUpdateTimestamp !== null) {
-        const lastUpdateKst = getKSTDate(lastDailyRankingUpdateTimestamp);
         const todayStart = getStartOfDayKST(now);
         const lastUpdateStart = getStartOfDayKST(lastDailyRankingUpdateTimestamp);
         
@@ -623,12 +719,19 @@ export async function processDailyRankings(): Promise<void> {
             score: entry.score
         }));
     
+    // 월요일 0시인지 확인 (월요일 0시에는 봇 점수 업데이트를 하지 않음 - processWeeklyResetAndRematch에서 처리)
+    // kstHours와 kstMinutes는 이미 위에서 선언되었으므로 재사용
+    const kstDay = getKSTDay(now);
+    const isMondayMidnight = kstDay === 1 && kstHours === 0 && kstMinutes < 5;
+    
     // 각 유저의 dailyRankings 업데이트 및 봇 점수 업데이트
     for (const user of allUsers) {
         let updatedUser = JSON.parse(JSON.stringify(user));
         
-        // 봇의 리그 점수 업데이트 (매일 0시에 실행)
-        updatedUser = await updateBotLeagueScores(updatedUser);
+        // 봇의 리그 점수 업데이트 (매일 0시에 실행, 단 월요일 0시는 제외 - 이미 processWeeklyResetAndRematch에서 리셋됨)
+        if (!isMondayMidnight) {
+            updatedUser = await updateBotLeagueScores(updatedUser);
+        }
         
         if (!updatedUser.dailyRankings) {
             updatedUser.dailyRankings = {};
@@ -658,24 +761,37 @@ export async function processDailyRankings(): Promise<void> {
         const championshipRank = championshipRankings.findIndex(r => r.userId === user.id);
         const currentScore = user.cumulativeTournamentScore || 0;
         
-        // 어제 점수를 저장 (0시 직전의 점수)
-        // dailyRankings.championship.score가 있으면 그것을 어제 점수로 사용, 없으면 현재 점수를 어제 점수로 설정
-        const yesterdayScore = updatedUser.dailyRankings.championship?.score ?? currentScore;
-        updatedUser.yesterdayTournamentScore = yesterdayScore;
-        
-        if (championshipRank !== -1) {
+        // 월요일 0시인 경우: yesterdayTournamentScore를 현재 누적 점수로 설정하여 변화없음으로 시작
+        // 월요일이 아닌 경우: 어제 점수를 저장 (0시 직전의 점수)
+        if (isMondayMidnight) {
+            // 월요일 0시에는 processWeeklyResetAndRematch에서 이미 yesterdayTournamentScore를 현재 누적 점수로 설정했지만,
+            // 여기서도 확인하여 확실하게 설정 (누적 점수 = yesterdayScore이므로 변화량 = 0)
+            updatedUser.yesterdayTournamentScore = currentScore;
             updatedUser.dailyRankings.championship = {
-                rank: championshipRank + 1,
-                score: currentScore, // 현재 점수로 업데이트
+                rank: championshipRank !== -1 ? championshipRank + 1 : allUsers.length,
+                score: currentScore, // 누적 점수는 업데이트된 상태이지만, 변화표는 변화없음으로 시작
                 lastUpdated: now
             };
         } else {
-            // 랭킹에 없는 경우에도 0점으로 기록 (누적 점수가 없는 신규 사용자 등)
-            updatedUser.dailyRankings.championship = {
-                rank: allUsers.length, // 마지막 순위
-                score: currentScore,
-                lastUpdated: now
-            };
+            // 월요일이 아닌 경우: 어제 점수를 저장 (0시 직전의 점수)
+            // dailyRankings.championship.score가 있으면 그것을 어제 점수로 사용, 없으면 현재 점수를 어제 점수로 설정
+            const yesterdayScore = updatedUser.dailyRankings.championship?.score ?? currentScore;
+            updatedUser.yesterdayTournamentScore = yesterdayScore;
+            
+            if (championshipRank !== -1) {
+                updatedUser.dailyRankings.championship = {
+                    rank: championshipRank + 1,
+                    score: currentScore, // 현재 점수로 업데이트
+                    lastUpdated: now
+                };
+            } else {
+                // 랭킹에 없는 경우에도 0점으로 기록 (누적 점수가 없는 신규 사용자 등)
+                updatedUser.dailyRankings.championship = {
+                    rank: allUsers.length, // 마지막 순위
+                    score: currentScore,
+                    lastUpdated: now
+                };
+            }
         }
         
         await db.updateUser(updatedUser);
@@ -688,8 +804,9 @@ export async function processDailyRankings(): Promise<void> {
 // 매일 0시 KST에 일일 퀘스트 초기화 및 토너먼트 상태 리셋
 export async function processDailyQuestReset(): Promise<void> {
     const now = Date.now();
-    const kstNow = getKSTDate(now);
-    const isMidnight = kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
+    const kstHours = getKSTHours(now);
+    const kstMinutes = getKSTMinutes(now);
+    const isMidnight = kstHours === 0 && kstMinutes < 5;
     
     if (!isMidnight) {
         return;
@@ -697,7 +814,6 @@ export async function processDailyQuestReset(): Promise<void> {
     
     // 이미 오늘 처리했는지 확인
     if (lastDailyQuestResetTimestamp !== null) {
-        const lastResetKst = getKSTDate(lastDailyQuestResetTimestamp);
         const todayStart = getStartOfDayKST(now);
         const lastResetStart = getStartOfDayKST(lastDailyQuestResetTimestamp);
         

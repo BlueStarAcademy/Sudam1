@@ -763,10 +763,14 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                 const main = item.options.main;
                 if(main.baseValue) {
                     let increaseMultiplier = 1;
-                    if ([3, 6, 9].includes(item.stars - 1)) {
-                        increaseMultiplier = 2; // Double increase on these milestones
+                    if (item.stars === 4) {
+                        increaseMultiplier = 1.3; // 4강화: 1.3배 (반올림)
+                    } else if (item.stars === 7) {
+                        increaseMultiplier = 1.5; // 7강화: 1.5배 (반올림)
+                    } else if (item.stars === 10) {
+                        increaseMultiplier = 2; // 10강화: 2배
                     }
-                    const increaseAmount = main.baseValue * increaseMultiplier;
+                    const increaseAmount = Math.round(main.baseValue * increaseMultiplier);
                     main.value = parseFloat((main.value + increaseAmount).toFixed(2));
                     main.display = `${main.type} +${main.value}${main.isPercentage ? '%' : ''}`;
                 }

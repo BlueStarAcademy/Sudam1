@@ -111,9 +111,13 @@ const SgfViewer: React.FC<SgfViewerProps> = ({ timeElapsed = 0, fileIndex, showL
     const currentMoveIndex = useMemo(() => {
         if (!sgfData) return 0;
         if (showLastMoveOnly) return sgfData.moves.length;
-        if (timeElapsed === 0) return 0;
-        const progress = timeElapsed / totalDuration;
-        const moveCount = Math.floor(progress * sgfData.moves.length);
+        // timeElapsed가 0이면 돌을 표시하지 않음 (경기 시작 전)
+        // timeElapsed가 1 이상이면 진행 상황에 따라 돌 표시
+        if (timeElapsed <= 0) return 0;
+        // 진행률 계산: timeElapsed / totalDuration
+        // 최소 1개는 표시 (timeElapsed >= 1일 때)
+        const progress = Math.max(0, Math.min(1, timeElapsed / totalDuration));
+        const moveCount = Math.max(1, Math.floor(progress * sgfData.moves.length));
         return Math.min(moveCount, sgfData.moves.length);
     }, [timeElapsed, sgfData, totalDuration, showLastMoveOnly]);
     

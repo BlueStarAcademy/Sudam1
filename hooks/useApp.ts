@@ -502,13 +502,26 @@ export const useApp = () => {
             }
         }
 
+        // currentUserRef.current?.id가 없으면 액션을 보내지 않음 (401 에러 방지)
+        if (!currentUserRef.current?.id) {
+            if (import.meta.env.DEV) {
+                console.warn(`[handleAction] Cannot send action ${action.type}: user not authenticated`);
+            }
+            // ENTER_TOURNAMENT_VIEW 같은 경우는 사용자가 아직 로드되지 않았을 수 있으므로
+            // 에러를 표시하지 않고 조용히 무시
+            if (action.type !== 'ENTER_TOURNAMENT_VIEW' && action.type !== 'LEAVE_TOURNAMENT_VIEW') {
+                showError('로그인이 필요합니다.');
+            }
+            return;
+        }
+
         try {
             audioService.initialize();
             const res = await fetch('/api/action', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ ...action, userId: currentUserRef.current?.id }),
+                body: JSON.stringify({ ...action, userId: currentUserRef.current.id }),
             });
 
             if (!res.ok) {
@@ -520,6 +533,18 @@ export const useApp = () => {
                 } catch (parseError) {
                     console.error(`[handleAction] ${action.type} - Failed to parse error response:`, parseError);
                     errorMessage = `서버 오류 (${res.status})`;
+                }
+                // 401 에러는 특별 처리 (인증 문제)
+                if (res.status === 401) {
+                    if (import.meta.env.DEV) {
+                        console.warn(`[handleAction] ${action.type} - Authentication failed, user may not be logged in`);
+                    }
+                    // ENTER_TOURNAMENT_VIEW 같은 경우는 사용자가 아직 로드되지 않았을 수 있으므로
+                    // 에러를 표시하지 않고 조용히 무시
+                    if (action.type !== 'ENTER_TOURNAMENT_VIEW' && action.type !== 'LEAVE_TOURNAMENT_VIEW') {
+                        showError('로그인이 필요합니다.');
+                    }
+                    return;
                 }
                 showError(errorMessage);
                 if (action.type === 'TOGGLE_EQUIP_ITEM' || action.type === 'USE_ITEM') {
@@ -570,6 +595,7 @@ export const useApp = () => {
                         'CLAIM_TOURNAMENT_REWARD',
                         'CLAIM_ACTIVITY_MILESTONE',
                         'CLAIM_SINGLE_PLAYER_MISSION_REWARD',
+                        'CLAIM_ALL_TRAINING_QUEST_REWARDS',
                         'SINGLE_PLAYER_REFRESH_PLACEMENT',
                         'BUY_SHOP_ITEM',
                         'BUY_MATERIAL_BOX',
@@ -595,11 +621,11 @@ export const useApp = () => {
                         });
                     }
 
-                    if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' && updatedUserFromResponse.singlePlayerMissions) {
+                    if ((action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' || action.type === 'CLAIM_ALL_TRAINING_QUEST_REWARDS') && updatedUserFromResponse.singlePlayerMissions) {
                         try {
                             updatedUserFromResponse.singlePlayerMissions = JSON.parse(JSON.stringify(updatedUserFromResponse.singlePlayerMissions));
                         } catch (error) {
-                            console.warn('[handleAction] CLAIM_SINGLE_PLAYER_MISSION_REWARD - Failed to deep copy singlePlayerMissions', error);
+                            console.warn(`[handleAction] ${action.type} - Failed to deep copy singlePlayerMissions`, error);
                         }
                     }
                     
@@ -644,7 +670,7 @@ export const useApp = () => {
                         'DELETE_MAIL', 'DELETE_ALL_CLAIMED_MAIL', 'CLAIM_MAIL_ATTACHMENTS', 
                         'CLAIM_ALL_MAIL_ATTACHMENTS', 'MARK_MAIL_AS_READ',
                         'CLAIM_QUEST_REWARD', 'CLAIM_ACTIVITY_MILESTONE',
-                        'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'LEVEL_UP_TRAINING_QUEST',
+                        'CLAIM_SINGLE_PLAYER_MISSION_REWARD', 'CLAIM_ALL_TRAINING_QUEST_REWARDS', 'LEVEL_UP_TRAINING_QUEST',
                         'SINGLE_PLAYER_REFRESH_PLACEMENT',
                         'MANNER_ACTION'
                     ];
@@ -709,6 +735,16 @@ export const useApp = () => {
                 if (result.claimAllSummary) {
                     setClaimAllSummary(result.claimAllSummary);
                     setIsClaimAllSummaryOpen(true);
+                }
+                
+                // 수련 과제 일괄 수령 응답 처리
+                const claimAllTrainingQuestRewards = result.clientResponse?.claimAllTrainingQuestRewards 
+                    || result.claimAllTrainingQuestRewards;
+                if (claimAllTrainingQuestRewards && action.type === 'CLAIM_ALL_TRAINING_QUEST_REWARDS') {
+                    // TrainingQuestPanel에서 처리할 수 있도록 반환
+                    return {
+                        claimAllTrainingQuestRewards: claimAllTrainingQuestRewards
+                    };
                 }
                 const disassemblyResult = result.clientResponse?.disassemblyResult || result.disassemblyResult;
                 if (disassemblyResult) { 
@@ -811,7 +847,72 @@ export const useApp = () => {
                 // ACCEPT_NEGOTIATION, START_AI_GAME, 또는 START_SINGLE_PLAYER_GAME 후 게임이 생성되었을 때 라우팅 처리
                 if (result.clientResponse?.gameId && (action.type === 'ACCEPT_NEGOTIATION' || action.type === 'START_AI_GAME' || action.type === 'START_SINGLE_PLAYER_GAME')) {
                     const gameId = result.clientResponse.gameId;
-                    console.log(`[handleAction] ${action.type} - gameId received:`, gameId);
+                    const game = result.clientResponse?.game;
+                    console.log(`[handleAction] ${action.type} - gameId received:`, gameId, 'hasGame:', !!game);
+                    
+                    // 응답에 게임 데이터가 있으면 즉시 상태에 추가 (WebSocket 업데이트를 기다리지 않음)
+                    if (game) {
+                        console.log('[handleAction] Adding game to state immediately:', gameId, 'isSinglePlayer:', game.isSinglePlayer, 'isTower:', game.isTower);
+                        
+                        // 게임 카테고리 확인
+                        if (game.isSinglePlayer) {
+                            setSinglePlayerGames(currentGames => {
+                                if (currentGames[gameId]) {
+                                    // 이미 있으면 업데이트하지 않음 (WebSocket이 이미 업데이트했을 수 있음)
+                                    return currentGames;
+                                }
+                                return { ...currentGames, [gameId]: game };
+                            });
+                        } else if (game.isTower) {
+                            setTowerGames(currentGames => {
+                                if (currentGames[gameId]) {
+                                    return currentGames;
+                                }
+                                return { ...currentGames, [gameId]: game };
+                            });
+                        } else {
+                            setLiveGames(currentGames => {
+                                if (currentGames[gameId]) {
+                                    return currentGames;
+                                }
+                                return { ...currentGames, [gameId]: game };
+                            });
+                        }
+                        
+                        // 사용자 상태도 즉시 업데이트 (gameId와 status를 'in-game'으로 설정)
+                        // currentUserWithStatus는 onlineUsers에서 가져오므로, onlineUsers를 업데이트하면 자동으로 반영됨
+                        if (currentUser?.id) {
+                            setOnlineUsers(prevUsers => {
+                                const userIndex = prevUsers.findIndex(u => u.id === currentUser.id);
+                                if (userIndex >= 0) {
+                                    const updatedUsers = [...prevUsers];
+                                    updatedUsers[userIndex] = {
+                                        ...updatedUsers[userIndex],
+                                        gameId: gameId,
+                                        status: 'in-game' as const,
+                                        mode: game.mode
+                                    };
+                                    console.log('[handleAction] Updated user status in onlineUsers:', {
+                                        userId: currentUser.id,
+                                        gameId: gameId,
+                                        status: 'in-game',
+                                        mode: game.mode
+                                    });
+                                    return updatedUsers;
+                                } else {
+                                    // 사용자가 onlineUsers에 없으면 추가
+                                    const newUser: UserWithStatus = {
+                                        id: currentUser.id,
+                                        status: 'in-game' as const,
+                                        gameId: gameId,
+                                        mode: game.mode
+                                    };
+                                    console.log('[handleAction] Added user to onlineUsers:', newUser);
+                                    return [...prevUsers, newUser];
+                                }
+                            });
+                        }
+                    }
                     
                     // 즉시 라우팅 업데이트 (게임이 생성되었으므로)
                     const targetHash = `#/game/${gameId}`;
@@ -819,83 +920,6 @@ export const useApp = () => {
                         console.log('[handleAction] Setting immediate route to new game:', targetHash);
                         window.location.hash = targetHash;
                     }
-                    
-                    // WebSocket 업데이트를 기다리면서 여러 번 시도 (백그라운드에서)
-                    let attempts = 0;
-                    const maxAttempts = 30;
-                    const tryRoute = () => {
-                        attempts++;
-                        console.log(`[handleAction] Attempt ${attempts}/${maxAttempts} to route to game ${gameId}`);
-                        
-                        // liveGames, singlePlayerGames, towerGames와 onlineUsers 상태를 직접 확인
-                        setLiveGames(currentGames => {
-                            const hasGame = currentGames[gameId] !== undefined;
-                            
-                            setSinglePlayerGames(currentSPGames => {
-                                const hasSPGame = currentSPGames[gameId] !== undefined;
-                                
-                                setTowerGames(currentTowerGames => {
-                                    const hasTowerGame = currentTowerGames[gameId] !== undefined;
-                            
-                            setOnlineUsers(prevOnlineUsers => {
-                                const currentUserStatus = prevOnlineUsers.find(u => u.id === currentUser?.id);
-                                const hasStatus = currentUserStatus?.gameId === gameId;
-                                const isInGame = currentUserStatus?.status === 'in-game';
-                                
-                                console.log('[handleAction] Route check:', {
-                                    hasGame,
-                                            hasSPGame,
-                                            hasTowerGame,
-                                    hasStatus,
-                                    isInGame,
-                                    gameId,
-                                    userGameId: currentUserStatus?.gameId,
-                                    userStatus: currentUserStatus?.status
-                                });
-                                
-                                        // 게임이 발견되면 라우팅 (singlePlayerGames 또는 towerGames에서도 확인)
-                                        if (hasGame || hasSPGame || hasTowerGame) {
-                                            if (isInGame || hasStatus) {
-                                                console.log('[handleAction] Game found and user status confirmed, routing:', gameId);
-                                    setTimeout(() => {
-                                        if (window.location.hash !== targetHash) {
-                                            window.location.hash = targetHash;
-                                        }
-                                    }, 100);
-                                            }
-                                        } else {
-                                            // 게임이 아직 없으면 재시도
-                                            console.log('[handleAction] Game not found yet, will retry:', gameId);
-                                        }
-                                        
-                                    return prevOnlineUsers;
-                                    });
-                                    
-                                    return currentTowerGames;
-                                });
-                                
-                                return currentSPGames;
-                            });
-                            
-                            return currentGames;
-                        });
-                                
-                        // 게임이 아직 없으면 재시도
-                        if (attempts < maxAttempts) {
-                                    setTimeout(tryRoute, 150);
-                                } else {
-                                    // 최대 시도 횟수에 도달했어도 라우팅 시도 (게임이 생성되었으므로)
-                                    console.warn('[handleAction] Max attempts reached, routing anyway:', gameId);
-                                    setTimeout(() => {
-                                        if (window.location.hash !== targetHash) {
-                                            window.location.hash = targetHash;
-                                        }
-                                    }, 100);
-                                }
-                    };
-                    
-                    // 첫 시도는 200ms 후에 (WebSocket 메시지를 받을 시간을 줌)
-                    setTimeout(tryRoute, 200);
                     
                     // gameId를 반환하여 컴포넌트에서 사용할 수 있도록 함
                     return { gameId };

@@ -59,15 +59,19 @@ const renderStarDisplay = (stars: number, previousStars?: number, isAnimating?: 
                 src={starImage} 
                 alt="star" 
                 className={`w-3 h-3 transition-all duration-500 ${
+                    stars >= 10 
+                        ? 'prism-star-glow' 
+                        : ''
+                } ${
                     starTierChanged && isAnimating 
                         ? 'animate-pulse scale-125 drop-shadow-[0_0_15px_currentColor]' 
                         : ''
                 }`}
-                style={{
-                    filter: starTierChanged && isAnimating 
-                        ? 'drop-shadow(0 0 10px currentColor) brightness(1.3)' 
-                        : 'none'
-                }}
+                style={stars >= 10 ? {
+                    filter: 'drop-shadow(0 0 8px rgba(255, 0, 255, 0.8)) drop-shadow(0 0 12px rgba(0, 255, 255, 0.6)) drop-shadow(0 0 16px rgba(255, 255, 0, 0.4)) brightness(1.3) saturate(1.4)'
+                } : (starTierChanged && isAnimating ? {
+                    filter: 'drop-shadow(0 0 10px currentColor) brightness(1.3)'
+                } : {})}
             />
             <span 
                 className={`font-bold text-xs leading-none transition-all duration-500 ${

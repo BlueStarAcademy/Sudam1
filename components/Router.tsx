@@ -1,7 +1,7 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../hooks/useAppContext.js';
-
+import { LiveGameSession } from '../types.js';
 import { GameMode } from '../types.js';
 import Login from './Login.js';
 import Register from './Register.js';
@@ -14,6 +14,43 @@ import TournamentLobby from './TournamentLobby.js';
 import TournamentArena from './arenas/TournamentArena.js';
 import SinglePlayerLobby from './SinglePlayerLobby.js';
 import Guild from './Guild.js';
+
+// 게임 라우트 로더 컴포넌트 (게임이 로드될 때까지 대기)
+const GameRouteLoader: React.FC<{ gameId: string }> = ({ gameId }) => {
+    const { activeGame } = useAppContext();
+    const [hasTimedOut, setHasTimedOut] = useState(false);
+    const maxWaitTime = 2000; // 최대 2초 대기 (handleAction에서 즉시 추가하므로 짧게 설정)
+    
+    // activeGame이 로드되면 즉시 렌더링
+    if (activeGame && activeGame.id === gameId) {
+        return <Game session={activeGame} />;
+    }
+    
+    // 타임아웃 처리
+    useEffect(() => {
+        const timeout = setTimeout(() => {
+            if (!activeGame || activeGame.id !== gameId) {
+                console.warn(`[Router] Game ${gameId} not found after ${maxWaitTime}ms, redirecting to profile.`);
+                setHasTimedOut(true);
+                setTimeout(() => {
+                    if (window.location.hash !== '#/profile') {
+                        window.location.hash = '#/profile';
+                    }
+                }, 100);
+            }
+        }, maxWaitTime);
+        
+        return () => clearTimeout(timeout);
+    }, [gameId, activeGame, maxWaitTime]);
+    
+    // 타임아웃이 발생했으면 에러 메시지 표시
+    if (hasTimedOut) {
+        return <div className="flex items-center justify-center h-full">게임을 찾을 수 없습니다. 프로필로 이동합니다...</div>;
+    }
+    
+    // 게임이 아직 로드되지 않았으면 대기 메시지 표시
+    return <div className="flex items-center justify-center h-full">게임 정보 동기화 중...</div>;
+};
 
 const Router: React.FC = () => {
     const { currentRoute, currentUser, activeGame } = useAppContext();
@@ -55,16 +92,19 @@ const Router: React.FC = () => {
             window.location.hash = '#/profile';
             return null;
         case 'game':
-             if (currentRoute.params.id && activeGame && activeGame.id === currentRoute.params.id) {
-                return <Game session={activeGame} />;
-            }
-            // 게임이 아직 로드되지 않았을 수 있으므로 잠시 대기 (WebSocket 업데이트 대기)
-            // 단, 너무 오래 기다리지 않도록 타임아웃 설정
             if (currentRoute.params.id) {
-                // 게임 ID가 라우트에 있으면 WebSocket 업데이트를 기다림
-                return <div className="flex items-center justify-center h-full">게임 정보 동기화 중...</div>;
+                const gameId = currentRoute.params.id;
+                
+                // activeGame이 있고 ID가 일치하면 즉시 렌더링
+                if (activeGame && activeGame.id === gameId) {
+                    return <Game session={activeGame} />;
+                }
+                
+                // activeGame이 없으면 GameRouteLoader에서 대기
+                // handleAction에서 게임을 즉시 상태에 추가하므로, 상태 업데이트를 기다림
+                return <GameRouteLoader gameId={gameId} />;
             }
-            console.warn("Router: Mismatch between route and active game. Redirecting to profile.");
+            console.warn("Router: No game ID in route. Redirecting to profile.");
             setTimeout(() => {
                 if (window.location.hash !== '#/profile') {
                     window.location.hash = '#/profile';

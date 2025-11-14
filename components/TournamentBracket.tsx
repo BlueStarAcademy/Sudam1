@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef, Component, ErrorInfo, ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { UserWithStatus, TournamentState, PlayerForTournament, ServerAction, User, CoreStat, Match, Round, CommentaryLine, TournamentType, LeagueTier } from '../types.js';
 import Button from './Button.js';
 import { useButtonClickThrottle } from '../hooks/useButtonClickThrottle.js';
@@ -11,6 +12,46 @@ import { audioService } from '../services/audioService.js';
 import ConditionPotionModal from './ConditionPotionModal.js';
 import { calculateTotalStats } from '../services/statService.js';
 import SimulationArenaHelpModal from './SimulationArenaHelpModal.js';
+
+// Error Boundary for PlayerProfilePanel
+class PlayerProfilePanelErrorBoundary extends Component<
+    { children: ReactNode; fallback?: ReactNode },
+    { hasError: boolean; error: Error | null }
+> {
+    constructor(props: { children: ReactNode; fallback?: ReactNode }) {
+        super(props);
+        this.state = { hasError: false, error: null };
+    }
+
+    static getDerivedStateFromError(error: Error) {
+        return { hasError: true, error };
+    }
+
+    componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+        if (import.meta.env.DEV) {
+            console.error('[PlayerProfilePanelErrorBoundary] Error caught:', error, errorInfo);
+        }
+    }
+
+    componentDidUpdate(prevProps: { children: ReactNode }) {
+        // props가 변경되면 에러 상태 리셋
+        if (prevProps.children !== this.props.children && this.state.hasError) {
+            this.setState({ hasError: false, error: null });
+        }
+    }
+
+    render() {
+        if (this.state.hasError) {
+            return this.props.fallback || (
+                <div className="p-2 text-center text-gray-500 flex items-center justify-center h-full bg-gray-900/50 rounded-lg">
+                    선수 정보를 불러오는 중 오류가 발생했습니다.
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
+}
 
 const KEY_STATS_BY_PHASE: Record<'early' | 'mid' | 'end', CoreStat[]> = {
     early: [CoreStat.CombatPower, CoreStat.ThinkingSpeed, CoreStat.Concentration],
@@ -86,58 +127,136 @@ const PlayerProfilePanel: React.FC<{
     isMobile?: boolean;
 }> = ({ player, initialPlayer, allUsers, currentUserId, onViewUser, highlightPhase, isUserMatch, onUseConditionPotion, onOpenShop, timeElapsed = 0, tournamentStatus, isMobile = false }) => {
     // 모든 hooks는 조건부 return 전에 선언되어야 함
-    const [previousCondition, setPreviousCondition] = useState<number | undefined>(player?.condition);
+    const [previousCondition, setPreviousCondition] = useState<number | undefined>(undefined);
     const [showConditionIncrease, setShowConditionIncrease] = useState(false);
     const [conditionIncreaseAmount, setConditionIncreaseAmount] = useState(0);
     const [statChanges, setStatChanges] = useState<Record<CoreStat, number>>({} as Record<CoreStat, number>);
     const prevStatsRef = useRef<Record<CoreStat, number>>({} as Record<CoreStat, number>);
     const initialStatsKeyRef = useRef<string>('');
     
+    // player가 변경되면 previousCondition 초기화
+    useEffect(() => {
+        // player가 null이 아니고 condition이 유효한 경우에만 설정
+        if (player && player.condition !== undefined && player.condition !== null) {
+            setPreviousCondition(player.condition);
+        } else {
+            setPreviousCondition(undefined);
+        }
+    }, [player?.id, player?.condition]);
+    
     // initialStats를 useMemo로 변경하여 player.originalStats나 initialPlayer가 변경될 때마다 업데이트되도록 함
     const initialStats = useMemo<Record<CoreStat, number>>(() => {
-        // 다음 경기로 넘어갔을 때 originalStats로 초기화된 값을 사용
-        if (player?.originalStats) {
-            return { ...player.originalStats };
+        // player가 없으면 모든 CoreStat을 0으로 초기화
+        if (!player) {
+            const emptyStats: Record<CoreStat, number> = {} as Record<CoreStat, number>;
+            Object.values(CoreStat).forEach(stat => {
+                emptyStats[stat] = 0;
+            });
+            return emptyStats;
         }
-        // initialPlayer가 있으면 그것을 사용 (경기 시작 시점의 상태)
-        if (initialPlayer?.stats) {
-            return { ...initialPlayer.stats };
+        try {
+            // player가 존재하는 경우에만 접근
+            const p = player; // 로컬 변수로 안전하게 참조
+            
+            // 다음 경기로 넘어갔을 때 originalStats로 초기화된 값을 사용
+            if (p.originalStats && typeof p.originalStats === 'object' && Object.keys(p.originalStats).length > 0) {
+                return { ...p.originalStats };
+            }
+            // initialPlayer가 있으면 그것을 사용 (경기 시작 시점의 상태)
+            if (initialPlayer?.stats && typeof initialPlayer.stats === 'object' && Object.keys(initialPlayer.stats).length > 0) {
+                return { ...initialPlayer.stats };
+            }
+            // 그 외에는 현재 player.stats 사용
+            if (p.stats && typeof p.stats === 'object' && Object.keys(p.stats).length > 0) {
+                return { ...p.stats };
+            }
+            // 모든 것이 실패하면 기본값 반환 (모든 CoreStat을 0으로)
+            const defaultStats: Record<CoreStat, number> = {} as Record<CoreStat, number>;
+            Object.values(CoreStat).forEach(stat => {
+                defaultStats[stat] = 0;
+            });
+            return defaultStats;
+        } catch (error) {
+            if (import.meta.env.DEV) {
+                console.error('[PlayerProfilePanel] Error in initialStats calculation:', error);
+            }
+            // 에러 발생 시 기본값 반환
+            const defaultStats: Record<CoreStat, number> = {} as Record<CoreStat, number>;
+            Object.values(CoreStat).forEach(stat => {
+                defaultStats[stat] = 0;
+            });
+            return defaultStats;
         }
-        // 그 외에는 현재 player.stats 사용
-        return { ...(player?.stats || {}) };
-    }, [player?.originalStats, initialPlayer?.stats, player?.stats]);
+    }, [player?.id, player?.originalStats, initialPlayer?.stats, player?.stats]);
     
     // initialStats가 변경되면 prevStatsRef 리셋 (새 경기 시작)
     useEffect(() => {
+        if (!player) return;
         const currentKey = JSON.stringify(initialStats);
         if (initialStatsKeyRef.current !== currentKey) {
             initialStatsKeyRef.current = currentKey;
             prevStatsRef.current = { ...initialStats };
             setStatChanges({} as Record<CoreStat, number>);
         }
-    }, [initialStats]);
+    }, [initialStats, player?.id]);
     
     // 컨디션 변화 감지 및 애니메이션 트리거
     useEffect(() => {
-        if (!player) return;
-        if (previousCondition !== undefined && player.condition !== 1000 && previousCondition !== 1000) {
-            const increase = player.condition - previousCondition;
+        // player가 null이거나 condition이 유효하지 않으면 early return
+        if (!player || player.condition === undefined || player.condition === null) {
+            // player가 없으면 previousCondition도 초기화
+            if (!player) {
+                setPreviousCondition(undefined);
+            }
+            return;
+        }
+        
+        // player를 로컬 변수로 캡처하여 안전하게 참조
+        const currentPlayer = player;
+        const currentCondition = currentPlayer.condition;
+        
+        // currentCondition이 유효하지 않으면 early return
+        if (currentCondition === undefined || currentCondition === null) {
+            return;
+        }
+        
+        let timeoutId: ReturnType<typeof setTimeout> | null = null;
+        
+        // 안전 체크: previousCondition이 유효하고 증가한 경우에만 애니메이션
+        if (previousCondition !== undefined && 
+            currentCondition !== 1000 && 
+            previousCondition !== 1000 &&
+            currentCondition > previousCondition) {
+            const increase = currentCondition - previousCondition;
             if (increase > 0) {
                 setConditionIncreaseAmount(increase);
                 setShowConditionIncrease(true);
-                setTimeout(() => {
+                timeoutId = setTimeout(() => {
                     setShowConditionIncrease(false);
                 }, 2000);
             }
         }
-        setPreviousCondition(player.condition);
-    }, [player.condition, previousCondition]);
+        // currentCondition을 previousCondition으로 업데이트
+        setPreviousCondition(currentCondition);
+        
+        // cleanup 함수
+        return () => {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+            }
+        };
+    }, [player?.id, player?.condition, previousCondition]);
 
-    // 조건부 return은 모든 hooks 선언 후에
-    if (!player) return <div className="p-2 text-center text-gray-500 flex items-center justify-center h-full bg-gray-900/50 rounded-lg">선수 대기 중...</div>;
-    
-    const fullUserData = useMemo(() => allUsers.find(u => u.id === player.id), [allUsers, player.id]);
-    const leagueInfo = useMemo(() => LEAGUE_DATA.find(league => league.tier === player.league), [player.league]);
+    // 모든 hooks는 조건부 return 전에 선언되어야 함 (React hooks 규칙)
+    // player가 null일 수 있으므로 안전하게 처리
+    const fullUserData = useMemo(() => {
+        if (!player || !player.id) return undefined;
+        return allUsers.find(u => u.id === player.id);
+    }, [allUsers, player?.id]);
+    const leagueInfo = useMemo(() => {
+        if (!player || player.league === undefined) return undefined;
+        return LEAGUE_DATA.find(league => league.tier === player.league);
+    }, [player?.league]);
 
     const cumulativeStats = useMemo(() => {
         const result = { wins: 0, losses: 0 };
@@ -150,10 +269,17 @@ const PlayerProfilePanel: React.FC<{
         return result;
     }, [fullUserData]);
 
-    const isClickable = !player.id.startsWith('bot-') && player.id !== currentUserId;
-    const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === player.avatarId)?.url, [player.avatarId]);
-    const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === player.borderId)?.url, [player.borderId]);
-    const isCurrentUser = player.id === currentUserId;
+    // player가 null이 아니라는 것을 확인했지만, 안전성을 위해 옵셔널 체이닝 사용
+    const isClickable = player ? (!player.id.startsWith('bot-') && player.id !== currentUserId) : false;
+    const avatarUrl = useMemo(() => {
+        if (!player || !player.avatarId) return undefined;
+        return AVATAR_POOL.find(a => a.id === player.avatarId)?.url;
+    }, [player?.avatarId]);
+    const borderUrl = useMemo(() => {
+        if (!player || !player.borderId) return undefined;
+        return BORDER_POOL.find(b => b.id === player.borderId)?.url;
+    }, [player?.borderId]);
+    const isCurrentUser = player ? (player.id === currentUserId) : false;
     
     // 컨디션 회복제 보유 개수 확인
     const potionCounts = useMemo(() => {
@@ -176,16 +302,38 @@ const PlayerProfilePanel: React.FC<{
     
     const totalPotionCount = potionCounts.small + potionCounts.medium + potionCounts.large;
     
-    // 능력치 변화 감지 (경기 진행 중일 때만)
+    // 능력치 변화 감지 (경기 진행 중일 때만) - 모든 hooks는 조건부 return 전에 선언되어야 함
     useEffect(() => {
-        if (!player || !player.stats || tournamentStatus !== 'round_in_progress') {
+        // player와 player.stats가 없으면 early return
+        if (!player || !player.stats || typeof player.stats !== 'object' || tournamentStatus !== 'round_in_progress') {
+            // 경기가 진행 중이 아니면 statChanges 초기화
+            if (tournamentStatus !== 'round_in_progress') {
+                setStatChanges({} as Record<CoreStat, number>);
+            }
             return;
         }
         
-        // 초기화: prevStatsRef가 비어있거나 initialStats와 다르면 초기화
+        // player를 로컬 변수로 캡처하여 안전하게 참조
+        const currentPlayer = player;
+        if (!currentPlayer || !currentPlayer.stats || typeof currentPlayer.stats !== 'object') {
+            return;
+        }
+        
+        // player.stats가 유효한 객체인지 확인
+        const currentStats = currentPlayer.stats as Record<CoreStat, number>;
+        if (!currentStats || typeof currentStats !== 'object') {
+            return;
+        }
+        
+        // 초기화: prevStatsRef가 비어있거나 initialStats가 변경되었으면 초기화
         const initialKey = JSON.stringify(initialStats);
         if (Object.keys(prevStatsRef.current).length === 0 || initialStatsKeyRef.current !== initialKey) {
             prevStatsRef.current = { ...initialStats };
+            initialStatsKeyRef.current = initialKey;
+            // 초기화 시에는 변화가 없으므로 statChanges도 초기화
+            setStatChanges({} as Record<CoreStat, number>);
+            // 초기화 후에는 현재 stats를 저장하고 종료
+            prevStatsRef.current = { ...currentStats } as Record<CoreStat, number>;
             return;
         }
         
@@ -195,30 +343,43 @@ const PlayerProfilePanel: React.FC<{
         
         Object.values(CoreStat).forEach(stat => {
             const prev = prevStatsRef.current[stat] ?? initialStats[stat] ?? 0;
-            const curr = player.stats[stat] ?? 0;
-            if (prev !== curr) {
-                changes[stat] = curr - prev;
+            const curr = currentStats[stat] ?? 0;
+            const diff = curr - prev;
+            // 변화가 있으면 감지 (0이 아닌 변화만)
+            if (diff !== 0) {
+                changes[stat] = diff;
                 hasChanges = true;
             }
         });
         
+        // 현재 stats를 깊은 복사로 저장 (다음 비교를 위해, 변화가 있든 없든 항상 업데이트)
+        prevStatsRef.current = { ...currentStats } as Record<CoreStat, number>;
+        
+        // 변화가 있으면 애니메이션 트리거
         if (hasChanges) {
-            console.log(`[PlayerProfilePanel] Stat changes detected for ${player.nickname}:`, changes, 'prev:', prevStatsRef.current, 'curr:', player.stats);
+            // 개발 모드에서만 상세 로그 출력
+            if (import.meta.env.DEV && Object.keys(changes).length > 0 && currentPlayer?.nickname) {
+                console.log(`[PlayerProfilePanel] Stat changes detected for ${currentPlayer.nickname}:`, changes);
+            }
+            // 새로운 변화를 설정하여 애니메이션 트리거
             setStatChanges(changes);
-            setTimeout(() => {
+            // 2초 후 애니메이션 초기화 (fade out)
+            const timeoutId = setTimeout(() => {
                 setStatChanges({} as Record<CoreStat, number>);
             }, 2000);
+            // cleanup 함수에서 timeout 정리
+            return () => {
+                clearTimeout(timeoutId);
+            };
         }
-        
-        // 현재 stats를 깊은 복사로 저장
-        prevStatsRef.current = { ...(player.stats || {}) } as Record<CoreStat, number>;
     }, [
-        player?.stats?.CombatPower,
-        player?.stats?.ThinkingSpeed,
-        player?.stats?.Judgment,
-        player?.stats?.Calculation,
-        player?.stats?.Concentration,
-        player?.stats?.Stability,
+        player?.id, // 플레이어가 변경되면 초기화
+        player?.stats?.[CoreStat.CombatPower],
+        player?.stats?.[CoreStat.ThinkingSpeed],
+        player?.stats?.[CoreStat.Judgment],
+        player?.stats?.[CoreStat.Calculation],
+        player?.stats?.[CoreStat.Concentration],
+        player?.stats?.[CoreStat.Stability],
         timeElapsed,
         tournamentStatus,
         initialStats
@@ -232,79 +393,149 @@ const PlayerProfilePanel: React.FC<{
     // 경기 시작 전에는 홈 화면과 동일한 능력치 계산 (calculateTotalStats 사용)
     // 경기 중에는 player.stats를 사용 (컨디션으로 인한 변화 반영)
     const displayStats = useMemo(() => {
+        // player가 없으면 기본값 반환
+        if (!player) {
+            const defaultStats: Record<CoreStat, number> = {} as Record<CoreStat, number>;
+            Object.values(CoreStat).forEach(stat => {
+                defaultStats[stat] = 0;
+            });
+            return defaultStats;
+        }
+        
+        // player를 로컬 변수로 캡처하여 안전하게 참조
+        const currentPlayer = player;
+        if (!currentPlayer) {
+            const defaultStats: Record<CoreStat, number> = {} as Record<CoreStat, number>;
+            Object.values(CoreStat).forEach(stat => {
+                defaultStats[stat] = 0;
+            });
+            return defaultStats;
+        }
+        
         if (tournamentStatus === 'round_in_progress') {
             // 경기 중에는 현재 능력치 사용 (컨디션 변화 반영)
-            return player.stats;
+            return currentPlayer.stats || initialStats;
         }
 
-        if (player.originalStats) {
+        if (currentPlayer.originalStats && typeof currentPlayer.originalStats === 'object') {
             // 토너먼트 생성 시점의 고정 능력치 사용
-            return player.originalStats;
+            return currentPlayer.originalStats;
         }
 
-            if (fullUserData) {
+        if (fullUserData) {
             // 유저 정보가 있으면 최신 능력치 계산
+            try {
                 return calculateTotalStats(fullUserData);
+            } catch (error) {
+                if (import.meta.env.DEV) {
+                    console.error('[PlayerProfilePanel] Error calculating total stats:', error);
+                }
+                return currentPlayer.stats || initialStats;
             }
+        }
 
-            return player.stats;
-    }, [player.stats, player.originalStats, fullUserData, tournamentStatus]);
+        return currentPlayer.stats || initialStats;
+    }, [player?.id, player?.stats, player?.originalStats, fullUserData, tournamentStatus, initialStats]);
     
     // 바둑능력 점수 계산 (모든 능력치의 합계, 정수로 반올림)
     const totalAbilityScore = useMemo(() => {
-        return Math.round(Object.values(displayStats).reduce((sum, stat) => sum + (stat || 0), 0));
+        try {
+            if (!displayStats || typeof displayStats !== 'object') {
+                return 0;
+            }
+            return Math.round(Object.values(displayStats).reduce((sum, stat) => sum + (stat || 0), 0));
+        } catch (error) {
+            if (import.meta.env.DEV) {
+                console.error('[PlayerProfilePanel] Error calculating total ability score:', error);
+            }
+            return 0;
+        }
     }, [displayStats]);
     
     // 초반/중반/종반 능력치 계산 (서버의 calculatePower와 동일한 로직)
     // 각 능력치에 가중치를 곱한 후 합산
     const phaseStats = useMemo(() => {
-        const calculatePhasePower = (phase: 'early' | 'mid' | 'end') => {
-            const weights = STAT_WEIGHTS[phase];
-            let power = 0;
-            for (const stat in weights) {
-                const statKey = stat as CoreStat;
-                const weight = weights[statKey]!;
-                power += (displayStats[statKey] || 0) * weight;
+        try {
+            if (!displayStats || typeof displayStats !== 'object') {
+                return { early: 0, mid: 0, end: 0 };
             }
-            return power;
-        };
-        
-        return {
-            early: Math.round(calculatePhasePower('early')),
-            mid: Math.round(calculatePhasePower('mid')),
-            end: Math.round(calculatePhasePower('end'))
-        };
-    }, [displayStats, player.condition]);
+            
+            const calculatePhasePower = (phase: 'early' | 'mid' | 'end') => {
+                const weights = STAT_WEIGHTS[phase];
+                if (!weights || typeof weights !== 'object') {
+                    return 0;
+                }
+                let power = 0;
+                for (const stat in weights) {
+                    const statKey = stat as CoreStat;
+                    const weight = weights[statKey];
+                    if (weight !== undefined && weight !== null) {
+                        power += (displayStats[statKey] || 0) * weight;
+                    }
+                }
+                return power;
+            };
+            
+            return {
+                early: Math.round(calculatePhasePower('early')),
+                mid: Math.round(calculatePhasePower('mid')),
+                end: Math.round(calculatePhasePower('end'))
+            };
+        } catch (error) {
+            if (import.meta.env.DEV) {
+                console.error('[PlayerProfilePanel] Error calculating phase stats:', error);
+            }
+            return { early: 0, mid: 0, end: 0 };
+        }
+    }, [displayStats, player?.condition]);
+    
+    // player가 null이면 early return (이미 위에서 처리했지만 안전성을 위해 다시 확인)
+    // 이 시점에서 player가 null이면 모든 hooks가 실행되었지만 안전하게 처리되었으므로 안전함
+    if (!player) {
+        return <div className="p-2 text-center text-gray-500 flex items-center justify-center h-full bg-gray-900/50 rounded-lg">선수 대기 중...</div>;
+    }
+    
+    // player가 확실히 존재하므로 안전하게 접근 가능
+    // 하지만 경기 종료 시점에 player 객체의 속성이 예상치 못하게 변경될 수 있으므로
+    // 모든 접근을 안전하게 처리
+    const playerId = player?.id;
+    const playerNickname = player?.nickname;
+    const playerCondition = (player?.condition !== undefined && player?.condition !== null) ? player.condition : 1000;
+    
+    // 모든 필수 값이 유효한지 확인
+    if (!playerId || !playerNickname) {
+        return <div className="p-2 text-center text-gray-500 flex items-center justify-center h-full bg-gray-900/50 rounded-lg">선수 정보를 불러올 수 없습니다.</div>;
+    }
     
     return (
-        <div className={`bg-gray-900/50 p-2 md:p-3 rounded-lg flex flex-col gap-1 md:gap-2 h-full min-h-0 overflow-hidden ${isClickable ? 'cursor-pointer hover:bg-gray-700/50' : ''}`} onClick={isClickable ? () => onViewUser(player.id) : undefined} title={isClickable ? `${player.nickname} 프로필 보기` : ''}>
+        <div className={`bg-gray-900/50 p-2 md:p-3 rounded-lg flex flex-col gap-1 md:gap-2 h-full min-h-0 overflow-hidden ${isClickable ? 'cursor-pointer hover:bg-gray-700/50' : ''}`} onClick={isClickable ? () => onViewUser(playerId) : undefined} title={isClickable ? `${playerNickname} 프로필 보기` : ''}>
             <div className="flex items-center gap-1.5 md:gap-3 w-full flex-shrink-0">
                 {leagueInfo && (
                     <img
-                        key={`league-${player.id}-${leagueInfo.tier}`}
+                        key={`league-${playerId}-${leagueInfo.tier}`}
                         src={leagueInfo.icon}
                         alt={leagueInfo.name}
                         className="w-6 h-6 md:w-9 md:h-9 object-contain drop-shadow-lg"
                         loading="lazy"
                     />
                 )}
-                 <Avatar key={`avatar-${player.id}`} userId={player.id} userName={player.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={isMobile ? 24 : 32} className={`${isMobile ? 'w-6 h-6' : 'md:w-10 md:h-10'} flex-shrink-0`} />
+                 <Avatar key={`avatar-${playerId}`} userId={playerId} userName={playerNickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={isMobile ? 24 : 32} className={`${isMobile ? 'w-6 h-6' : 'md:w-10 md:h-10'} flex-shrink-0`} />
                  <div className="min-w-0 flex-1">
                     <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-1 md:gap-1.5">
-                        <h4 className={`font-bold ${isMobile ? 'text-[10px]' : 'text-xs md:text-base'} truncate`}>{player.nickname}</h4>
+                        <h4 className={`font-bold ${isMobile ? 'text-[10px]' : 'text-xs md:text-base'} truncate`}>{playerNickname}</h4>
                         <span className={`${isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs'} text-blue-300 font-semibold whitespace-nowrap`}>바둑능력: {totalAbilityScore}</span>
                     </div>
                     <p className={`${isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs'} text-gray-400 truncate`}>({cumulativeStats.wins}승 {cumulativeStats.losses}패)</p>
                  </div>
             </div>
-            {/* 경기가 종료된 후에는 컨디션 표시하지 않음 (물약 낭비 방지) */}
-            {tournamentStatus !== 'complete' && tournamentStatus !== 'eliminated' && (
+            {/* 경기가 진행 중일 때만 컨디션 표시 (경기 종료 후에는 표시하지 않음) */}
+            {tournamentStatus === 'round_in_progress' && (
                 <div className={`font-bold ${isMobile ? 'text-[8px]' : 'text-xs md:text-sm'} mt-0.5 relative flex items-center gap-1 md:gap-2 w-full justify-center flex-shrink-0`}>
                     <span className={isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}>컨디션:</span> 
                     <span className={`text-yellow-300 ${isMobile ? 'text-[8px]' : 'text-xs md:text-sm'} relative transition-all duration-300 ${
                         showConditionIncrease ? 'scale-125 text-green-300' : ''
                     }`}>
-                        {player.condition === 1000 ? '-' : player.condition}
+                        {playerCondition === 1000 ? '-' : playerCondition}
                     </span>
                     {showConditionIncrease && conditionIncreaseAmount > 0 && (
                         <span className={`absolute ${isMobile ? 'text-[10px]' : 'text-sm md:text-base'} font-bold text-green-400 pointer-events-none whitespace-nowrap ${
@@ -316,57 +547,27 @@ const PlayerProfilePanel: React.FC<{
                             +{conditionIncreaseAmount}
                         </span>
                     )}
-                    {isCurrentUser && player.condition !== 1000 && player.condition < 100 && tournamentStatus !== 'round_in_progress' && tournamentStatus !== 'complete' && tournamentStatus !== 'eliminated' && (
-                        <button 
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                // 컨디션 회복제가 0개면 상점 열기, 있으면 사용 모달 열기
-                                if (totalPotionCount === 0 && onOpenShop) {
-                                    onOpenShop();
-                                } else if (onUseConditionPotion) {
-                                    onUseConditionPotion();
-                                }
-                            }}
-                            className={`${isMobile ? 'w-4 h-4 text-[8px]' : 'w-5 h-5 md:w-6 md:h-6 text-[10px] md:text-xs'} bg-green-600 hover:bg-green-700 text-white rounded-full flex items-center justify-center font-bold transition-colors`}
-                            title={totalPotionCount === 0 ? "컨디션 회복제가 없습니다. 상점에서 구매하세요." : "컨디션 물약 사용 (경기 시작 전에만 사용 가능)"}
-                        >
-                            +
-                        </button>
-                    )}
-                    {isCurrentUser && player.condition !== 1000 && player.condition < 100 && (tournamentStatus === 'complete' || tournamentStatus === 'eliminated') && (
-                        <button 
-                            disabled
-                            className="w-5 h-5 md:w-6 md:h-6 bg-gray-600 text-gray-400 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold cursor-not-allowed"
-                            title="경기가 종료되어 사용할 수 없습니다"
-                        >
-                            +
-                        </button>
-                    )}
-                    {isCurrentUser && player.condition !== 1000 && player.condition >= 100 && onUseConditionPotion && tournamentStatus !== 'round_in_progress' && (
-                        <button 
-                            disabled
-                            className="w-5 h-5 md:w-6 md:h-6 bg-gray-600 text-gray-400 rounded-full flex items-center justify-center text-[10px] md:text-xs font-bold cursor-not-allowed"
-                            title="컨디션이 최대치입니다"
-                        >
-                            +
-                        </button>
-                    )}
                 </div>
             )}
             <div className={`w-full grid grid-cols-2 md:grid-cols-4 gap-x-0.5 md:gap-x-1 lg:gap-x-3 gap-y-0.5 ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs'} mt-0.5 md:mt-1 border-t border-gray-600 pt-0.5 md:pt-1 flex-shrink-0`}>
                 {Object.values(CoreStat).map(stat => {
-                    const initialValue = initialStats[stat] ?? initialPlayer?.stats?.[stat] ?? displayStats[stat];
-                    const currentValue = displayStats[stat];
-                    const change = currentValue - initialValue;
+                    try {
+                        // 초기값: initialPlayer가 있으면 그것을 사용, 없으면 initialStats 사용
+                        // player가 null이 아니지만 안전성을 위해 옵셔널 체이닝 사용
+                        const initialValue = tournamentStatus === 'round_in_progress' 
+                            ? (initialPlayer?.stats?.[stat] ?? initialStats[stat] ?? player?.originalStats?.[stat] ?? displayStats?.[stat] ?? 0)
+                            : (displayStats?.[stat] ?? 0);
+                        const currentValue = displayStats?.[stat] ?? 0;
+                        const change = tournamentStatus === 'round_in_progress' ? (currentValue - initialValue) : 0;
 
                     return (
                         <React.Fragment key={stat}>
                             <span className={`text-gray-400 truncate whitespace-nowrap ${isStatHighlighted(stat) ? 'text-yellow-400 font-bold' : ''}`}>{stat}</span>
                             <div className="flex justify-end items-baseline relative min-w-0">
-                                <span className={`font-mono text-white ${isStatHighlighted(stat) ? 'text-yellow-400 font-bold' : ''} ${isMobile ? 'min-w-[20px] text-[8px]' : 'min-w-[25px] sm:min-w-[30px] md:min-w-[40px] text-right text-[9px] sm:text-[10px] md:text-xs'} whitespace-nowrap`}>{displayStats[stat]}</span>
+                                <span className={`font-mono text-white ${isStatHighlighted(stat) ? 'text-yellow-400 font-bold' : ''} ${isMobile ? 'min-w-[20px] text-[8px]' : 'min-w-[25px] sm:min-w-[30px] md:min-w-[40px] text-right text-[9px] sm:text-[10px] md:text-xs'} whitespace-nowrap`}>{currentValue}</span>
                                 {/* [N]: 항상 보이는 누적된 변화값 (초기값 대비 현재까지 누적된 변화) */}
                                 <span className={`ml-0.5 md:ml-1 font-bold ${isMobile ? 'text-[7px] min-w-[22px]' : 'text-[8px] sm:text-[9px] md:text-xs min-w-[28px] sm:min-w-[35px] md:min-w-[45px]'} text-right whitespace-nowrap`}>
-                                    {initialPlayer && change !== 0 ? (
+                                    {tournamentStatus === 'round_in_progress' && change !== 0 ? (
                                         <span className={`${change > 0 ? 'text-green-400' : 'text-red-400'}`}>
                                             [{change > 0 ? '+' : ''}{change}]
                                         </span>
@@ -394,28 +595,43 @@ const PlayerProfilePanel: React.FC<{
                                         (+99)
                                     </span>
                                 </span>
-                            </div>
-                        </React.Fragment>
-                    );
+                                </div>
+                            </React.Fragment>
+                        );
+                    } catch (error) {
+                        if (import.meta.env.DEV) {
+                            console.error(`[PlayerProfilePanel] Error rendering stat ${stat}:`, error);
+                        }
+                        return (
+                            <React.Fragment key={stat}>
+                                <span className="text-gray-400 truncate whitespace-nowrap">{stat}</span>
+                                <div className="flex justify-end items-baseline relative min-w-0">
+                                    <span className="font-mono text-white">-</span>
+                                </div>
+                            </React.Fragment>
+                        );
+                    }
                 })}
             </div>
             {/* 초반/중반/종반 능력치 표시 */}
-            <div className="w-full border-t border-gray-600 mt-0.5 md:mt-1 pt-0.5 md:pt-1 flex-shrink-0">
-                <div className={`grid grid-cols-3 gap-1 md:gap-2 ${isMobile ? 'text-[8px]' : 'text-[9px] md:text-xs'}`}>
-                    <div className={`bg-blue-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 md:px-2 py-0.5 md:py-1'} text-center border border-blue-700/50`}>
-                        <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0.5'}`}>초반능력</div>
-                        <div className={`text-blue-300 font-bold ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}`}>{phaseStats.early}</div>
-                    </div>
-                    <div className={`bg-purple-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 md:px-2 py-0.5 md:py-1'} text-center border border-purple-700/50`}>
-                        <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0.5'}`}>중반능력</div>
-                        <div className={`text-purple-300 font-bold ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}`}>{phaseStats.mid}</div>
-                    </div>
-                    <div className={`bg-orange-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 md:px-2 py-0.5 md:py-1'} text-center border border-orange-700/50`}>
-                        <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0.5'}`}>종반능력</div>
-                        <div className={`text-orange-300 font-bold ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}`}>{phaseStats.end}</div>
+            {phaseStats && typeof phaseStats === 'object' && (
+                <div className="w-full border-t border-gray-600 mt-0.5 md:mt-1 pt-0.5 md:pt-1 flex-shrink-0">
+                    <div className={`grid grid-cols-3 gap-1 md:gap-2 ${isMobile ? 'text-[8px]' : 'text-[9px] md:text-xs'}`}>
+                        <div className={`bg-blue-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 md:px-2 py-0.5 md:py-1'} text-center border border-blue-700/50`}>
+                            <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0.5'}`}>초반능력</div>
+                            <div className={`text-blue-300 font-bold ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}`}>{phaseStats?.early ?? 0}</div>
+                        </div>
+                        <div className={`bg-purple-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 md:px-2 py-0.5 md:py-1'} text-center border border-purple-700/50`}>
+                            <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0.5'}`}>중반능력</div>
+                            <div className={`text-purple-300 font-bold ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}`}>{phaseStats?.mid ?? 0}</div>
+                        </div>
+                        <div className={`bg-orange-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 md:px-2 py-0.5 md:py-1'} text-center border border-orange-700/50`}>
+                            <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0.5'}`}>종반능력</div>
+                            <div className={`text-orange-300 font-bold ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}`}>{phaseStats?.end ?? 0}</div>
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };
@@ -457,281 +673,407 @@ const ScoreGraph: React.FC<{
     p1Percent: number; 
     p2Percent: number; 
     p1Nickname?: string; 
-    p2Nickname?: string;
-    p1Cumulative?: number;
-    p2Cumulative?: number;
-    p1Player?: PlayerForTournament | null;
-    p2Player?: PlayerForTournament | null;
+    p2Nickname?: string; 
+    p1Cumulative?: number; 
+    p2Cumulative?: number; 
+    p1Player?: PlayerForTournament | null; 
+    p2Player?: PlayerForTournament | null; 
     lastScoreIncrement?: { 
-        player1: { base: number; actual: number; isCritical: boolean } | null;
-        player2: { base: number; actual: number; isCritical: boolean } | null;
+        player1: { base: number; actual: number; isCritical: boolean } | null; 
+        player2: { base: number; actual: number; isCritical: boolean } | null; 
     } | null;
 }> = ({ p1Percent, p2Percent, p1Nickname, p2Nickname, p1Cumulative = 0, p2Cumulative = 0, p1Player, p2Player, lastScoreIncrement }) => {
-    const [p1Animations, setP1Animations] = useState<Array<{ value: number; isCritical: boolean; key: number; startX: number; targetX: number; graphRect?: DOMRect }>>([]);
-    const [p2Animations, setP2Animations] = useState<Array<{ value: number; isCritical: boolean; key: number; startX: number; targetX: number; graphRect?: DOMRect }>>([]);
-    const prevP1ValueRef = useRef<number | null>(null);
-    const prevP2ValueRef = useRef<number | null>(null);
-    const graphRef = useRef<HTMLDivElement>(null);
-    const isFirstMountRef = useRef(true);
+    const [p1Animations, setP1Animations] = useState<Array<{ value: number; isCritical: boolean; key: string }>>([]);
+    const [p2Animations, setP2Animations] = useState<Array<{ value: number; isCritical: boolean; key: string }>>([]);
+    const [p1DisplayScore, setP1DisplayScore] = useState(p1Cumulative);
+    const [p2DisplayScore, setP2DisplayScore] = useState(p2Cumulative);
+    const prevP1ValueRef = useRef<string | null>(null); // 중복 방지를 위한 키 저장
+    const prevP2ValueRef = useRef<string | null>(null); // 중복 방지를 위한 키 저장
+    const scoreBoardRef = useRef<HTMLDivElement>(null);
+    const graphContainerRef = useRef<HTMLDivElement>(null);
+    const p1GraphProfileRef = useRef<HTMLDivElement>(null); // 그래프 내부의 프로필 참조
+    const p2GraphProfileRef = useRef<HTMLDivElement>(null); // 그래프 내부의 프로필 참조
+    const isFirstMountP1Ref = useRef(true);
+    const isFirstMountP2Ref = useRef(true);
     const timeoutRefsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+    const p1AnimationFrameRef = useRef<number | null>(null);
+    const p2AnimationFrameRef = useRef<number | null>(null);
+    const p1AnimationStartRef = useRef<number | null>(null);
+    const p2AnimationStartRef = useRef<number | null>(null);
+    const lastAnimationTimeRef = useRef<{ p1: number; p2: number }>({ p1: 0, p2: 0 });
     
+    // 아바타 URL 계산
     const p1AvatarUrl = useMemo(() => p1Player ? AVATAR_POOL.find(a => a.id === p1Player.avatarId)?.url : undefined, [p1Player?.avatarId]);
     const p1BorderUrl = useMemo(() => p1Player ? BORDER_POOL.find(b => b.id === p1Player.borderId)?.url : undefined, [p1Player?.borderId]);
     const p2AvatarUrl = useMemo(() => p2Player ? AVATAR_POOL.find(a => a.id === p2Player.avatarId)?.url : undefined, [p2Player?.avatarId]);
     const p2BorderUrl = useMemo(() => p2Player ? BORDER_POOL.find(b => b.id === p2Player.borderId)?.url : undefined, [p2Player?.borderId]);
     
-    // 컴포넌트 마운트 시 이전 값 초기화 (뒤로가기 후 재진입 시 애니메이션 방지)
+    // 점수 숫자 애니메이션 (스코어보드에 더해질 때)
     useEffect(() => {
-        if (isFirstMountRef.current) {
-            if (lastScoreIncrement?.player1) {
-                prevP1ValueRef.current = lastScoreIncrement.player1.actual;
-            }
-            if (lastScoreIncrement?.player2) {
-                prevP2ValueRef.current = lastScoreIncrement.player2.actual;
-            }
-            isFirstMountRef.current = false;
+        // 초기화 시에는 즉시 설정 (애니메이션 없이)
+        if (p1AnimationStartRef.current === null) {
+            p1AnimationStartRef.current = p1Cumulative;
+            setP1DisplayScore(p1Cumulative);
+            return;
         }
-    }, []);
-    
-    // lastScoreIncrement가 변경되면 애니메이션 트리거
-    useEffect(() => {
-        // 첫 마운트 시에는 애니메이션 트리거하지 않음
-        if (isFirstMountRef.current) return;
         
-        if (lastScoreIncrement?.player1 && graphRef.current) {
-            const currentValue = lastScoreIncrement.player1.actual;
-            // 이전 값과 다르면 새로운 애니메이션 추가
-            if (prevP1ValueRef.current !== currentValue) {
-                const rect = graphRef.current.getBoundingClientRect();
-                // 흑은 왼쪽으로 이동 (그래프의 10% 위치)
-                const targetX = 10;
-                const animationKey = Date.now();
+        const duration = 500; // 0.5초 동안 증가
+        const startScore = p1AnimationStartRef.current;
+        const targetScore = p1Cumulative;
+        const difference = targetScore - startScore;
+        
+        if (Math.abs(difference) < 0.01) return;
+        
+        const startTime = Date.now();
+        
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            // easeOutCubic 함수 사용
+            const easedProgress = 1 - Math.pow(1 - progress, 3);
+            const currentScore = Math.round(startScore + difference * easedProgress);
+            
+            setP1DisplayScore(currentScore);
+            
+            if (progress < 1) {
+                p1AnimationFrameRef.current = requestAnimationFrame(animate);
+            } else {
+                setP1DisplayScore(targetScore);
+                p1AnimationStartRef.current = targetScore;
+            }
+        };
+        
+        // 기존 애니메이션 취소
+        if (p1AnimationFrameRef.current !== null) {
+            cancelAnimationFrame(p1AnimationFrameRef.current);
+        }
+        
+        animate();
+        
+        return () => {
+            if (p1AnimationFrameRef.current !== null) {
+                cancelAnimationFrame(p1AnimationFrameRef.current);
+            }
+        };
+    }, [p1Cumulative]);
+    
+    useEffect(() => {
+        // 초기화 시에는 즉시 설정 (애니메이션 없이)
+        if (p2AnimationStartRef.current === null) {
+            p2AnimationStartRef.current = p2Cumulative;
+            setP2DisplayScore(p2Cumulative);
+            return;
+        }
+        
+        const duration = 500;
+        const startScore = p2AnimationStartRef.current;
+        const targetScore = p2Cumulative;
+        const difference = targetScore - startScore;
+        
+        if (Math.abs(difference) < 0.01) return;
+        
+        const startTime = Date.now();
+        
+        const animate = () => {
+            const elapsed = Date.now() - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const easedProgress = 1 - Math.pow(1 - progress, 3);
+            const currentScore = Math.round(startScore + difference * easedProgress);
+            
+            setP2DisplayScore(currentScore);
+            
+            if (progress < 1) {
+                p2AnimationFrameRef.current = requestAnimationFrame(animate);
+            } else {
+                setP2DisplayScore(targetScore);
+                p2AnimationStartRef.current = targetScore;
+            }
+        };
+        
+        // 기존 애니메이션 취소
+        if (p2AnimationFrameRef.current !== null) {
+            cancelAnimationFrame(p2AnimationFrameRef.current);
+        }
+        
+        animate();
+        
+        return () => {
+            if (p2AnimationFrameRef.current !== null) {
+                cancelAnimationFrame(p2AnimationFrameRef.current);
+            }
+        };
+    }, [p2Cumulative]);
+    
+    // lastScoreIncrement가 변경되면 애니메이션 트리거 (스코어보드 양쪽에서 나타남)
+    useEffect(() => {
+        if (isFirstMountP1Ref.current) {
+            // 첫 마운트 시에는 현재 값 저장만 하고 애니메이션 트리거하지 않음
+            if (lastScoreIncrement?.player1) {
+                prevP1ValueRef.current = `${lastScoreIncrement.player1.actual}-${lastScoreIncrement.player1.isCritical}`;
+            }
+            isFirstMountP1Ref.current = false;
+            return;
+        }
+        
+        // lastScoreIncrement.player1이 있고, 값이 0보다 크면 애니메이션 트리거
+        // 1초마다 한 번만 트리거 (중복 방지)
+        if (lastScoreIncrement?.player1 && lastScoreIncrement.player1.actual > 0) {
+            const now = Date.now();
+            const timeSinceLastAnimation = now - lastAnimationTimeRef.current.p1;
+            
+            // 1초 이상 경과했거나, 이전 값과 다르면 새로운 애니메이션 트리거
+            const increment = lastScoreIncrement.player1.actual;
+            const isCritical = lastScoreIncrement.player1.isCritical;
+            const currentKey = `${increment}-${isCritical}`;
+            
+            if (timeSinceLastAnimation >= 1000 || prevP1ValueRef.current !== currentKey) {
+                const animationKey = `p1-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
                 const newAnimation = { 
-                    value: currentValue, 
-                    isCritical: lastScoreIncrement.player1.isCritical,
-                    key: animationKey,
-                    startX: 50, // 중앙에서 시작
-                    targetX: targetX,
-                    graphRect: rect
+                    value: increment, // 증가량 표시
+                    isCritical: isCritical,
+                    key: animationKey
                 };
                 
-                // 새로운 애니메이션을 배열에 추가
                 setP1Animations(prev => [...prev, newAnimation]);
+                prevP1ValueRef.current = currentKey;
+                lastAnimationTimeRef.current.p1 = now;
                 
-                // 3초 후 해당 애니메이션만 제거
+                // 1초 후 애니메이션 제거
                 const timeoutId = setTimeout(() => {
                     setP1Animations(prev => prev.filter(anim => anim.key !== animationKey));
-                }, 3000);
-                timeoutRefsRef.current.push(timeoutId);
+                }, 1000);
                 
-                prevP1ValueRef.current = currentValue;
+                timeoutRefsRef.current.push(timeoutId);
             }
         } else if (!lastScoreIncrement?.player1) {
-            // player1 데이터가 없으면 모든 애니메이션 제거
-            setP1Animations([]);
+            // 점수 증가가 없으면 prevP1ValueRef 초기화
+            prevP1ValueRef.current = null;
         }
-    }, [lastScoreIncrement?.player1?.actual, p1Percent]);
+    }, [lastScoreIncrement?.player1]);
     
+    // lastScoreIncrement가 변경되면 애니메이션 트리거 (스코어보드 양쪽에서 나타남)
     useEffect(() => {
-        // 첫 마운트 시에는 애니메이션 트리거하지 않음
-        if (isFirstMountRef.current) return;
+        if (isFirstMountP2Ref.current) {
+            // 첫 마운트 시에는 현재 값 저장만 하고 애니메이션 트리거하지 않음
+            if (lastScoreIncrement?.player2) {
+                prevP2ValueRef.current = `${lastScoreIncrement.player2.actual}-${lastScoreIncrement.player2.isCritical}`;
+            }
+            isFirstMountP2Ref.current = false;
+            return;
+        }
         
-        if (lastScoreIncrement?.player2 && graphRef.current) {
-            const currentValue = lastScoreIncrement.player2.actual;
-            // 이전 값과 다르면 새로운 애니메이션 추가
-            if (prevP2ValueRef.current !== currentValue) {
-                const rect = graphRef.current.getBoundingClientRect();
-                // 백은 오른쪽으로 이동 (그래프의 90% 위치)
-                const targetX = 90;
-                const animationKey = Date.now();
+        // lastScoreIncrement.player2가 있고, 값이 0보다 크면 애니메이션 트리거
+        // 1초마다 한 번만 트리거 (중복 방지)
+        if (lastScoreIncrement?.player2 && lastScoreIncrement.player2.actual > 0) {
+            const now = Date.now();
+            const timeSinceLastAnimation = now - lastAnimationTimeRef.current.p2;
+            
+            // 1초 이상 경과했거나, 이전 값과 다르면 새로운 애니메이션 트리거
+            const increment = lastScoreIncrement.player2.actual;
+            const isCritical = lastScoreIncrement.player2.isCritical;
+            const currentKey = `${increment}-${isCritical}`;
+            
+            if (timeSinceLastAnimation >= 1000 || prevP2ValueRef.current !== currentKey) {
+                const animationKey = `p2-${Date.now()}-${Math.floor(Math.random() * 1000000)}`;
                 const newAnimation = { 
-                    value: currentValue, 
-                    isCritical: lastScoreIncrement.player2.isCritical,
-                    key: animationKey,
-                    startX: 50, // 중앙에서 시작
-                    targetX: targetX,
-                    graphRect: rect
+                    value: increment, // 증가량 표시
+                    isCritical: isCritical,
+                    key: animationKey
                 };
                 
-                // 새로운 애니메이션을 배열에 추가
                 setP2Animations(prev => [...prev, newAnimation]);
+                prevP2ValueRef.current = currentKey;
+                lastAnimationTimeRef.current.p2 = now;
                 
-                // 3초 후 해당 애니메이션만 제거
+                // 1초 후 애니메이션 제거
                 const timeoutId = setTimeout(() => {
                     setP2Animations(prev => prev.filter(anim => anim.key !== animationKey));
-                }, 3000);
-                timeoutRefsRef.current.push(timeoutId);
+                }, 1000);
                 
-                prevP2ValueRef.current = currentValue;
+                timeoutRefsRef.current.push(timeoutId);
             }
         } else if (!lastScoreIncrement?.player2) {
-            // player2 데이터가 없으면 모든 애니메이션 제거
-            setP2Animations([]);
+            // 점수 증가가 없으면 prevP2ValueRef 초기화
+            prevP2ValueRef.current = null;
         }
-    }, [lastScoreIncrement?.player2?.actual, p2Percent]);
+    }, [lastScoreIncrement?.player2]);
     
     // 컴포넌트 언마운트 시 모든 timeout 정리
     useEffect(() => {
         return () => {
             timeoutRefsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
             timeoutRefsRef.current = [];
+            if (p1AnimationFrameRef.current !== null) {
+                cancelAnimationFrame(p1AnimationFrameRef.current);
+            }
+            if (p2AnimationFrameRef.current !== null) {
+                cancelAnimationFrame(p2AnimationFrameRef.current);
+            }
+        };
+    }, []);
+    
+    // 공유 애니메이션 스타일 (한 번만 추가)
+    useEffect(() => {
+        if (typeof document !== 'undefined' && !document.getElementById('score-popup-animation')) {
+            const style = document.createElement('style');
+            style.id = 'score-popup-animation';
+            style.textContent = `
+                @keyframes scorePopUp {
+                    0% {
+                        opacity: 0;
+                        transform: translateY(-50%) translateY(-10px) scale(0.8);
+                    }
+                    20% {
+                        opacity: 1;
+                        transform: translateY(-50%) translateY(0) scale(1.1);
+                    }
+                    80% {
+                        opacity: 1;
+                        transform: translateY(-50%) translateY(0) scale(1);
+                    }
+                    100% {
+                        opacity: 0;
+                        transform: translateY(-50%) translateY(-10px) scale(0.8);
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        return () => {
+            // 컴포넌트 언마운트 시 스타일 제거하지 않음 (다른 인스턴스에서 사용할 수 있음)
         };
     }, []);
     
     return (
-        <div>
-            {/* 플레이어 프로필 (왼쪽: 흑, 오른쪽: 백) */}
-            <div className="flex justify-between items-center mb-2 px-1">
-                <div className="flex items-center gap-2 flex-1 min-w-0">
-                    {p1Player && (
-                        <>
-                            <Avatar userId={p1Player.id} userName={p1Nickname || ''} avatarUrl={p1AvatarUrl} borderUrl={p1BorderUrl} size={32} />
-                            <div className="min-w-0 flex-1">
-                                <div className="text-xs font-bold text-gray-200 truncate">흑: {p1Nickname}</div>
-                            </div>
-                        </>
-                    )}
-                </div>
-                <div className="flex items-center gap-2 flex-1 min-w-0 justify-end">
-                    {p2Player && (
-                        <>
-                            <div className="min-w-0 flex-1 text-right">
-                                <div className="text-xs font-bold text-gray-200 truncate">백: {p2Nickname}</div>
-                            </div>
-                            <Avatar userId={p2Player.id} userName={p2Nickname || ''} avatarUrl={p2AvatarUrl} borderUrl={p2BorderUrl} size={32} />
-                        </>
-                    )}
-                </div>
-            </div>
-            
-            <div className="relative">
-                <div className="flex justify-between text-xs px-1 mb-0.5 font-bold">
-                    <span className="text-gray-300">{p1Percent.toFixed(1)}% ({Math.round(p1Cumulative)}점)</span>
-                    <span className="text-gray-300">{p2Percent.toFixed(1)}% ({Math.round(p2Cumulative)}점)</span>
-                </div>
-                <div className="relative" style={{ paddingTop: '40px' }}>
-                    <div ref={graphRef} className="flex w-full h-3 bg-gray-700 rounded-full overflow-hidden border-2 border-black/30 relative">
-                        <div className="bg-black transition-all duration-500 ease-in-out" style={{ width: `${p1Percent}%` }}></div>
-                        <div className="bg-white transition-all duration-500 ease-in-out" style={{ width: `${p2Percent}%` }}></div>
-                        <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-gray-400/50" title="중앙"></div>
+        <div ref={graphContainerRef} className="relative w-full">
+            {/* 프로필과 스코어 보드 */}
+            <div className="relative mb-3">
+                {/* 양쪽 끝 프로필과 중앙 스코어 보드 */}
+                <div className="flex items-center justify-between gap-2 mb-2">
+                    {/* 왼쪽 프로필 (흑) */}
+                    <div ref={p1GraphProfileRef} className="flex items-center gap-2 flex-shrink-0">
+                        {p1Player && (
+                            <>
+                                <Avatar userId={p1Player.id} userName={p1Nickname || ''} avatarUrl={p1AvatarUrl} borderUrl={p1BorderUrl} size={40} />
+                                <div className="min-w-0">
+                                    <div className="text-xs font-bold text-gray-200 truncate">흑: {p1Nickname}</div>
+                                </div>
+                            </>
+                        )}
                     </div>
                     
-                    {/* 점수 증가 애니메이션 (각자의 진형으로 이동) - 여러 애니메이션 동시 표시 */}
-                    {p1Animations.map((animation) => (
-                        animation.graphRect && graphRef.current && (
-                            <div
-                                key={`p1-${animation.key}`}
-                                className="absolute pointer-events-none"
-                                style={{
-                                    left: `${animation.startX}%`,
-                                    top: '0px',
-                                    transform: 'translateX(-50%)',
-                                    animation: `slideToLeft 3s ease-out forwards`,
-                                    zIndex: 99999,
-                                    '--target-x': `${animation.targetX}%`,
-                                } as React.CSSProperties & { '--target-x': string }}
-                            >
-                                <div className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${
-                                    animation.isCritical 
-                                        ? 'bg-black border-2 border-yellow-400 shadow-lg shadow-yellow-500/50' 
-                                        : 'bg-black border-2 border-gray-600 shadow-lg'
-                                }`}>
-                                    <span className={`font-bold ${
-                                        animation.isCritical 
-                                            ? 'text-yellow-300 text-xl animate-pulse' 
-                                            : 'text-white text-lg'
-                                    }`}>
-                                        {animation.isCritical ? `+${Math.round(animation.value)}! ⚡` : `+${Math.round(animation.value)}`}
-                                    </span>
+                    {/* 중앙 스코어 보드 */}
+                    <div className="flex-1 flex justify-center items-center min-w-0 mx-2 relative" style={{ minHeight: '60px' }}>
+                        <div 
+                            ref={scoreBoardRef}
+                            className="bg-gray-900/95 border-2 border-yellow-500/50 rounded-lg px-4 py-2 shadow-lg shadow-yellow-500/30 relative z-20"
+                            style={{ overflow: 'visible' }}
+                        >
+                            <div className="flex items-center gap-4">
+                                {/* 플레이어 1 점수 */}
+                                <div className="text-center min-w-[70px]" data-player="p1">
+                                    <div className="text-xs text-gray-400 mb-0.5">흑</div>
+                                    <div className="text-lg font-bold text-white">
+                                        <span className="tabular-nums">{Math.round(p1DisplayScore)}</span>
+                                        <span className="text-xs text-gray-400 ml-1">({p1Percent.toFixed(1)}%)</span>
+                                    </div>
+                                </div>
+                                
+                                {/* 구분선 */}
+                                <div className="w-px h-8 bg-gray-600"></div>
+                                
+                                {/* 플레이어 2 점수 */}
+                                <div className="text-center min-w-[70px]" data-player="p2">
+                                    <div className="text-xs text-gray-400 mb-0.5">백</div>
+                                    <div className="text-lg font-bold text-white">
+                                        <span className="tabular-nums">{Math.round(p2DisplayScore)}</span>
+                                        <span className="text-xs text-gray-400 ml-1">({p2Percent.toFixed(1)}%)</span>
+                                    </div>
                                 </div>
                             </div>
-                        )
-                    ))}
+                            
+                            {/* 점수 상승 애니메이션 (스코어보드 왼쪽) */}
+                            {p1Animations.map((animation) => (
+                                <div
+                                    key={`p1-${animation.key}`}
+                                    className="absolute pointer-events-none z-[15] whitespace-nowrap"
+                                    style={{
+                                        right: '100%',
+                                        marginRight: '8px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        animation: 'scorePopUp 1s ease-out forwards',
+                                    }}
+                                >
+                                    <div className={`px-2 py-1 rounded-lg ${
+                                        animation.isCritical 
+                                            ? 'bg-black border-2 border-yellow-400 shadow-lg shadow-yellow-500/50' 
+                                            : 'bg-black border-2 border-gray-600 shadow-lg'
+                                    }`}>
+                                        <span className={`font-bold text-sm ${
+                                            animation.isCritical 
+                                                ? 'text-yellow-300 animate-pulse' 
+                                                : 'text-white'
+                                        }`}>
+                                            {animation.isCritical ? `+${Math.round(animation.value)}!` : `+${Math.round(animation.value)}`}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                            
+                            {/* 점수 상승 애니메이션 (스코어보드 오른쪽) */}
+                            {p2Animations.map((animation) => (
+                                <div
+                                    key={`p2-${animation.key}`}
+                                    className="absolute pointer-events-none z-[15] whitespace-nowrap"
+                                    style={{
+                                        left: '100%',
+                                        marginLeft: '8px',
+                                        top: '50%',
+                                        transform: 'translateY(-50%)',
+                                        animation: 'scorePopUp 1s ease-out forwards',
+                                    }}
+                                >
+                                    <div className={`px-2 py-1 rounded-lg ${
+                                        animation.isCritical 
+                                            ? 'bg-white border-2 border-red-500 shadow-lg shadow-red-500/50' 
+                                            : 'bg-white border-2 border-gray-400 shadow-lg'
+                                    }`}>
+                                        <span className={`font-bold text-sm ${
+                                            animation.isCritical 
+                                                ? 'text-red-600 animate-pulse' 
+                                                : 'text-black'
+                                        }`}>
+                                            {animation.isCritical ? `+${Math.round(animation.value)}!` : `+${Math.round(animation.value)}`}
+                                        </span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
                     
-                    {p2Animations.map((animation) => (
-                        animation.graphRect && graphRef.current && (
-                            <div
-                                key={`p2-${animation.key}`}
-                                className="absolute pointer-events-none"
-                                style={{
-                                    left: `${animation.startX}%`,
-                                    top: '0px',
-                                    transform: 'translateX(-50%)',
-                                    animation: `slideToRight 3s ease-out forwards`,
-                                    zIndex: 99999,
-                                    '--target-x': `${animation.targetX}%`,
-                                } as React.CSSProperties & { '--target-x': string }}
-                            >
-                                <div className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${
-                                    animation.isCritical 
-                                        ? 'bg-white border-2 border-red-500 shadow-lg shadow-red-500/50' 
-                                        : 'bg-white border-2 border-gray-400 shadow-lg'
-                                }`}>
-                                    <span className={`font-bold ${
-                                        animation.isCritical 
-                                            ? 'text-red-600 text-xl animate-pulse' 
-                                            : 'text-black text-lg'
-                                    }`}>
-                                        {animation.isCritical ? `+${Math.round(animation.value)}! ⚡` : `+${Math.round(animation.value)}`}
-                                    </span>
+                    {/* 오른쪽 프로필 (백) */}
+                    <div ref={p2GraphProfileRef} className="flex items-center gap-2 flex-shrink-0">
+                        {p2Player && (
+                            <>
+                                <div className="min-w-0 text-right">
+                                    <div className="text-xs font-bold text-gray-200 truncate">백: {p2Nickname}</div>
                                 </div>
-                            </div>
-                        )
-                    ))}
+                                <Avatar userId={p2Player.id} userName={p2Nickname || ''} avatarUrl={p2AvatarUrl} borderUrl={p2BorderUrl} size={40} />
+                            </>
+                        )}
+                    </div>
+                </div>
+                
+                {/* 그래프 바 */}
+                <div className="flex w-full h-3 bg-gray-700 rounded-full overflow-hidden border-2 border-black/30 relative">
+                    <div className="bg-black transition-all duration-500 ease-in-out" style={{ width: `${p1Percent}%` }}></div>
+                    <div className="bg-white transition-all duration-500 ease-in-out" style={{ width: `${p2Percent}%` }}></div>
+                    <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-gray-400/50" title="중앙"></div>
                 </div>
             </div>
             
-            <style>{`
-                @keyframes slideToLeft {
-                    0% {
-                        opacity: 1;
-                        transform: translateX(-50%) translateY(0) scale(1);
-                        filter: brightness(1);
-                    }
-                    20% {
-                        opacity: 1;
-                        transform: translateX(-50%) translateY(-15px) scale(1.15);
-                        filter: brightness(1.1);
-                    }
-                    60% {
-                        opacity: 1;
-                        left: var(--target-x);
-                        transform: translateX(-50%) translateY(-20px) scale(1.1);
-                        filter: brightness(1.05);
-                    }
-                    100% {
-                        opacity: 0;
-                        left: var(--target-x);
-                        transform: translateX(-50%) translateY(-30px) scale(0.8);
-                        filter: brightness(0.7);
-                    }
-                }
-                
-                @keyframes slideToRight {
-                    0% {
-                        opacity: 1;
-                        transform: translateX(-50%) translateY(0) scale(1);
-                        filter: brightness(1);
-                    }
-                    20% {
-                        opacity: 1;
-                        transform: translateX(-50%) translateY(-15px) scale(1.15);
-                        filter: brightness(1.1);
-                    }
-                    60% {
-                        opacity: 1;
-                        left: var(--target-x);
-                        transform: translateX(-50%) translateY(-20px) scale(1.1);
-                        filter: brightness(1.05);
-                    }
-                    100% {
-                        opacity: 0;
-                        left: var(--target-x);
-                        transform: translateX(-50%) translateY(-30px) scale(0.8);
-                        filter: brightness(0.7);
-                    }
-                }
-            `}</style>
         </div>
     );
 };
@@ -808,12 +1150,16 @@ const CommentaryPanel: React.FC<{ commentary: CommentaryLine[], isSimulating: bo
 };
 
 const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser: UserWithStatus; onAction: (action: ServerAction) => void }> = ({ tournamentState, currentUser, onAction }) => {
-    const isTournamentFullyComplete = tournamentState.status === 'complete';
+    const { type, rounds } = tournamentState;
+    
+    // 모든 경기가 완료되었는지 확인
+    const allMatchesFinished = rounds.every(r => r.matches.every(m => m.isFinished));
+    
+    // 토너먼트가 완전히 완료되었는지 확인 (status가 complete이거나, 모든 경기가 완료된 경우)
+    const isTournamentFullyComplete = tournamentState.status === 'complete' || (allMatchesFinished && tournamentState.status !== 'round_in_progress');
     const isUserEliminated = tournamentState.status === 'eliminated';
     const isInProgress = tournamentState.status === 'round_in_progress' || tournamentState.status === 'bracket_ready';
     const isRoundComplete = tournamentState.status === 'round_complete';
-
-    const { type, rounds } = tournamentState;
     const definition = TOURNAMENT_DEFINITIONS[type];
     const rewardInfo = BASE_TOURNAMENT_REWARDS[type];
     
@@ -1096,8 +1442,8 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
                     </>
                 )}
                 
-                {/* 경기 진행 중 또는 다음경기 버튼이 있을 때 안내 메시지 */}
-                {(isInProgress || isRoundComplete) && (
+                {/* 경기 진행 중 또는 다음경기 버튼이 있을 때 안내 메시지 (보상 수령 전에만 표시) */}
+                {(isInProgress || isRoundComplete) && !isClaimed && !((isTournamentFullyComplete || isUserEliminated) && reward) && (
                     <div className="w-full bg-blue-900/30 text-blue-300 py-1.5 px-3 rounded-lg font-semibold text-xs text-center border border-blue-700/50">
                         모든 경기 완료 후 보상수령
                     </div>
@@ -1454,9 +1800,9 @@ const RoundRobinDisplay: React.FC<{
 
     // 현재 표시할 회차 결정
     // 동네바둑리그: 
-    // - round_complete 상태일 때는 완료된 회차를 표시 (1회차 완료 후 1회차 표시)
-    // - bracket_ready 상태일 때는 현재 회차를 표시 (다음 경기 버튼을 눌러 2회차로 넘어간 후 2회차 표시)
-    // - complete 상태일 때는 마지막 회차(5회차)를 표시 (경기 종료 후 재입장 시)
+    // - round_complete 상태일 때는 완료된 회차를 표시 (1회차 완료 후 1회차 표시) - 경기 종료 화면 유지
+    // - bracket_ready 상태일 때는 현재 회차를 표시 (다음 경기 버튼을 눌러 2회차로 넘어간 후 2회차 표시) - 다음 회차 대진표로 이동
+    // - complete 상태일 때는 마지막 회차(5회차)를 표시 (경기 종료 후 재입장 시) - 마지막 경기 종료 화면 유지
     const roundForDisplay = status === 'complete' ? 5 : (currentRoundRobinRound || 1);
     
     // rounds 배열에서 선택된 회차의 라운드 찾기 (name이 "1회차", "2회차" 등인 라운드)
@@ -1529,8 +1875,9 @@ const RoundRobinDisplay: React.FC<{
                              const stats = playerStats[player.id];
                              const isCurrentUser = player.id === currentUser.id;
                              const isTopThree = index < 3;
-                             const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === player.avatarId)?.url, [player.avatarId]);
-                             const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === player.borderId)?.url, [player.borderId]);
+                             // hooks는 map 내부에서 호출할 수 없으므로 일반 변수로 계산
+                             const avatarUrl = AVATAR_POOL.find(a => a.id === player.avatarId)?.url;
+                             const borderUrl = BORDER_POOL.find(b => b.id === player.borderId)?.url;
                              const isWinner = status === 'complete' && index === 0;
                              
                              return (
@@ -1952,8 +2299,11 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     const [showConditionPotionModal, setShowConditionPotionModal] = useState(false);
     const [isSimulationHelpOpen, setIsSimulationHelpOpen] = useState(false);
     const prevStatusRef = useRef(tournament.status);
+    const initialMatchPlayersSetRef = useRef(false);
     const [nextRoundTrigger, setNextRoundTrigger] = useState(0);
     const [sgfViewerSize, setSgfViewerSize] = useState<25 | 50>(50); // 모바일에서 SGF 뷰어 크기 (25=50% 표시, 50=100% 표시)
+    const p1ProfileRef = useRef<HTMLDivElement>(null);
+    const p2ProfileRef = useRef<HTMLDivElement>(null);
     
     // 클라이언트에서 시뮬레이션 실행
     const simulatedTournament = useTournamentSimulation(tournament, currentUser);
@@ -1984,22 +2334,160 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                 setLastUserMatchSgfIndex(lastFinishedUserMatch.sgfFileIndex);
             }
         } else if (status === 'bracket_ready') {
-            // bracket_ready 상태일 때는 다음 회차로 넘어간 상태이므로 SGF 인덱스 초기화 (빈 바둑판 표시)
-            // 동네바둑리그에서 prevStatus가 round_complete였던 경우는 다음 경기 버튼을 눌러 넘어온 상태
-            setLastUserMatchSgfIndex(null);
-        } else if (status === 'round_in_progress' && tournament.timeElapsed === 1) {
-             const matchInfo = tournament.currentSimulatingMatch;
-            if (matchInfo) {
-                const match = safeRounds[matchInfo.roundIndex].matches[matchInfo.matchIndex];
-                const p1 = tournament.players.find(p => p.id === match.players[0]?.id) || null;
-                const p2 = tournament.players.find(p => p.id === match.players[1]?.id) || null;
-                setInitialMatchPlayers({
-                    p1: p1 ? JSON.parse(JSON.stringify(p1)) : null,
-                    p2: p2 ? JSON.parse(JSON.stringify(p2)) : null,
-                });
+            // bracket_ready 상태일 때는 다음 경기가 있으면 준비 상태, 없으면 마지막 경기 완료 상태
+            // 다음 경기가 있으면 SGF 인덱스 초기화 (빈 바둑판 표시)
+            // 다음 경기가 없으면 (마지막 경기였으면) 마지막 완료된 경기의 SGF를 유지
+            const hasNextMatch = safeRounds.some(r => 
+                r.matches.some(m => m.isUserMatch && !m.isFinished)
+            );
+            if (!hasNextMatch) {
+                // 마지막 경기였으면 완료된 경기 화면 유지
+                const lastFinishedUserMatch = [...safeRounds].reverse().flatMap(r => r.matches).find(m => m.isUserMatch && m.isFinished);
+                if (lastFinishedUserMatch && lastFinishedUserMatch.sgfFileIndex !== undefined) {
+                    setLastUserMatchSgfIndex(lastFinishedUserMatch.sgfFileIndex);
+                }
+            } else {
+                // 다음 경기가 있으면 SGF 인덱스 초기화
+                setLastUserMatchSgfIndex(null);
             }
-        } else if (status !== 'round_in_progress') {
-            setInitialMatchPlayers({ p1: null, p2: null });
+        } else if (status === 'round_in_progress') {
+            // 경기가 시작되면 초기 플레이어 상태 저장
+            // timeElapsed가 0이거나 1일 때, 또는 이전 상태가 round_in_progress가 아니었을 때
+            const matchInfo = tournament.currentSimulatingMatch;
+            const isNewMatch = prevStatus !== 'round_in_progress';
+            const isEarlyTime = tournament.timeElapsed === 0 || tournament.timeElapsed === 1;
+            
+            if (matchInfo && (isNewMatch || (isEarlyTime && !initialMatchPlayersSetRef.current))) {
+                const match = safeRounds[matchInfo.roundIndex]?.matches[matchInfo.matchIndex];
+                if (match) {
+                    const p1 = tournament.players.find(p => p.id === match.players[0]?.id) || null;
+                    const p2 = tournament.players.find(p => p.id === match.players[1]?.id) || null;
+                    // originalStats를 포함한 깊은 복사로 초기 상태 저장
+                    // originalStats가 있으면 그것을 사용, 없으면 현재 stats 사용
+                    if (p1 || p2) {
+                        const createPlayerCopy = (player: PlayerForTournament): PlayerForTournament => {
+                            const statsToUse = player.originalStats || player.stats;
+                            return {
+                                ...player,
+                                stats: statsToUse ? { ...statsToUse } : player.stats,
+                                originalStats: player.originalStats ? { ...player.originalStats } : (player.stats ? { ...player.stats } : undefined)
+                            };
+                        };
+                        
+                        setInitialMatchPlayers({
+                            p1: p1 ? createPlayerCopy(p1) : null,
+                            p2: p2 ? createPlayerCopy(p2) : null,
+                        });
+                        initialMatchPlayersSetRef.current = true;
+                    }
+                }
+            }
+        } else {
+            // status가 'round_in_progress'가 아닌 다른 상태일 때
+            // round_complete 상태일 때는 마지막 완료된 경기의 선수 정보를 유지
+            if (tournament.status === 'round_complete' || tournament.status === 'complete' || tournament.status === 'eliminated') {
+                // 마지막 완료된 경기의 선수 정보를 찾아서 유지
+                const lastFinishedUserMatch = [...safeRounds].reverse().flatMap(r => r.matches).find(m => m.isUserMatch && m.isFinished);
+                if (lastFinishedUserMatch) {
+                    const p1 = tournament.players.find(p => p.id === lastFinishedUserMatch.players[0]?.id) || null;
+                    const p2 = tournament.players.find(p => p.id === lastFinishedUserMatch.players[1]?.id) || null;
+                    if (p1 || p2) {
+                        const createPlayerCopy = (player: PlayerForTournament): PlayerForTournament => {
+                            const statsToUse = player.originalStats || player.stats;
+                            return {
+                                ...player,
+                                stats: statsToUse ? { ...statsToUse } : player.stats,
+                                originalStats: player.originalStats ? { ...player.originalStats } : (player.stats ? { ...player.stats } : undefined)
+                            };
+                        };
+                        
+                        // 이미 설정되어 있지 않거나 선수가 변경된 경우에만 업데이트
+                        const shouldUpdate = !initialMatchPlayersSetRef.current || 
+                            initialMatchPlayers.p1?.id !== p1?.id || 
+                            initialMatchPlayers.p2?.id !== p2?.id;
+                        
+                        if (shouldUpdate) {
+                            setInitialMatchPlayers({
+                                p1: p1 ? createPlayerCopy(p1) : null,
+                                p2: p2 ? createPlayerCopy(p2) : null,
+                            });
+                            initialMatchPlayersSetRef.current = true;
+                        }
+                    }
+                }
+            } else if (tournament.status === 'bracket_ready') {
+                // bracket_ready 상태일 때는 다음 경기의 선수 정보를 설정
+                // 동네바둑리그의 경우 현재 회차의 다음 경기를 찾기
+                let nextMatch: Match | undefined = undefined;
+                if (tournament.type === 'neighborhood') {
+                    const currentRound = tournament.currentRoundRobinRound || 1;
+                    const currentRoundObj = safeRounds.find(r => r.name === `${currentRound}회차`);
+                    if (currentRoundObj) {
+                        nextMatch = currentRoundObj.matches.find(m => m.isUserMatch && !m.isFinished);
+                    }
+                } else {
+                    // 전국/월드챔피언십: 다음 경기 찾기
+                    nextMatch = safeRounds.flatMap(r => r.matches).find(m => m.isUserMatch && !m.isFinished);
+                }
+                
+                if (nextMatch) {
+                    const p1 = tournament.players.find(p => p.id === nextMatch.players[0]?.id) || null;
+                    const p2 = tournament.players.find(p => p.id === nextMatch.players[1]?.id) || null;
+                    if (p1 || p2) {
+                        const createPlayerCopy = (player: PlayerForTournament): PlayerForTournament => {
+                            const statsToUse = player.originalStats || player.stats;
+                            return {
+                                ...player,
+                                stats: statsToUse ? { ...statsToUse } : player.stats,
+                                originalStats: player.originalStats ? { ...player.originalStats } : (player.stats ? { ...player.stats } : undefined)
+                            };
+                        };
+                        
+                        const shouldUpdate = !initialMatchPlayersSetRef.current || 
+                            initialMatchPlayers.p1?.id !== p1?.id || 
+                            initialMatchPlayers.p2?.id !== p2?.id;
+                        
+                        if (shouldUpdate) {
+                            setInitialMatchPlayers({
+                                p1: p1 ? createPlayerCopy(p1) : null,
+                                p2: p2 ? createPlayerCopy(p2) : null,
+                            });
+                            initialMatchPlayersSetRef.current = true;
+                        }
+                    }
+                } else {
+                    // 다음 경기가 없으면 마지막 완료된 경기의 선수 정보 유지
+                    const lastFinishedUserMatch = [...safeRounds].reverse().flatMap(r => r.matches).find(m => m.isUserMatch && m.isFinished);
+                    if (lastFinishedUserMatch) {
+                        const p1 = tournament.players.find(p => p.id === lastFinishedUserMatch.players[0]?.id) || null;
+                        const p2 = tournament.players.find(p => p.id === lastFinishedUserMatch.players[1]?.id) || null;
+                        if (p1 || p2) {
+                            const createPlayerCopy = (player: PlayerForTournament): PlayerForTournament => {
+                                const statsToUse = player.originalStats || player.stats;
+                                return {
+                                    ...player,
+                                    stats: statsToUse ? { ...statsToUse } : player.stats,
+                                    originalStats: player.originalStats ? { ...player.originalStats } : (player.stats ? { ...player.stats } : undefined)
+                                };
+                            };
+                            
+                            const shouldUpdate = !initialMatchPlayersSetRef.current || 
+                                initialMatchPlayers.p1?.id !== p1?.id || 
+                                initialMatchPlayers.p2?.id !== p2?.id;
+                            
+                            if (shouldUpdate) {
+                                setInitialMatchPlayers({
+                                    p1: p1 ? createPlayerCopy(p1) : null,
+                                    p2: p2 ? createPlayerCopy(p2) : null,
+                                });
+                                initialMatchPlayersSetRef.current = true;
+                            }
+                        }
+                    } else {
+                        // 완료된 경기도 없으면 초기화하지 않음 (이전 정보 유지)
+                    }
+                }
+            }
         }
     
         prevStatusRef.current = status;
@@ -2034,24 +2522,75 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         return [...safeRounds].reverse().flatMap(r => r.matches).find(m => m.isUserMatch && m.isFinished);
     }, [safeRounds]);
     
-    // 동네바둑리그에서 round_complete 상태일 때는 마지막 완료된 경기를 표시
+    // 경기 종료 화면 유지 로직
     const matchForDisplay = useMemo(() => {
         if (isSimulating) {
             return currentSimMatch;
         }
         
-        // 동네바둑리그에서 round_complete 상태일 때는 마지막 완료된 경기를 표시
-        // bracket_ready 상태일 때는 다음 회차로 넘어간 상태이므로 다음 경기를 표시
-        if (tournament.type === 'neighborhood' && tournament.status === 'round_complete' && lastFinishedUserMatch) {
-            return lastFinishedUserMatch;
+        // round_complete 상태일 때는 마지막 완료된 경기 화면을 그대로 유지
+        // (전국바둑대회, 월드챔피언십, 동네바둑리그 모두 동일하게 처리)
+        if (tournament.status === 'round_complete') {
+            // lastFinishedUserMatch가 있으면 우선적으로 사용
+            if (lastFinishedUserMatch) {
+                return lastFinishedUserMatch;
+            }
+            // lastFinishedUserMatch가 없으면 완료된 경기 중 첫 번째 찾기
+            const finishedMatch = [...safeRounds].reverse().flatMap(r => r.matches).find(m => m.isUserMatch && m.isFinished);
+            if (finishedMatch) {
+                return finishedMatch;
+            }
+        }
+        
+        // bracket_ready 상태일 때는 다음 경기를 표시 (경기 시작 버튼이 표시됨)
+        // 동네바둑리그의 경우 다음 회차의 경기를 표시해야 함
+        if (tournament.status === 'bracket_ready') {
+            // 동네바둑리그: 현재 회차의 다음 경기를 찾기
+            if (tournament.type === 'neighborhood') {
+                const currentRound = tournament.currentRoundRobinRound || 1;
+                const currentRoundObj = safeRounds.find(r => r.name === `${currentRound}회차`);
+                if (currentRoundObj) {
+                    const nextMatch = currentRoundObj.matches.find(m => m.isUserMatch && !m.isFinished);
+                    if (nextMatch) {
+                        return nextMatch;
+                    }
+                }
+            } else {
+                // 전국/월드챔피언십: 다음 경기 찾기
+                const nextMatch = safeRounds.flatMap(r => r.matches).find(m => m.isUserMatch && !m.isFinished);
+                if (nextMatch) {
+                    return nextMatch;
+                }
+            }
+            // 다음 경기가 없으면 마지막 완료된 경기 표시
+            if (lastFinishedUserMatch) {
+                return lastFinishedUserMatch;
+            }
+            // 완료된 경기 찾기
+            const finishedMatch = [...safeRounds].reverse().flatMap(r => r.matches).find(m => m.isUserMatch && m.isFinished);
+            if (finishedMatch) {
+                return finishedMatch;
+            }
         }
         
         // 그 외의 경우: 다음 경기, 마지막 완료된 경기, 또는 첫 경기 순서로 표시
-        return safeRounds.flatMap(r => r.matches).find(m => m.isUserMatch && !m.isFinished) 
-            || lastFinishedUserMatch 
-            || safeRounds.flatMap(r => r.matches).find(m => m.isUserMatch) 
-            || safeRounds[0]?.matches[0];
-    }, [isSimulating, currentSimMatch, tournament.type, tournament.status, safeRounds, lastFinishedUserMatch]);
+        const nextMatch = safeRounds.flatMap(r => r.matches).find(m => m.isUserMatch && !m.isFinished);
+        if (nextMatch) {
+            return nextMatch;
+        }
+        if (lastFinishedUserMatch) {
+            return lastFinishedUserMatch;
+        }
+        const anyFinishedMatch = [...safeRounds].reverse().flatMap(r => r.matches).find(m => m.isUserMatch && m.isFinished);
+        if (anyFinishedMatch) {
+            return anyFinishedMatch;
+        }
+        const anyUserMatch = safeRounds.flatMap(r => r.matches).find(m => m.isUserMatch);
+        if (anyUserMatch) {
+            return anyUserMatch;
+        }
+        return safeRounds[0]?.matches[0] || null;
+    }, [isSimulating, currentSimMatch, tournament.status, safeRounds, lastFinishedUserMatch]);
     
     // 유저의 다음 경기 찾기 (경기 시작 전 상태 확인용)
     const upcomingUserMatch = useMemo(() => {
@@ -2237,14 +2776,15 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
             const hasNextRound = currentRound < 5;
             
             // round_complete 상태는 현재 회차의 모든 경기가 완료된 상태이므로, 다음 회차가 있으면 "다음경기" 버튼 표시
+            // 마지막 회차(5회차)였으면 버튼을 표시하지 않음 (보상 수령만 가능)
             if (hasNextRound) {
                 return (
                     <>
                         <Button 
                             onClick={async () => {
-                                console.log('[TournamentBracket] 다음경기 버튼 클릭');
                                 try {
                                     await onStartNextRound();
+                                    // 다음 회차로 넘어갔으므로 bracket_ready 상태가 되고 "경기 시작" 버튼이 표시됨
                                 } catch (error) {
                                     console.error('[TournamentBracket] 다음경기 버튼 오류:', error);
                                 }
@@ -2257,6 +2797,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                     </>
                 );
             }
+            // 마지막 회차였으면 버튼을 표시하지 않음 (보상 수령만 가능)
         }
 
         // 전국바둑대회/월드챔피언십: round_complete 상태일 때 다음 라운드가 준비되면 "다음경기" 버튼 표시
@@ -2272,7 +2813,6 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                     <>
                         <Button 
                             onClick={async () => {
-                                console.log('[TournamentBracket] 다음경기 버튼 클릭 (전국바둑대회)');
                                 try {
                                     await onStartNextRound();
                                     // 다음 라운드로 넘어갔으므로 탭 변경 트리거
@@ -2371,51 +2911,64 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         <div className={`${isMobile ? 'w-full' : 'flex-1'} flex flex-col lg:flex-row gap-2 ${isMobile ? '' : 'min-h-0 overflow-hidden'}`} style={isMobile ? {} : { height: '100%', display: 'flex' }}>
             <div className={`${isMobile ? 'w-full' : 'flex-1'} flex flex-col gap-2 ${isMobile ? '' : 'min-h-0 min-w-0 overflow-hidden'}`}>
                 {/* 플레이어 프로필 섹션 */}
-                <section className={`flex-shrink-0 flex flex-row gap-1 md:gap-2 items-stretch p-1.5 md:p-2 bg-gray-800/50 rounded-lg ${isMobile ? 'mt-2 mb-2 max-h-none' : 'max-h-[280px] md:max-h-[300px]'} ${isMobile ? '' : 'overflow-hidden'}`}>
-                    <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
-                        <PlayerProfilePanel 
-                            player={p1} 
-                            initialPlayer={initialMatchPlayers.p1} 
-                            allUsers={allUsersForRanking} 
-                            currentUserId={currentUser.id} 
-                            onViewUser={onViewUser} 
-                            highlightPhase={currentPhase}
-                            isUserMatch={(currentSimMatch?.isUserMatch || (upcomingUserMatch && upcomingUserMatch.players.some(p => p?.id === p1?.id))) || false}
-                            onUseConditionPotion={() => {
-                                setShowConditionPotionModal(true);
-                            }}
-                            timeElapsed={tournament.timeElapsed}
-                            tournamentStatus={tournament.status}
-                            isMobile={isMobile}
-                        />
-                    </div>
-                    {!isMobile && (
-                        <div className="flex-shrink-0 w-32 sm:w-40 md:w-44 xl:w-52 flex flex-col items-center justify-center min-w-0">
-                            <RadarChart datasets={radarDatasets} maxStatValue={maxStatValue} size={isMobile ? 120 : undefined} />
-                            <div className="flex justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] md:text-xs mt-1">
-                                <span className="flex items-center gap-0.5"><div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-sm" style={{backgroundColor: 'rgba(59, 130, 246, 0.6)'}}></div><span className="truncate max-w-[40px] sm:max-w-none">{p1?.nickname || '선수 1'}</span></span>
-                                <span className="flex items-center gap-0.5"><div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-sm" style={{backgroundColor: 'rgba(239, 68, 68, 0.6)'}}></div><span className="truncate max-w-[40px] sm:max-w-none">{p2?.nickname || '선수 2'}</span></span>
-                            </div>
+                {matchForDisplay && (p1 || p2) ? (
+                    <section className={`flex-shrink-0 flex flex-row gap-1 md:gap-2 items-stretch p-1.5 md:p-2 bg-gray-800/50 rounded-lg ${isMobile ? 'mt-2 mb-2 max-h-none' : 'max-h-[280px] md:max-h-[300px]'} ${isMobile ? '' : 'overflow-hidden'}`}>
+                        <div ref={p1ProfileRef} className="flex-1 min-w-0 min-h-0 overflow-hidden">
+                            <PlayerProfilePanelErrorBoundary>
+                                <PlayerProfilePanel 
+                                    player={p1} 
+                                    initialPlayer={initialMatchPlayers.p1} 
+                                    allUsers={allUsersForRanking} 
+                                    currentUserId={currentUser.id} 
+                                    onViewUser={onViewUser} 
+                                    highlightPhase={currentPhase}
+                                    isUserMatch={(currentSimMatch?.isUserMatch || (upcomingUserMatch && upcomingUserMatch.players.some(p => p?.id === p1?.id))) || false}
+                                    onUseConditionPotion={() => {
+                                        setShowConditionPotionModal(true);
+                                    }}
+                                    timeElapsed={tournament.timeElapsed}
+                                    tournamentStatus={tournament.status}
+                                    isMobile={isMobile}
+                                />
+                            </PlayerProfilePanelErrorBoundary>
                         </div>
-                    )}
-                    <div className="flex-1 min-w-0 min-h-0 overflow-hidden">
-                        <PlayerProfilePanel 
-                            player={p2} 
-                            initialPlayer={initialMatchPlayers.p2} 
-                            allUsers={allUsersForRanking} 
-                            currentUserId={currentUser.id} 
-                            onViewUser={onViewUser} 
-                            highlightPhase={currentPhase}
-                            isUserMatch={(currentSimMatch?.isUserMatch || (upcomingUserMatch && upcomingUserMatch.players.some(p => p?.id === p2?.id))) || false}
-                            onUseConditionPotion={() => {
-                                setShowConditionPotionModal(true);
-                            }}
-                            timeElapsed={tournament.timeElapsed}
-                            tournamentStatus={tournament.status}
-                            isMobile={isMobile}
-                        />
-                    </div>
-                </section>
+                        {!isMobile && (
+                            <div className="flex-shrink-0 w-32 sm:w-40 md:w-44 xl:w-52 flex flex-col items-center justify-center min-w-0">
+                                <RadarChart datasets={radarDatasets} maxStatValue={maxStatValue} size={isMobile ? 120 : undefined} />
+                                <div className="flex justify-center gap-1 sm:gap-2 text-[9px] sm:text-[10px] md:text-xs mt-1">
+                                    <span className="flex items-center gap-0.5"><div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-sm" style={{backgroundColor: 'rgba(59, 130, 246, 0.6)'}}></div><span className="truncate max-w-[40px] sm:max-w-none">{p1?.nickname || '선수 1'}</span></span>
+                                    <span className="flex items-center gap-0.5"><div className="w-2 h-2 sm:w-2.5 sm:h-2.5 md:w-3 md:h-3 rounded-sm" style={{backgroundColor: 'rgba(239, 68, 68, 0.6)'}}></div><span className="truncate max-w-[40px] sm:max-w-none">{p2?.nickname || '선수 2'}</span></span>
+                                </div>
+                            </div>
+                        )}
+                        <div ref={p2ProfileRef} className="flex-1 min-w-0 min-h-0 overflow-hidden">
+                            <PlayerProfilePanelErrorBoundary>
+                                <PlayerProfilePanel 
+                                    player={p2} 
+                                    initialPlayer={initialMatchPlayers.p2} 
+                                    allUsers={allUsersForRanking} 
+                                    currentUserId={currentUser.id} 
+                                    onViewUser={onViewUser} 
+                                    highlightPhase={currentPhase}
+                                    isUserMatch={(currentSimMatch?.isUserMatch || (upcomingUserMatch && upcomingUserMatch.players.some(p => p?.id === p2?.id))) || false}
+                                    onUseConditionPotion={() => {
+                                        setShowConditionPotionModal(true);
+                                    }}
+                                    timeElapsed={tournament.timeElapsed}
+                                    tournamentStatus={tournament.status}
+                                    isMobile={isMobile}
+                                />
+                            </PlayerProfilePanelErrorBoundary>
+                        </div>
+                    </section>
+                ) : (
+                    // matchForDisplay가 null이거나 플레이어가 없는 경우 로딩 화면 표시
+                    <section className={`flex-shrink-0 flex flex-row gap-1 md:gap-2 items-stretch p-1.5 md:p-2 bg-gray-800/50 rounded-lg ${isMobile ? 'mt-2 mb-2 max-h-none' : 'max-h-[280px] md:max-h-[300px]'} ${isMobile ? '' : 'overflow-hidden'}`}>
+                        <div className="flex-1 flex items-center justify-center text-gray-400">
+                            경기 정보를 불러오는 중...
+                        </div>
+                    </section>
+                )}
                 
                 {/* SGF뷰어 및 중계패널 섹션 */}
                 <div className={`${isMobile ? 'w-full mt-4' : 'flex-1'} flex ${isMobile ? 'flex-col' : 'flex-row'} gap-2 ${isMobile ? '' : 'min-h-0 max-h-full overflow-hidden'}`}>
@@ -2450,23 +3003,30 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                                 </div>
                             )}
                             <SgfViewer 
-                                timeElapsed={isSimulating ? tournament.timeElapsed : 0} 
+                                timeElapsed={
+                                    isSimulating 
+                                        ? (displayTournament.timeElapsed || 0)
+                                        : (tournament.status === 'round_complete' || tournament.status === 'complete' || tournament.status === 'eliminated')
+                                            ? 50 // 경기 종료 후에는 마지막 시간(50초)으로 고정하여 모든 수 표시
+                                            : 0
+                                } 
                                 fileIndex={
                                     isSimulating 
                                         ? currentSimMatch?.sgfFileIndex 
                                         : (() => {
-                                            // 동네바둑리그에서 round_complete 상태일 때는 마지막 완료된 경기의 SGF 표시
-                                            // bracket_ready 상태일 때는 다음 회차로 넘어간 상태이므로 빈 바둑판 표시
-                                            if (tournament.type === 'neighborhood') {
-                                                if (tournament.status === 'round_complete') {
-                                                    return lastUserMatchSgfIndex !== null ? lastUserMatchSgfIndex : (matchForDisplay?.sgfFileIndex !== undefined ? matchForDisplay.sgfFileIndex : null);
-                                                } else if (tournament.status === 'bracket_ready') {
-                                                    // 다음 회차 준비 상태이므로 빈 바둑판 표시
-                                                    return null;
-                                                }
+                                            // round_complete 상태일 때는 마지막 완료된 경기의 SGF 표시 (경기 종료 화면 유지)
+                                            if (tournament.status === 'round_complete') {
+                                                return lastUserMatchSgfIndex !== null ? lastUserMatchSgfIndex : (matchForDisplay?.sgfFileIndex !== undefined ? matchForDisplay.sgfFileIndex : null);
                                             }
-                                            // 경기 시작 전에는 빈 바둑판
-                                            if (tournament.status === 'bracket_ready' && !upcomingUserMatch?.sgfFileIndex) {
+                                            // bracket_ready 상태일 때는 다음 경기가 있으면 그 경기의 SGF, 없으면 빈 바둑판 또는 마지막 완료된 경기
+                                            if (tournament.status === 'bracket_ready') {
+                                                if (upcomingUserMatch?.sgfFileIndex !== undefined) {
+                                                    return upcomingUserMatch.sgfFileIndex;
+                                                }
+                                                // 다음 경기가 없으면 (마지막 경기였으면) 마지막 완료된 경기의 SGF 표시
+                                                if (lastUserMatchSgfIndex !== null) {
+                                                    return lastUserMatchSgfIndex;
+                                                }
                                                 return null;
                                             }
                                             // 그 외의 경우: 마지막 완료된 경기 또는 다음 경기

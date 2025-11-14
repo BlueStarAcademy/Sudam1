@@ -307,8 +307,10 @@ const startServer = async () => {
                 
                 // 매일 0시에 토너먼트 상태 자동 리셋 확인 (processDailyQuestReset에서 처리되지만, 
                 // 메인 루프에서도 날짜 변경 시 체크하여 오프라인 사용자도 리셋되도록 보장)
-                const kstNowForReset = getKSTDate(now);
-                const isMidnightForReset = kstNowForReset.getUTCHours() === 0 && kstNowForReset.getUTCMinutes() < 5;
+                const { getKSTHours, getKSTMinutes } = await import('../utils/timeUtils.js');
+                const kstHoursForReset = getKSTHours(now);
+                const kstMinutesForReset = getKSTMinutes(now);
+                const isMidnightForReset = kstHoursForReset === 0 && kstMinutesForReset < 5;
                 
                 for (const user of allUsers) {
                     let updatedUser = user;
@@ -321,9 +323,16 @@ const startServer = async () => {
                     updatedUser = await regenerateActionPoints(updatedUser);
                     updatedUser = processSinglePlayerMissions(updatedUser);
                     
-                    // 봇의 리그 점수 업데이트 (하루에 한번)
-                    const { updateBotLeagueScores } = await import('./scheduledTasks.js');
-                    updatedUser = await updateBotLeagueScores(updatedUser);
+                    // 봇의 리그 점수 업데이트 (하루에 한번, 단 월요일 0시는 제외 - processWeeklyResetAndRematch에서 처리)
+                    const { getKSTDay } = await import('../utils/timeUtils.js');
+                    const kstDayForBotUpdate = getKSTDay(now);
+                    const kstHoursForBotUpdate = getKSTHours(now);
+                    const kstMinutesForBotUpdate = getKSTMinutes(now);
+                    const isMondayMidnightForBotUpdate = kstDayForBotUpdate === 1 && kstHoursForBotUpdate === 0 && kstMinutesForBotUpdate < 5;
+                    if (!isMondayMidnightForBotUpdate) {
+                        const { updateBotLeagueScores } = await import('./scheduledTasks.js');
+                        updatedUser = await updateBotLeagueScores(updatedUser);
+                    }
                     
                     if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
                         await db.updateUser(updatedUser);
@@ -354,23 +363,34 @@ const startServer = async () => {
             // 리그 업데이트는 각 사용자 로그인 시 processWeeklyLeagueUpdates에서 처리되지만,
             // 월요일 0시에 명시적으로 모든 사용자에 대해 리그 업데이트를 실행
                 if (now - lastDailyTaskCheckAt >= DAILY_TASK_CHECK_INTERVAL_MS) {
-                const kstNow = getKSTDate(now);
-                const isMondayMidnight = kstNow.getUTCDay() === 1 && kstNow.getUTCHours() === 0 && kstNow.getUTCMinutes() < 5;
+                const { getKSTDay, getKSTHours, getKSTMinutes, getKSTFullYear, getKSTMonth, getKSTDate_UTC, getKSTDate } = await import('../utils/timeUtils.js');
+                const kstDay = getKSTDay(now);
+                const kstHours = getKSTHours(now);
+                const kstMinutes = getKSTMinutes(now);
+                const isMondayMidnight = kstDay === 1 && kstHours === 0 && kstMinutes < 5;
+                
+                // 디버깅: 현재 KST 시간 정보 로그 (0시 근처에만)
+                if (process.env.NODE_ENV === 'development' && (kstHours === 0 || (kstHours === 23 && kstMinutes >= 55))) {
+                    console.log(`[Server] Daily task check: KST Day=${kstDay}, Hours=${kstHours}, Minutes=${kstMinutes}, isMondayMidnight=${isMondayMidnight}`);
+                }
                 
                 // 중복 실행 방지: 이번 월요일 0시에 이미 처리했는지 확인
                 if (isMondayMidnight) {
-                    const { getLastWeeklyLeagueUpdateTimestamp, setLastWeeklyLeagueUpdateTimestamp } = await import('./scheduledTasks.js');
+                    const { getLastWeeklyLeagueUpdateTimestamp, setLastWeeklyLeagueUpdateTimestamp, processWeeklyResetAndRematch } = await import('./scheduledTasks.js');
+                    const { getStartOfDayKST } = await import('../utils/timeUtils.js');
                     const lastUpdateTimestamp = getLastWeeklyLeagueUpdateTimestamp();
-                    const currentMonday = new Date(kstNow.getUTCFullYear(), kstNow.getUTCMonth(), kstNow.getUTCDate());
                     
-                    if (lastUpdateTimestamp === null || 
-                        getKSTDate(lastUpdateTimestamp).getTime() < currentMonday.getTime()) {
+                    // 실행 조건: lastUpdateTimestamp가 null이거나, 현재 날짜와 다른 경우 (KST 기준)
+                    const shouldProcess = lastUpdateTimestamp === null || getStartOfDayKST(lastUpdateTimestamp) !== getStartOfDayKST(now);
+                    if (shouldProcess) {
                         console.log(`[WeeklyLeagueUpdate] Processing weekly league updates for all users at Monday 0:00 KST`);
                         setLastWeeklyLeagueUpdateTimestamp(now);
                         
                         const allUsersForLeagueUpdate = await db.getAllUsers();
                         let usersUpdated = 0;
                         let mailsSent = 0;
+                        
+                        // 1. 티어변동 처리 (이전 주간 점수로 순위 계산 후 티어 결정)
                         for (const user of allUsersForLeagueUpdate) {
                             const userBeforeUpdate = JSON.parse(JSON.stringify(user));
                             const updatedUser = await processWeeklyLeagueUpdates(user);
@@ -389,11 +409,17 @@ const startServer = async () => {
                             }
                         }
                         console.log(`[WeeklyLeagueUpdate] Updated ${usersUpdated} users, sent ${mailsSent} mails`);
+                        
+                        // 2. 티어변동 후 새로운 경쟁상대 매칭 및 모든 점수 리셋
+                        await processWeeklyResetAndRematch();
                     }
                 }
                 
-                // Handle weekly tournament reset (Monday 0:00 KST) - 리그 업데이트 후 실행
-                await processWeeklyTournamentReset();
+                // Handle weekly tournament reset (Monday 0:00 KST) - 이제 processWeeklyResetAndRematch에서 처리됨
+                // 기존 함수는 호환성을 위해 유지하지만 실제 처리는 processWeeklyResetAndRematch에서 수행
+                if (!isMondayMidnight) {
+                    await processWeeklyTournamentReset();
+                }
                 
                 // Handle ranking rewards
                 await processRankingRewards(volatileState);

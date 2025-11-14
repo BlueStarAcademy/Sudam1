@@ -4,6 +4,7 @@ import { SINGLE_PLAYER_MISSIONS } from '../../constants/singlePlayerConstants.js
 import Button from '../Button.js';
 import { useAppContext } from '../../hooks/useAppContext.js';
 import TrainingQuestLevelUpModal from './TrainingQuestLevelUpModal.js';
+import ClaimAllTrainingQuestRewardsModal from './ClaimAllTrainingQuestRewardsModal.js';
 
 interface TrainingQuestPanelProps {
     currentUser: UserWithStatus;
@@ -18,6 +19,11 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
         previousLevel: number;
         newLevel: number;
     } | null>(null);
+    const [claimAllRewards, setClaimAllRewards] = useState<{
+        rewards: Array<{ missionId: string; missionName: string; rewardType: 'gold' | 'diamonds'; rewardAmount: number }>;
+        totalGold: number;
+        totalDiamonds: number;
+    } | null>(null);
 
     // 실시간 타이머 업데이트 (1초마다)
     useEffect(() => {
@@ -26,6 +32,11 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
         }, 1000);
         return () => clearInterval(interval);
     }, []);
+    
+    // currentUser가 변경되면 currentTime을 강제로 업데이트하여 claimableQuestsCount 재계산
+    useEffect(() => {
+        setCurrentTime(Date.now());
+    }, [currentUser]);
 
     // 미션 언락 확인
     const isMissionUnlocked = (unlockStageId: string, clearedStages: string[]): boolean => {
@@ -215,11 +226,56 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
         ? trainingQuests.find(q => q.id === selectedMissionForUpgrade)
         : null;
     const selectedLevelUpInfo = selectedQuest ? getLevelUpInfo(selectedQuest) : null;
+    
+    // 수령 가능한 과제 수 계산
+    const claimableQuestsCount = useMemo(() => {
+        return trainingQuests.filter(quest => {
+            if (!quest.isUnlocked || !quest.isStarted || !quest.levelInfo) return false;
+            const { reward } = calculateRewardAndProgress(quest);
+            return reward > 0;
+        }).length;
+    }, [trainingQuests, currentTime]);
+    
+    // 일괄 수령 핸들러
+    const handleClaimAllRewards = async () => {
+        try {
+            const result = await handlers.handleAction({
+                type: 'CLAIM_ALL_TRAINING_QUEST_REWARDS',
+                payload: {}
+            }) as any;
+            
+            // 응답 구조 확인: handleAction에서 반환된 값
+            const claimAllData = result?.claimAllTrainingQuestRewards;
+            
+            if (claimAllData) {
+                setClaimAllRewards({
+                    rewards: claimAllData.rewards || [],
+                    totalGold: claimAllData.totalGold || 0,
+                    totalDiamonds: claimAllData.totalDiamonds || 0
+                });
+            } else {
+                console.warn('[TrainingQuestPanel] Claim all rewards - No claimAllTrainingQuestRewards in response:', result);
+            }
+        } catch (error) {
+            console.error('[TrainingQuestPanel] Claim all rewards error:', error);
+        }
+    };
 
     return (
         <>
             <div className="bg-panel rounded-lg shadow-lg p-2 sm:p-2.5 h-full flex flex-col">
-                <h2 className="text-lg sm:text-xl font-bold text-on-panel mb-1.5 sm:mb-2.5 border-b border-color pb-1 sm:pb-1.5">수련 과제</h2>
+                <div className="flex items-center justify-between mb-1.5 sm:mb-2.5 border-b border-color pb-1 sm:pb-1.5">
+                    <h2 className="text-lg sm:text-xl font-bold text-on-panel">수련 과제</h2>
+                    {claimableQuestsCount > 0 && (
+                        <Button
+                            onClick={handleClaimAllRewards}
+                            colorScheme="green"
+                            className="!text-xs !py-1 !px-2 sm:!text-sm sm:!py-1.5 sm:!px-3 whitespace-nowrap"
+                        >
+                            일괄 수령 ({claimableQuestsCount})
+                        </Button>
+                    )}
+                </div>
                 
                 {/* 2x3 그리드 */}
                 <div className="flex-1 overflow-visible">
@@ -507,6 +563,17 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
                         </div>
                     </div>
                 </div>
+            )}
+            
+            {/* 일괄 수령 모달 */}
+            {claimAllRewards && (
+                <ClaimAllTrainingQuestRewardsModal
+                    rewards={claimAllRewards.rewards}
+                    totalGold={claimAllRewards.totalGold}
+                    totalDiamonds={claimAllRewards.totalDiamonds}
+                    onClose={() => setClaimAllRewards(null)}
+                    isTopmost={true}
+                />
             )}
         </>
     );

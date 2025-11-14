@@ -11,6 +11,39 @@ export const getKSTDate = (date: Date | number = Date.now()): Date => {
     return new Date(utc + KST_OFFSET);
 };
 
+// KST 시간의 요일, 시, 분을 가져오는 헬퍼 함수들
+export const getKSTDay = (date: Date | number = Date.now()): number => {
+    const kstDate = getKSTDate(date);
+    // getKSTDate는 UTC+9 시간을 UTC로 변환한 Date 객체를 반환하므로
+    // UTC 메서드를 사용하여 KST의 날짜/시간 정보를 얻을 수 있습니다
+    return kstDate.getUTCDay();
+};
+
+export const getKSTHours = (date: Date | number = Date.now()): number => {
+    const kstDate = getKSTDate(date);
+    return kstDate.getUTCHours();
+};
+
+export const getKSTMinutes = (date: Date | number = Date.now()): number => {
+    const kstDate = getKSTDate(date);
+    return kstDate.getUTCMinutes();
+};
+
+export const getKSTDate_UTC = (date: Date | number = Date.now()): number => {
+    const kstDate = getKSTDate(date);
+    return kstDate.getUTCDate();
+};
+
+export const getKSTMonth = (date: Date | number = Date.now()): number => {
+    const kstDate = getKSTDate(date);
+    return kstDate.getUTCMonth();
+};
+
+export const getKSTFullYear = (date: Date | number = Date.now()): number => {
+    const kstDate = getKSTDate(date);
+    return kstDate.getUTCFullYear();
+};
+
 export const isSameDayKST = (ts1: number | undefined, ts2: number): boolean => {
     if (!ts1 || ts1 === 0) return false;
     const d1 = getKSTDate(ts1);

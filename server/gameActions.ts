@@ -192,7 +192,7 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     // Non-Game actions
     if (type.startsWith('ADMIN_')) return handleAdminAction(volatileState, action, user);
     if (type.includes('NEGOTIATION') || type === 'START_AI_GAME' || type === 'REQUEST_REMATCH' || type === 'CHALLENGE_USER' || type === 'SEND_CHALLENGE') return handleNegotiationAction(volatileState, action, user);
-    if (type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' || type === 'START_SINGLE_PLAYER_MISSION' || type === 'LEVEL_UP_TRAINING_QUEST') {
+    if (type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' || type === 'CLAIM_ALL_TRAINING_QUEST_REWARDS' || type === 'START_SINGLE_PLAYER_MISSION' || type === 'LEVEL_UP_TRAINING_QUEST') {
         return handleSinglePlayerAction(volatileState, action, user);
     }
     if (type.startsWith('CLAIM_') || type.startsWith('DELETE_MAIL') || type === 'DELETE_ALL_CLAIMED_MAIL' || type === 'MARK_MAIL_AS_READ') return handleRewardAction(volatileState, action, user);
@@ -210,7 +210,8 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
         type === 'START_TOURNAMENT_MATCH' || 
         type === 'ENTER_TOURNAMENT_VIEW' || 
         type === 'LEAVE_TOURNAMENT_VIEW' ||
-        type === 'CLAIM_TOURNAMENT_REWARD') {
+        type === 'CLAIM_TOURNAMENT_REWARD' ||
+        type === 'COMPLETE_TOURNAMENT_SIMULATION') {
         return handleTournamentAction(volatileState, action, user);
     }
     if (['TOGGLE_EQUIP_ITEM', 'SELL_ITEM', 'ENHANCE_ITEM', 'DISASSEMBLE_ITEM', 'USE_ITEM', 'USE_ALL_ITEMS_OF_TYPE', 'CRAFT_MATERIAL', 'COMBINE_ITEMS'].includes(type)) return handleInventoryAction(volatileState, action, user);

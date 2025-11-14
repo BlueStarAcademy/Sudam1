@@ -313,12 +313,49 @@ input, textarea {
   50% { background-position: 100% 50%; }
   100% { background-position: 0% 50%; }
 }
+@keyframes prism-glow {
+  0%, 100% { 
+    text-shadow: 0 0 10px rgba(255, 0, 255, 0.8), 0 0 20px rgba(255, 0, 255, 0.6), 0 0 30px rgba(255, 0, 255, 0.4),
+                 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.6), 0 0 30px rgba(0, 255, 255, 0.4);
+  }
+  25% { 
+    text-shadow: 0 0 15px rgba(255, 165, 0, 0.9), 0 0 25px rgba(255, 165, 0, 0.7), 0 0 35px rgba(255, 165, 0, 0.5),
+                 0 0 15px rgba(255, 255, 0, 0.9), 0 0 25px rgba(255, 255, 0, 0.7), 0 0 35px rgba(255, 255, 0, 0.5);
+  }
+  50% { 
+    text-shadow: 0 0 10px rgba(0, 255, 0, 0.8), 0 0 20px rgba(0, 255, 0, 0.6), 0 0 30px rgba(0, 255, 0, 0.4),
+                 0 0 10px rgba(0, 255, 255, 0.8), 0 0 20px rgba(0, 255, 255, 0.6), 0 0 30px rgba(0, 255, 255, 0.4);
+  }
+  75% { 
+    text-shadow: 0 0 15px rgba(0, 0, 255, 0.9), 0 0 25px rgba(0, 0, 255, 0.7), 0 0 35px rgba(0, 0, 255, 0.5),
+                 0 0 15px rgba(138, 43, 226, 0.9), 0 0 25px rgba(138, 43, 226, 0.7), 0 0 35px rgba(138, 43, 226, 0.5);
+  }
+}
 .prism-text-effect {
-  background: linear-gradient(to right, #ef4444, #f59e0b, #eab308, #84cc16, #22c55e, #14b8a6, #06b6d4, #3b82f6, #6366f1, #8b5cf6, #d946ef);
-  background-size: 200% 200%;
+  background: linear-gradient(to right, #ff006e, #ff4081, #ff6b9d, #ff9500, #ffaa00, #ffd700, #00ff88, #00ffff, #0099ff, #6633ff, #cc00ff, #ff00cc);
+  background-size: 300% 300%;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: prism-text-animation 4s ease infinite;
+  background-clip: text;
+  animation: prism-text-animation 3s ease infinite, prism-glow 2s ease-in-out infinite;
+  filter: brightness(1.2) saturate(1.5);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+@keyframes prism-star-pulse {
+  0%, 100% {
+    filter: drop-shadow(0 0 8px rgba(255, 0, 255, 0.8)) drop-shadow(0 0 12px rgba(0, 255, 255, 0.6)) drop-shadow(0 0 16px rgba(255, 255, 0, 0.4));
+    transform: scale(1);
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(255, 0, 255, 1)) drop-shadow(0 0 18px rgba(0, 255, 255, 0.8)) drop-shadow(0 0 24px rgba(255, 255, 0, 0.6));
+    transform: scale(1.1);
+  }
+}
+
+.prism-star-glow {
+  animation: prism-star-pulse 2s ease-in-out infinite;
 }
 
 

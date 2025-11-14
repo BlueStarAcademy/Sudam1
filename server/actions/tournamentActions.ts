@@ -421,6 +421,24 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                     userInTournament.avatarId = user.avatarId;
                     userInTournament.borderId = user.borderId;
                 }
+                
+                // bracket_ready 상태에서 컨디션이 부여되지 않은 경우 컨디션 부여
+                // 뒤로가기 후 다시 들어왔을 때 컨디션 유지 확인
+                if (existingState.status === 'bracket_ready') {
+                    const needsConditionAssignment = existingState.players.some(p => 
+                        p.condition === undefined || p.condition === null || p.condition === 1000
+                    );
+                    
+                    if (needsConditionAssignment) {
+                        // 모든 플레이어의 컨디션을 부여 (40~100 사이 랜덤)
+                        existingState.players.forEach(p => {
+                            if (p.condition === undefined || p.condition === null || p.condition === 1000) {
+                                p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+                            }
+                        });
+                    }
+                }
+                
                 (user as any)[stateKey] = existingState; // Re-assign to mark for update
                 // 사용자 캐시 업데이트
                 updateUserCache(user);
@@ -466,10 +484,7 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             if (!tournamentState) return { error: '토너먼트 정보를 찾을 수 없습니다.' };
             
             // round_complete 상태에서만 startNextRound를 호출하여 다음 경기 준비
-            // bracket_ready 상태에서 컨디션이 1000이면 컨디션을 부여해야 함
             const shouldStartNextRound = tournamentState.status === 'round_complete';
-            const needsConditionAssignment = tournamentState.status === 'bracket_ready' && 
-                tournamentState.players.some(p => p.condition === undefined || p.condition === null || p.condition === 1000);
             
             // 다음 경기 준비 전: 유저의 최신 능력치를 계산하여 originalStats 업데이트
             const userPlayer = tournamentState.players.find(p => p.id === freshUser.id);
@@ -483,13 +498,23 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             if (shouldStartNextRound) {
                 // Now that we have the fresh state, start the next round. This will mutate tournamentState.
                 tournamentService.startNextRound(tournamentState, freshUser);
-            } else if (needsConditionAssignment) {
-                // bracket_ready 상태에서 컨디션이 부여되지 않은 경우 컨디션 부여
-                tournamentState.players.forEach(p => {
-                    if (p.condition === undefined || p.condition === null || p.condition === 1000) {
-                        p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-                    }
-                });
+            }
+            
+            // bracket_ready 상태에서 컨디션이 부여되지 않은 경우 항상 컨디션 부여
+            // (뒤로가기 후 다시 들어온 경우를 포함하여 모든 경우에 대응)
+            if (tournamentState.status === 'bracket_ready') {
+                const needsConditionAssignment = tournamentState.players.some(p => 
+                    p.condition === undefined || p.condition === null || p.condition === 1000
+                );
+                
+                if (needsConditionAssignment) {
+                    // 모든 플레이어의 컨디션을 부여 (40~100 사이 랜덤)
+                    tournamentState.players.forEach(p => {
+                        if (p.condition === undefined || p.condition === null || p.condition === 1000) {
+                            p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+                        }
+                    });
+                }
             }
             
             // The state object on the user is already mutated, so just save the user.
@@ -909,7 +934,10 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             // 클라이언트 시뮬레이션을 위한 시드 생성
             tournamentState.simulationSeed = randomUUID();
             
-            console.log(`[START_TOURNAMENT_MATCH] Match started: roundIndex=${roundIndex}, matchIndex=${matchIndex}, seed=${tournamentState.simulationSeed}, status=${tournamentState.status}`);
+            // 개발 모드에서만 상세 로그 출력
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[START_TOURNAMENT_MATCH] Match started: roundIndex=${roundIndex}, matchIndex=${matchIndex}`);
+            }
             
             // 첫 틱을 위한 시간 초기화 - 현재 시간으로 설정하여 클라이언트가 업데이트를 받을 때까지 시간이 점프되지 않도록 함
             const now = Date.now();
@@ -935,7 +963,10 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
         }
 
         case 'ADVANCE_TOURNAMENT_SIMULATION': {
-            console.log(`[TournamentActions] ADVANCE_TOURNAMENT_SIMULATION received for user ${user.id}`);
+            // 개발 모드에서만 로그 출력
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[TournamentActions] ADVANCE_TOURNAMENT_SIMULATION received for user ${user.id}`);
+            }
             const { type, timestamp } = payload as { type: TournamentType; timestamp: number };
             let stateKey: keyof User;
             switch (type) {
@@ -1013,23 +1044,77 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             const tournamentState = (freshUser as any)[stateKey] as types.TournamentState | null;
             if (!tournamentState) return { error: '토너먼트 정보를 찾을 수 없습니다.' };
             
-            if (tournamentState.status !== 'round_in_progress' || !tournamentState.currentSimulatingMatch) {
-                return { error: '시뮬레이션 진행 중인 경기가 없습니다.' };
+            // currentSimulatingMatch가 없으면 가장 최근에 진행 중이었던 경기를 찾거나, 
+            // 클라이언트에서 제공한 result를 기반으로 경기를 찾음
+            let roundIndex = -1;
+            let matchIndex = -1;
+            
+            if (tournamentState.currentSimulatingMatch) {
+                roundIndex = tournamentState.currentSimulatingMatch.roundIndex;
+                matchIndex = tournamentState.currentSimulatingMatch.matchIndex;
+            } else {
+                // currentSimulatingMatch가 없으면 가장 최근 라운드에서 완료되지 않은 경기 찾기
+                // 또는 클라이언트 result의 winnerId를 기반으로 경기 찾기
+                if (result.winnerId) {
+                    // winnerId를 기반으로 해당 플레이어가 포함된 경기 찾기
+                    for (let r = tournamentState.rounds.length - 1; r >= 0; r--) {
+                        const round = tournamentState.rounds[r];
+                        for (let m = round.matches.length - 1; m >= 0; m--) {
+                            const match = round.matches[m];
+                            if (match.players.some(p => p && p.id === result.winnerId) && !match.isFinished) {
+                                roundIndex = r;
+                                matchIndex = m;
+                                break;
+                            }
+                        }
+                        if (roundIndex >= 0) break;
+                    }
+                }
+                
+                // 여전히 찾지 못했으면 가장 최근 라운드의 가장 최근 경기 사용
+                if (roundIndex < 0 && tournamentState.rounds.length > 0) {
+                    const lastRound = tournamentState.rounds[tournamentState.rounds.length - 1];
+                    if (lastRound.matches.length > 0) {
+                        roundIndex = tournamentState.rounds.length - 1;
+                        matchIndex = lastRound.matches.length - 1;
+                    }
+                }
+            }
+            
+            // 인덱스 유효성 검사
+            if (roundIndex < 0 || roundIndex >= tournamentState.rounds.length) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn(`[COMPLETE_TOURNAMENT_SIMULATION] Invalid roundIndex ${roundIndex} for user ${user.id}. Tournament: ${JSON.stringify({
+                        status: tournamentState.status,
+                        currentSimulatingMatch: tournamentState.currentSimulatingMatch,
+                        roundsCount: tournamentState.rounds.length
+                    })}`);
+                }
+                // 이미 완료된 경기라면 성공 반환 (중복 요청 처리)
+                return { clientResponse: { updatedUser: freshUser } };
+            }
+            
+            const round = tournamentState.rounds[roundIndex];
+            if (matchIndex < 0 || matchIndex >= round.matches.length) {
+                if (process.env.NODE_ENV === 'development') {
+                    console.warn(`[COMPLETE_TOURNAMENT_SIMULATION] Invalid matchIndex ${matchIndex} for user ${user.id}. Round has ${round.matches.length} matches.`);
+                }
+                // 이미 완료된 경기라면 성공 반환 (중복 요청 처리)
+                return { clientResponse: { updatedUser: freshUser } };
             }
 
-            const { roundIndex, matchIndex } = tournamentState.currentSimulatingMatch;
-            if (roundIndex >= tournamentState.rounds.length || matchIndex >= tournamentState.rounds[roundIndex].matches.length) {
-                return { error: '유효하지 않은 경기 인덱스입니다.' };
-            }
-
-            const match = tournamentState.rounds[roundIndex].matches[matchIndex];
-            if (match.isFinished) {
-                return { error: '이미 완료된 경기입니다.' };
+            const match = round.matches[matchIndex];
+            
+            // 이미 완료된 경기인 경우에도 결과를 업데이트할 수 있도록 허용
+            // (클라이언트와 서버 간 동기화 문제로 인해 중복 요청이 올 수 있음)
+            if (match.isFinished && match.winner && match.score) {
+                // 이미 완료된 경기이고 결과도 있으면 성공 반환 (중복 요청 처리)
+                return { clientResponse: { updatedUser: freshUser } };
             }
 
             // 클라이언트 결과 검증 (하이브리드 방식)
-            // 서버에서도 시뮬레이션을 실행하여 결과를 비교
-            const { runServerSimulation } = await import('../tournamentService.js');
+            // simulationSeed가 있으면 서버에서도 시뮬레이션을 실행하여 결과를 비교
+            // simulationSeed가 없으면 클라이언트 결과를 직접 사용 (시뮬레이션이 이미 완료된 경우)
             const p1 = tournamentState.players.find(p => p.id === match.players[0]!.id);
             const p2 = tournamentState.players.find(p => p.id === match.players[1]!.id);
             
@@ -1037,40 +1122,76 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 return { error: '플레이어를 찾을 수 없습니다.' };
             }
 
-            // 서버 검증 시뮬레이션 실행
-            const serverResult = runServerSimulation(
-                tournamentState.simulationSeed!,
-                p1,
-                p2
-            );
+            // simulationSeed가 있으면 서버 검증 시뮬레이션 실행
+            if (tournamentState.simulationSeed) {
+                try {
+                    const { runServerSimulation } = await import('../tournamentService.js');
+                    const serverResult = await runServerSimulation(
+                        tournamentState.simulationSeed,
+                        p1,
+                        p2
+                    );
 
-            // 결과 검증 (점수 차이가 너무 크면 거부)
-            const clientScoreDiff = Math.abs(result.player1Score - result.player2Score);
-            const serverScoreDiff = Math.abs(serverResult.player1Score - serverResult.player2Score);
-            const scoreDiffRatio = Math.abs(clientScoreDiff - serverScoreDiff) / Math.max(clientScoreDiff, serverScoreDiff, 1);
-            
-            // 승자 검증
-            const clientWinner = result.winnerId;
-            const serverWinner = serverResult.winnerId;
-            
-            // 점수 차이가 20% 이상이거나 승자가 다르면 거부
-            if (scoreDiffRatio > 0.2 || clientWinner !== serverWinner) {
-                console.warn(`[COMPLETE_TOURNAMENT_SIMULATION] Result mismatch for user ${user.id}. Client: ${JSON.stringify(result)}, Server: ${JSON.stringify(serverResult)}`);
-                // 검증 실패 시 서버 결과 사용
-                match.winner = tournamentState.players.find(p => p.id === serverWinner) || null;
-                match.isFinished = true;
-                match.commentary = serverResult.commentary;
-                match.timeElapsed = result.timeElapsed;
-                match.score = {
-                    player1: serverResult.player1Score,
-                    player2: serverResult.player2Score
-                };
-                match.finalScore = {
-                    player1: serverResult.player1Score / (serverResult.player1Score + serverResult.player2Score) * 100,
-                    player2: serverResult.player2Score / (serverResult.player1Score + serverResult.player2Score) * 100
-                };
+                    // 결과 검증 (점수 차이가 너무 크면 거부)
+                    const clientScoreDiff = Math.abs(result.player1Score - result.player2Score);
+                    const serverScoreDiff = Math.abs(serverResult.player1Score - serverResult.player2Score);
+                    const scoreDiffRatio = Math.abs(clientScoreDiff - serverScoreDiff) / Math.max(clientScoreDiff, serverScoreDiff, 1);
+                    
+                    // 승자 검증
+                    const clientWinner = result.winnerId;
+                    const serverWinner = serverResult.winnerId;
+                    
+                    // 점수 차이가 20% 이상이거나 승자가 다르면 거부
+                    if (scoreDiffRatio > 0.2 || clientWinner !== serverWinner) {
+                        console.warn(`[COMPLETE_TOURNAMENT_SIMULATION] Result mismatch for user ${user.id}. Client: ${JSON.stringify(result)}, Server: ${JSON.stringify(serverResult)}`);
+                        // 검증 실패 시 서버 결과 사용
+                        match.winner = tournamentState.players.find(p => p.id === serverWinner) || null;
+                        match.isFinished = true;
+                        match.commentary = serverResult.commentary;
+                        match.timeElapsed = result.timeElapsed;
+                        match.score = {
+                            player1: serverResult.player1Score,
+                            player2: serverResult.player2Score
+                        };
+                        match.finalScore = {
+                            player1: serverResult.player1Score / (serverResult.player1Score + serverResult.player2Score) * 100,
+                            player2: serverResult.player2Score / (serverResult.player1Score + serverResult.player2Score) * 100
+                        };
+                    } else {
+                        // 검증 성공 시 클라이언트 결과 사용
+                        match.winner = tournamentState.players.find(p => p.id === clientWinner) || null;
+                        match.isFinished = true;
+                        match.commentary = result.commentary;
+                        match.timeElapsed = result.timeElapsed;
+                        match.score = {
+                            player1: result.player1Score,
+                            player2: result.player2Score
+                        };
+                        match.finalScore = {
+                            player1: result.player1Score / (result.player1Score + result.player2Score) * 100,
+                            player2: result.player2Score / (result.player1Score + result.player2Score) * 100
+                        };
+                    }
+                } catch (error) {
+                    console.error(`[COMPLETE_TOURNAMENT_SIMULATION] Server simulation failed for user ${user.id}:`, error);
+                    // 서버 시뮬레이션 실패 시 클라이언트 결과 사용
+                    const clientWinner = result.winnerId;
+                    match.winner = tournamentState.players.find(p => p.id === clientWinner) || null;
+                    match.isFinished = true;
+                    match.commentary = result.commentary;
+                    match.timeElapsed = result.timeElapsed;
+                    match.score = {
+                        player1: result.player1Score,
+                        player2: result.player2Score
+                    };
+                    match.finalScore = {
+                        player1: result.player1Score / (result.player1Score + result.player2Score) * 100,
+                        player2: result.player2Score / (result.player1Score + result.player2Score) * 100
+                    };
+                }
             } else {
-                // 검증 성공 시 클라이언트 결과 사용
+                // simulationSeed가 없으면 클라이언트 결과 직접 사용
+                const clientWinner = result.winnerId;
                 match.winner = tournamentState.players.find(p => p.id === clientWinner) || null;
                 match.isFinished = true;
                 match.commentary = result.commentary;
@@ -1096,16 +1217,37 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             const { processMatchCompletion } = await import('../tournamentService.js');
             processMatchCompletion(tournamentState, freshUser, match, roundIndex);
 
-            // 다음 라운드 진행 여부 확인
-            const allMatchesInRoundFinished = tournamentState.rounds[roundIndex].matches.every(m => m.isFinished);
-            if (allMatchesInRoundFinished) {
-                tournamentState.status = 'round_complete';
-                // 다음 라운드 준비 (컨디션 부여 등)
-                const { startNextRound } = await import('../tournamentService.js');
-                startNextRound(tournamentState, freshUser);
+            // 모든 경기가 완료되었는지 확인
+            const allMatchesFinished = tournamentState.rounds.every(r => r.matches.every(m => m.isFinished));
+            if (allMatchesFinished) {
+                // 모든 경기가 완료되었으면 complete 상태로 설정
+                tournamentState.status = 'complete';
+                // 경기 종료 시 모든 플레이어의 컨디션 초기화 (컨디션 회복제 낭비 방지)
+                tournamentState.players.forEach(p => {
+                    p.condition = 1000;
+                });
             } else {
-                // 아직 라운드 내 다른 경기가 남아있으면 bracket_ready 상태 유지
-                tournamentState.status = 'bracket_ready';
+                // 다음 라운드 진행 여부 확인
+                const allMatchesInRoundFinished = tournamentState.rounds[roundIndex].matches.every(m => m.isFinished);
+                if (allMatchesInRoundFinished) {
+                    // processMatchCompletion에서 이미 상태를 변경했을 수 있으므로 확인
+                    if (tournamentState.status !== 'complete' && tournamentState.status !== 'eliminated') {
+                        tournamentState.status = 'round_complete';
+                        // round_complete 상태에서는 다음 라운드 대진표만 준비하고,
+                        // startNextRound는 사용자가 "다음경기" 버튼을 눌렀을 때만 호출됨 (START_TOURNAMENT_ROUND 액션)
+                        // 다음 라운드 대진표 준비 (prepareNextRound는 전국/월드챔피언십에서만 필요)
+                        if (tournamentState.type === 'national' || tournamentState.type === 'world') {
+                            const { prepareNextRound } = await import('../tournamentService.js');
+                            prepareNextRound(tournamentState, freshUser);
+                        }
+                        // 동네바둑리그는 이미 모든 회차의 대진표가 생성되어 있으므로 prepareNextRound 불필요
+                    }
+                } else {
+                    // 아직 라운드 내 다른 경기가 남아있으면 bracket_ready 상태 유지
+                    if (tournamentState.status !== 'complete' && tournamentState.status !== 'eliminated') {
+                        tournamentState.status = 'bracket_ready';
+                    }
+                }
             }
 
             // Keep volatile state reference updated

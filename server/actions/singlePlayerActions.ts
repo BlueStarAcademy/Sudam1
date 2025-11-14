@@ -480,6 +480,108 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 } 
             };
         }
+        case 'CLAIM_ALL_TRAINING_QUEST_REWARDS': {
+            if (!user.singlePlayerMissions) {
+                user.singlePlayerMissions = {};
+            }
+            
+            const clearedStages = user.clearedSinglePlayerStages || [];
+            const rewards: Array<{ missionId: string; missionName: string; rewardType: 'gold' | 'diamonds'; rewardAmount: number }> = [];
+            let totalGold = 0;
+            let totalDiamonds = 0;
+            
+            // 모든 수령 가능한 미션 보상 수집
+            for (const missionInfo of SINGLE_PLAYER_MISSIONS) {
+                const missionState = user.singlePlayerMissions[missionInfo.id];
+                if (!missionState || !missionState.isStarted) continue;
+                
+                // 미션 언락 확인
+                const isUnlocked = clearedStages.includes(missionInfo.unlockStageId);
+                if (!isUnlocked) continue;
+                
+                const currentLevel = missionState.level || 1;
+                if (!missionInfo.levels || !Array.isArray(missionInfo.levels) || missionInfo.levels.length < currentLevel) continue;
+                
+                const levelInfo = missionInfo.levels[currentLevel - 1];
+                if (!levelInfo) continue;
+                
+                // 미션 상태 초기화
+                let missionAccumulated = missionState.accumulatedAmount;
+                if (typeof missionAccumulated !== 'number') {
+                    const parsed = Number(missionAccumulated);
+                    missionAccumulated = Number.isFinite(parsed) ? parsed : 0;
+                }
+                let lastCollectionTime = missionState.lastCollectionTime;
+                if (!lastCollectionTime || typeof lastCollectionTime !== 'number') {
+                    const parsed = Number(lastCollectionTime);
+                    lastCollectionTime = Number.isFinite(parsed) ? parsed : now;
+                }
+                
+                const productionIntervalMs = levelInfo.productionRateMinutes * 60 * 1000;
+                const baseAccumulated = missionAccumulated || 0;
+                let generatedAmount = 0;
+                let remainderMs = 0;
+                
+                if (productionIntervalMs > 0) {
+                    const elapsedMs = Math.max(0, now - lastCollectionTime);
+                    const cycles = Math.floor(elapsedMs / productionIntervalMs);
+                    generatedAmount = cycles * levelInfo.rewardAmount;
+                    remainderMs = elapsedMs % productionIntervalMs;
+                }
+                
+                const availableAmount = Math.min(levelInfo.maxCapacity, baseAccumulated + generatedAmount);
+                
+                if (availableAmount < 1) continue;
+                
+                // 보상 추가
+                const rewardType = missionInfo.rewardType;
+                if (rewardType === 'gold') {
+                    user.gold += availableAmount;
+                    totalGold += availableAmount;
+                } else {
+                    user.diamonds += availableAmount;
+                    totalDiamonds += availableAmount;
+                }
+                
+                rewards.push({
+                    missionId: missionInfo.id,
+                    missionName: missionInfo.name,
+                    rewardType,
+                    rewardAmount: availableAmount
+                });
+                
+                // 누적 수령액 증가 (레벨업용)
+                const currentAccumulatedCollection = typeof missionState.accumulatedCollection === 'number'
+                    ? missionState.accumulatedCollection
+                    : Number(missionState.accumulatedCollection) || 0;
+                missionState.accumulatedCollection = currentAccumulatedCollection + availableAmount;
+                missionState.accumulatedAmount = 0;
+                missionState.lastCollectionTime = productionIntervalMs > 0 ? now - remainderMs : now;
+                if (productionIntervalMs > 0 && availableAmount >= levelInfo.maxCapacity) {
+                    missionState.lastCollectionTime = now;
+                }
+            }
+            
+            if (rewards.length === 0) {
+                return { error: '수령할 보상이 없습니다.' };
+            }
+            
+            await db.updateUser(user);
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
+            
+            const updatedUser = JSON.parse(JSON.stringify(user));
+            
+            return {
+                clientResponse: {
+                    updatedUser,
+                    claimAllTrainingQuestRewards: {
+                        rewards,
+                        totalGold,
+                        totalDiamonds
+                    }
+                }
+            };
+        }
         case 'LEVEL_UP_TRAINING_QUEST': {
             if (!payload || typeof payload !== 'object') {
                 console.error('[LEVEL_UP_TRAINING_QUEST] Invalid payload:', payload);
