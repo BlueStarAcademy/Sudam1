@@ -39,6 +39,28 @@ export interface GoAiBotProfile {
     winFocus: number;
     /** 계산 깊이 (1~5, 높을수록 깊이 계산) */
     calculationDepth: number;
+    
+    // 10단계별 바둑 기술 지식
+    /** 1단계: 기본 규칙 (활로, 단수, 따내기) */
+    knowsBasicRules: boolean;
+    /** 2단계: 자충수 방지 */
+    avoidsSelfAtari: boolean;
+    /** 3단계: 먹여치기 및 환격 */
+    knowsSacrificeAndCounter: boolean;
+    /** 4단계: 단수 상황 판단 (따내기 vs 살리기) */
+    knowsAtariJudgment: boolean;
+    /** 5단계: 방향성 공격 (1선, 우리편 방향, 도망치기 힘든 방향) */
+    knowsDirectionalAttack: boolean;
+    /** 6단계: 초반 포석 (3-4선 선호) */
+    knowsFuseki: boolean;
+    /** 7단계: 영토 확보 및 전투 */
+    knowsTerritoryAndCombat: boolean;
+    /** 8단계: 고급 기술 (촉촉수, 축, 장문, 환격, 먹여치기) */
+    knowsAdvancedTechniques: boolean;
+    /** 9단계: 연결/끊음, 사활, 행마 */
+    knowsConnectionLifeDeathMovement: boolean;
+    /** 10단계: 마무리 (집 지키기/부수기) */
+    knowsEndgame: boolean;
 }
 
 /**
@@ -58,6 +80,16 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.4, // 실수 많음
         winFocus: 0.95, // 승리에 집중
         calculationDepth: 1, // 계산 깊이 매우 낮음
+        knowsBasicRules: true, // 1단계: 기본 규칙
+        avoidsSelfAtari: false,
+        knowsSacrificeAndCounter: false,
+        knowsAtariJudgment: false,
+        knowsDirectionalAttack: false,
+        knowsFuseki: false,
+        knowsTerritoryAndCombat: false,
+        knowsAdvancedTechniques: false,
+        knowsConnectionLifeDeathMovement: false,
+        knowsEndgame: false,
     },
     2: {
         level: 2,
@@ -72,6 +104,16 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.35,
         winFocus: 0.9,
         calculationDepth: 1,
+        knowsBasicRules: true,
+        avoidsSelfAtari: true, // 2단계: 자충수 방지
+        knowsSacrificeAndCounter: false,
+        knowsAtariJudgment: false,
+        knowsDirectionalAttack: false,
+        knowsFuseki: false,
+        knowsTerritoryAndCombat: false,
+        knowsAdvancedTechniques: false,
+        knowsConnectionLifeDeathMovement: false,
+        knowsEndgame: false,
     },
     3: {
         level: 3,
@@ -86,6 +128,16 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.3,
         winFocus: 0.85,
         calculationDepth: 2,
+        knowsBasicRules: true,
+        avoidsSelfAtari: true,
+        knowsSacrificeAndCounter: true, // 3단계: 먹여치기 및 환격
+        knowsAtariJudgment: false,
+        knowsDirectionalAttack: false,
+        knowsFuseki: false,
+        knowsTerritoryAndCombat: false,
+        knowsAdvancedTechniques: false,
+        knowsConnectionLifeDeathMovement: false,
+        knowsEndgame: false,
     },
     4: {
         level: 4,
@@ -100,6 +152,16 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.25,
         winFocus: 0.8,
         calculationDepth: 2,
+        knowsBasicRules: true,
+        avoidsSelfAtari: true,
+        knowsSacrificeAndCounter: true,
+        knowsAtariJudgment: true, // 4단계: 단수 상황 판단
+        knowsDirectionalAttack: false,
+        knowsFuseki: false,
+        knowsTerritoryAndCombat: false,
+        knowsAdvancedTechniques: false,
+        knowsConnectionLifeDeathMovement: false,
+        knowsEndgame: false,
     },
     5: {
         level: 5,
@@ -114,6 +176,16 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.18,
         winFocus: 0.78,
         calculationDepth: 3,
+        knowsBasicRules: true,
+        avoidsSelfAtari: true,
+        knowsSacrificeAndCounter: true,
+        knowsAtariJudgment: true,
+        knowsDirectionalAttack: true, // 5단계: 방향성 공격
+        knowsFuseki: false,
+        knowsTerritoryAndCombat: false,
+        knowsAdvancedTechniques: false,
+        knowsConnectionLifeDeathMovement: false,
+        knowsEndgame: false,
     },
     6: {
         level: 6,
@@ -128,6 +200,16 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.12,
         winFocus: 0.75,
         calculationDepth: 3,
+        knowsBasicRules: true,
+        avoidsSelfAtari: true,
+        knowsSacrificeAndCounter: true,
+        knowsAtariJudgment: true,
+        knowsDirectionalAttack: true,
+        knowsFuseki: true, // 6단계: 초반 포석
+        knowsTerritoryAndCombat: false,
+        knowsAdvancedTechniques: false,
+        knowsConnectionLifeDeathMovement: false,
+        knowsEndgame: false,
     },
     7: {
         level: 7,
@@ -142,6 +224,16 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.04, // 실수 적음
         winFocus: 0.7, // 승리에 집중
         calculationDepth: 4,
+        knowsBasicRules: true,
+        avoidsSelfAtari: true,
+        knowsSacrificeAndCounter: true,
+        knowsAtariJudgment: true,
+        knowsDirectionalAttack: true,
+        knowsFuseki: true,
+        knowsTerritoryAndCombat: true, // 7단계: 영토 확보 및 전투
+        knowsAdvancedTechniques: false,
+        knowsConnectionLifeDeathMovement: false,
+        knowsEndgame: false,
     },
     8: {
         level: 8,
@@ -156,11 +248,21 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.03, // 실수 적음
         winFocus: 0.75, // 승리에 집중
         calculationDepth: 5,
+        knowsBasicRules: true,
+        avoidsSelfAtari: true,
+        knowsSacrificeAndCounter: true,
+        knowsAtariJudgment: true,
+        knowsDirectionalAttack: true,
+        knowsFuseki: true,
+        knowsTerritoryAndCombat: true,
+        knowsAdvancedTechniques: true, // 8단계: 고급 기술
+        knowsConnectionLifeDeathMovement: false,
+        knowsEndgame: false,
     },
     9: {
         level: 9,
-        name: '유단자 AI (3단)',
-        description: '유단자 수준의 3단. 전반적인 기술이 뛰어나며 정확한 판단',
+        name: '유단자 AI (약 1단)',
+        description: '유단자 수준의 약 1단. 전반적인 기술이 뛰어나며 정확한 판단',
         captureTendency: 0.9, // 공격적 따내기 선호
         territoryTendency: 0.6, // 영토보다 공격 우선
         combatTendency: 0.9, // 매우 공격적인 전투
@@ -170,11 +272,21 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.015, // 실수 적음
         winFocus: 0.8, // 승리에 집중 (공격적)
         calculationDepth: 6,
+        knowsBasicRules: true,
+        avoidsSelfAtari: true,
+        knowsSacrificeAndCounter: true,
+        knowsAtariJudgment: true,
+        knowsDirectionalAttack: true,
+        knowsFuseki: true,
+        knowsTerritoryAndCombat: true,
+        knowsAdvancedTechniques: true,
+        knowsConnectionLifeDeathMovement: true, // 9단계: 연결/끊음, 사활, 행마
+        knowsEndgame: false,
     },
     10: {
         level: 10,
-        name: '유단자 AI (약 1단)',
-        description: '유단자 수준의 약 1단. 영토, 전투, 행마, 정석, 포석, 사활 등 전반적인 모든 기술이 뛰어남',
+        name: '유단자 AI (4단)',
+        description: '유단자 수준의 4단. 영토, 전투, 행마, 정석, 포석, 사활 등 전반적인 모든 기술이 뛰어남',
         captureTendency: 0.95, // 매우 적극적인 따내기 선호 (18급 수준으로 증가)
         territoryTendency: 0.6, // 영토보다 공격 우선
         combatTendency: 0.95, // 매우 공격적인 전투 능력
@@ -184,6 +296,16 @@ export const GO_AI_BOT_PROFILES: Record<number, GoAiBotProfile> = {
         mistakeRate: 0.01, // 실수 거의 없음
         winFocus: 0.85, // 승리에 집중 (공격적)
         calculationDepth: 6, // 계산 깊이 최대
+        knowsBasicRules: true,
+        avoidsSelfAtari: true,
+        knowsSacrificeAndCounter: true,
+        knowsAtariJudgment: true,
+        knowsDirectionalAttack: true,
+        knowsFuseki: true,
+        knowsTerritoryAndCombat: true,
+        knowsAdvancedTechniques: true,
+        knowsConnectionLifeDeathMovement: true,
+        knowsEndgame: true, // 10단계: 마무리
     },
 };
 
@@ -588,6 +710,76 @@ function scoreMovesByProfile(
         if (profile.winFocus > 0.5 && (game.isSinglePlayer || game.mode === types.GameMode.Capture)) {
             const winFocusScore = evaluateWinFocus(game, logic, point, aiPlayer, opponentPlayer);
             score += winFocusScore * profile.winFocus * 150;
+        }
+
+        // 9. 2단계: 자충수 방지
+        if (profile.avoidsSelfAtari) {
+            const selfAtariPenalty = evaluateSelfAtari(game, logic, point, aiPlayer);
+            score += selfAtariPenalty * -500; // 자충수는 큰 패널티
+        }
+
+        // 10. 3단계: 먹여치기 및 환격
+        if (profile.knowsSacrificeAndCounter) {
+            const sacrificeScore = evaluateSacrificeAndCounter(game, logic, point, aiPlayer, opponentPlayer);
+            score += sacrificeScore * 300;
+        }
+
+        // 11. 4단계: 단수 상황 판단 (따내기 vs 살리기)
+        if (profile.knowsAtariJudgment) {
+            const atariJudgmentScore = evaluateAtariJudgment(game, logic, point, aiPlayer, opponentPlayer);
+            score += atariJudgmentScore * 400;
+        }
+
+        // 12. 5단계: 방향성 공격
+        if (profile.knowsDirectionalAttack) {
+            const directionalScore = evaluateDirectionalAttack(game, logic, point, aiPlayer, opponentPlayer);
+            score += directionalScore * 200;
+        }
+
+        // 13. 6단계: 초반 포석 (3-4선 선호)
+        if (profile.knowsFuseki) {
+            const moveCount = game.moveHistory.length;
+            if (moveCount <= 50) {
+                const fusekiScore = evaluateFuseki(game, point, aiPlayer);
+                score += fusekiScore * 150;
+            }
+        }
+
+        // 14. 7단계: 영토 확보 및 전투 (이미 위에서 평가됨, 추가 보정)
+        if (profile.knowsTerritoryAndCombat) {
+            const territoryCombatScore = evaluateTerritoryAndCombat(game, logic, point, aiPlayer, opponentPlayer);
+            score += territoryCombatScore * 100;
+        }
+
+        // 15. 8단계: 고급 기술 (촉촉수, 축, 장문, 환격, 먹여치기)
+        if (profile.knowsAdvancedTechniques) {
+            const advancedScore = evaluateAdvancedTechniques(game, logic, point, aiPlayer, opponentPlayer);
+            score += advancedScore * 250;
+        }
+
+        // 16. 9단계: 연결/끊음, 사활, 행마
+        if (profile.knowsConnectionLifeDeathMovement) {
+            const connectionScore = evaluateConnectionAndCut(game, logic, point, aiPlayer, opponentPlayer);
+            score += connectionScore * 200;
+            const lifeDeathScore = evaluateLifeDeathAdvanced(game, logic, point, aiPlayer, opponentPlayer);
+            score += lifeDeathScore * 300;
+            const movementScore = evaluateMovementAdvanced(game, logic, point, aiPlayer);
+            score += movementScore * 150;
+        }
+
+        // 17. 10단계: 마무리 (집 지키기/부수기)
+        if (profile.knowsEndgame) {
+            const moveCount = game.moveHistory.length;
+            const boardSize = game.settings.boardSize;
+            const totalSpaces = boardSize * boardSize;
+            const occupiedSpaces = game.boardState.flat().filter(c => c !== types.Player.None).length;
+            const occupancyRate = occupiedSpaces / totalSpaces;
+            
+            // 보드의 70% 이상이 차면 마무리 단계로 간주
+            if (occupancyRate >= 0.7 || moveCount >= totalSpaces * 0.7) {
+                const endgameScore = evaluateEndgame(game, logic, point, aiPlayer, opponentPlayer);
+                score += endgameScore * 400;
+            }
         }
 
         scoredMoves.push({ move, score });
@@ -1333,4 +1525,641 @@ function evaluateLibertyGain(
     }
 
     return 0.3; // 새로운 그룹
+}
+
+/**
+ * 2단계: 자충수 방지 평가
+ */
+function evaluateSelfAtari(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player
+): number {
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 1.0; // 자충수는 1.0 반환 (패널티)
+
+    const groups = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+    const pointGroup = groups.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
+    
+    if (pointGroup) {
+        const libertyCount = pointGroup.libertyPoints.size;
+        // 자유도가 1이면 자충수
+        if (libertyCount === 1) {
+            // 하지만 따낼 수 있으면 괜찮음 (먹여치기)
+            if (testResult.capturedStones.length > 0) {
+                return 0.0; // 먹여치기는 괜찮음
+            }
+            return 1.0; // 자충수
+        }
+    }
+
+    return 0.0; // 자충수 아님
+}
+
+/**
+ * 3단계: 먹여치기 및 환격 평가
+ */
+function evaluateSacrificeAndCounter(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    let score = 0;
+
+    // 먹여치기: 자충수를 두지만 상대를 따낼 수 있는 경우
+    const groups = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+    const pointGroup = groups.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
+    
+    if (pointGroup && pointGroup.libertyPoints.size === 1 && testResult.capturedStones.length > 0) {
+        score += 3.0; // 먹여치기
+    }
+
+    // 환격: 상대가 따내려고 할 때 역으로 따내기
+    // 상대 그룹이 단수 상태이고, 이 수로 역으로 따낼 수 있는 경우
+    const opponentGroups = logic.getAllGroups(opponentPlayer, game.boardState);
+    for (const oppGroup of opponentGroups) {
+        if (oppGroup.libertyPoints.size === 1) {
+            const liberty = Array.from(oppGroup.libertyPoints)[0];
+            const [lx, ly] = liberty.split(',').map(Number);
+            if (lx === point.x && ly === point.y) {
+                // 상대의 단수 자리에 두어서 역으로 따낼 수 있는 경우
+                if (testResult.capturedStones.length > 0) {
+                    score += 4.0; // 환격
+                }
+            }
+        }
+    }
+
+    return score;
+}
+
+/**
+ * 4단계: 단수 상황 판단 (따내기 vs 살리기)
+ */
+function evaluateAtariJudgment(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    let score = 0;
+
+    // 상대 그룹을 단수로 만들 수 있는 경우
+    const opponentGroupsBefore = logic.getAllGroups(opponentPlayer, game.boardState);
+    const opponentGroupsAfter = logic.getAllGroups(opponentPlayer, testResult.newBoardState);
+
+    for (const groupAfter of opponentGroupsAfter) {
+        if (groupAfter.libertyPoints.size === 1) {
+            const matchingBefore = opponentGroupsBefore.find(gb =>
+                gb.stones.some(bs => groupAfter.stones.some(as => as.x === bs.x && as.y === bs.y))
+            );
+            if (matchingBefore && matchingBefore.libertyPoints.size > 1) {
+                // 상대 그룹을 단수로 만든 경우
+                score += 2.0;
+            }
+        }
+    }
+
+    // 자신의 그룹이 단수 상태일 때 살리기
+    const myGroupsBefore = logic.getAllGroups(aiPlayer, game.boardState);
+    const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+    
+    for (const groupBefore of myGroupsBefore) {
+        if (groupBefore.libertyPoints.size === 1) {
+            const matchingAfter = myGroupsAfter.find(ga =>
+                ga.stones.some(ast => groupBefore.stones.some(bst => ast.x === bst.x && ast.y === bst.y))
+            );
+            if (matchingAfter && matchingAfter.libertyPoints.size > 1) {
+                // 자신의 단수 그룹을 살린 경우
+                score += 3.0; // 살리기가 더 중요
+            }
+        }
+    }
+
+    return score;
+}
+
+/**
+ * 5단계: 방향성 공격 평가
+ */
+function evaluateDirectionalAttack(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    const boardSize = game.settings.boardSize;
+    let score = 0;
+
+    // 1선 방향으로 몰기 (변으로 몰기)
+    const isEdge = point.x === 0 || point.x === boardSize - 1 || point.y === 0 || point.y === boardSize - 1;
+    if (isEdge) {
+        // 상대 돌이 근처에 있으면 변으로 몰기
+        const directions = [
+            { x: -1, y: 0 }, { x: 1, y: 0 },
+            { x: 0, y: -1 }, { x: 0, y: 1 }
+        ];
+        for (const dir of directions) {
+            const nx = point.x + dir.x;
+            const ny = point.y + dir.y;
+            if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize) {
+                if (game.boardState[ny][nx] === opponentPlayer) {
+                    score += 1.5; // 변으로 몰기
+                }
+            }
+        }
+    }
+
+    // 우리편 방향으로 몰기
+    const myGroups = logic.getAllGroups(aiPlayer, game.boardState);
+    if (myGroups.length > 0) {
+        const nearestGroup = myGroups.reduce((nearest, group) => {
+            const groupCenter = {
+                x: group.stones.reduce((sum, s) => sum + s.x, 0) / group.stones.length,
+                y: group.stones.reduce((sum, s) => sum + s.y, 0) / group.stones.length
+            };
+            const dist = Math.abs(point.x - groupCenter.x) + Math.abs(point.y - groupCenter.y);
+            return dist < nearest.dist ? { group, dist } : nearest;
+        }, { group: myGroups[0], dist: Infinity });
+
+        const groupCenter = {
+            x: nearestGroup.group.stones.reduce((sum, s) => sum + s.x, 0) / nearestGroup.group.stones.length,
+            y: nearestGroup.group.stones.reduce((sum, s) => sum + s.y, 0) / nearestGroup.group.stones.length
+        };
+        
+        // 우리편 그룹 방향으로 상대를 몰기
+        const oppGroups = logic.getAllGroups(opponentPlayer, game.boardState);
+        for (const oppGroup of oppGroups) {
+            const oppCenter = {
+                x: oppGroup.stones.reduce((sum, s) => sum + s.x, 0) / oppGroup.stones.length,
+                y: oppGroup.stones.reduce((sum, s) => sum + s.y, 0) / oppGroup.stones.length
+            };
+            
+            // 상대 그룹이 우리편 그룹과 이 수 사이에 있으면 좋음
+            const toMyGroup = { x: groupCenter.x - point.x, y: groupCenter.y - point.y };
+            const toOppGroup = { x: oppCenter.x - point.x, y: oppCenter.y - point.y };
+            const dotProduct = toMyGroup.x * toOppGroup.x + toMyGroup.y * toOppGroup.y;
+            if (dotProduct > 0) {
+                score += 2.0; // 우리편 방향으로 몰기
+            }
+        }
+    }
+
+    // 도망치기 힘든 방향으로 몰기 (변과 모서리)
+    if (isEdge) {
+        const isCorner = (point.x === 0 || point.x === boardSize - 1) && 
+                         (point.y === 0 || point.y === boardSize - 1);
+        if (isCorner) {
+            score += 2.5; // 모서리는 도망치기 매우 힘듦
+        } else {
+            score += 1.5; // 변은 도망치기 힘듦
+        }
+    }
+
+    return score;
+}
+
+/**
+ * 6단계: 초반 포석 평가 (3-4선 선호)
+ */
+function evaluateFuseki(
+    game: types.LiveGameSession,
+    point: Point,
+    aiPlayer: Player
+): number {
+    const boardSize = game.settings.boardSize;
+    const moveCount = game.moveHistory.length;
+    
+    if (moveCount > 50) return 0; // 초반 50수까지만
+
+    let score = 0;
+
+    // 3선과 4선 선호
+    const line3 = point.x === 2 || point.x === boardSize - 3 || point.y === 2 || point.y === boardSize - 3;
+    const line4 = point.x === 3 || point.x === boardSize - 4 || point.y === 3 || point.y === boardSize - 4;
+    
+    if (line3 || line4) {
+        score += 2.0; // 좋은 선
+    } else {
+        // 나쁜 선 (1선, 2선, 5선 이상)
+        const line1 = point.x === 0 || point.x === boardSize - 1 || point.y === 0 || point.y === boardSize - 1;
+        const line2 = point.x === 1 || point.x === boardSize - 2 || point.y === 1 || point.y === boardSize - 2;
+        
+        if (line1) {
+            score -= 1.5; // 1선은 나쁨
+        } else if (line2) {
+            score -= 1.0; // 2선도 나쁨
+        } else {
+            score -= 0.5; // 5선 이상도 나쁨
+        }
+    }
+
+    // 모서리 3-3, 3-4, 4-4 등 좋은 포석 위치
+    const cornerPositions = [
+        { x: 2, y: 2 }, { x: 2, y: 3 }, { x: 3, y: 2 }, { x: 3, y: 3 },
+        { x: boardSize - 3, y: 2 }, { x: boardSize - 3, y: 3 },
+        { x: boardSize - 4, y: 2 }, { x: boardSize - 4, y: 3 },
+        { x: 2, y: boardSize - 3 }, { x: 3, y: boardSize - 3 },
+        { x: 2, y: boardSize - 4 }, { x: 3, y: boardSize - 4 },
+        { x: boardSize - 3, y: boardSize - 3 }, { x: boardSize - 4, y: boardSize - 3 },
+        { x: boardSize - 3, y: boardSize - 4 }, { x: boardSize - 4, y: boardSize - 4 },
+    ];
+
+    for (const pos of cornerPositions) {
+        if (point.x === pos.x && point.y === pos.y) {
+            score += 3.0; // 정석 위치
+            break;
+        }
+    }
+
+    return score;
+}
+
+/**
+ * 7단계: 영토 확보 및 전투 평가
+ */
+function evaluateTerritoryAndCombat(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    let score = 0;
+
+    // 적은 돌로 많은 영토 확보
+    const territoryScore = evaluateTerritory(game, logic, point, aiPlayer);
+    const combatScore = evaluateCombat(game, logic, point, aiPlayer, opponentPlayer);
+    
+    // 영토와 전투의 균형
+    score += territoryScore * 0.6 + combatScore * 0.4;
+
+    // 영토를 넓히기 위해 상대와 부딪혀 싸우기
+    if (combatScore > 0) {
+        score += 1.0; // 전투를 통한 영토 확보
+    }
+
+    return score;
+}
+
+/**
+ * 8단계: 고급 기술 평가 (촉촉수, 축, 장문, 환격, 먹여치기)
+ */
+function evaluateAdvancedTechniques(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    let score = 0;
+
+    // 촉촉수: 연속 단수공격할 수 있는 방향으로 3수 앞 내다보기
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    // 상대 그룹을 단수로 만들고, 다음에도 계속 단수 공격 가능한지 확인
+    const opponentGroupsAfter = logic.getAllGroups(opponentPlayer, testResult.newBoardState);
+    for (const group of opponentGroupsAfter) {
+        if (group.libertyPoints.size === 1) {
+            // 다음 수에도 단수 공격 가능한지 시뮬레이션
+            const liberty = Array.from(group.libertyPoints)[0];
+            const [lx, ly] = liberty.split(',').map(Number);
+            const nextMoveResult = processMove(
+                testResult.newBoardState,
+                { x: lx, y: ly, player: aiPlayer },
+                null,
+                game.moveHistory.length + 1,
+                { ignoreSuicide: true }
+            );
+            if (nextMoveResult.isValid) {
+                const nextOppGroups = logic.getAllGroups(opponentPlayer, nextMoveResult.newBoardState);
+                for (const nextGroup of nextOppGroups) {
+                    if (nextGroup.libertyPoints.size === 1) {
+                        score += 3.0; // 촉촉수
+                    }
+                }
+            }
+        }
+    }
+
+    // 축: 상대 돌을 포위하는 수
+    const directions = [
+        { x: -1, y: 0 }, { x: 1, y: 0 },
+        { x: 0, y: -1 }, { x: 0, y: 1 }
+    ];
+    for (const dir of directions) {
+        const nx = point.x + dir.x;
+        const ny = point.y + dir.y;
+        if (nx >= 0 && nx < game.settings.boardSize && ny >= 0 && ny < game.settings.boardSize) {
+            if (testResult.newBoardState[ny][nx] === opponentPlayer) {
+                const oppGroups = logic.getAllGroups(opponentPlayer, testResult.newBoardState);
+                const nearbyGroup = oppGroups.find(g => g.stones.some(s => s.x === nx && s.y === ny));
+                if (nearbyGroup && nearbyGroup.libertyPoints.size <= 2) {
+                    score += 2.0; // 축
+                }
+            }
+        }
+    }
+
+    // 장문: 긴 연결을 만드는 수
+    const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+    const pointGroup = myGroupsAfter.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
+    if (pointGroup && pointGroup.stones.length >= 3) {
+        score += 1.5; // 장문
+    }
+
+    // 환격과 먹여치기는 이미 evaluateSacrificeAndCounter에서 평가됨
+    const sacrificeScore = evaluateSacrificeAndCounter(game, logic, point, aiPlayer, opponentPlayer);
+    score += sacrificeScore * 0.5;
+
+    return score;
+}
+
+/**
+ * 9단계: 연결과 끊음 평가
+ */
+function evaluateConnectionAndCut(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    let score = 0;
+
+    // 자신의 그룹 연결
+    const myGroupsBefore = logic.getAllGroups(aiPlayer, game.boardState);
+    const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+    
+    if (myGroupsAfter.length < myGroupsBefore.length) {
+        // 그룹이 연결됨
+        score += 2.0;
+    }
+
+    // 상대 그룹 끊기
+    const oppGroupsBefore = logic.getAllGroups(opponentPlayer, game.boardState);
+    const oppGroupsAfter = logic.getAllGroups(opponentPlayer, testResult.newBoardState);
+    
+    if (oppGroupsAfter.length > oppGroupsBefore.length) {
+        // 상대 그룹을 끊음
+        score += 3.0; // 끊기가 더 중요
+    }
+
+    return score;
+}
+
+/**
+ * 9단계: 고급 사활 판단
+ */
+function evaluateLifeDeathAdvanced(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    let score = 0;
+
+    // 떨어진 두 개 이상의 집을 만들어 살리기
+    const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+    const pointGroup = myGroupsAfter.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
+    
+    if (pointGroup) {
+        // 그룹이 두 개 이상의 독립적인 공간(집)을 가지고 있는지 확인
+        // 간단한 휴리스틱: 자유도가 많고 돌이 많으면 살 가능성 높음
+        if (pointGroup.libertyPoints.size >= 4 && pointGroup.stones.length >= 3) {
+            score += 2.0; // 살 가능성
+        }
+    }
+
+    // 떨어진 두 개 이상의 집을 만들지 못하게 하여 잡기
+    const oppGroupsAfter = logic.getAllGroups(opponentPlayer, testResult.newBoardState);
+    for (const oppGroup of oppGroupsAfter) {
+        if (oppGroup.libertyPoints.size <= 2 && oppGroup.stones.length >= 2) {
+            // 상대 그룹이 집을 만들기 어려운 상태
+            score += 2.5; // 잡을 가능성
+        }
+    }
+
+    return score;
+}
+
+/**
+ * 9단계: 고급 행마 평가
+ */
+function evaluateMovementAdvanced(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player
+): number {
+    const boardSize = game.settings.boardSize;
+    let score = 0;
+
+    // 내 돌이 끊어지지 않고 가장 멀리 움직이기
+    const myGroups = logic.getAllGroups(aiPlayer, game.boardState);
+    if (myGroups.length > 0) {
+        let maxDistance = 0;
+        for (const group of myGroups) {
+            const groupCenter = {
+                x: group.stones.reduce((sum, s) => sum + s.x, 0) / group.stones.length,
+                y: group.stones.reduce((sum, s) => sum + s.y, 0) / group.stones.length
+            };
+            const distance = Math.abs(point.x - groupCenter.x) + Math.abs(point.y - groupCenter.y);
+            maxDistance = Math.max(maxDistance, distance);
+        }
+        
+        // 적당한 거리 (2-4)로 이동하는 것이 좋음
+        if (maxDistance >= 2 && maxDistance <= 4) {
+            score += 1.5;
+        }
+    }
+
+    // 행마 패턴 인식
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (testResult.isValid) {
+        const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+        const pointGroup = myGroupsAfter.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
+        
+        if (pointGroup) {
+            // 입구자행마: 두 돌 사이에 두기
+            const neighbors = logic.getNeighbors(point.x, point.y);
+            let myNeighborCount = 0;
+            for (const n of neighbors) {
+                if (testResult.newBoardState[n.y][n.x] === aiPlayer) {
+                    myNeighborCount++;
+                }
+            }
+            if (myNeighborCount === 2) {
+                score += 1.0; // 입구자행마
+            }
+
+            // 날일자행마: 한 칸 뛰기
+            if (myGroups.length > 0) {
+                const nearestGroup = myGroups[0];
+                const groupCenter = {
+                    x: nearestGroup.stones.reduce((sum, s) => sum + s.x, 0) / nearestGroup.stones.length,
+                    y: nearestGroup.stones.reduce((sum, s) => sum + s.y, 0) / nearestGroup.stones.length
+                };
+                const distance = Math.abs(point.x - groupCenter.x) + Math.abs(point.y - groupCenter.y);
+                if (distance === 2) {
+                    score += 1.0; // 날일자행마
+                }
+            }
+
+            // 눈목자행마: 대각선으로 두 칸
+            // 밭전자행마: 직선으로 두 칸
+            // 쌍점행마: 두 점에 동시에 두기 (연결)
+            if (pointGroup.stones.length >= 2) {
+                score += 0.5; // 행마 패턴
+            }
+        }
+    }
+
+    return score;
+}
+
+/**
+ * 10단계: 마무리 평가 (집 지키기/부수기)
+ */
+function evaluateEndgame(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    let score = 0;
+
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    // 한 집이라도 더 지키기
+    const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+    const pointGroup = myGroupsAfter.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
+    
+    if (pointGroup) {
+        // 그룹 주변의 빈 공간(집) 계산
+        const emptySpaces = new Set<string>();
+        for (const stone of pointGroup.stones) {
+            const neighbors = logic.getNeighbors(stone.x, stone.y);
+            for (const n of neighbors) {
+                if (testResult.newBoardState[n.y][n.x] === types.Player.None) {
+                    emptySpaces.add(`${n.x},${n.y}`);
+                }
+            }
+        }
+        score += emptySpaces.size * 0.5; // 집 지키기
+    }
+
+    // 한 집이라도 더 부수기
+    const oppGroupsAfter = logic.getAllGroups(opponentPlayer, testResult.newBoardState);
+    for (const oppGroup of oppGroupsAfter) {
+        // 상대 그룹 주변의 빈 공간을 줄이기
+        const emptySpaces = new Set<string>();
+        for (const stone of oppGroup.stones) {
+            const neighbors = logic.getNeighbors(stone.x, stone.y);
+            for (const n of neighbors) {
+                if (testResult.newBoardState[n.y][n.x] === types.Player.None) {
+                    emptySpaces.add(`${n.x},${n.y}`);
+                }
+            }
+        }
+        
+        // 이 수가 상대 그룹의 집을 줄였는지 확인
+        const oppGroupsBefore = logic.getAllGroups(opponentPlayer, game.boardState);
+        const matchingBefore = oppGroupsBefore.find(gb =>
+            gb.stones.some(bs => oppGroup.stones.some(as => as.x === bs.x && as.y === bs.y))
+        );
+        if (matchingBefore) {
+            const beforeEmptySpaces = new Set<string>();
+            for (const stone of matchingBefore.stones) {
+                const neighbors = logic.getNeighbors(stone.x, stone.y);
+                for (const n of neighbors) {
+                    if (game.boardState[n.y][n.x] === types.Player.None) {
+                        beforeEmptySpaces.add(`${n.x},${n.y}`);
+                    }
+                }
+            }
+            if (emptySpaces.size < beforeEmptySpaces.size) {
+                score += (beforeEmptySpaces.size - emptySpaces.size) * 0.8; // 집 부수기
+            }
+        }
+    }
+
+    return score;
 }

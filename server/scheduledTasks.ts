@@ -482,11 +482,16 @@ export async function updateBotLeagueScores(user: types.User): Promise<types.Use
     // 각 경쟁상대 중 봇인 경우 점수 업데이트
     for (const competitor of updatedUser.weeklyCompetitors) {
         if (competitor.id.startsWith('bot-')) {
-            const lastUpdate = user.weeklyCompetitorsBotScores?.[competitor.id]?.lastUpdate || 0;
+            const botScoreData = user.weeklyCompetitorsBotScores?.[competitor.id];
+            const lastUpdate = botScoreData?.lastUpdate || 0;
             const lastUpdateDay = getStartOfDayKST(lastUpdate);
+            const currentScore = botScoreData?.score || 0;
             
             // 오늘 아직 업데이트하지 않았으면 점수 증가
             if (lastUpdateDay < todayStart) {
+                // 어제 점수를 yesterdayScore로 저장 (0시 직전의 점수)
+                const yesterdayScore = currentScore;
+                
                 // 1-50 사이의 랜덤값 생성 (봇 ID와 날짜를 시드로 사용)
                 const seedStr = `${competitor.id}-${kstNow.toISOString().slice(0, 10)}`;
                 let seed = 0;
@@ -497,7 +502,6 @@ export async function updateBotLeagueScores(user: types.User): Promise<types.Use
                 const randomVal = Math.abs(Math.sin(seed)) * 10000;
                 const dailyGain = Math.floor((randomVal % 50)) + 1; // 1-50
                 
-                const currentScore = user.weeklyCompetitorsBotScores?.[competitor.id]?.score || 0;
                 const newScore = currentScore + dailyGain;
                 
                 if (!updatedUser.weeklyCompetitorsBotScores) {
@@ -505,9 +509,21 @@ export async function updateBotLeagueScores(user: types.User): Promise<types.Use
                 }
                 updatedUser.weeklyCompetitorsBotScores[competitor.id] = {
                     score: newScore,
-                    lastUpdate: now
+                    lastUpdate: now,
+                    yesterdayScore: yesterdayScore // 어제 점수 저장
                 };
                 
+                hasChanges = true;
+            } else if (!botScoreData?.yesterdayScore && currentScore > 0) {
+                // 이미 오늘 업데이트했지만 yesterdayScore가 없는 경우 (마이그레이션)
+                // 현재 점수를 어제 점수로 설정 (변화 없음으로 표시)
+                if (!updatedUser.weeklyCompetitorsBotScores) {
+                    updatedUser.weeklyCompetitorsBotScores = {};
+                }
+                updatedUser.weeklyCompetitorsBotScores[competitor.id] = {
+                    ...botScoreData,
+                    yesterdayScore: currentScore
+                };
                 hasChanges = true;
             }
         }
@@ -640,17 +656,24 @@ export async function processDailyRankings(): Promise<void> {
         
         // 챔피언십 순위 저장 (누적 점수 기준 - 모든 사용자에게 저장)
         const championshipRank = championshipRankings.findIndex(r => r.userId === user.id);
+        const currentScore = user.cumulativeTournamentScore || 0;
+        
+        // 어제 점수를 저장 (0시 직전의 점수)
+        // dailyRankings.championship.score가 있으면 그것을 어제 점수로 사용, 없으면 현재 점수를 어제 점수로 설정
+        const yesterdayScore = updatedUser.dailyRankings.championship?.score ?? currentScore;
+        updatedUser.yesterdayTournamentScore = yesterdayScore;
+        
         if (championshipRank !== -1) {
             updatedUser.dailyRankings.championship = {
                 rank: championshipRank + 1,
-                score: user.cumulativeTournamentScore || 0,
+                score: currentScore, // 현재 점수로 업데이트
                 lastUpdated: now
             };
         } else {
             // 랭킹에 없는 경우에도 0점으로 기록 (누적 점수가 없는 신규 사용자 등)
             updatedUser.dailyRankings.championship = {
                 rank: allUsers.length, // 마지막 순위
-                score: 0,
+                score: currentScore,
                 lastUpdated: now
             };
         }

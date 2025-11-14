@@ -63,6 +63,31 @@ export const ActionPointTimer: React.FC<{ user: UserWithStatus }> = ({ user }) =
 
 const Header: React.FC = () => {
     const { currentUserWithStatus, handlers, unreadMailCount } = useAppContext();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+    const [isMobile, setIsMobile] = useState(false);
+
+    useEffect(() => {
+        const checkIsMobile = () => {
+            setIsMobile(window.innerWidth < 640); // sm breakpoint
+        };
+        checkIsMobile();
+        window.addEventListener('resize', checkIsMobile);
+        return () => window.removeEventListener('resize', checkIsMobile);
+    }, []);
+
+    useEffect(() => {
+        // 메뉴가 열려있을 때 외부 클릭으로 닫기
+        const handleClickOutside = (event: MouseEvent) => {
+            const target = event.target as HTMLElement;
+            if (isMobileMenuOpen && !target.closest('.mobile-menu-container')) {
+                setIsMobileMenuOpen(false);
+            }
+        };
+        if (isMobileMenuOpen) {
+            document.addEventListener('mousedown', handleClickOutside);
+            return () => document.removeEventListener('mousedown', handleClickOutside);
+        }
+    }, [isMobileMenuOpen]);
 
     if (!currentUserWithStatus) return null;
 
@@ -79,7 +104,7 @@ const Header: React.FC = () => {
     const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === borderId)?.url, [borderId]);
 
     return (
-        <header className="flex-shrink-0 bg-primary/80 backdrop-blur-sm shadow-lg">
+        <header className="flex-shrink-0 bg-primary/80 backdrop-blur-sm shadow-lg relative z-50">
             <div className="p-2.5 sm:p-3 flex flex-wrap sm:flex-nowrap items-start sm:items-center gap-2 sm:gap-3 min-h-[70px] sm:min-h-[75px]">
                 <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0 min-w-0 cursor-pointer relative" onClick={openProfileEditModal}>
                      <Avatar userId={currentUserWithStatus.id} userName={currentUserWithStatus.nickname} avatarUrl={avatarUrl} borderUrl={borderUrl} size={40} />
@@ -112,6 +137,8 @@ const Header: React.FC = () => {
                     
                     <div className="h-9 w-px bg-border-color mx-1 sm:mx-2 flex-shrink-0"></div>
                     
+                    {/* 데스크톱 버튼들 */}
+                    <div className="hidden sm:flex items-center gap-1 sm:gap-2">
                     {isAdmin && (
                         <Button
                             onClick={() => window.location.hash = '#/admin'}
@@ -147,6 +174,69 @@ const Header: React.FC = () => {
                     >
                         로그아웃
                     </Button>
+                    </div>
+
+                    {/* 모바일 메뉴 버튼 */}
+                    <div className="sm:hidden relative mobile-menu-container">
+                        <button
+                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                            className="p-2 rounded-lg text-xl hover:bg-secondary transition-colors flex items-center"
+                            title="메뉴"
+                        >
+                            <span className={`transition-transform duration-200 ${isMobileMenuOpen ? 'rotate-180' : ''}`}>
+                                ▼
+                            </span>
+                        </button>
+                        {isMobileMenuOpen && (
+                            <div className="fixed right-2 top-[70px] bg-primary border border-color rounded-lg shadow-2xl z-[9999999] min-w-[60px] py-2" style={{ zIndex: 9999999 }}>
+                                    {isAdmin && (
+                                        <button
+                                            onClick={() => {
+                                                setIsMobileMenuOpen(false);
+                                                window.location.hash = '#/admin';
+                                            }}
+                                            className="w-full px-3 py-3 hover:bg-secondary transition-colors flex items-center justify-center"
+                                            title="관리자"
+                                        >
+                                            <span className="text-2xl">👑</span>
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => {
+                                            setIsMobileMenuOpen(false);
+                                            openMailbox();
+                                        }}
+                                        className="w-full px-3 py-3 hover:bg-secondary transition-colors flex items-center justify-center relative"
+                                        title="우편함"
+                                    >
+                                        <img src="/images/icon/mail.png" alt="우편함" className="w-6 h-6 object-contain" />
+                                        {unreadMailCount > 0 && (
+                                            <span className="absolute top-1 right-1 bg-red-500 rounded-full w-2.5 h-2.5 border-2 border-primary"></span>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsMobileMenuOpen(false);
+                                            openSettingsModal();
+                                        }}
+                                        className="w-full px-3 py-3 hover:bg-secondary transition-colors flex items-center justify-center"
+                                        title="설정"
+                                    >
+                                        <span className="text-2xl">⚙️</span>
+                                    </button>
+                                    <button
+                                        onClick={() => {
+                                            setIsMobileMenuOpen(false);
+                                            handleLogout();
+                                        }}
+                                        className="w-full px-3 py-3 bg-red-500/90 hover:bg-red-600 transition-colors flex items-center justify-center rounded"
+                                        title="로그아웃"
+                                    >
+                                        <span className="text-2xl">⏻</span>
+                                    </button>
+                            </div>
+                        )}
+                    </div>
                 </div>
             </div>
         </header>

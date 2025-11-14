@@ -7,6 +7,7 @@ interface SinglePlayerArenaProps extends GameProps {
     myPlayerEnum: Player;
     handleBoardClick: (x: number, y: number) => void;
     isItemModeActive: boolean;
+    showTerritoryOverlay: boolean;
     isMobile: boolean;
     showLastMoveMarker: boolean;
     isPaused?: boolean;
@@ -23,6 +24,7 @@ const SinglePlayerArena: React.FC<SinglePlayerArenaProps> = (props) => {
         myPlayerEnum,
         handleBoardClick,
         isItemModeActive,
+        showTerritoryOverlay,
         isMobile,
         showLastMoveMarker,
         isPaused = false,
@@ -45,6 +47,10 @@ const SinglePlayerArena: React.FC<SinglePlayerArenaProps> = (props) => {
         blackPatternStones,
         whitePatternStones,
         lastTurnStones,
+        hiddenMoves,
+        permanentlyRevealedStones,
+        newlyRevealed,
+        moveHistory,
     } = session;
     
     const blackPlayer = player1.id === blackPlayerId ? player1 : player2;
@@ -79,6 +85,12 @@ const SinglePlayerArena: React.FC<SinglePlayerArenaProps> = (props) => {
                     blackPatternStones={blackPatternStones}
                     whitePatternStones={whitePatternStones}
                     isItemModeActive={isItemModeActive}
+                    hiddenMoves={hiddenMoves}
+                    moveHistory={moveHistory}
+                    permanentlyRevealedStones={permanentlyRevealedStones}
+                    newlyRevealed={newlyRevealed}
+                    analysisResult={session.analysisResult?.[currentUser.id] ?? ((gameStatus === 'ended' || (gameStatus === 'scoring' && session.analysisResult?.['system'])) ? session.analysisResult?.['system'] : null)}
+                    showTerritoryOverlay={showTerritoryOverlay}
                 />
             </div>
             {isPaused && (

@@ -691,17 +691,13 @@ export const useApp = () => {
                  const scoreChange = result.clientResponse?.tournamentScoreChange;
                  if (scoreChange) setTournamentScoreChange(scoreChange);
                 
-                 if (result.rewardSummary) setRewardSummary(result.rewardSummary);
-                if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' && result.clientResponse?.reward) {
-                    setRewardSummary({
-                        reward: result.clientResponse.reward,
-                        items: [],
-                        title: '수련과제 보상 수령'
-                    });
-                }
-                
-                // 싱글플레이 수련과제 보상 수령 모달
-                if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' && result.clientResponse?.reward) {
+                 // 보상 수령 모달 처리
+                if (result.rewardSummary) {
+                    setRewardSummary(result.rewardSummary);
+                } else if (result.clientResponse?.rewardSummary) {
+                    setRewardSummary(result.clientResponse.rewardSummary);
+                } else if (action.type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' && result.clientResponse?.reward) {
+                    // 서버에서 rewardSummary가 없을 경우 fallback
                     const reward = result.clientResponse.reward;
                     setRewardSummary({
                         reward: reward,
@@ -792,6 +788,19 @@ export const useApp = () => {
                         }
                     } else {
                         console.log(`[handleAction] ${action.type} - Skipping redirect (already in tournament)`);
+                    }
+                }
+                
+                // 비상탈출 등에서 사용하는 일반 redirectTo 처리
+                const redirectTo = result.clientResponse?.redirectTo;
+                if (redirectTo) {
+                    if (window.location.hash !== redirectTo) {
+                        console.log(`[handleAction] ${action.type} - Redirecting to:`, redirectTo);
+                        setTimeout(() => {
+                            window.location.hash = redirectTo;
+                        }, 200);
+                    } else {
+                        console.log(`[handleAction] ${action.type} - Already at ${redirectTo}, skipping redirect`);
                     }
                 }
                 // 거절 메시지 표시

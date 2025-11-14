@@ -536,11 +536,11 @@ const Profile: React.FC<ProfileProps> = () => {
                         {/* 나머지 공간에 버튼들 */}
                         <div className="flex-1 flex gap-2">
                             {currentUserWithStatus.guildId ? (
-                                <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="green" className="flex-1">길드 입장</Button>
+                                <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 justify-center !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드 입장</Button>
                             ) : (
                                 <>
-                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="blue" className="flex-1">길드창설</Button>
-                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="blue" className="flex-1">길드가입</Button>
+                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 justify-center !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드창설</Button>
+                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 justify-center !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드가입</Button>
                                 </>
                             )}
                         </div>
@@ -552,8 +552,8 @@ const Profile: React.FC<ProfileProps> = () => {
                         <span className="whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 0.75rem)' }}>보너스: <span className="font-bold text-green-400">{availablePoints}</span>P</span>
                         <Button 
                             onClick={handlers.openStatAllocationModal} 
-                            colorScheme="yellow" 
-                            className="!text-[10px] !py-0.5"
+                            colorScheme="none" 
+                            className="!text-[10px] !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400"
                         >
                             분배
                         </Button>
@@ -637,19 +637,19 @@ const Profile: React.FC<ProfileProps> = () => {
         );
     return (
         <div className="bg-primary text-primary p-2 sm:p-4 lg:p-2 w-full h-full flex flex-col">
-            <header className="flex justify-between items-center mb-2 px-2 flex-shrink-0">
-                <h1 className="text-2xl font-bold text-primary">홈</h1>
-                <div className="flex items-center gap-2">
+            <header className="flex justify-between items-center mb-1 lg:mb-2 px-1 lg:px-2 flex-shrink-0">
+                <h1 className="text-base lg:text-2xl font-bold text-primary">홈</h1>
+                <div className="flex items-center gap-1 lg:gap-2">
                     <button 
                         onClick={handlers.openEncyclopedia}
-                        className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-transform hover:scale-110"
+                        className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 flex items-center justify-center transition-transform hover:scale-110 flex-shrink-0"
                         title="도감"
                     >
                         <img src="/images/button/itembook.png" alt="도감" className="w-full h-full" />
                     </button>
                     <button 
                         onClick={handlers.openInfoModal}
-                        className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-transform hover:scale-110"
+                        className="w-6 h-6 sm:w-8 sm:h-8 lg:w-10 lg:h-10 flex items-center justify-center transition-transform hover:scale-110 flex-shrink-0"
                         title="도움말"
                     >
                         <img src="/images/button/help.png" alt="도움말" className="w-full h-full" />
@@ -681,8 +681,8 @@ const Profile: React.FC<ProfileProps> = () => {
                                 </div>
                                 <Button 
                                     onClick={handlers.openEquipmentEffectsModal} 
-                                    colorScheme="blue" 
-                                    className="mt-2 !text-xs"
+                                    colorScheme="none" 
+                                    className="mt-2 !text-xs !py-0.5 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400"
                                 >
                                     장비 효과 보기
                                 </Button>
@@ -722,12 +722,130 @@ const Profile: React.FC<ProfileProps> = () => {
                 </div>
 
                 {/* --- MOBILE LAYOUT --- */}
-                <div className="lg:hidden flex flex-col h-full gap-1.5 relative">
-                    <div className="flex flex-row gap-1.5 flex-shrink-0">
-                        <div className="basis-[45%] min-w-[140px] bg-panel border border-color text-on-panel rounded-lg p-1.5 flex flex-col gap-1">{ProfilePanelContent}</div>
-                        <div className="basis-[55%] min-w-[180px] bg-panel border border-color text-on-panel rounded-lg p-1.5 flex flex-col">
-                            <h3 className="text-center font-semibold text-secondary text-xs flex-shrink-0 mb-1 whitespace-nowrap">장착 장비</h3>
-                            <div className="grid grid-cols-3 gap-1">
+                <div className="lg:hidden flex flex-col h-full gap-1 relative">
+                    <div className="flex flex-row gap-1 flex-shrink-0">
+                        <div className="basis-[50%] min-w-[150px] bg-panel border border-color text-on-panel rounded-lg p-1 flex flex-col gap-0.5">
+                            <div className="flex flex-row gap-1 items-center">
+                                <div className="flex-shrink-0 flex flex-col items-center gap-0.5 w-16">
+                                    <div className="relative">
+                                        <Avatar userId={currentUserWithStatus.id} userName={nickname} size={50} avatarUrl={avatarUrl} borderUrl={borderUrl} />
+                                        <button 
+                                            onClick={handlers.openProfileEditModal}
+                                            className="absolute bottom-0 right-0 w-4 h-4 flex items-center justify-center bg-secondary hover:bg-tertiary rounded-full p-0.5 border border-primary transition-transform hover:scale-110 active:scale-95"
+                                            title="프로필 수정"
+                                        >
+                                            <span className="text-[10px]">✏️</span>
+                                            {!currentUserWithStatus.mbti && (
+                                                <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                                            )}
+                                        </button>
+                                    </div>
+                                    <div className="flex flex-col items-center w-full">
+                                        <div className="flex items-center gap-0.5 w-full justify-center">
+                                            <h2 className="text-[10px] font-bold truncate whitespace-nowrap overflow-hidden" title={nickname}>{nickname}</h2>
+                                        </div>
+                                        <p className="text-[8px] text-tertiary truncate whitespace-nowrap overflow-hidden">
+                                            MBTI: {currentUserWithStatus.mbti ? currentUserWithStatus.mbti : '미설정'}
+                                        </p>
+                                    </div>
+                                </div>
+                                
+                                <div className="flex-grow space-y-0.5 bg-tertiary/30 p-1 rounded-md flex flex-col justify-center">
+                                    <div>
+                                        <div className="flex justify-between items-baseline mb-0.5 text-[9px] whitespace-nowrap">
+                                            <span className="font-semibold whitespace-nowrap overflow-hidden">전략 <span className="text-xs font-bold">Lv.{currentUserWithStatus.strategyLevel}</span></span>
+                                            <span className="font-mono text-tertiary whitespace-nowrap overflow-hidden">{currentUserWithStatus.strategyXp} / {getXpRequirementForLevel(currentUserWithStatus.strategyLevel)}</span>
+                                        </div>
+                                        <div className="w-full bg-tertiary/50 rounded-full h-2 border border-color">
+                                            <div className="bg-gradient-to-r from-blue-500 to-cyan-400 h-full rounded-full transition-width duration-500" style={{ width: `${Math.min((currentUserWithStatus.strategyXp / getXpRequirementForLevel(currentUserWithStatus.strategyLevel)) * 100, 100)}%` }}></div>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div className="flex justify-between items-baseline mb-0.5 text-[9px] whitespace-nowrap">
+                                            <span className="font-semibold whitespace-nowrap overflow-hidden">놀이 <span className="text-xs font-bold">Lv.{currentUserWithStatus.playfulLevel}</span></span>
+                                            <span className="font-mono text-tertiary whitespace-nowrap overflow-hidden">{currentUserWithStatus.playfulXp} / {getXpRequirementForLevel(currentUserWithStatus.playfulLevel)}</span>
+                                        </div>
+                                        <div className="w-full bg-tertiary/50 rounded-full h-2 border border-color">
+                                            <div className="bg-gradient-to-r from-yellow-500 to-orange-400 h-full rounded-full transition-width duration-500" style={{ width: `${Math.min((currentUserWithStatus.playfulXp / getXpRequirementForLevel(currentUserWithStatus.playfulLevel)) * 100, 100)}%` }}></div>
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={() => setShowMannerRankModal(true)}
+                                        className="w-full text-left hover:bg-tertiary/50 rounded-md p-0.5 transition-all"
+                                        title="매너 등급 정보 보기"
+                                    >
+                                        <div className="flex justify-between items-baseline mb-0.5 text-[9px] whitespace-nowrap">
+                                            <span className="font-semibold whitespace-nowrap overflow-hidden">매너 등급</span>
+                                            <span className={`font-semibold text-[9px] whitespace-nowrap overflow-hidden ${mannerRank.color} cursor-pointer transition-all`}>
+                                                {totalMannerScore}점 ({mannerRank.rank})
+                                            </span>
+                                        </div>
+                                        <div className="w-full bg-tertiary/50 rounded-full h-1.5 border border-color">
+                                            <div className={`${mannerStyle.colorClass} h-full rounded-full`} style={{ width: `${mannerStyle.percentage}%` }}></div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="flex-grow flex flex-col min-h-0 border-t border-color mt-1 pt-1">
+                                <div className="bg-tertiary/30 p-1 rounded-md mb-1">
+                                    <div className="flex items-center gap-1">
+                                        <button
+                                            onClick={() => { window.location.hash = '#/guild'; }}
+                                            className="flex-shrink-0 w-6 h-6 rounded-md bg-secondary/50 hover:bg-secondary/70 border border-color transition-colors flex items-center justify-center"
+                                            title="길드"
+                                        >
+                                            <img src="/images/button/guild.png" alt="길드" className="w-5 h-5 object-contain" />
+                                        </button>
+                                        <div className="flex-1 flex gap-1">
+                                            {currentUserWithStatus.guildId ? (
+                                                <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드 입장</Button>
+                                            ) : (
+                                                <>
+                                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드창설</Button>
+                                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드가입</Button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="flex justify-between items-center mb-0.5 flex-shrink-0 whitespace-nowrap">
+                                    <h3 className="font-semibold text-secondary text-[10px] whitespace-nowrap overflow-hidden">능력치</h3>
+                                    <div className="text-[9px] flex items-center gap-1 whitespace-nowrap overflow-hidden">
+                                        <span className="whitespace-nowrap overflow-hidden">보너스: <span className="font-bold text-green-400">{availablePoints}</span>P</span>
+                                        <Button 
+                                            onClick={handlers.openStatAllocationModal} 
+                                            colorScheme="none" 
+                                            className="!text-[7px] !py-0.5 !px-1 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400"
+                                        >
+                                            분배
+                                        </Button>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
+                                    {Object.values(CoreStat).map(stat => {
+                                        const baseStats = currentUserWithStatus.baseStats || {};
+                                        const spentStatPoints = currentUserWithStatus.spentStatPoints || {};
+                                        const baseValue = (baseStats[stat] || 0) + (spentStatPoints[stat] || 0);
+                                        const bonusInfo = coreStatBonuses[stat] || { percent: 0, flat: 0 };
+                                        const finalValue = Math.floor((baseValue + bonusInfo.flat) * (1 + bonusInfo.percent / 100));
+                                        const bonus = finalValue - baseValue;
+                                        return (
+                                            <div key={stat} className="bg-tertiary/40 p-0.5 rounded-md flex items-center justify-between text-[9px] whitespace-nowrap overflow-hidden">
+                                                <span className="font-semibold text-secondary whitespace-nowrap overflow-hidden">{stat}</span>
+                                                <span className="font-mono font-bold whitespace-nowrap overflow-hidden" title={`기본: ${baseValue}, 장비: ${bonus}`}>
+                                                    {isNaN(finalValue) ? 0 : finalValue}
+                                                    {bonus > 0 && <span className="text-green-400 text-[8px] ml-0.5">(+{bonus})</span>}
+                                                </span>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                        <div className="basis-[50%] min-w-[150px] bg-panel border border-color text-on-panel rounded-lg p-1 flex flex-col">
+                            <h3 className="text-center font-semibold text-secondary text-[9px] flex-shrink-0 mb-0.5 whitespace-nowrap">장착 장비</h3>
+                            <div className="grid grid-cols-3 gap-0.5">
                                 {(['fan', 'top', 'bottom', 'board', 'bowl', 'stones'] as EquipmentSlot[]).map(slot => {
                                     const item = getItemForSlot(slot);
                                     return (
@@ -743,16 +861,16 @@ const Profile: React.FC<ProfileProps> = () => {
                             </div>
                             <Button 
                                 onClick={handlers.openEquipmentEffectsModal} 
-                                colorScheme="blue" 
-                                className="mt-1 !text-[10px] !py-0.5"
+                                colorScheme="none" 
+                                className="mt-0.5 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400"
                             >
                                 장비 효과 보기
                             </Button>
-                            <div className="mt-1">
+                            <div className="mt-0.5">
                                 <select
                                     value={selectedPreset}
                                     onChange={handlePresetChange}
-                                    className="bg-secondary border border-color text-[10px] rounded-md p-0.5 focus:ring-accent focus:border-accent w-full"
+                                    className="bg-secondary border border-color text-[8px] rounded-md p-0.5 focus:ring-accent focus:border-accent w-full"
                                 >
                                     {presets && presets.map((preset, index) => (
                                         <option key={index} value={index}>{preset.name}</option>

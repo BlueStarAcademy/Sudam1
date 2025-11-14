@@ -161,10 +161,6 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     const { type, payload } = action;
     const gameId = payload?.gameId;
     
-    // 디버깅: ADVANCE_TOURNAMENT_SIMULATION 액션 로깅
-    if (type === 'ADVANCE_TOURNAMENT_SIMULATION') {
-        console.log(`[handleAction] ADVANCE_TOURNAMENT_SIMULATION received for user ${user.id}`);
-    }
 
     // Game Actions (require gameId)
     if (gameId && type !== 'LEAVE_AI_GAME') {

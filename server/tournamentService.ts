@@ -229,7 +229,7 @@ const prepareNextRound = (state: TournamentState, user: User) => {
     }
 };
 
-const processMatchCompletion = (state: TournamentState, user: User, completedMatch: Match, roundIndex: number) => {
+export const processMatchCompletion = (state: TournamentState, user: User, completedMatch: Match, roundIndex: number) => {
     state.currentSimulatingMatch = null;
     
     completedMatch.players.forEach(p => {
@@ -824,6 +824,8 @@ export const startNextRound = (state: TournamentState, user: User) => {
     state.timeElapsed = 0;
     state.currentMatchScores = { player1: 0, player2: 0 };
     state.lastScoreIncrement = null;
+    // 시뮬레이션 시드 초기화 (START_TOURNAMENT_MATCH에서 새로 생성됨)
+    state.simulationSeed = undefined;
     
     const nextMatchToSimulate = state.rounds
         .flatMap((round, roundIndex) => round.matches.map((match, matchIndex) => ({ match, roundIndex, matchIndex })))
@@ -1322,6 +1324,27 @@ export const advanceSimulation = (state: TournamentState, user: User): boolean =
     }
 
     return true;
+};
+
+// 서버에서 시뮬레이션을 실행하여 클라이언트 결과를 검증하는 함수
+export const runServerSimulation = (
+    seed: string,
+    p1: PlayerForTournament,
+    p2: PlayerForTournament
+): { player1Score: number; player2Score: number; commentary: CommentaryLine[]; winnerId: string } => {
+    // SeededRandom 클래스를 동적으로 import
+    // 클라이언트와 동일한 시뮬레이션 로직 사용
+    const { SeededRandom, runClientSimulation } = require('../utils/tournamentSimulation.js');
+    
+    // 클라이언트와 동일한 시뮬레이션 실행
+    const result = runClientSimulation(seed, p1, p2);
+    
+    return {
+        player1Score: result.player1Score,
+        player2Score: result.player2Score,
+        commentary: result.commentary,
+        winnerId: result.winnerId
+    };
 };
 
 export const calculateRanks = (tournament: TournamentState): { id: string, nickname: string, rank: number }[] => {

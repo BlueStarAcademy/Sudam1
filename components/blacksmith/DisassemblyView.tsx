@@ -1,10 +1,21 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { UserWithStatus, InventoryItem, ServerAction, ItemGrade } from '../../types.js';
 import { useAppContext } from '../../hooks/useAppContext.js';
 import ResourceActionButton from '../ui/ResourceActionButton.js';
 import DraggableWindow from '../DraggableWindow.js';
 import { ENHANCEMENT_COSTS, MATERIAL_ITEMS } from '../../constants';
-import { BLACKSMITH_DISASSEMBLY_JACKPOT_RATES } from '../../constants/rules';
+import { BLACKSMITH_DISASSEMBLY_JACKPOT_RATES } from '../../constants/rules.js';
+
+// 모바일 감지 훅
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    return isMobile;
+};
 
 const DisassemblyPreviewPanel: React.FC<{
     selectedIds: Set<string>;
@@ -164,6 +175,7 @@ interface DisassemblyViewProps {
 }
 
 const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction, selectedForDisassembly = new Set(), onToggleDisassemblySelection }) => { // Added default value
+    const isMobile = useIsMobile();
     const { currentUserWithStatus } = useAppContext();
     const [isAutoSelectOpen, setIsAutoSelectOpen] = useState(false);
 
@@ -229,26 +241,26 @@ const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction, selectedFor
     };
 
     return (
-        <div className="h-full flex flex-col min-h-0">
+        <div className={`${isMobile ? 'h-auto' : 'h-full'} flex flex-col ${isMobile ? '' : 'min-h-0'}`}>
             {isAutoSelectOpen && (
                 <AutoSelectModal
                     onClose={() => setIsAutoSelectOpen(false)}
                     onConfirm={handleAutoSelectConfirm}
                 />
             )}
-            <div className="flex-1 min-h-0 overflow-hidden">
+            <div className={`${isMobile ? 'h-auto max-h-[300px] overflow-y-auto' : 'flex-1 min-h-0 overflow-hidden'}`}>
                 <DisassemblyPreviewPanel 
                     selectedIds={selectedForDisassembly} 
                     inventory={inventory} 
                     blacksmithLevel={currentUserWithStatus.blacksmithLevel ?? 1}
                 />
             </div>
-            <div className="flex-shrink-0 mt-3 px-2 pb-2">
-                <div className="flex items-center justify-between gap-3 bg-[#111a2f] border border-cyan-300/20 rounded-xl px-4 py-3">
+            <div className={`flex-shrink-0 ${isMobile ? 'mt-2 px-1 pb-1' : 'mt-3 px-2 pb-2'}`}>
+                <div className={`flex ${isMobile ? 'flex-col' : 'items-center justify-between'} gap-2 bg-[#111a2f] border border-cyan-300/20 rounded-xl ${isMobile ? 'px-2 py-2' : 'px-4 py-3'}`}>
                     <ResourceActionButton
                         onClick={() => setIsAutoSelectOpen(true)}
                         variant="accent"
-                        className="!w-auto !px-5 !py-2 text-sm"
+                        className={`${isMobile ? '!w-full !px-2 !py-1.5 text-[10px]' : '!w-auto !px-5 !py-2 text-sm'}`}
                     >
                         자동 선택
                     </ResourceActionButton>
@@ -256,7 +268,7 @@ const DisassemblyView: React.FC<DisassemblyViewProps> = ({ onAction, selectedFor
                         onClick={handleDisassemble}
                         disabled={selectedForDisassembly.size === 0}
                         variant="materials"
-                        className="!w-auto !px-5 !py-2 text-sm whitespace-nowrap"
+                        className={`${isMobile ? '!w-full !px-2 !py-1.5 text-[10px]' : '!w-auto !px-5 !py-2 text-sm'} whitespace-nowrap`}
                     >
                         선택 아이템 분해 ({selectedForDisassembly.size})
                     </ResourceActionButton>

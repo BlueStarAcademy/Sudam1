@@ -10,7 +10,6 @@ import ToggleSwitch from './ui/ToggleSwitch.js';
 import Slider from './ui/Slider.js';
 import ColorSwatch from './ui/ColorSwatch.js';
 import { getPanelEdgeImages } from '../constants/panelEdges.js';
-import { useNavigate } from 'react-router-dom';
 
 interface SettingsModalProps {
     onClose: () => void;
@@ -37,12 +36,15 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ onClose, isTopmost }) => 
         }
         
         try {
-            await handlers.handleAction({ type: 'EMERGENCY_EXIT', payload: {} });
-            // 홈화면으로 이동
-            window.location.href = '#/';
+            const result = await handlers.handleAction({ type: 'EMERGENCY_EXIT' }) as any;
+            // 서버에서 redirectTo를 반환하거나, 직접 홈화면으로 이동
+            const redirectTo = result?.clientResponse?.redirectTo || '#/';
+            window.location.hash = redirectTo;
         } catch (error) {
             console.error('Emergency exit failed:', error);
             alert('비상탈출 실행 중 오류가 발생했습니다.');
+            // 오류가 발생해도 홈화면으로 이동
+            window.location.hash = '#/';
         }
     };
     

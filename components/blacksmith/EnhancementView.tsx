@@ -6,6 +6,17 @@ import ResourceActionButton from '../ui/ResourceActionButton.js';
 import { ENHANCEMENT_SUCCESS_RATES, ENHANCEMENT_COSTS, MATERIAL_ITEMS, ENHANCEMENT_FAIL_BONUS_RATES, GRADE_LEVEL_REQUIREMENTS, calculateEnhancementGoldCost } from '../../constants';
 import { useAppContext } from '../../hooks/useAppContext.js';
 
+// 모바일 감지 훅
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    return isMobile;
+};
+
 const gradeStyles: Record<ItemGrade, { name: string; color: string; background: string; }> = {
     normal: { name: '일반', color: 'text-gray-300', background: '/images/equipments/normalbgi.png' },
     uncommon: { name: '고급', color: 'text-green-400', background: '/images/equipments/uncommonbgi.png' },
@@ -201,6 +212,7 @@ interface EnhancementViewProps {
 }
 
 const EnhancementView: React.FC<EnhancementViewProps> = ({ selectedItem, currentUser, onAction, enhancementOutcome, onOutcomeConfirm }) => {
+    const isMobile = useIsMobile();
     const [isEnhancing, setIsEnhancing] = useState(false);
     const [enhancementProgress, setEnhancementProgress] = useState(0);
     const [previousStars, setPreviousStars] = useState<number | undefined>(undefined);
@@ -415,9 +427,9 @@ useEffect(() => {
     };
 
     return (
-            <div className="relative h-full flex flex-col">
-            <div className="flex flex-row gap-4 h-full min-h-0">
-                <div className="w-[55%] flex flex-col bg-gray-900/40 p-2 rounded-lg h-full min-h-0">
+            <div className={`relative ${isMobile ? 'h-auto' : 'h-full'} flex flex-col ${isMobile ? 'gap-2' : ''}`}>
+            <div className={`flex ${isMobile ? 'flex-col' : 'flex-row'} gap-4 ${isMobile ? 'h-auto' : 'h-full min-h-0'}`}>
+                <div className={`${isMobile ? 'w-full' : 'w-[55%]'} flex flex-col bg-gray-900/40 ${isMobile ? 'p-1' : 'p-2'} rounded-lg ${isMobile ? 'h-auto' : 'h-full min-h-0'}`}>
                     <ItemDisplay 
                         item={selectedItem} 
                         previousStars={previousStars}
@@ -425,7 +437,7 @@ useEffect(() => {
                     />
                 </div>
 
-                <div className="flex-1 flex flex-col gap-2 h-full min-h-0">
+                <div className={`${isMobile ? 'w-full' : 'flex-1'} flex flex-col gap-2 ${isMobile ? 'h-auto' : 'h-full min-h-0'}`}>
                     {/* 강화 성공 시 정보 */}
                     <div className="bg-gray-900/50 p-2 rounded-lg flex-shrink-0">
                         <h4 className="font-semibold text-center mb-1.5 text-green-300 text-xs">강화 성공 시</h4>

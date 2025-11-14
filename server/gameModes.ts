@@ -40,11 +40,19 @@ export const finalizeAnalysisResult = (baseAnalysis: types.AnalysisResult, sessi
     finalAnalysis.scoreDetails.white.itemBonus = 0;
 
     // Recalculate totals
-    finalAnalysis.scoreDetails.black.total = finalAnalysis.scoreDetails.black.territory + finalAnalysis.scoreDetails.black.captures + (finalAnalysis.scoreDetails.black.deadStones ?? 0) + finalAnalysis.scoreDetails.black.baseStoneBonus + finalAnalysis.scoreDetails.black.hiddenStoneBonus + finalAnalysis.scoreDetails.black.timeBonus + finalAnalysis.scoreDetails.black.itemBonus;
-    finalAnalysis.scoreDetails.white.total = finalAnalysis.scoreDetails.white.territory + finalAnalysis.scoreDetails.white.captures + finalAnalysis.scoreDetails.white.komi + (finalAnalysis.scoreDetails.white.deadStones ?? 0) + finalAnalysis.scoreDetails.white.baseStoneBonus + finalAnalysis.scoreDetails.white.hiddenStoneBonus + finalAnalysis.scoreDetails.white.timeBonus + finalAnalysis.scoreDetails.white.itemBonus;
+    const blackTotal = finalAnalysis.scoreDetails.black.territory + finalAnalysis.scoreDetails.black.captures + (finalAnalysis.scoreDetails.black.deadStones ?? 0) + finalAnalysis.scoreDetails.black.baseStoneBonus + finalAnalysis.scoreDetails.black.hiddenStoneBonus + finalAnalysis.scoreDetails.black.timeBonus + finalAnalysis.scoreDetails.black.itemBonus;
+    const whiteTotal = finalAnalysis.scoreDetails.white.territory + finalAnalysis.scoreDetails.white.captures + finalAnalysis.scoreDetails.white.komi + (finalAnalysis.scoreDetails.white.deadStones ?? 0) + finalAnalysis.scoreDetails.white.baseStoneBonus + finalAnalysis.scoreDetails.white.hiddenStoneBonus + finalAnalysis.scoreDetails.white.timeBonus + finalAnalysis.scoreDetails.white.itemBonus;
     
-    finalAnalysis.areaScore.black = finalAnalysis.scoreDetails.black.total;
-    finalAnalysis.areaScore.white = finalAnalysis.scoreDetails.white.total;
+    finalAnalysis.scoreDetails.black.total = blackTotal;
+    finalAnalysis.scoreDetails.white.total = whiteTotal;
+    
+    finalAnalysis.areaScore.black = blackTotal;
+    finalAnalysis.areaScore.white = whiteTotal;
+    
+    // 디버깅: 점수 계산 상세 로그
+    console.log(`[finalizeAnalysisResult] Score calculation for game ${session.id}:`);
+    console.log(`  Black: territory=${finalAnalysis.scoreDetails.black.territory}, captures=${finalAnalysis.scoreDetails.black.captures}, deadStones=${finalAnalysis.scoreDetails.black.deadStones ?? 0}, total=${blackTotal}`);
+    console.log(`  White: territory=${finalAnalysis.scoreDetails.white.territory}, captures=${finalAnalysis.scoreDetails.white.captures}, komi=${finalAnalysis.scoreDetails.white.komi}, deadStones=${finalAnalysis.scoreDetails.white.deadStones ?? 0}, total=${whiteTotal}`);
     
     return finalAnalysis;
 };
@@ -108,9 +116,14 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
             broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
             console.log(`[getGameResult] Analysis complete for game ${freshGame.id}, scores: Black ${finalAnalysis.scoreDetails.black.total}, White ${finalAnalysis.scoreDetails.white.total}`);
             
-            const winner = finalAnalysis.scoreDetails.black.total > finalAnalysis.scoreDetails.white.total
+            // 승자 판정: 흑의 점수가 백의 점수보다 크면 흑 승리, 같거나 작으면 백 승리 (덤 때문에)
+            const blackTotal = finalAnalysis.scoreDetails.black.total;
+            const whiteTotal = finalAnalysis.scoreDetails.white.total;
+            const winner = blackTotal > whiteTotal
                 ? types.Player.Black
                 : types.Player.White;
+            
+            console.log(`[getGameResult] Winner determination: Black=${blackTotal}, White=${whiteTotal}, Winner=${winner === types.Player.Black ? 'Black' : 'White'}, ScoreDiff=${Math.abs(blackTotal - whiteTotal).toFixed(1)}`);
             
             await endGame(freshGame, winner, 'score');
         })
@@ -447,7 +460,7 @@ const processGame = async (game: LiveGameSession, now: number): Promise<LiveGame
                     await makeAiMove(game);
 
                     const moveCountAfter = game.moveHistory?.length ?? initialMoveCount;
-                    const aiActuallyMoved = moveCountAfter > initialMoveCount || game.gameStatus === 'ended';
+                    const aiActuallyMoved = moveCountAfter > initialMoveCount;
 
                     if (aiActuallyMoved) {
                         game.aiTurnStartTime = undefined;

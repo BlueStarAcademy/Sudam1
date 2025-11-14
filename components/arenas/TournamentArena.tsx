@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { TournamentType, UserWithStatus } from '../../types';
+import { TournamentType, UserWithStatus, PlayerForTournament } from '../../types';
 import { useAppContext } from '../../hooks/useAppContext';
 import { TournamentBracket } from '../TournamentBracket';
 import Button from '../Button';
@@ -53,7 +53,7 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
         return (
             <div className="p-4 text-center">
                 <p>사용자 정보를 불러오는 중입니다...</p>
-                <Button onClick={() => window.location.hash = '#/tournament'} className="mt-4">로비로 돌아가기</Button>
+                <Button onClick={() => { window.location.hash = '#/tournament'; }} className="mt-4">로비로 돌아가기</Button>
             </div>
         );
     }
@@ -81,7 +81,7 @@ const TournamentArena: React.FC<TournamentArenaProps> = ({ type }) => {
         if (tournamentState) {
             // bracket_ready 상태에서 컨디션이 1000이면 컨디션 부여를 위해 START_TOURNAMENT_ROUND 호출
             if (tournamentState.status === 'bracket_ready' && 
-                tournamentState.players.some(p => p.condition === undefined || p.condition === null || p.condition === 1000)) {
+                tournamentState.players.some((p: PlayerForTournament) => p.condition === undefined || p.condition === null || p.condition === 1000)) {
                 handlersRef.current.handleAction({ 
                     type: 'START_TOURNAMENT_ROUND', 
                     payload: { type: type } 

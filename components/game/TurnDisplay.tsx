@@ -125,6 +125,7 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({
     const [foulMessage, setFoulMessage] = useState<string | null>(null);
     const prevTimeoutPlayerId = usePrevious(session.lastTimeoutPlayerId);
     const prevFoulInfoMessage = usePrevious(session.foulInfo?.message);
+    const hasAutoCanceledRef = useRef(false);
 
     const isPlayfulTurn = useMemo(() => {
         return PLAYFUL_GAME_MODES.some(m => m.mode === session.mode) && 
@@ -209,6 +210,19 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({
 
         return () => clearInterval(timerId);
     }, [isItemMode, session.itemUseDeadline, isPaused, session.gameStatus]);
+
+    // 시간이 0초가 되었을 때 자동으로 취소 요청 (미사일 선택 모드)
+    useEffect(() => {
+        if (timeLeft <= 0 && session.gameStatus === 'missile_selecting' && session.itemUseDeadline && onAction && !hasAutoCanceledRef.current) {
+            hasAutoCanceledRef.current = true;
+            // 서버에 취소 요청 전송
+            onAction({ type: 'CANCEL_MISSILE_SELECTION', payload: { gameId: session.id } });
+        }
+        // 게임 상태가 변경되면 리셋
+        if (session.gameStatus !== 'missile_selecting') {
+            hasAutoCanceledRef.current = false;
+        }
+    }, [timeLeft, session.gameStatus, session.itemUseDeadline, session.id, onAction]);
 
     const isSinglePlayer = session.isSinglePlayer;
     const baseClasses = "flex-shrink-0 rounded-lg flex flex-col items-center justify-center shadow-inner py-1 h-12 border";
@@ -300,20 +314,6 @@ const TurnDisplay: React.FC<TurnDisplayProps> = ({
         }
 
         const percentage = (timeLeft / 30) * 100;
-        
-        // 시간이 0초가 되었을 때 자동으로 취소 요청
-        const hasAutoCanceledRef = useRef(false);
-        useEffect(() => {
-            if (timeLeft <= 0 && session.gameStatus === 'missile_selecting' && session.itemUseDeadline && onAction && !hasAutoCanceledRef.current) {
-                hasAutoCanceledRef.current = true;
-                // 서버에 취소 요청 전송
-                onAction({ type: 'CANCEL_MISSILE_SELECTION', payload: { gameId: session.id } });
-            }
-            // 게임 상태가 변경되면 리셋
-            if (session.gameStatus !== 'missile_selecting') {
-                hasAutoCanceledRef.current = false;
-            }
-        }, [timeLeft, session.gameStatus, session.itemUseDeadline, session.id, onAction]);
 
         return wrapContent(
             `${baseClasses} ${themeClasses} px-4 gap-1.5 min-h-[3rem]`,

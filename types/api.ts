@@ -1,7 +1,7 @@
 import {
     User, LiveGameSession, Negotiation, KomiBid,
     AdminLog, Announcement, OverrideAnnouncement, InventoryItem,
-    QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus, EquipmentPreset, GameSettings
+    QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus, EquipmentPreset, GameSettings, CommentaryLine
 } from './entities.js';
 import { GameMode, RPSChoice, Point, Player, UserStatus, TournamentType, InventoryItemType, GameCategory, EquipmentSlot } from './enums.js';
 
@@ -207,6 +207,7 @@ export type ServerAction =
     | { type: 'START_TOURNAMENT_ROUND', payload: { type: TournamentType } }
     | { type: 'START_TOURNAMENT_MATCH', payload: { type: TournamentType } }
     | { type: 'ADVANCE_TOURNAMENT_SIMULATION', payload: { type: TournamentType; timestamp: number } }
+    | { type: 'COMPLETE_TOURNAMENT_SIMULATION', payload: { type: TournamentType; result: { timeElapsed: number; player1Score: number; player2Score: number; commentary: CommentaryLine[]; winnerId: string } } }
     | { type: 'CLEAR_TOURNAMENT_SESSION', payload: { type?: TournamentType } }
     | { type: 'SAVE_TOURNAMENT_PROGRESS', payload: { type: TournamentType } }
     | { type: 'FORFEIT_TOURNAMENT', payload: { type: TournamentType } }

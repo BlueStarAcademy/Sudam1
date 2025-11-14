@@ -146,17 +146,6 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             const enforcedByoyomiCount = isSpeedMode ? 0 : 3;
             const enforcedIncrement = isSpeedMode ? (stage.timeControl.increment ?? 0) : 0;
 
-            // AI 히든 아이템 사용 턴 결정
-            let aiHiddenItemTurn: number | undefined;
-            if (stage.hiddenCount !== undefined) {
-                if (stage.aiHiddenItemTurnRange) {
-                    // 유단자 히든바둑: 10~50턴 사이
-                    aiHiddenItemTurn = Math.floor(Math.random() * (stage.aiHiddenItemTurnRange.max - stage.aiHiddenItemTurnRange.min + 1)) + stage.aiHiddenItemTurnRange.min;
-                } else {
-                    // 고급 히든바둑: 10~30턴 사이
-                    aiHiddenItemTurn = Math.floor(Math.random() * 21) + 10;
-                }
-            }
 
             const gameId = `sp-game-${randomUUID()}`;
             const baseCaptureTargetBlack = stage.targetScore.black > 0 ? stage.targetScore.black : 999;
@@ -226,8 +215,6 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 whiteTurnsPlayed: isSurvivalMode ? 0 : undefined,
                 singlePlayerPlacementRefreshesUsed: 0,
                 totalTurns: 0, // 턴 카운팅 초기화
-                aiHiddenItemTurn: aiHiddenItemTurn, // AI 히든 아이템 사용 턴
-                aiHiddenItemUsed: false, // AI 히든 아이템 사용 여부
             } as LiveGameSession;
 
             // 히든바둑 초기화
@@ -474,13 +461,22 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
             const updatedUser = JSON.parse(JSON.stringify(user));
             
-            // 보상 정보를 클라이언트에 반환
+            // 보상 정보를 클라이언트에 반환 (RewardSummaryModal 형식)
+            const rewardSummary = {
+                reward: {
+                    [rewardType]: rewardAmount
+                } as { gold?: number; diamonds?: number; actionPoints?: number },
+                items: [],
+                title: `${missionInfo.name} 보상 수령`
+            };
+            
             return { 
                 clientResponse: { 
                     updatedUser,
                     reward: {
                         [rewardType]: rewardAmount
-                    }
+                    },
+                    rewardSummary
                 } 
             };
         }

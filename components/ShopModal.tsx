@@ -93,16 +93,20 @@ const ActionPointCard: React.FC<{ currentUser: UserWithStatus, onBuy: () => void
                     colorScheme="none"
                     className={`w-full justify-center rounded-xl border border-cyan-400/60 bg-gradient-to-r from-cyan-400/90 via-sky-400/90 to-blue-500/90 text-slate-900 font-semibold tracking-wide shadow-[0_10px_30px_-12px_rgba(14,165,233,0.65)] hover:from-cyan-300 hover:to-blue-400 ${canPurchase ? '' : 'opacity-50 cursor-not-allowed'}`}
                 >
-                    <div className="flex items-center justify-center gap-2 text-sm sm:text-base">
-                        <img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 drop-shadow-md" />
-                        <span>{cost.toLocaleString()}</span>
+                    <div className="flex flex-col items-center justify-center gap-0.5">
+                        <div className="flex items-center justify-center gap-2 text-sm sm:text-base">
+                            <img src="/images/icon/Zem.png" alt="다이아" className="w-5 h-5 drop-shadow-md" />
+                            <span>{cost.toLocaleString()}</span>
+                        </div>
+                        <span className="text-[10px] text-slate-700/90 tracking-wide">
+                            오늘 구매 {purchasesToday}/{MAX_ACTION_POINT_PURCHASES_PER_DAY}
+                        </span>
                     </div>
                 </Button>
                 {!canPurchase && (
                     <span className="text-xs text-cyan-100/80 italic mt-1">오늘 구매 한도에 도달했습니다.</span>
                 )}
             </div>
-             <p className="mt-3 text-xs text-slate-300/80 tracking-wide uppercase">오늘 구매 {purchasesToday}/{MAX_ACTION_POINT_PURCHASES_PER_DAY}</p>
         </div>
     );
 };
@@ -154,11 +158,6 @@ const ShopItemCard: React.FC<{
             <p className="text-xs text-slate-200/80 mt-2 leading-relaxed line-clamp-2">
                 {refinedDescription}
             </p>
-            {limit > 0 && (
-                <span className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-indigo-400/40 bg-indigo-500/10 px-2.5 py-0.5 text-[10px] tracking-wider text-indigo-200 uppercase">
-                    {limitText} 한도 {remaining}/{limit}
-                </span>
-            )}
             <div className="flex flex-col items-stretch justify-center gap-2 mt-3 w-full">
                 <Button
                     onClick={handleBuyClick}
@@ -166,9 +165,16 @@ const ShopItemCard: React.FC<{
                     colorScheme="none"
                     className={`w-full justify-center rounded-xl border ${isGold ? 'border-amber-400/50 bg-gradient-to-r from-amber-400/90 via-amber-300/90 to-amber-500/90 text-slate-900 shadow-[0_12px_32px_-18px_rgba(251,191,36,0.85)] hover:from-amber-300 hover:to-amber-500' : 'border-sky-400/50 bg-gradient-to-r from-sky-400/90 via-blue-500/90 to-indigo-500/90 text-white shadow-[0_12px_32px_-18px_rgba(56,189,248,0.85)] hover:from-sky-300 hover:to-indigo-500'} ${remaining === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
-                    <div className="flex items-center justify-center gap-2 text-sm sm:text-base font-semibold tracking-wide">
-                        {PriceIcon}
-                        <span>{priceAmount.toLocaleString()}</span>
+                    <div className="flex flex-col items-center justify-center gap-0.5">
+                        <div className="flex items-center justify-center gap-2 text-sm sm:text-base font-semibold tracking-wide">
+                            {PriceIcon}
+                            <span>{priceAmount.toLocaleString()}</span>
+                        </div>
+                        {limit > 0 && (
+                            <span className={`text-[10px] ${isGold ? 'text-slate-700/90' : 'text-white/70'} tracking-wide`}>
+                                {limitText} 한도 {remaining}/{limit}
+                            </span>
+                        )}
                     </div>
                 </Button>
             </div>

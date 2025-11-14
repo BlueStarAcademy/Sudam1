@@ -157,32 +157,25 @@ const AppContent: React.FC = () => {
     const isGameView = currentRoute.view === 'game';
     const backgroundClass = currentUser ? 'bg-primary' : 'bg-login-background';
 
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+    
+    useEffect(() => {
+        const handleResize = () => {
+            setIsMobile(window.innerWidth < 768);
+        };
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    
     return (
-        <div className={`font-sans ${backgroundClass} text-primary h-full flex flex-col`}>
+        <div className={`font-sans ${backgroundClass} text-primary h-full flex flex-col`} style={{ 
+            height: isMobile ? '100dvh' : '100vh',
+            maxHeight: isMobile ? '100dvh' : '100vh'
+        }}>
             {isPreloading && (
                 <div className="fixed inset-0 bg-tertiary z-[100] flex flex-col items-center justify-center">
                     <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-primary"></div>
                     <p className="mt-4 text-primary">에셋 로딩 중...</p>
-                </div>
-            )}
-            {error && (
-                <div className="fixed top-4 left-1/2 -translate-x-1/2 w-full max-w-md z-50 animate-slide-down">
-                    <div className="bg-danger border-2 border-red-500 rounded-lg shadow-2xl p-4 text-white font-bold text-center">{error}</div>
-                </div>
-            )}
-             {showQuestToast && (
-                <div 
-                    onClick={() => { handlers.openQuests(); setShowQuestToast(false); }}
-                    className="fixed top-20 right-4 w-full max-w-xs z-50 animate-slide-in-right cursor-pointer"
-                >
-                    <div className="bg-success border-2 border-green-400 rounded-lg shadow-2xl p-4 text-white font-bold text-center">
-                        📜 완료된 퀘스트가 있습니다!
-                    </div>
-                </div>
-            )}
-            {enhancementResult && !modals.enhancingItem && (
-                <div className="fixed top-4 left-1/2 -translate-x-1/2 w-full max-w-md z-50 animate-slide-down">
-                    <div className={`${enhancementResult.success ? 'bg-accent border-accent' : 'bg-danger border-red-500'} border-2 rounded-lg shadow-2xl p-4 text-white font-bold text-center`}>{enhancementResult.message}</div>
                 </div>
             )}
             {showExitToast && (
@@ -194,7 +187,10 @@ const AppContent: React.FC = () => {
             {currentUser && !isGameView && <Header />}
             
             {currentUser ? (
-                <main className="flex-1 flex flex-col min-h-0">
+                <main className="flex-1 flex flex-col min-h-0 overflow-y-auto" style={{ 
+                    paddingBottom: typeof window !== 'undefined' && window.innerWidth < 768 ? 'max(env(safe-area-inset-bottom, 0px), 20px)' : '0px',
+                    WebkitOverflowScrolling: 'touch'
+                }}>
                     <Router />
                 </main>
             ) : (

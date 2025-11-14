@@ -54,7 +54,10 @@ export const updateMissileState = (game: types.LiveGameSession, now: number) => 
     if (game.gameStatus === 'missile_animating') {
         if (game.animation && now > game.animation.startTime + game.animation.duration) {
             const playerWhoMoved = game.currentPlayer;
+            const previousStatus = game.gameStatus;
             game.animation = null;
+            
+            // Restore the timer for the current player
             if (game.pausedTurnTimeLeft) {
                 if (playerWhoMoved === types.Player.Black) {
                     game.blackTimeLeft = game.pausedTurnTimeLeft;
@@ -67,10 +70,43 @@ export const updateMissileState = (game: types.LiveGameSession, now: number) => 
             game.gameStatus = 'playing';
             if (game.settings.timeLimit > 0) {
                 const currentPlayerTimeKey = playerWhoMoved === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
-                game.turnDeadline = now + game[currentPlayerTimeKey] * 1000;
+                // pausedTurnTimeLeft가 없으면 현재 시간을 사용
+                if (!game.pausedTurnTimeLeft && game[currentPlayerTimeKey] > 0) {
+                    game.turnDeadline = now + game[currentPlayerTimeKey] * 1000;
+                } else if (game.pausedTurnTimeLeft) {
+                    game.turnDeadline = now + game[currentPlayerTimeKey] * 1000;
+                } else {
+                    game.turnDeadline = undefined;
+                }
                 game.turnStartTime = now;
+            } else {
+                game.turnDeadline = undefined;
+                game.turnStartTime = undefined;
             }
+            
+            // Clean up item use deadline and paused time
+            game.itemUseDeadline = undefined;
             game.pausedTurnTimeLeft = undefined;
+            
+            // 싱글플레이에서 게임 상태가 변경된 경우 즉시 저장하고 브로드캐스트
+            if (game.isSinglePlayer && previousStatus !== game.gameStatus) {
+                // 게임 상태 변경을 명시적으로 표시하기 위해 serverRevision 증가
+                game.serverRevision = (game.serverRevision || 0) + 1;
+                // lastSyncedAt도 업데이트하여 게임 루프에서 변경을 확실히 감지하도록 함
+                game.lastSyncedAt = now;
+                
+                // 싱글플레이에서는 즉시 저장하고 브로드캐스트하여 클라이언트가 상태 변경을 즉시 받을 수 있도록 함
+                const saveAndBroadcast = async () => {
+                    const db = await import('../db.js');
+                    const { broadcast } = await import('../socket.js');
+                    await db.saveGame(game);
+                    broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+                };
+                // 비동기로 실행하되 await하지 않음 (게임 루프를 블로킹하지 않기 위해)
+                saveAndBroadcast().catch(err => {
+                    console.error(`[Missile Go] Failed to save and broadcast single player game ${game.id} after animation:`, err);
+                });
+            }
         }
     }
 };

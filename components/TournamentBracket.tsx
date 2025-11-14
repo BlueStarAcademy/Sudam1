@@ -121,8 +121,8 @@ const PlayerProfilePanel: React.FC<{
     }, [fullUserData]);
 
     const isClickable = !player.id.startsWith('bot-') && player.id !== currentUserId;
-    const avatarUrl = AVATAR_POOL.find(a => a.id === player.avatarId)?.url;
-    const borderUrl = BORDER_POOL.find(b => b.id === player.borderId)?.url;
+    const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === player.avatarId)?.url, [player.avatarId]);
+    const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === player.borderId)?.url, [player.borderId]);
     const isCurrentUser = player.id === currentUserId;
     
     // 컨디션 회복제 보유 개수 확인
@@ -161,32 +161,53 @@ const PlayerProfilePanel: React.FC<{
         // 그 외에는 현재 player.stats 사용
         return { ...(player?.stats || {}) };
     }, [player?.originalStats, initialPlayer?.stats, player?.stats]);
-    const prevStatsRef = useRef<Record<CoreStat, number>>({ ...(player?.stats || {}) });
+    const prevStatsRef = useRef<Record<CoreStat, number>>({} as Record<CoreStat, number>);
     
     useEffect(() => {
-        if (!player || timeElapsed === 0) {
+        if (!player || !player.stats) {
+            prevStatsRef.current = {} as Record<CoreStat, number>;
+            return;
+        }
+        
+        // 초기화: prevStatsRef가 비어있으면 현재 stats로 초기화
+        if (Object.keys(prevStatsRef.current).length === 0) {
             prevStatsRef.current = { ...(player.stats || {}) } as Record<CoreStat, number>;
             return;
         }
         
+        // 각 능력치를 개별적으로 비교하여 변화 감지
         const changes: Record<CoreStat, number> = {} as Record<CoreStat, number>;
+        let hasChanges = false;
+        
         Object.values(CoreStat).forEach(stat => {
-            const prev = prevStatsRef.current[stat] ?? player.stats[stat];
-            const curr = player.stats[stat];
+            const prev = prevStatsRef.current[stat] ?? 0;
+            const curr = player.stats[stat] ?? 0;
             if (prev !== curr) {
                 changes[stat] = curr - prev;
+                hasChanges = true;
             }
         });
         
-        if (Object.keys(changes).length > 0) {
+        if (hasChanges) {
+            console.log(`[PlayerProfilePanel] Stat changes detected for ${player.nickname}:`, changes);
             setStatChanges(changes);
             setTimeout(() => {
                 setStatChanges({} as Record<CoreStat, number>);
             }, 2000);
         }
         
+        // 현재 stats를 깊은 복사로 저장
         prevStatsRef.current = { ...(player.stats || {}) } as Record<CoreStat, number>;
-    }, [player?.stats, timeElapsed]);
+    }, [
+        player?.stats?.CombatPower,
+        player?.stats?.ThinkingSpeed,
+        player?.stats?.Judgment,
+        player?.stats?.Calculation,
+        player?.stats?.Concentration,
+        player?.stats?.Stability,
+        timeElapsed,
+        tournamentStatus
+    ]);
 
     const isStatHighlighted = (stat: CoreStat) => {
         if (highlightPhase === 'none') return false;
@@ -438,10 +459,10 @@ const ScoreGraph: React.FC<{
     const graphRef = useRef<HTMLDivElement>(null);
     const isFirstMountRef = useRef(true);
     
-    const p1AvatarUrl = p1Player ? AVATAR_POOL.find(a => a.id === p1Player.avatarId)?.url : undefined;
-    const p1BorderUrl = p1Player ? BORDER_POOL.find(b => b.id === p1Player.borderId)?.url : undefined;
-    const p2AvatarUrl = p2Player ? AVATAR_POOL.find(a => a.id === p2Player.avatarId)?.url : undefined;
-    const p2BorderUrl = p2Player ? BORDER_POOL.find(b => b.id === p2Player.borderId)?.url : undefined;
+    const p1AvatarUrl = useMemo(() => p1Player ? AVATAR_POOL.find(a => a.id === p1Player.avatarId)?.url : undefined, [p1Player?.avatarId]);
+    const p1BorderUrl = useMemo(() => p1Player ? BORDER_POOL.find(b => b.id === p1Player.borderId)?.url : undefined, [p1Player?.borderId]);
+    const p2AvatarUrl = useMemo(() => p2Player ? AVATAR_POOL.find(a => a.id === p2Player.avatarId)?.url : undefined, [p2Player?.avatarId]);
+    const p2BorderUrl = useMemo(() => p2Player ? BORDER_POOL.find(b => b.id === p2Player.borderId)?.url : undefined, [p2Player?.borderId]);
     
     // 컴포넌트 마운트 시 이전 값 초기화 (뒤로가기 후 재진입 시 애니메이션 방지)
     useEffect(() => {
@@ -903,7 +924,7 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
             {accumulatedGold > 0 && (
                 <div className={`mb-1 bg-yellow-900/30 px-1.5 py-1 rounded-lg border border-yellow-700/50 ${isClaimed ? 'opacity-75' : ''}`}>
                     <div className="flex items-center gap-1.5">
-                        <img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 flex-shrink-0" />
+                        <img src="/images/icon/Gold.png" alt="골드" className="w-5 h-5 flex-shrink-0" loading="lazy" decoding="async" />
                         <div className="flex-1 min-w-0">
                             <div className="text-xs font-semibold text-yellow-300">경기 보상: {accumulatedGold.toLocaleString()} 골드</div>
                         </div>
@@ -923,7 +944,7 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
                             const imageUrl = materialTemplate?.image || '';
                             return (
                                 <div key={materialName} className="flex items-center gap-1.5 bg-blue-900/30 px-1.5 py-1 rounded-lg border border-blue-700/50">
-                                    <img src={imageUrl} alt={materialName} className="w-5 h-5 flex-shrink-0" />
+                                    <img src={imageUrl} alt={materialName} className="w-5 h-5 flex-shrink-0" loading="lazy" decoding="async" />
                                     <div className="flex-1 min-w-0">
                                         <div className="text-xs font-semibold text-blue-300 truncate">{materialName} x{quantity}</div>
                                     </div>
@@ -946,7 +967,7 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
                             const imageUrl = boxTemplate?.image || '';
                             return (
                                 <div key={boxName} className="flex items-center gap-1.5 bg-purple-900/30 px-1.5 py-1 rounded-lg border border-purple-700/50">
-                                    <img src={imageUrl} alt={boxName} className="w-5 h-5 flex-shrink-0" />
+                                    <img src={imageUrl} alt={boxName} className="w-5 h-5 flex-shrink-0" loading="lazy" decoding="async" />
                                     <div className="flex-1 min-w-0">
                                         <div className="text-xs font-semibold text-purple-300 truncate">{boxName} x{quantity}</div>
                                     </div>
@@ -975,7 +996,7 @@ const FinalRewardPanel: React.FC<{ tournamentState: TournamentState; currentUser
                             
                             return (
                                 <div key={index} className={`flex items-center gap-1.5 ${bgColor} px-1.5 py-1 rounded-lg border ${borderColor} ${isClaimed ? 'opacity-75' : ''}`}>
-                                    <img src={imageUrl} alt={itemName} className="w-5 h-5 flex-shrink-0" />
+                                    <img src={imageUrl} alt={itemName} className="w-5 h-5 flex-shrink-0" loading="lazy" decoding="async" />
                                     <div className="flex-1 min-w-0">
                                         <div className={`text-xs font-semibold ${textColor} truncate`}>{itemName} x{item.quantity}</div>
                                     </div>
@@ -1154,8 +1175,9 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus; tournament
                                     key={`trophy-${player.id}-${match.id}`}
                                     src="/images/championship/Ranking.png" 
                                     alt="Trophy" 
-                                    className="w-5 h-5 flex-shrink-0 drop-shadow-lg" 
+                                    className="w-5 h-5 flex-shrink-0 drop-shadow-lg"
                                     loading="lazy"
+                                    decoding="async"
                                 />
                             )}
                         </div>
@@ -1225,8 +1247,9 @@ const MatchBox: React.FC<{ match: Match; currentUser: UserWithStatus; tournament
                                     key={`trophy-${player.id}-${match.id}`}
                                     src="/images/championship/Ranking.png" 
                                     alt="Trophy" 
-                                    className="w-5 h-5 flex-shrink-0 drop-shadow-lg" 
+                                    className="w-5 h-5 flex-shrink-0 drop-shadow-lg"
                                     loading="lazy"
+                                    decoding="async"
                                 />
                             )}
                         </div>
@@ -1460,8 +1483,8 @@ const RoundRobinDisplay: React.FC<{
                              const stats = playerStats[player.id];
                              const isCurrentUser = player.id === currentUser.id;
                              const isTopThree = index < 3;
-                             const avatarUrl = AVATAR_POOL.find(a => a.id === player.avatarId)?.url;
-                             const borderUrl = BORDER_POOL.find(b => b.id === player.borderId)?.url;
+                             const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === player.avatarId)?.url, [player.avatarId]);
+                             const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === player.borderId)?.url, [player.borderId]);
                              const isWinner = status === 'complete' && index === 0;
                              
                              return (
@@ -1494,8 +1517,9 @@ const RoundRobinDisplay: React.FC<{
                                              key={`trophy-rr-${player.id}`}
                                              src="/images/championship/Ranking.png" 
                                              alt="Trophy" 
-                                             className="w-6 h-6 flex-shrink-0" 
+                                             className="w-6 h-6 flex-shrink-0"
                                              loading="lazy"
+                                             decoding="async"
                                          />
                                      )}
                                      <div className="flex items-baseline gap-2 text-xs font-semibold">
@@ -2073,13 +2097,13 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
     const p1_from_match = matchForDisplay?.players[0] || null;
     const p2_from_match = matchForDisplay?.players[1] || null;
 
-    const p1 = p1_from_match ? tournament.players.find(p => p.id === p1_from_match.id) || p1_from_match : null;
-    const p2 = p2_from_match ? tournament.players.find(p => p.id === p2_from_match.id) || p2_from_match : null;
+    const p1 = p1_from_match ? displayTournament.players.find(p => p.id === p1_from_match.id) || p1_from_match : null;
+    const p2 = p2_from_match ? displayTournament.players.find(p => p.id === p2_from_match.id) || p2_from_match : null;
 
     // 경기 시작 전에는 홈 화면과 동일한 능력치 계산 (calculateTotalStats 사용)
     // 경기 중에는 player.stats를 사용 (컨디션으로 인한 변화 반영)
     const p1Stats = useMemo(() => {
-        if (tournament.status === 'round_in_progress') {
+        if (displayTournament.status === 'round_in_progress') {
             return p1?.stats || {};
         }
         if (p1?.originalStats) {
@@ -2090,10 +2114,10 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                 return calculateTotalStats(p1User);
             }
             return p1?.stats || {};
-    }, [p1?.stats, p1?.originalStats, p1?.id, tournament.status, allUsersForRanking]);
+    }, [p1?.stats, p1?.originalStats, p1?.id, displayTournament.status, allUsersForRanking]);
 
     const p2Stats = useMemo(() => {
-        if (tournament.status === 'round_in_progress') {
+        if (displayTournament.status === 'round_in_progress') {
             return p2?.stats || {};
         }
         if (p2?.originalStats) {
@@ -2104,7 +2128,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                 return calculateTotalStats(p2User);
             }
             return p2?.stats || {};
-    }, [p2?.stats, p2?.originalStats, p2?.id, tournament.status, allUsersForRanking]);
+    }, [p2?.stats, p2?.originalStats, p2?.id, displayTournament.status, allUsersForRanking]);
 
     const radarDatasets = useMemo(() => [
         { stats: p1Stats, color: '#60a5fa', fill: 'rgba(59, 130, 246, 0.4)' },
@@ -2149,10 +2173,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
 
         if (status === 'round_in_progress') {
             return (
-                <>
-                    <Button disabled colorScheme="green" className="!text-sm !py-2 !px-4">경기 진행 중...</Button>
-                    <Button onClick={handleForfeitClick} colorScheme="red" className="!text-sm !py-2 !px-4">포기</Button>
-                </>
+                <Button disabled colorScheme="green" className="!text-sm !py-2 !px-4">경기 진행 중...</Button>
             );
         }
         
@@ -2466,20 +2487,19 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         <div className="w-full h-full flex flex-col gap-1 sm:gap-2 bg-gray-900 text-white relative overflow-hidden" style={{ height: '100%', minHeight: 0 }}>
             <header className="flex justify-between items-center p-2 sm:p-3 flex-shrink-0 border-b border-gray-700">
                 <button onClick={handleBackClick} className="transition-transform active:scale-90 filter hover:drop-shadow-lg">
-                    <img src="/images/button/back.png" alt="Back" className="w-10 h-10 sm:w-12 sm:h-12" />
+                    <img src="/images/button/back.png" alt="Back" className="w-10 h-10 sm:w-12 sm:h-12" loading="lazy" decoding="async" />
                 </button>
-                <div className="flex-1 text-center flex items-center justify-center gap-3">
+                <div className="flex-1 text-center">
                     <h1 className="text-lg sm:text-xl lg:text-2xl font-bold">{TOURNAMENT_DEFINITIONS[tournament.type].name}</h1>
-                    <button 
-                        onClick={() => setIsSimulationHelpOpen(true)}
-                        className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-transform hover:scale-110"
-                        aria-label="도움말"
-                        title="도움말"
-                    >
-                        <img src="/images/button/help.png" alt="도움말" className="w-full h-full" />
-                    </button>
                 </div>
-                <div className="w-8 sm:w-10"></div>
+                <button 
+                    onClick={() => setIsSimulationHelpOpen(true)}
+                    className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center transition-transform hover:scale-110"
+                    aria-label="도움말"
+                    title="도움말"
+                >
+                    <img src="/images/button/help.png" alt="도움말" className="w-full h-full" loading="lazy" decoding="async" />
+                </button>
             </header>
             {isMobile ? (
                 <>

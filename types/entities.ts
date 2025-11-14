@@ -165,6 +165,8 @@ export type Match = {
     commentary: CommentaryLine[];
     isUserMatch: boolean;
     finalScore: { player1: number; player2: number } | null;
+    score?: { player1: number; player2: number };
+    timeElapsed?: number;
     sgfFileIndex?: number;
 };
 
@@ -187,6 +189,7 @@ export type TournamentState = {
     nextRoundStartTime: number | null;
     timeElapsed: number;
     lastSimulationTime?: number; // 마지막 시뮬레이션 실행 시간 (ms)
+    simulationSeed?: string; // 클라이언트 시뮬레이션을 위한 랜덤 시드
     currentMatchScores?: { player1: number; player2: number } | null;
     lastScoreIncrement?: { 
         player1: { base: number; actual: number; isCritical: boolean } | null;
@@ -296,7 +299,7 @@ export type User = {
   weeklyCompetitors?: WeeklyCompetitor[];
   lastWeeklyCompetitorsUpdate?: number | null;
   lastLeagueUpdate?: number | null;
-  weeklyCompetitorsBotScores?: Record<string, { score: number; lastUpdate: number }>;
+  weeklyCompetitorsBotScores?: Record<string, { score: number; lastUpdate: number; yesterdayScore?: number }>;
   monthlyGoldBuffExpiresAt?: number | null;
   mbti?: string | null;
   rejectedGameModes?: GameMode[];
@@ -312,6 +315,7 @@ export type User = {
   blacksmithXp: number;
   cumulativeRankingScore?: Record<string, number>;
   cumulativeTournamentScore?: number; // 누적 챔피언십 점수 (홈 화면 랭킹용)
+  yesterdayTournamentScore?: number; // 어제의 챔피언십 점수 (변화량 계산용)
   inventorySlotsMigrated?: boolean;
   dailyRankings?: {
     strategic?: { rank: number; score: number; lastUpdated: number };
@@ -388,8 +392,6 @@ export type SinglePlayerStageInfo = {
     scanCount?: number; // 스캔 아이템 개수
     // 흑(유저)의 턴 수 제한
     blackTurnLimit?: number; // 유저(흑)의 턴 수 제한
-    // AI 히든 아이템 사용 턴 범위 (유단자 히든바둑용)
-    aiHiddenItemTurnRange?: { min: number; max: number }; // AI가 히든 아이템을 사용할 턴 수 범위
 };
 
 
@@ -736,9 +738,6 @@ export type LiveGameSession = {
   whiteTurnsPlayed?: number; // 살리기 바둑 모드: 백(AI)이 둔 턴 수
   singlePlayerPlacementRefreshesUsed?: number;
   totalTurns?: number; // 총 턴 수 (유저 + AI 합산), 자동 계가 트리거용
-  aiHiddenItemTurn?: number; // AI가 히든 아이템을 사용할 턴 수 (10~30 사이)
-  aiHiddenItemAnimationEndTime?: number; // AI 히든 아이템 사용 연출 종료 시간
-  aiHiddenItemUsed?: boolean; // AI가 히든 아이템을 사용했는지 여부
 };
 
 export type Negotiation = {

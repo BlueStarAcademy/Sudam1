@@ -33,6 +33,27 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
     const [selectedForDisassembly, setSelectedForDisassembly] = useState<Set<string>>(new Set()); // New state
     const [sortOption, setSortOption] = useState<SortOption>('grade');
 
+    // 모바일 감지
+    const [windowWidth, setWindowWidth] = useState(window.innerWidth);
+    useEffect(() => {
+        const handleResize = () => setWindowWidth(window.innerWidth);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    const isMobile = windowWidth < 768;
+
+    // 모바일 스케일 팩터 (PC 레이아웃을 그대로 축소)
+    const scaleFactor = useMemo(() => {
+        if (isMobile) {
+            // 모바일: PC 레이아웃을 그대로 축소 (최소 0.35, 최대 0.5)
+            const baseWidth = 1100;
+            const calculatedWidth = windowWidth * 0.95;
+            const rawScale = calculatedWidth / baseWidth;
+            return Math.max(0.35, Math.min(0.5, rawScale));
+        }
+        return 1.0;
+    }, [isMobile, windowWidth]);
+
     if (!currentUserWithStatus) return null;
 
     useEffect(() => {
@@ -277,14 +298,14 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                 onClose={onClose} 
                 isTopmost={isTopmost && !modals.isBlacksmithHelpOpen && !modals.disassemblyResult}
                 initialWidth={1100}
-                initialHeight={activeTab === 'disassemble' ? 1000 : 900}
+                initialHeight={1000}
                 windowId="blacksmith"
                 zIndex={50}
                 variant="store"
             >
-                <div className="flex h-full min-h-0">
+                <div className={`flex h-full min-h-0 ${isMobile ? 'flex-col' : ''} ${isMobile ? 'overflow-y-auto' : ''}`}>
                     {/* Left Panel */}
-                    <div className="w-[360px] bg-tertiary/30 p-4 flex flex-col items-center gap-4 flex-shrink-0 overflow-hidden">
+                    <div className={`${isMobile ? 'w-full' : 'w-[360px]'} bg-tertiary/30 ${isMobile ? 'p-2' : 'p-4'} flex flex-col items-center gap-4 flex-shrink-0 ${isMobile ? '' : 'overflow-hidden'}`} style={isMobile ? { maxHeight: '250px' } : {}}>
                         <div className="w-full aspect-w-3 aspect-h-2 prism-border rounded-lg overflow-hidden relative flex-shrink-0">
                             <img src="/images/equipments/moru.png" alt="Blacksmith" className="w-full h-full object-cover" />
                             <button onClick={handlers.openBlacksmithHelp} className="absolute top-2 right-2 w-8 h-8 flex items-center justify-center transition-transform hover:scale-110">
@@ -292,26 +313,26 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                             </button>
                         </div>
                         <div className="text-center">
-                            <h2 className="text-2xl font-bold">대장간 <span className="text-yellow-400">Lv.{(blacksmithLevel ?? 1)}</span></h2>
+                            <h2 className={`${isMobile ? 'text-lg' : 'text-2xl'} font-bold`}>대장간 <span className="text-yellow-400">Lv.{(blacksmithLevel ?? 1)}</span></h2>
                         </div>
                         <div className="w-full">
-                            <div className="flex justify-between text-xs mb-1">
+                            <div className={`flex justify-between ${isMobile ? 'text-[10px]' : 'text-xs'} mb-1`}>
                                 <span>경험치</span>
                                 <span>{(blacksmithXp ?? 0)} / {BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)} ({Math.round(((blacksmithXp ?? 0) / BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)) * 100)}%)</span>
                             </div>
-                            <div className="w-full bg-black/50 rounded-full h-3 border border-color">
+                            <div className={`w-full bg-black/50 rounded-full ${isMobile ? 'h-2' : 'h-3'} border border-color`}>
                                 <div className="bg-yellow-500 h-full rounded-full transition-all" style={{ width: `${((blacksmithXp ?? 0) / BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP(blacksmithLevel ?? 1)) * 100}%` }}></div>
                             </div>
                         </div>
-                        <div className="w-full text-left flex-1 min-h-0 overflow-y-auto">
-                            <div className="flex justify-between text-sm font-bold text-gray-400 px-2 pb-1 border-b border-gray-600 mb-1">
+                        <div className={`w-full text-left ${isMobile ? 'max-h-[120px]' : 'flex-1 min-h-0'} overflow-y-auto`}>
+                            <div className={`flex justify-between ${isMobile ? 'text-[10px]' : 'text-sm'} font-bold text-gray-400 px-2 pb-1 border-b border-gray-600 mb-1`}>
                                 <span>효과</span>
                                 <span>
                                     Lv.{currentLevel}
                                     {!isMaxLevel && <span className="text-yellow-400"> → Lv.{currentLevel + 1}</span>}
                                 </span>
                             </div>
-                            <div className="text-sm text-secondary space-y-2">
+                            <div className={`${isMobile ? 'text-[10px]' : 'text-sm'} text-secondary space-y-2`}>
                                 <div className="bg-black/20 p-2 rounded-md">
                                     <div className="flex justify-between">
                                         <span>합성 가능 등급</span>
@@ -369,13 +390,13 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                     </div>
 
                     {/* Right Panel */}
-                    <div className="flex-1 bg-primary p-4 flex flex-col min-w-0 min-h-0">
-                        <div className="flex border-b border-color mb-4">
+                    <div className={`flex-1 bg-primary ${isMobile ? 'p-2' : 'p-4'} flex flex-col min-w-0 ${isMobile ? 'min-h-[400px]' : 'min-h-0'}`}>
+                        <div className={`flex border-b border-color ${isMobile ? 'mb-2 flex-wrap' : 'mb-4'}`}>
                             {tabs.map(tab => (
                                 <button
                                     key={tab.id}
                                     onClick={() => onSetActiveTab(tab.id as 'enhance' | 'combine' | 'disassemble' | 'convert')}
-                                    className={`px-4 py-2 text-sm font-semibold ${
+                                    className={`${isMobile ? 'px-2 py-1 text-[10px] flex-1' : 'px-4 py-2 text-sm'} font-semibold ${
                                         activeTab === tab.id
                                             ? 'border-b-2 border-accent text-accent'
                                             : 'text-secondary hover:bg-secondary/20'
@@ -385,16 +406,16 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                 </button>
                             ))}
                         </div>
-                        <div className="p-4 bg-tertiary/20 rounded-lg flex-1 min-h-0 overflow-hidden">
+                        <div className={`${isMobile ? 'p-1' : 'p-4'} bg-tertiary/20 rounded-lg ${isMobile ? 'min-h-[300px] max-h-[400px] overflow-y-auto' : 'flex-1 min-h-0 overflow-hidden'}`}>
                             {renderContent()}
                         </div>
-                        <div className="mt-4 flex flex-col min-h-0">
-                            <div className="flex items-center justify-between mb-2">
-                                <h3 className="text-lg font-bold text-on-panel">{bagHeaderText}</h3>
+                        <div className={`${isMobile ? 'mt-2 flex-shrink-0' : 'mt-4'} flex flex-col`}>
+                            <div className={`flex items-center justify-between ${isMobile ? 'mb-1' : 'mb-2'}`}>
+                                <h3 className={`${isMobile ? 'text-xs' : 'text-lg'} font-bold text-on-panel`}>{bagHeaderText}</h3>
                                 <select
                                     value={sortOption}
                                     onChange={(e) => setSortOption(e.target.value as SortOption)}
-                                    className="bg-secondary border border-color text-on-panel text-xs rounded px-2 py-1"
+                                    className={`bg-secondary border border-color text-on-panel ${isMobile ? 'text-[9px] rounded px-1 py-0.5' : 'text-xs rounded px-2 py-1'}`}
                                 >
                                     <option value="grade">등급순</option>
                                     <option value="stars">강화순</option>
@@ -402,7 +423,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                     <option value="date">최신순</option>
                                 </select>
                             </div>
-                            <div className="h-[130px] overflow-y-auto pr-1">
+                            <div className={`${isMobile ? 'h-[120px]' : 'h-[130px]'} overflow-y-auto pr-1`}>
                                 <InventoryGrid 
                                     inventory={filteredInventory} 
                                     inventorySlots={inventorySlotsToDisplay} 

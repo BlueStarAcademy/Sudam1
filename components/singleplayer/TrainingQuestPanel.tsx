@@ -162,11 +162,16 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
     };
 
     // 재화 수령
-    const handleCollectReward = (missionId: string) => {
-        handlers.handleAction({
-            type: 'CLAIM_SINGLE_PLAYER_MISSION_REWARD',
-            payload: { missionId }
-        });
+    const handleCollectReward = async (missionId: string) => {
+        try {
+            // 액션만 호출하고 모달은 useApp에서 처리
+            await handlers.handleAction({
+                type: 'CLAIM_SINGLE_PLAYER_MISSION_REWARD',
+                payload: { missionId }
+            });
+        } catch (error) {
+            console.error('[TrainingQuestPanel] Collect reward error:', error);
+        }
     };
 
     // 레벨업 모달 열기

@@ -96,7 +96,7 @@ const GoGameArena: React.FC<GoGameArenaProps> = (props) => {
                 justCaptured={session.justCaptured}
                 permanentlyRevealedStones={session.permanentlyRevealedStones}
                 isSpectator={props.isSpectator}
-                analysisResult={session.analysisResult?.[props.currentUser.id] ?? (gameStatus === 'ended' ? session.analysisResult?.['system'] : null)}
+                analysisResult={session.analysisResult?.[props.currentUser.id] ?? ((gameStatus === 'ended' || (gameStatus === 'scoring' && session.analysisResult?.['system'])) ? session.analysisResult?.['system'] : null)}
                 showTerritoryOverlay={showTerritoryOverlay}
                 showHintOverlay={false}
                 showLastMoveMarker={showLastMoveMarker}

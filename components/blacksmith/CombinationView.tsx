@@ -1,8 +1,19 @@
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { InventoryItem, ServerAction, ItemGrade, EquipmentSlot, UserWithStatus } from '../../types.js';
 import ResourceActionButton from '../ui/ResourceActionButton.js';
-import { BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES } from '../../constants/rules';
+import { BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES } from '../../constants/rules.js';
+
+// 모바일 감지 훅
+const useIsMobile = () => {
+    const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+    useEffect(() => {
+        const handleResize = () => setIsMobile(window.innerWidth < 768);
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
+    return isMobile;
+};
 
 const gradeStyles: Record<ItemGrade, { name: string; color: string; background: string; }> = {
     normal: { name: '일반', color: 'text-gray-300', background: '/images/equipments/normalbgi.png' },
@@ -133,6 +144,7 @@ interface CombinationViewProps {
 }
 
 const CombinationView: React.FC<CombinationViewProps> = ({ items, onRemoveItem, onAction, currentUser }) => {
+    const isMobile = useIsMobile();
     const [isRandom, setIsRandom] = useState(false);
 
     const handleCombine = () => {
@@ -145,31 +157,31 @@ const CombinationView: React.FC<CombinationViewProps> = ({ items, onRemoveItem, 
     const canCombine = items.every(item => item !== null) && new Set(items.map(i => i?.grade)).size === 1;
 
     return (
-        <div className="h-full flex flex-col items-center justify-between gap-3">
-            <div className="w-full flex justify-around items-stretch gap-2">
+        <div className={`${isMobile ? 'h-auto' : 'h-full'} flex flex-col items-center ${isMobile ? 'justify-start gap-2' : 'justify-between gap-3'}`}>
+            <div className={`w-full flex ${isMobile ? 'flex-wrap justify-center' : 'justify-around'} items-stretch gap-2`}>
                 {items.map((item, index) => (
                     <ItemSlot key={index} item={item} onRemove={() => onRemoveItem(index)} />
                 ))}
             </div>
 
-            <div className="w-full space-y-2">
+            <div className={`w-full ${isMobile ? 'space-y-1' : 'space-y-2'}`}>
                 <OutcomeProbability items={items} isRandom={isRandom} />
                 <GradeProbability items={items} currentUser={currentUser} />
             </div>
 
-            <div className="w-full space-y-3 mt-2">
-                <div className="flex items-center justify-center gap-2 text-xs text-slate-300">
+            <div className={`w-full ${isMobile ? 'space-y-2' : 'space-y-3'} ${isMobile ? 'mt-1' : 'mt-2'}`}>
+                <div className={`flex items-center justify-center gap-2 ${isMobile ? 'text-[10px]' : 'text-xs'} text-slate-300`}>
                     <input 
                         type="checkbox" 
                         id="random-combine" 
                         checked={isRandom} 
                         onChange={(e) => setIsRandom(e.target.checked)} 
-                        className="h-4 w-4 rounded text-accent bg-slate-800 border-slate-600 focus:ring-accent"
+                        className={`${isMobile ? 'h-3 w-3' : 'h-4 w-4'} rounded text-accent bg-slate-800 border-slate-600 focus:ring-accent`}
                     />
-                    <label htmlFor="random-combine" className="text-xs text-slate-200">완전 랜덤 종류로 받기</label>
+                    <label htmlFor="random-combine" className={`${isMobile ? 'text-[10px]' : 'text-xs'} text-slate-200`}>완전 랜덤 종류로 받기</label>
                 </div>
 
-                <ResourceActionButton onClick={handleCombine} disabled={!canCombine} variant="materials" className="w-full text-sm py-2">
+                <ResourceActionButton onClick={handleCombine} disabled={!canCombine} variant="materials" className={`w-full ${isMobile ? 'text-[10px] py-1' : 'text-sm py-2'}`}>
                     합성
                 </ResourceActionButton>
             </div>

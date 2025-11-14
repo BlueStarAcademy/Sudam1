@@ -43,7 +43,7 @@ const Avatar: React.FC<AvatarProps> = ({ userId, userName, avatarUrl, borderUrl,
           className="rounded-full overflow-hidden bg-gray-700"
           style={avatarContainerStyle}
         >
-          <img src={finalAvatarUrl} alt={userName} className="w-full h-full object-cover" />
+          <img src={finalAvatarUrl} alt={userName} className="w-full h-full object-cover" loading="lazy" />
         </div>
         {/* Border image on top (overlay) */}
         <img
@@ -51,6 +51,7 @@ const Avatar: React.FC<AvatarProps> = ({ userId, userName, avatarUrl, borderUrl,
           alt=""
           className="absolute inset-0 w-full h-full pointer-events-none object-contain"
           aria-hidden="true"
+          loading="lazy"
         />
       </div>
     );
@@ -73,7 +74,7 @@ const Avatar: React.FC<AvatarProps> = ({ userId, userName, avatarUrl, borderUrl,
           className="flex items-center justify-center rounded-full overflow-hidden bg-gray-700"
           style={{ width: `${innerRemSize}rem`, height: `${innerRemSize}rem` }}
         >
-          <img src={finalAvatarUrl} alt={userName} className="w-full h-full object-cover" />
+          <img src={finalAvatarUrl} alt={userName} className="w-full h-full object-cover" loading="lazy" />
         </div>
       </div>
     );

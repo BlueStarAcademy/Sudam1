@@ -207,6 +207,8 @@ body {
   -ms-user-select: none;     /* IE10+/Edge */
   user-select: none;         /* Standard */
   -webkit-touch-callout: none; /* iOS Safari */
+  /* 모바일에서 하단이 잘리지 않도록 패딩 추가 */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 #root {

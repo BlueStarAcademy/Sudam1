@@ -78,6 +78,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     const prevAnimationType = usePrevious(session.animation?.type);
     const warningSoundPlayedForTurn = useRef(false);
     const prevMoveCount = usePrevious(session.moveHistory?.length);
+    const prevAnalysisResult = usePrevious(session.analysisResult?.['system']);
 
     const isSpectator = useMemo(() => currentUserWithStatus?.status === 'spectating', [currentUserWithStatus]);
     const isSinglePlayer = session.isSinglePlayer;
@@ -113,9 +114,20 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
             prevGameStatus !== 'no_contest' &&
             prevGameStatus !== 'rematch_pending';
 
-        // 게임이 종료되었거나 계가 중일 때 모달 표시
+        // 싱글플레이: 게임이 종료되고 계가 결과가 확정되었을 때, 또는 계가가 완료되었을 때 모달 표시
+        // 일반 게임: 게임이 종료되었거나 계가 중일 때 모달 표시
+        const currentAnalysisResult = session.analysisResult?.['system'];
+        const isScoringComplete = gameStatus === 'scoring' && currentAnalysisResult;
+        const analysisResultJustArrived = isSinglePlayer && 
+            gameStatus === 'scoring' && 
+            currentAnalysisResult && 
+            !prevAnalysisResult;
+        
         const shouldShowModal = gameHasJustEnded || 
-            (gameStatus === 'scoring' && prevGameStatus !== 'scoring' && prevGameStatus !== 'ended');
+            (isSinglePlayer 
+                ? ((gameStatus === 'ended' && currentAnalysisResult && prevGameStatus !== 'ended') ||
+                   (gameStatus === 'scoring' && currentAnalysisResult && analysisResultJustArrived))
+                : (gameStatus === 'scoring' && prevGameStatus !== 'scoring' && prevGameStatus !== 'ended'));
 
         if (shouldShowModal) {
             setShowResultModal(true);
@@ -126,11 +138,11 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         
         // 계가가 완료되었을 때(analysisResult가 있을 때) 영토 표시 활성화
         if (gameStatus === 'ended' || gameStatus === 'scoring') {
-            if (session.analysisResult?.['system']) {
+            if (currentAnalysisResult) {
                 setShowFinalTerritory(true);
             }
         }
-    }, [gameStatus, prevGameStatus]);
+    }, [gameStatus, prevGameStatus, session.analysisResult, prevAnalysisResult, isSinglePlayer]);
     
     const myPlayerEnum = useMemo(() => {
         if (isSpectator) return Player.None;
@@ -746,8 +758,8 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     return (
         <div className={`w-full h-dvh flex flex-col p-1 lg:p-2 relative max-w-full ${pvpBackgroundClass}`}>
             {session.disconnectionState && <DisconnectionModal session={session} currentUser={currentUser} />}
-            {session.gameStatus === 'scoring' && (
-                <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-30">
+            {session.gameStatus === 'scoring' && !session.analysisResult?.['system'] && (
+                <div className="absolute inset-0 bg-black/70 flex flex-col items-center justify-center z-30 pointer-events-none">
                     <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-gray-100 mb-4"></div>
                     <p className="text-xl font-bold text-white">계가 중...</p>
                 </div>

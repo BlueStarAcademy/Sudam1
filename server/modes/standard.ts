@@ -100,7 +100,7 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
     updateNigiriState(game, now);
     updateCaptureState(game, now);
     updateBaseState(game, now);
-    updateHiddenState(game, now);
+    await updateHiddenState(game, now);
     updateMissileState(game, now);
 };
 
@@ -139,7 +139,10 @@ export const handleStrategicGameAction = async (volatileState: types.VolatileSta
 const handleStandardAction = async (volatileState: types.VolatileState, game: types.LiveGameSession, action: types.ServerAction, user: types.User): Promise<types.HandleActionResult | null> => {
     const { type, payload } = action as any;
     const now = Date.now();
-    const myPlayerEnum = user.id === game.blackPlayerId ? types.Player.Black : (user.id === game.whitePlayerId ? types.Player.White : types.Player.None);
+    // 싱글플레이 게임에서는 player1이 유저, player2가 AI
+    const myPlayerEnum = game.isSinglePlayer
+        ? (user.id === game.player1.id ? (game.player1.id === game.blackPlayerId ? types.Player.Black : types.Player.White) : types.Player.None)
+        : (user.id === game.blackPlayerId ? types.Player.Black : (user.id === game.whitePlayerId ? types.Player.White : types.Player.None));
     const isMyTurn = myPlayerEnum === game.currentPlayer;
 
     switch (type) {
@@ -284,6 +287,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 }
 
                 game.processingMove = null; // 처리 중인 수 해제
+                // 유저가 AI 히든돌 위에 착점했으므로 유저 턴 유지 (currentPlayer 변경하지 않음)
                 return {};
             }
 
@@ -408,6 +412,19 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     }
                 });
                 prunePatternStones();
+                
+                // 공개된 히든 돌은 patternStones에서 제거 (문양 중복 방지)
+                if (game.isSinglePlayer) {
+                    uniqueStonesToReveal.forEach(s => {
+                        const patternStonesKey = s.player === types.Player.Black ? 'blackPatternStones' : 'whitePatternStones';
+                        if (game[patternStonesKey]) {
+                            const index = game[patternStonesKey].findIndex(p => p.x === s.point.x && p.y === s.point.y);
+                            if (index !== -1) {
+                                game[patternStonesKey].splice(index, 1);
+                            }
+                        }
+                    });
+                }
             
                 if (game.turnDeadline) {
                     game.pausedTurnTimeLeft = (game.turnDeadline - now) / 1000;
@@ -428,6 +445,13 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             if (isHidden) {
                 if (!game.hiddenMoves) game.hiddenMoves = {};
                 game.hiddenMoves[game.moveHistory.length - 1] = true;
+                
+                // 싱글플레이어에서 유저가 놓은 히든 돌에 문양 표시 추가
+                if (game.isSinglePlayer && !isClientAiMove) {
+                    const patternStonesKey = movePlayerEnum === types.Player.Black ? 'blackPatternStones' : 'whitePatternStones';
+                    if (!game[patternStonesKey]) game[patternStonesKey] = [];
+                    game[patternStonesKey].push({ x, y });
+                }
             }
 
             if (result.capturedStones.length > 0) {
@@ -541,29 +565,50 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 }
             }
             
-            game.currentPlayer = opponentPlayerEnum;
-            game.missileUsedThisTurn = false;
+            // hidden_placing 상태에서 수를 두었을 때 처리
+            const wasInHiddenPlacing = game.gameStatus === 'hidden_placing';
             
-            game.gameStatus = 'playing';
-            game.itemUseDeadline = undefined;
-            game.pausedTurnTimeLeft = undefined;
-
-
-            if (game.settings.timeLimit > 0) {
-                const nextPlayer = game.currentPlayer;
-                const nextTimeKey = nextPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
-                 const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
-                const isNextInByoyomi = game[nextTimeKey] <= 0 && game.settings.byoyomiCount > 0 && !isFischer;
-
-                if (isNextInByoyomi) {
-                    game.turnDeadline = now + game.settings.byoyomiTime * 1000;
-                } else {
-                    game.turnDeadline = now + game[nextTimeKey] * 1000;
-                }
-                game.turnStartTime = now;
+            if (wasInHiddenPlacing && isHidden) {
+                // 히든 돌을 두었으면 상태를 playing으로 변경하고 턴 넘기기
+                game.currentPlayer = opponentPlayerEnum;
+                game.missileUsedThisTurn = false;
+                game.gameStatus = 'playing';
+                game.itemUseDeadline = undefined;
+                game.pausedTurnTimeLeft = undefined;
+            } else if (wasInHiddenPlacing && !isHidden) {
+                // hidden_placing 상태에서 일반 돌을 두었으면 타이머를 30초로 리셋하고 상태 유지
+                game.itemUseDeadline = now + 30000;
+                // 차례는 바꾸지 않고 같은 플레이어가 계속 수를 둘 수 있도록 함
+                game.missileUsedThisTurn = false;
+                game.gameStatus = 'hidden_placing';
+                game.pausedTurnTimeLeft = undefined;
             } else {
-                 game.turnDeadline = undefined;
-                 game.turnStartTime = undefined;
+                // 일반적인 경우: 차례 변경
+                game.currentPlayer = opponentPlayerEnum;
+                game.missileUsedThisTurn = false;
+                game.gameStatus = 'playing';
+                game.itemUseDeadline = undefined;
+                game.pausedTurnTimeLeft = undefined;
+            }
+
+            // hidden_placing 상태가 아니거나 히든 돌을 두었을 때만 시간 제한 로직 실행
+            if (!wasInHiddenPlacing || (wasInHiddenPlacing && isHidden)) {
+                if (game.settings.timeLimit > 0) {
+                    const nextPlayer = game.currentPlayer;
+                    const nextTimeKey = nextPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
+                     const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
+                    const isNextInByoyomi = game[nextTimeKey] <= 0 && game.settings.byoyomiCount > 0 && !isFischer;
+
+                    if (isNextInByoyomi) {
+                        game.turnDeadline = now + game.settings.byoyomiTime * 1000;
+                    } else {
+                        game.turnDeadline = now + game[nextTimeKey] * 1000;
+                    }
+                    game.turnStartTime = now;
+                } else {
+                     game.turnDeadline = undefined;
+                     game.turnStartTime = undefined;
+                }
             }
 
             // After move logic

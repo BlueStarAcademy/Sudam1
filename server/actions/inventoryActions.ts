@@ -96,7 +96,7 @@ export const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot): Inventor
             type: subDef.type,
             value,
             isPercentage: subDef.isPercentage,
-            display: `${subDef.type} +${value}${subDef.isPercentage ? '%' : ''}`,
+            display: `${subDef.type} +${value}${subDef.isPercentage ? '%' : ''} [${subDef.range[0]}~${subDef.range[1]}]`,
             range: subDef.range,
             enhancements: 0,
         });
@@ -115,7 +115,8 @@ export const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot): Inventor
             type: subType,
             value,
             isPercentage: subDef.isPercentage,
-            display: `${subType} +${value}${subDef.isPercentage ? '%' : ''}`,
+            display: `${subDef.name} +${value}${subDef.isPercentage ? '%' : ''} [${subDef.range[0]}~${subDef.range[1]}]`,
+            range: subDef.range,
         });
         existingSubTypes.add(subType);
     }

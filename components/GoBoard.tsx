@@ -741,10 +741,17 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
                     if (animation?.type === 'hidden_missile' && animation.from.x === x && animation.from.y === y) return null;
                     
                     const isNewlyRevealedForAnim = newlyRevealed?.some(nr => nr.point.x === x && nr.point.y === y);
-                    const isFaint = !isSpectator && myRevealedStones?.some(p => p.x === x && p.y === y) && !isPermanentlyRevealed;
+                    // 싱글플레이어에서 유저의 히든 돌은 반투명으로 표시 (비공개 상태)
+                    // PVP에서는 스캔한 히든 돌만 반투명으로 표시
+                    const isFaint = !isSpectator && (
+                        (myRevealedStones?.some(p => p.x === x && p.y === y) && !isPermanentlyRevealed) ||
+                        (isHiddenMove && player === myPlayerEnum && !isPermanentlyRevealed && !isNewlyRevealedForAnim)
+                    );
 
                     const isBaseStone = baseStones?.some(stone => stone.x === x && stone.y === y && stone.player === player);
-                    const isKnownHidden = isHiddenMove; // Pattern is shown if it's a hidden move and visible.
+                    // 공개된 히든 돌은 isKnownHidden을 false로 설정 (문양 중복 방지)
+                    // 공개되지 않은 히든 돌만 isKnownHidden을 true로 설정
+                    const isKnownHidden = isHiddenMove && !isPermanentlyRevealed;
                     const isSelectedMissileForRender = selectedMissileStone?.x === x && selectedMissileStone?.y === y;
                     const isHoverSelectableMissile = gameStatus === 'missile_selecting' && !selectedMissileStone && player === myPlayerEnum;
                     const isPatternStone = (player === Player.Black && blackPatternStones?.some(p => p.x === x && p.y === y)) || (player === Player.White && whitePatternStones?.some(p => p.x === x && p.y === y));
@@ -805,6 +812,32 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
                 )}
                 {renderDeadStoneMarkers()}
                 {showHintOverlay && !isBoardDisabled && analysisResult?.recommendedMoves?.map(move => ( <RecommendedMoveMarker key={`rec-${move.order}`} move={move} toSvgCoords={toSvgCoords} cellSize={cell_size} onClick={onBoardClick} /> ))}
+                {gameStatus === 'scoring' && !analysisResult && (
+                    <g>
+                        <rect 
+                            x={boardSizePx / 2 - 100} 
+                            y={boardSizePx / 2 - 30} 
+                            width={200} 
+                            height={60} 
+                            fill="rgba(0, 0, 0, 0.7)" 
+                            rx={10}
+                            stroke="rgba(255, 255, 255, 0.3)"
+                            strokeWidth="2"
+                        />
+                        <text 
+                            x={boardSizePx / 2} 
+                            y={boardSizePx / 2} 
+                            textAnchor="middle" 
+                            dominantBaseline="middle"
+                            fill="white"
+                            fontSize="24"
+                            fontWeight="bold"
+                            className="animate-pulse"
+                        >
+                            계가 중...
+                        </text>
+                    </g>
+                )}
             </svg>
         </div>
     );

@@ -55,6 +55,9 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
     
     const user = freshUser; // 최신 사용자 데이터 사용
     const isWinner = game.winner === Player.Black; // Human is always black
+    
+    // 디버깅: 승자 판정 로그
+    console.log(`[processSinglePlayerGameSummary] Game ${game.id}: game.winner=${game.winner === Player.Black ? 'Black' : game.winner === Player.White ? 'White' : 'None'}, isWinner=${isWinner}, finalScores=${JSON.stringify(game.finalScores)}`);
     const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
 
     if (!stage) {
@@ -221,6 +224,9 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
     game.winner = winner;
     game.winReason = winReason;
     game.gameStatus = 'ended';
+    
+    // 디버깅: 승자 설정 로그
+    console.log(`[endGame] Game ${game.id} ended: winner=${winner === Player.Black ? 'Black' : winner === Player.White ? 'White' : 'None'}, winReason=${winReason}, finalScores=${JSON.stringify(game.finalScores)}`);
     game.isEarlyTermination = isEarlyTermination; // 조기 종료 플래그
     game.badMannerPlayerId = badMannerPlayerId ?? undefined; // 비매너 행동자 ID
 

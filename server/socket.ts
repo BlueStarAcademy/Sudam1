@@ -12,7 +12,6 @@ export const createWebSocketServer = (server: Server) => {
     });
 
     wss.on('connection', async (ws: WebSocket, req) => {
-        console.log('[WebSocket] Client connected from:', req.socket.remoteAddress);
         
         let isClosed = false;
         
@@ -28,7 +27,8 @@ export const createWebSocketServer = (server: Server) => {
         });
 
         ws.on('close', (code, reason) => {
-            console.log('[WebSocket] Client disconnected:', { code, reason: reason.toString() });
+            // 정상적인 연결 종료는 로깅하지 않음 (코드 1001: Going Away)
+            // 비정상적인 종료만 로깅하려면: if (code !== 1001) console.log('[WebSocket] Client disconnected:', { code, reason: reason.toString() });
             isClosed = true;
         });
 
@@ -54,11 +54,7 @@ export const createWebSocketServer = (server: Server) => {
                     return;
                 }
                 
-                console.log('[WebSocket] Fetching initial data...');
-                const startTime = Date.now();
                 const allData = await getAllData();
-                const fetchTime = Date.now() - startTime;
-                console.log(`[WebSocket] Initial data fetched in ${fetchTime}ms`);
                 
                 // 데이터 로드 후 연결 상태 재확인
                 if (!checkConnection()) {
@@ -78,11 +74,8 @@ export const createWebSocketServer = (server: Server) => {
                     return;
                 }
                 
-                console.log('[WebSocket] Sending initial state...');
-                
                 // 연결이 여전히 열려있는지 확인 후 전송
                 if (!checkConnection()) {
-                    console.log('[WebSocket] Connection closed just before sending');
                     return;
                 }
                 
@@ -97,14 +90,8 @@ export const createWebSocketServer = (server: Server) => {
                     userLastChatMessage: volatileState.userLastChatMessage
                 };
                 
-                // 전체 메시지 크기 추정
-                const testMessage = JSON.stringify({ type: 'INITIAL_STATE', payload });
-                const messageSize = Buffer.byteLength(testMessage, 'utf8');
-                console.log(`[WebSocket] Message size: ${(messageSize / 1024).toFixed(2)}KB`);
-
                 try {
                     ws.send(JSON.stringify({ type: 'INITIAL_STATE', payload }));
-                    console.log('[WebSocket] Initial state sent successfully (no chunking)');
                 } catch (sendError) {
                     console.error('[WebSocket] Error sending message:', sendError);
                     isClosed = true;
