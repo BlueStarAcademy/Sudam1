@@ -41,23 +41,50 @@ const SinglePlayerControls: React.FC<SinglePlayerControlsProps> = ({ session, on
 
         const handleRetry = async () => {
             try {
-                await Promise.resolve(onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } }));
+                console.log('[SinglePlayerControls] Retry button clicked, starting game for stage:', session.stageId);
+                const result = await onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
+                const gameId = (result as any)?.gameId;
+                console.log('[SinglePlayerControls] Retry action completed, gameId:', gameId);
+                if (gameId) {
+                    // handleAction에서 이미 라우팅이 업데이트되었으므로 짧은 딜레이만
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                } else {
+                    // gameId가 없으면 WebSocket 업데이트를 기다림
+                    console.log('[SinglePlayerControls] No gameId in response, waiting for WebSocket update...');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
             } catch (error) {
                 console.error('[SinglePlayerControls] Failed to retry stage:', error);
+                window.alert('재도전에 실패했습니다. 다시 시도해주세요.');
             }
         };
         const handleNextStage = async () => {
-            if (!canTryNext || !nextStage) return;
+            if (!canTryNext || !nextStage) {
+                console.log('[SinglePlayerControls] Cannot start next stage:', { canTryNext, nextStage: !!nextStage });
+                return;
+            }
             try {
-                await Promise.resolve(onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } }));
+                console.log('[SinglePlayerControls] Next stage button clicked, starting game for stage:', nextStage.id);
+                const result = await onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } });
+                const gameId = (result as any)?.gameId;
+                console.log('[SinglePlayerControls] Next stage action completed, gameId:', gameId);
+                if (gameId) {
+                    // handleAction에서 이미 라우팅이 업데이트되었으므로 짧은 딜레이만
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                } else {
+                    // gameId가 없으면 WebSocket 업데이트를 기다림
+                    console.log('[SinglePlayerControls] No gameId in response, waiting for WebSocket update...');
+                    await new Promise(resolve => setTimeout(resolve, 500));
+                }
             } catch (error) {
                 console.error('[SinglePlayerControls] Failed to start next stage:', error);
+                window.alert('다음 단계 시작에 실패했습니다. 다시 시도해주세요.');
             }
         };
         const handleExitToLobby = async () => {
             sessionStorage.setItem('postGameRedirect', '#/singleplayer');
             try {
-                await Promise.resolve(onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } }));
+                await onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } });
             } catch (error) {
                 console.error('[SinglePlayerControls] Failed to leave AI game:', error);
             } finally {

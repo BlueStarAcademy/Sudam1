@@ -195,8 +195,19 @@ const startServer = async () => {
     const server = http.createServer(app);
     createWebSocketServer(server);
 
+    server.on('error', (error: NodeJS.ErrnoException) => {
+        if (error.code === 'EADDRINUSE') {
+            console.error(`[Server] Port ${port} is already in use. Please stop the process using this port or use a different port.`);
+            console.error(`[Server] To find and kill the process: netstat -ano | findstr ":${port}"`);
+            process.exit(1);
+        } else {
+            console.error('[Server] Server error:', error);
+            process.exit(1);
+        }
+    });
+
     server.listen(port, '0.0.0.0', async () => {
-        console.log(`Server listening on port ${port}`);
+        console.log(`[Server] Server listening on port ${port}`);
         
         // KataGo 엔진 초기화 (서버 시작 시 미리 준비)
         await initializeKataGo();

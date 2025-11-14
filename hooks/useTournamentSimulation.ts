@@ -333,11 +333,51 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
                     const finalDiff = roundedDiff + 0.5;
                     
                     let winnerId: string;
+                    let winnerNickname: string;
                     if (finalDiff < 0.5) {
-                        winnerId = (rngRef.current && rngRef.current.random() < 0.5) ? player1Ref.current.id : player2Ref.current.id;
+                        const randomWinner = (rngRef.current && rngRef.current.random() < 0.5) ? player1Ref.current : player2Ref.current;
+                        winnerId = randomWinner.id;
+                        winnerNickname = randomWinner.nickname;
                     } else {
-                        winnerId = p1Percent > 50 ? player1Ref.current.id : player2Ref.current.id;
+                        const winner = p1Percent > 50 ? player1Ref.current : player2Ref.current;
+                        winnerId = winner.id;
+                        winnerNickname = winner.nickname;
                     }
+                    
+                    // 최종 결과 메시지를 중계에 추가
+                    const finalCommentaryText = finalDiff < 0.5 
+                        ? `[최종결과] ${winnerNickname}, 0.5집 승리!`
+                        : `[최종결과] ${winnerNickname}, ${finalDiff.toFixed(1)}집 승리!`;
+                    
+                    commentaryRef.current.push({ 
+                        text: finalCommentaryText, 
+                        phase: 'end', 
+                        isRandomEvent: false 
+                    });
+                    
+                    // 승리 코멘트 추가 (간단한 메시지)
+                    commentaryRef.current.push({ 
+                        text: `${winnerNickname}님이 승리했습니다!`, 
+                        phase: 'end', 
+                        isRandomEvent: false 
+                    });
+                    
+                    // 최종 상태를 로컬에 즉시 업데이트 (UI가 멈추지 않도록)
+                    setLocalTournament(prev => {
+                        if (!prev) return prev;
+                        const updated = { ...prev };
+                        updated.timeElapsed = TOTAL_GAME_DURATION;
+                        if (!updated.currentMatchScores) {
+                            updated.currentMatchScores = { player1: 0, player2: 0 };
+                        }
+                        updated.currentMatchScores.player1 = player1ScoreRef.current;
+                        updated.currentMatchScores.player2 = player2ScoreRef.current;
+                        updated.currentMatchCommentary = [...commentaryRef.current];
+                        // 시뮬레이션 완료 표시를 위해 시드 제거 (서버에서도 제거됨)
+                        updated.simulationSeed = undefined;
+                        updated.currentSimulatingMatch = null;
+                        return updated;
+                    });
                     
                     // 서버로 결과 전송 (한 번만)
                     handlers.handleAction({

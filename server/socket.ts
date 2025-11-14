@@ -6,10 +6,32 @@ import { volatileState } from './state.js';
 let wss: WebSocketServer;
 
 export const createWebSocketServer = (server: Server) => {
-    wss = new WebSocketServer({ 
-        server,
-        perMessageDeflate: false // 압축 비활성화로 연결 문제 해결 시도
-    });
+    // 기존 WebSocketServer가 있으면 먼저 닫기
+    if (wss) {
+        console.log('[WebSocket] Closing existing WebSocketServer...');
+        wss.clients.forEach(client => {
+            client.close();
+        });
+        wss.close(() => {
+            console.log('[WebSocket] Existing WebSocketServer closed');
+        });
+    }
+
+    // 서버가 이미 리스닝 중인지 확인
+    if (server.listening) {
+        console.error('[WebSocket] Cannot create WebSocketServer: HTTP server is already listening');
+        return;
+    }
+
+    try {
+        wss = new WebSocketServer({ 
+            server,
+            perMessageDeflate: false // 압축 비활성화로 연결 문제 해결 시도
+        });
+    } catch (error) {
+        console.error('[WebSocket] Failed to create WebSocketServer:', error);
+        throw error;
+    }
 
     wss.on('connection', async (ws: WebSocket, req) => {
         

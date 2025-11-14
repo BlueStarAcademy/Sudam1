@@ -27,51 +27,158 @@ const deriveMeta = (game: LiveGameSession) => {
 };
 
 export async function getLiveGame(id: string): Promise<LiveGameSession | null> {
-  const row = await prisma.liveGame.findUnique({
-    where: { id }
-  });
-  if (!row) return null;
-  return mapRowToGame(row);
+  try {
+    const row = await prisma.liveGame.findUnique({
+      where: { id }
+    });
+    if (!row) return null;
+    return mapRowToGame(row);
+  } catch (error: any) {
+    if (error.code === 'P1017' || error.message?.includes('closed the connection')) {
+      console.warn('[gameService] Database connection lost, retrying...');
+      try {
+        await prisma.$connect();
+        const row = await prisma.liveGame.findUnique({
+          where: { id }
+        });
+        if (!row) return null;
+        return mapRowToGame(row);
+      } catch (retryError) {
+        console.error('[gameService] Retry failed:', retryError);
+        return null;
+      }
+    }
+    console.error('[gameService] Error fetching game:', error);
+    return null;
+  }
 }
 
 export async function getAllActiveGames(): Promise<LiveGameSession[]> {
-  const rows = await prisma.liveGame.findMany({
-    where: { isEnded: false }
-  });
-  return rows.map((row) => mapRowToGame(row)).filter((g): g is LiveGameSession => g !== null);
+  try {
+    const rows = await prisma.liveGame.findMany({
+      where: { isEnded: false }
+    });
+    return rows.map((row) => mapRowToGame(row)).filter((g): g is LiveGameSession => g !== null);
+  } catch (error: any) {
+    // 연결 오류 시 재시도
+    if (error.code === 'P1017' || error.message?.includes('closed the connection')) {
+      console.warn('[gameService] Database connection lost, retrying...');
+      try {
+        await prisma.$connect();
+        const rows = await prisma.liveGame.findMany({
+          where: { isEnded: false }
+        });
+        return rows.map((row) => mapRowToGame(row)).filter((g): g is LiveGameSession => g !== null);
+      } catch (retryError) {
+        console.error('[gameService] Retry failed:', retryError);
+        return []; // 재시도 실패 시 빈 배열 반환
+      }
+    }
+    console.error('[gameService] Error fetching active games:', error);
+    return []; // 다른 오류 시에도 빈 배열 반환
+  }
 }
 
 export async function getAllEndedGames(): Promise<LiveGameSession[]> {
-  const rows = await prisma.liveGame.findMany({
-    where: { isEnded: true }
-  });
-  return rows.map((row) => mapRowToGame(row)).filter((g): g is LiveGameSession => g !== null);
+  try {
+    const rows = await prisma.liveGame.findMany({
+      where: { isEnded: true }
+    });
+    return rows.map((row) => mapRowToGame(row)).filter((g): g is LiveGameSession => g !== null);
+  } catch (error: any) {
+    if (error.code === 'P1017' || error.message?.includes('closed the connection')) {
+      console.warn('[gameService] Database connection lost, retrying...');
+      try {
+        await prisma.$connect();
+        const rows = await prisma.liveGame.findMany({
+          where: { isEnded: true }
+        });
+        return rows.map((row) => mapRowToGame(row)).filter((g): g is LiveGameSession => g !== null);
+      } catch (retryError) {
+        console.error('[gameService] Retry failed:', retryError);
+        return [];
+      }
+    }
+    console.error('[gameService] Error fetching ended games:', error);
+    return [];
+  }
 }
 
 export async function saveGame(game: LiveGameSession): Promise<void> {
-  const { status, category, isEnded } = deriveMeta(game);
-  await prisma.liveGame.upsert({
-    where: { id: game.id },
-    create: {
-      id: game.id,
-      status,
-      category,
-      isEnded,
-      data: game
-    },
-    update: {
-      status,
-      category,
-      isEnded,
-      data: game,
-      updatedAt: new Date()
+  try {
+    const { status, category, isEnded } = deriveMeta(game);
+    await prisma.liveGame.upsert({
+      where: { id: game.id },
+      create: {
+        id: game.id,
+        status,
+        category,
+        isEnded,
+        data: game
+      },
+      update: {
+        status,
+        category,
+        isEnded,
+        data: game,
+        updatedAt: new Date()
+      }
+    });
+  } catch (error: any) {
+    if (error.code === 'P1017' || error.message?.includes('closed the connection')) {
+      console.warn('[gameService] Database connection lost, retrying saveGame...');
+      try {
+        await prisma.$connect();
+        const { status, category, isEnded } = deriveMeta(game);
+        await prisma.liveGame.upsert({
+          where: { id: game.id },
+          create: {
+            id: game.id,
+            status,
+            category,
+            isEnded,
+            data: game
+          },
+          update: {
+            status,
+            category,
+            isEnded,
+            data: game,
+            updatedAt: new Date()
+          }
+        });
+      } catch (retryError) {
+        console.error('[gameService] Retry saveGame failed:', retryError);
+        throw retryError;
+      }
+    } else {
+      console.error('[gameService] Error saving game:', error);
+      throw error;
     }
-  });
+  }
 }
 
 export async function deleteGame(id: string): Promise<void> {
-  await prisma.liveGame.delete({
-    where: { id }
-  });
+  try {
+    await prisma.liveGame.delete({
+      where: { id }
+    });
+  } catch (error: any) {
+    if (error.code === 'P1017' || error.message?.includes('closed the connection')) {
+      console.warn('[gameService] Database connection lost, retrying deleteGame...');
+      try {
+        await prisma.$connect();
+        await prisma.liveGame.delete({
+          where: { id }
+        });
+      } catch (retryError) {
+        console.error('[gameService] Retry deleteGame failed:', retryError);
+        throw retryError;
+      }
+    } else {
+      console.error('[gameService] Error deleting game:', error);
+      throw error;
+    }
+  }
 }
 

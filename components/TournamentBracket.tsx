@@ -85,14 +85,41 @@ const PlayerProfilePanel: React.FC<{
     tournamentStatus?: string;
     isMobile?: boolean;
 }> = ({ player, initialPlayer, allUsers, currentUserId, onViewUser, highlightPhase, isUserMatch, onUseConditionPotion, onOpenShop, timeElapsed = 0, tournamentStatus, isMobile = false }) => {
+    // 모든 hooks는 조건부 return 전에 선언되어야 함
     const [previousCondition, setPreviousCondition] = useState<number | undefined>(player?.condition);
     const [showConditionIncrease, setShowConditionIncrease] = useState(false);
     const [conditionIncreaseAmount, setConditionIncreaseAmount] = useState(0);
+    const [statChanges, setStatChanges] = useState<Record<CoreStat, number>>({} as Record<CoreStat, number>);
+    const prevStatsRef = useRef<Record<CoreStat, number>>({} as Record<CoreStat, number>);
+    const initialStatsKeyRef = useRef<string>('');
     
-    if (!player) return <div className="p-2 text-center text-gray-500 flex items-center justify-center h-full bg-gray-900/50 rounded-lg">선수 대기 중...</div>;
+    // initialStats를 useMemo로 변경하여 player.originalStats나 initialPlayer가 변경될 때마다 업데이트되도록 함
+    const initialStats = useMemo<Record<CoreStat, number>>(() => {
+        // 다음 경기로 넘어갔을 때 originalStats로 초기화된 값을 사용
+        if (player?.originalStats) {
+            return { ...player.originalStats };
+        }
+        // initialPlayer가 있으면 그것을 사용 (경기 시작 시점의 상태)
+        if (initialPlayer?.stats) {
+            return { ...initialPlayer.stats };
+        }
+        // 그 외에는 현재 player.stats 사용
+        return { ...(player?.stats || {}) };
+    }, [player?.originalStats, initialPlayer?.stats, player?.stats]);
+    
+    // initialStats가 변경되면 prevStatsRef 리셋 (새 경기 시작)
+    useEffect(() => {
+        const currentKey = JSON.stringify(initialStats);
+        if (initialStatsKeyRef.current !== currentKey) {
+            initialStatsKeyRef.current = currentKey;
+            prevStatsRef.current = { ...initialStats };
+            setStatChanges({} as Record<CoreStat, number>);
+        }
+    }, [initialStats]);
     
     // 컨디션 변화 감지 및 애니메이션 트리거
     useEffect(() => {
+        if (!player) return;
         if (previousCondition !== undefined && player.condition !== 1000 && previousCondition !== 1000) {
             const increase = player.condition - previousCondition;
             if (increase > 0) {
@@ -106,6 +133,9 @@ const PlayerProfilePanel: React.FC<{
         setPreviousCondition(player.condition);
     }, [player.condition, previousCondition]);
 
+    // 조건부 return은 모든 hooks 선언 후에
+    if (!player) return <div className="p-2 text-center text-gray-500 flex items-center justify-center h-full bg-gray-900/50 rounded-lg">선수 대기 중...</div>;
+    
     const fullUserData = useMemo(() => allUsers.find(u => u.id === player.id), [allUsers, player.id]);
     const leagueInfo = useMemo(() => LEAGUE_DATA.find(league => league.tier === player.league), [player.league]);
 
@@ -146,32 +176,16 @@ const PlayerProfilePanel: React.FC<{
     
     const totalPotionCount = potionCounts.small + potionCounts.medium + potionCounts.large;
     
-    // Track stat changes for animation
-    const [statChanges, setStatChanges] = useState<Record<CoreStat, number>>({} as Record<CoreStat, number>);
-    // initialStats를 useMemo로 변경하여 player.originalStats나 initialPlayer가 변경될 때마다 업데이트되도록 함
-    const initialStats = useMemo<Record<CoreStat, number>>(() => {
-        // 다음 경기로 넘어갔을 때 originalStats로 초기화된 값을 사용
-        if (player?.originalStats) {
-            return { ...player.originalStats };
-        }
-        // initialPlayer가 있으면 그것을 사용 (경기 시작 시점의 상태)
-        if (initialPlayer?.stats) {
-            return { ...initialPlayer.stats };
-        }
-        // 그 외에는 현재 player.stats 사용
-        return { ...(player?.stats || {}) };
-    }, [player?.originalStats, initialPlayer?.stats, player?.stats]);
-    const prevStatsRef = useRef<Record<CoreStat, number>>({} as Record<CoreStat, number>);
-    
+    // 능력치 변화 감지 (경기 진행 중일 때만)
     useEffect(() => {
-        if (!player || !player.stats) {
-            prevStatsRef.current = {} as Record<CoreStat, number>;
+        if (!player || !player.stats || tournamentStatus !== 'round_in_progress') {
             return;
         }
         
-        // 초기화: prevStatsRef가 비어있으면 현재 stats로 초기화
-        if (Object.keys(prevStatsRef.current).length === 0) {
-            prevStatsRef.current = { ...(player.stats || {}) } as Record<CoreStat, number>;
+        // 초기화: prevStatsRef가 비어있거나 initialStats와 다르면 초기화
+        const initialKey = JSON.stringify(initialStats);
+        if (Object.keys(prevStatsRef.current).length === 0 || initialStatsKeyRef.current !== initialKey) {
+            prevStatsRef.current = { ...initialStats };
             return;
         }
         
@@ -180,7 +194,7 @@ const PlayerProfilePanel: React.FC<{
         let hasChanges = false;
         
         Object.values(CoreStat).forEach(stat => {
-            const prev = prevStatsRef.current[stat] ?? 0;
+            const prev = prevStatsRef.current[stat] ?? initialStats[stat] ?? 0;
             const curr = player.stats[stat] ?? 0;
             if (prev !== curr) {
                 changes[stat] = curr - prev;
@@ -189,7 +203,7 @@ const PlayerProfilePanel: React.FC<{
         });
         
         if (hasChanges) {
-            console.log(`[PlayerProfilePanel] Stat changes detected for ${player.nickname}:`, changes);
+            console.log(`[PlayerProfilePanel] Stat changes detected for ${player.nickname}:`, changes, 'prev:', prevStatsRef.current, 'curr:', player.stats);
             setStatChanges(changes);
             setTimeout(() => {
                 setStatChanges({} as Record<CoreStat, number>);
@@ -206,7 +220,8 @@ const PlayerProfilePanel: React.FC<{
         player?.stats?.Concentration,
         player?.stats?.Stability,
         timeElapsed,
-        tournamentStatus
+        tournamentStatus,
+        initialStats
     ]);
 
     const isStatHighlighted = (stat: CoreStat) => {
@@ -452,12 +467,13 @@ const ScoreGraph: React.FC<{
         player2: { base: number; actual: number; isCritical: boolean } | null;
     } | null;
 }> = ({ p1Percent, p2Percent, p1Nickname, p2Nickname, p1Cumulative = 0, p2Cumulative = 0, p1Player, p2Player, lastScoreIncrement }) => {
-    const [p1Animation, setP1Animation] = useState<{ value: number; isCritical: boolean; key: number; startX: number; targetX: number; graphRect?: DOMRect } | null>(null);
-    const [p2Animation, setP2Animation] = useState<{ value: number; isCritical: boolean; key: number; startX: number; targetX: number; graphRect?: DOMRect } | null>(null);
+    const [p1Animations, setP1Animations] = useState<Array<{ value: number; isCritical: boolean; key: number; startX: number; targetX: number; graphRect?: DOMRect }>>([]);
+    const [p2Animations, setP2Animations] = useState<Array<{ value: number; isCritical: boolean; key: number; startX: number; targetX: number; graphRect?: DOMRect }>>([]);
     const prevP1ValueRef = useRef<number | null>(null);
     const prevP2ValueRef = useRef<number | null>(null);
     const graphRef = useRef<HTMLDivElement>(null);
     const isFirstMountRef = useRef(true);
+    const timeoutRefsRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
     
     const p1AvatarUrl = useMemo(() => p1Player ? AVATAR_POOL.find(a => a.id === p1Player.avatarId)?.url : undefined, [p1Player?.avatarId]);
     const p1BorderUrl = useMemo(() => p1Player ? BORDER_POOL.find(b => b.id === p1Player.borderId)?.url : undefined, [p1Player?.borderId]);
@@ -484,26 +500,35 @@ const ScoreGraph: React.FC<{
         
         if (lastScoreIncrement?.player1 && graphRef.current) {
             const currentValue = lastScoreIncrement.player1.actual;
-            // 이전 값과 다르면 애니메이션 트리거
+            // 이전 값과 다르면 새로운 애니메이션 추가
             if (prevP1ValueRef.current !== currentValue) {
                 const rect = graphRef.current.getBoundingClientRect();
                 // 흑은 왼쪽으로 이동 (그래프의 10% 위치)
                 const targetX = 10;
-                setP1Animation({ 
+                const animationKey = Date.now();
+                const newAnimation = { 
                     value: currentValue, 
                     isCritical: lastScoreIncrement.player1.isCritical,
-                    key: Date.now(),
+                    key: animationKey,
                     startX: 50, // 중앙에서 시작
                     targetX: targetX,
                     graphRect: rect
-                });
-                // 3초 후 애니메이션 제거
-                setTimeout(() => setP1Animation(null), 3000);
+                };
+                
+                // 새로운 애니메이션을 배열에 추가
+                setP1Animations(prev => [...prev, newAnimation]);
+                
+                // 3초 후 해당 애니메이션만 제거
+                const timeoutId = setTimeout(() => {
+                    setP1Animations(prev => prev.filter(anim => anim.key !== animationKey));
+                }, 3000);
+                timeoutRefsRef.current.push(timeoutId);
+                
                 prevP1ValueRef.current = currentValue;
             }
         } else if (!lastScoreIncrement?.player1) {
-            // player1 데이터가 없으면 애니메이션 제거
-            setP1Animation(null);
+            // player1 데이터가 없으면 모든 애니메이션 제거
+            setP1Animations([]);
         }
     }, [lastScoreIncrement?.player1?.actual, p1Percent]);
     
@@ -513,28 +538,45 @@ const ScoreGraph: React.FC<{
         
         if (lastScoreIncrement?.player2 && graphRef.current) {
             const currentValue = lastScoreIncrement.player2.actual;
-            // 이전 값과 다르면 애니메이션 트리거
+            // 이전 값과 다르면 새로운 애니메이션 추가
             if (prevP2ValueRef.current !== currentValue) {
                 const rect = graphRef.current.getBoundingClientRect();
                 // 백은 오른쪽으로 이동 (그래프의 90% 위치)
                 const targetX = 90;
-                setP2Animation({ 
+                const animationKey = Date.now();
+                const newAnimation = { 
                     value: currentValue, 
                     isCritical: lastScoreIncrement.player2.isCritical,
-                    key: Date.now(),
+                    key: animationKey,
                     startX: 50, // 중앙에서 시작
                     targetX: targetX,
                     graphRect: rect
-                });
-                // 3초 후 애니메이션 제거
-                setTimeout(() => setP2Animation(null), 3000);
+                };
+                
+                // 새로운 애니메이션을 배열에 추가
+                setP2Animations(prev => [...prev, newAnimation]);
+                
+                // 3초 후 해당 애니메이션만 제거
+                const timeoutId = setTimeout(() => {
+                    setP2Animations(prev => prev.filter(anim => anim.key !== animationKey));
+                }, 3000);
+                timeoutRefsRef.current.push(timeoutId);
+                
                 prevP2ValueRef.current = currentValue;
             }
         } else if (!lastScoreIncrement?.player2) {
-            // player2 데이터가 없으면 애니메이션 제거
-            setP2Animation(null);
+            // player2 데이터가 없으면 모든 애니메이션 제거
+            setP2Animations([]);
         }
     }, [lastScoreIncrement?.player2?.actual, p2Percent]);
+    
+    // 컴포넌트 언마운트 시 모든 timeout 정리
+    useEffect(() => {
+        return () => {
+            timeoutRefsRef.current.forEach(timeoutId => clearTimeout(timeoutId));
+            timeoutRefsRef.current = [];
+        };
+    }, []);
     
     return (
         <div>
@@ -574,64 +616,68 @@ const ScoreGraph: React.FC<{
                         <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-0.5 bg-gray-400/50" title="중앙"></div>
                     </div>
                     
-                    {/* 점수 증가 애니메이션 (각자의 진형으로 이동) */}
-                    {p1Animation && p1Animation.graphRect && graphRef.current && (
-                        <div
-                            key={`p1-${p1Animation.key}`}
-                            className="absolute pointer-events-none"
-                            style={{
-                                left: `${p1Animation.startX}%`,
-                                top: '0px',
-                                transform: 'translateX(-50%)',
-                                animation: `slideToLeft 3s ease-out forwards`,
-                                zIndex: 99999,
-                                '--target-x': `${p1Animation.targetX}%`,
-                            } as React.CSSProperties & { '--target-x': string }}
-                        >
-                            <div className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${
-                                p1Animation.isCritical 
-                                    ? 'bg-black border-2 border-yellow-400 shadow-lg shadow-yellow-500/50' 
-                                    : 'bg-black border-2 border-gray-600 shadow-lg'
-                            }`}>
-                                <span className={`font-bold ${
-                                    p1Animation.isCritical 
-                                        ? 'text-yellow-300 text-xl animate-pulse' 
-                                        : 'text-white text-lg'
+                    {/* 점수 증가 애니메이션 (각자의 진형으로 이동) - 여러 애니메이션 동시 표시 */}
+                    {p1Animations.map((animation) => (
+                        animation.graphRect && graphRef.current && (
+                            <div
+                                key={`p1-${animation.key}`}
+                                className="absolute pointer-events-none"
+                                style={{
+                                    left: `${animation.startX}%`,
+                                    top: '0px',
+                                    transform: 'translateX(-50%)',
+                                    animation: `slideToLeft 3s ease-out forwards`,
+                                    zIndex: 99999,
+                                    '--target-x': `${animation.targetX}%`,
+                                } as React.CSSProperties & { '--target-x': string }}
+                            >
+                                <div className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${
+                                    animation.isCritical 
+                                        ? 'bg-black border-2 border-yellow-400 shadow-lg shadow-yellow-500/50' 
+                                        : 'bg-black border-2 border-gray-600 shadow-lg'
                                 }`}>
-                                    {p1Animation.isCritical ? `+${Math.round(p1Animation.value)}! ⚡` : `+${Math.round(p1Animation.value)}`}
-                                </span>
+                                    <span className={`font-bold ${
+                                        animation.isCritical 
+                                            ? 'text-yellow-300 text-xl animate-pulse' 
+                                            : 'text-white text-lg'
+                                    }`}>
+                                        {animation.isCritical ? `+${Math.round(animation.value)}! ⚡` : `+${Math.round(animation.value)}`}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    ))}
                     
-                    {p2Animation && p2Animation.graphRect && graphRef.current && (
-                        <div
-                            key={`p2-${p2Animation.key}`}
-                            className="absolute pointer-events-none"
-                            style={{
-                                left: `${p2Animation.startX}%`,
-                                top: '0px',
-                                transform: 'translateX(-50%)',
-                                animation: `slideToRight 3s ease-out forwards`,
-                                zIndex: 99999,
-                                '--target-x': `${p2Animation.targetX}%`,
-                            } as React.CSSProperties & { '--target-x': string }}
-                        >
-                            <div className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${
-                                p2Animation.isCritical 
-                                    ? 'bg-white border-2 border-red-500 shadow-lg shadow-red-500/50' 
-                                    : 'bg-white border-2 border-gray-400 shadow-lg'
-                            }`}>
-                                <span className={`font-bold ${
-                                    p2Animation.isCritical 
-                                        ? 'text-red-600 text-xl animate-pulse' 
-                                        : 'text-black text-lg'
+                    {p2Animations.map((animation) => (
+                        animation.graphRect && graphRef.current && (
+                            <div
+                                key={`p2-${animation.key}`}
+                                className="absolute pointer-events-none"
+                                style={{
+                                    left: `${animation.startX}%`,
+                                    top: '0px',
+                                    transform: 'translateX(-50%)',
+                                    animation: `slideToRight 3s ease-out forwards`,
+                                    zIndex: 99999,
+                                    '--target-x': `${animation.targetX}%`,
+                                } as React.CSSProperties & { '--target-x': string }}
+                            >
+                                <div className={`px-3 py-1.5 rounded-lg whitespace-nowrap ${
+                                    animation.isCritical 
+                                        ? 'bg-white border-2 border-red-500 shadow-lg shadow-red-500/50' 
+                                        : 'bg-white border-2 border-gray-400 shadow-lg'
                                 }`}>
-                                    {p2Animation.isCritical ? `+${Math.round(p2Animation.value)}! ⚡` : `+${Math.round(p2Animation.value)}`}
-                                </span>
+                                    <span className={`font-bold ${
+                                        animation.isCritical 
+                                            ? 'text-red-600 text-xl animate-pulse' 
+                                            : 'text-black text-lg'
+                                    }`}>
+                                        {animation.isCritical ? `+${Math.round(animation.value)}! ⚡` : `+${Math.round(animation.value)}`}
+                                    </span>
+                                </div>
                             </div>
-                        </div>
-                    )}
+                        )
+                    ))}
                 </div>
             </div>
             
