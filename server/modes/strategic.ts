@@ -243,13 +243,17 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 if (game.blackPatternStones) {
                     game.blackPatternStones = game.blackPatternStones.filter(point => {
                         const occupant = game.boardState?.[point.y]?.[point.x];
-                        return occupant === types.Player.Black;
+                        // 히든 돌이 공개된 경우에도 문양 유지 (permanentlyRevealedStones에 있으면 유지)
+                        const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
+                        return occupant === types.Player.Black || isPermanentlyRevealed;
                     });
                 }
                 if (game.whitePatternStones) {
                     game.whitePatternStones = game.whitePatternStones.filter(point => {
                         const occupant = game.boardState?.[point.y]?.[point.x];
-                        return occupant === types.Player.White;
+                        // 히든 돌이 공개된 경우에도 문양 유지 (permanentlyRevealedStones에 있으면 유지)
+                        const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
+                        return occupant === types.Player.White || isPermanentlyRevealed;
                     });
                 }
             };

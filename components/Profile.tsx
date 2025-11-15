@@ -104,11 +104,13 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem
         const requiredLevel = GRADE_LEVEL_REQUIREMENTS[item.grade];
         const titleText = `${item.name} (착용 레벨 합: ${requiredLevel}) - 클릭하여 상세보기`;
         const starInfo = getStarDisplayInfo(item.stars);
+        const isDivineMythic = item.isDivineMythic === true;
         return (
             <div
-                className={`relative w-full aspect-square rounded-lg border-2 border-color/50 bg-tertiary/50 ${clickableClass}`}
+                className={`relative w-full aspect-square rounded-lg border-2 border-color/50 bg-tertiary/50 ${clickableClass} ${isDivineMythic ? 'divine-mythic-border' : ''}`}
                 title={titleText}
                 onClick={onClick}
+                style={{ border: isDivineMythic ? undefined : undefined }}
             >
                 <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-md" />
                 {item.stars > 0 && (

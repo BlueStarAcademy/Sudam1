@@ -326,15 +326,74 @@ export function getGoAiBotProfile(level: number): GoAiBotProfile {
  * @param game 현재 게임 상태
  * @param aiLevel AI 봇 단계 (1~10)
  */
+/**
+ * AI가 보드 상태를 볼 때 유저의 히든 돌을 빈 공간으로 처리하는 헬퍼 함수
+ * 싱글플레이 히든바둑 모드에서만 적용
+ */
+function getBoardStateForAi(
+    game: types.LiveGameSession,
+    aiPlayerEnum: Player
+): types.BoardState {
+    const isHiddenMode = game.mode === types.GameMode.Hidden || 
+                        (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Hidden));
+    
+    // 싱글플레이 히든바둑 모드가 아니면 원본 반환
+    if (!isHiddenMode || !game.isSinglePlayer) {
+        return game.boardState;
+    }
+    
+    // 싱글플레이에서 AI는 항상 White, 유저는 Black
+    const userPlayerEnum = aiPlayerEnum === Player.White ? Player.Black : Player.White;
+    
+    // 보드 상태 복사
+    const aiBoardState: types.BoardState = game.boardState.map(row => [...row]);
+    
+    // 유저의 히든 돌을 빈 공간으로 처리
+    if (game.hiddenMoves && game.moveHistory) {
+        for (let moveIndex = 0; moveIndex < game.moveHistory.length; moveIndex++) {
+            if (game.hiddenMoves[moveIndex]) {
+                const move = game.moveHistory[moveIndex];
+                if (move && move.player === userPlayerEnum) {
+                    const { x, y } = move;
+                    // 공개되지 않은 히든 돌만 빈 공간으로 처리
+                    const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(
+                        p => p.x === x && p.y === y
+                    );
+                    if (!isPermanentlyRevealed && aiBoardState[y]?.[x] === userPlayerEnum) {
+                        aiBoardState[y][x] = Player.None;
+                    }
+                }
+            }
+        }
+    }
+    
+    return aiBoardState;
+}
+
 export async function makeGoAiBotMove(
     game: types.LiveGameSession,
     aiLevel: number
 ): Promise<void> {
+    // 히든 돌 공개 애니메이션 중이면 AI 수를 두지 않음
+    if (game.gameStatus === 'hidden_reveal_animating') {
+        return;
+    }
+    
     const profile = getGoAiBotProfile(aiLevel);
     const aiPlayerEnum = game.currentPlayer;
     const opponentPlayerEnum = aiPlayerEnum === types.Player.Black ? types.Player.White : types.Player.Black;
     const now = Date.now();
-    const logic = getGoLogic(game);
+    
+    // AI가 볼 수 있는 보드 상태 (유저의 히든 돌 제거)
+    const aiBoardState = getBoardStateForAi(game, aiPlayerEnum);
+    
+    // AI 보드 상태를 사용하는 게임 객체 생성
+    const aiGame: types.LiveGameSession = {
+        ...game,
+        boardState: aiBoardState
+    };
+    
+    const logic = getGoLogic(aiGame);
     
     // 살리기 바둑 모드 확인
     const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
@@ -345,8 +404,8 @@ export async function makeGoAiBotMove(
     // 1. 모든 유효한 수 찾기 (KataGo 사용 안함)
     // 낮은 난이도는 샘플링으로 유효한 수 찾기 (성능 최적화)
     const allValidMoves = useFastHeuristic 
-        ? findAllValidMovesFast(game, logic, aiPlayerEnum)
-        : findAllValidMoves(game, logic, aiPlayerEnum);
+        ? findAllValidMovesFast(aiGame, logic, aiPlayerEnum)
+        : findAllValidMoves(aiGame, logic, aiPlayerEnum);
     
     if (allValidMoves.length === 0) {
         console.log('[GoAiBot] No valid moves available. AI resigns.');
@@ -360,7 +419,7 @@ export async function makeGoAiBotMove(
         // 살리기 바둑: AI(백)가 유저(흑)의 돌을 적극적으로 잡으러 오는 전략 사용
         scoredMoves = scoreMovesForAggressiveCapture(
             allValidMoves,
-            game,
+            aiGame,
             profile,
             logic,
             aiPlayerEnum,
@@ -368,12 +427,12 @@ export async function makeGoAiBotMove(
         );
     } else if (useFastHeuristic) {
         // 낮은 난이도: 간단한 휴리스틱 점수화 (성능 최적화)
-        scoredMoves = scoreMovesFast(allValidMoves, game, profile, logic, aiPlayerEnum, opponentPlayerEnum);
+        scoredMoves = scoreMovesFast(allValidMoves, aiGame, profile, logic, aiPlayerEnum, opponentPlayerEnum);
     } else {
         // 일반 바둑: AI 프로필에 따라 수 선택
         scoredMoves = scoreMovesByProfile(
             allValidMoves,
-            game,
+            aiGame,
             profile,
             logic,
             aiPlayerEnum,
@@ -405,9 +464,60 @@ export async function makeGoAiBotMove(
         selectedMove = scoredMoves[0].move;
     }
 
-    // 4. 선택된 수 실행
+    // 4. 선택된 수 실행 전에 히든 돌 위에 착점하는지 확인
+    const isHiddenMode = game.mode === types.GameMode.Hidden || 
+                        (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Hidden));
+    
+    if (isHiddenMode && game.isSinglePlayer) {
+        const { x, y } = selectedMove;
+        const stoneAtTarget = game.boardState[y][x];
+        const moveIndexAtTarget = game.moveHistory.findIndex(m => m.x === x && m.y === y);
+        const isTargetHiddenOpponentStone =
+            stoneAtTarget === opponentPlayerEnum &&
+            moveIndexAtTarget !== -1 &&
+            game.hiddenMoves?.[moveIndexAtTarget] &&
+            !game.permanentlyRevealedStones?.some(p => p.x === x && p.y === y);
+        
+        // AI가 유저의 히든 돌 위에 착점을 시도하는 경우
+        if (isTargetHiddenOpponentStone) {
+            // 1. 즉시 일시정지
+            // 히든 돌 전체공개
+            if (!game.permanentlyRevealedStones) game.permanentlyRevealedStones = [];
+            if (!game.permanentlyRevealedStones.some(p => p.x === x && p.y === y)) {
+                game.permanentlyRevealedStones.push({ x, y });
+            }
+            
+            // 공개된 히든 돌은 patternStones에서 제거하지 않음 (문양 유지)
+            // 히든 돌이 공개되어도 문양은 그대로 유지되어야 함
+            
+            // 2. 히든 돌 공개 애니메이션 설정
+            game.animation = { 
+                type: 'hidden_reveal', 
+                stones: [{ point: { x, y }, player: opponentPlayerEnum }], 
+                startTime: now, 
+                duration: 2000 
+            };
+            game.revealAnimationEndTime = now + 2000;
+            game.gameStatus = 'hidden_reveal_animating'; // 애니메이션 상태로 설정
+            
+            // AI 턴 취소 플래그 설정 (애니메이션 종료 후 턴 복구 및 유저 패스 처리용)
+            (game as any).isAiTurnCancelledAfterReveal = true;
+            
+            // 시간 일시정지
+            if (game.turnDeadline) {
+                game.pausedTurnTimeLeft = (game.turnDeadline - now) / 1000;
+                game.turnDeadline = undefined;
+                game.turnStartTime = undefined;
+            }
+            
+            await db.saveGame(game);
+            return; // 이번 턴은 히든 돌 공개만 하고 실제 수는 두지 않음
+        }
+    }
+
+    // 4-1. 선택된 수 실행 (실제 보드 상태 사용)
     let result = processMove(
-        game.boardState,
+        game.boardState, // 실제 보드 상태 사용 (히든 돌 포함)
         { ...selectedMove, player: aiPlayerEnum },
         game.koInfo,
         game.moveHistory.length
@@ -444,16 +554,122 @@ export async function makeGoAiBotMove(
         game.totalTurns = game.moveHistory.length;
     }
 
-    // 6. 따낸 돌 처리
-    if (result.capturedStones.length > 0) {
+    // 6. 따낸 돌 처리 및 히든 돌 공개 처리
+    if (result.capturedStones.length > 0 && isHiddenMode && game.isSinglePlayer) {
+        if (!game.justCaptured) game.justCaptured = [];
+        
+        // 히든 돌이 따내는데 역할을 한 경우 찾기 (contributingHiddenStones)
+        const contributingHiddenStones: { point: Point; player: Player }[] = [];
+        const boardAfterMove = JSON.parse(JSON.stringify(game.boardState));
+        boardAfterMove[selectedMove.y][selectedMove.x] = aiPlayerEnum;
+        const logic = getGoLogic({ ...game, boardState: boardAfterMove });
+        const checkedStones = new Set<string>();
+        
+        for (const captured of result.capturedStones) {
+            const neighbors = logic.getNeighbors(captured.x, captured.y);
+            for (const n of neighbors) {
+                const neighborKey = `${n.x},${n.y}`;
+                if (checkedStones.has(neighborKey) || boardAfterMove[n.y][n.x] !== aiPlayerEnum) continue;
+                checkedStones.add(neighborKey);
+                const isCurrentMove = n.x === selectedMove.x && n.y === selectedMove.y;
+                let isHiddenStone = false;
+                if (!isCurrentMove) {
+                    const moveIndex = game.moveHistory.findIndex(m => m.x === n.x && m.y === n.y);
+                    isHiddenStone = moveIndex !== -1 && !!game.hiddenMoves?.[moveIndex];
+                }
+                if (isHiddenStone) {
+                    if (!game.permanentlyRevealedStones || !game.permanentlyRevealedStones.some(p => p.x === n.x && p.y === n.y)) {
+                        contributingHiddenStones.push({ point: { x: n.x, y: n.y }, player: aiPlayerEnum });
+                    }
+                }
+            }
+        }
+        
+        // 공개되지 않은 히든 돌이 따내진 경우 찾기 (capturedHiddenStones)
+        const capturedHiddenStones: { point: Point; player: Player }[] = [];
+        for (const capturedStone of result.capturedStones) {
+            const moveIndex = game.moveHistory.findIndex(m => m.x === capturedStone.x && m.y === capturedStone.y);
+            if (moveIndex !== -1 && game.hiddenMoves?.[moveIndex]) {
+                const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === capturedStone.x && p.y === capturedStone.y);
+                if (!isPermanentlyRevealed) {
+                    capturedHiddenStones.push({ point: capturedStone, player: opponentPlayerEnum });
+                }
+            }
+        }
+        
+        const allStonesToReveal = [...contributingHiddenStones, ...capturedHiddenStones];
+        const uniqueStonesToReveal = Array.from(new Map(allStonesToReveal.map(item => [JSON.stringify(item.point), item])).values());
+        
+        // 히든 돌이 공개되어야 하는 경우
+        if (uniqueStonesToReveal.length > 0) {
+            // 1. 즉시 일시정지
+            if (game.turnDeadline) {
+                game.pausedTurnTimeLeft = (game.turnDeadline - now) / 1000;
+                game.turnDeadline = undefined;
+                game.turnStartTime = undefined;
+            }
+            
+            // 2. 히든 돌 공개 애니메이션 설정
+            game.gameStatus = 'hidden_reveal_animating';
+            game.animation = {
+                type: 'hidden_reveal',
+                stones: uniqueStonesToReveal,
+                startTime: now,
+                duration: 2000
+            };
+            game.revealAnimationEndTime = now + 2000;
+            game.pendingCapture = { 
+                stones: result.capturedStones, 
+                move: { player: aiPlayerEnum, x: selectedMove.x, y: selectedMove.y },
+                hiddenContributors: contributingHiddenStones.map(c => c.point),
+                capturedHiddenStones: capturedHiddenStones.map(c => c.point)
+            };
+            
+            // permanentlyRevealedStones에 추가
+            if (!game.permanentlyRevealedStones) game.permanentlyRevealedStones = [];
+            uniqueStonesToReveal.forEach(s => {
+                if (!game.permanentlyRevealedStones!.some(p => p.x === s.point.x && p.y === s.point.y)) {
+                    game.permanentlyRevealedStones!.push(s.point);
+                }
+            });
+            
+            // 보드 상태는 일단 유지 (애니메이션 종료 후 제거)
+            await db.saveGame(game);
+            return; // 애니메이션 종료 후 updateHiddenState에서 처리
+        }
+        
+        // 히든 돌이 공개되지 않는 경우: 일반 처리
+        for (const stone of result.capturedStones) {
+            const wasPatternStone = (opponentPlayerEnum === Player.Black && game.blackPatternStones?.some(p => p.x === stone.x && p.y === stone.y)) ||
+                                    (opponentPlayerEnum === Player.White && game.whitePatternStones?.some(p => p.x === stone.x && p.y === stone.y));
+            
+            // 히든 돌인지 확인
+            const moveIndex = game.moveHistory.findIndex(m => m.x === stone.x && m.y === stone.y);
+            const wasHidden = moveIndex !== -1 && !!game.hiddenMoves?.[moveIndex];
+            
+            const points = wasPatternStone ? 2 : (wasHidden ? 5 : 1); // 히든 돌은 5점
+            game.captures[aiPlayerEnum] += points;
+            if (wasHidden) {
+                game.hiddenStoneCaptures[aiPlayerEnum] = (game.hiddenStoneCaptures[aiPlayerEnum] || 0) + 1;
+            }
+            game.justCaptured.push({ point: stone, player: opponentPlayerEnum, wasHidden: wasHidden || false });
+        }
+    } else if (result.capturedStones.length > 0) {
+        // 히든 모드가 아니거나 싱글플레이가 아닌 경우: 일반 처리
         if (!game.justCaptured) game.justCaptured = [];
         for (const stone of result.capturedStones) {
             const wasPatternStone = (opponentPlayerEnum === Player.Black && game.blackPatternStones?.some(p => p.x === stone.x && p.y === stone.y)) ||
                                     (opponentPlayerEnum === Player.White && game.whitePatternStones?.some(p => p.x === stone.x && p.y === stone.y));
             
-            const points = wasPatternStone ? 2 : 1;
+            const moveIndex = game.moveHistory.findIndex(m => m.x === stone.x && m.y === stone.y);
+            const wasHidden = moveIndex !== -1 && !!game.hiddenMoves?.[moveIndex];
+            
+            const points = wasPatternStone ? 2 : (wasHidden ? 5 : 1);
             game.captures[aiPlayerEnum] += points;
-            game.justCaptured.push({ point: stone, player: opponentPlayerEnum, wasHidden: false });
+            if (wasHidden) {
+                game.hiddenStoneCaptures[aiPlayerEnum] = (game.hiddenStoneCaptures[aiPlayerEnum] || 0) + 1;
+            }
+            game.justCaptured.push({ point: stone, player: opponentPlayerEnum, wasHidden: wasHidden || false });
         }
     }
 
@@ -518,22 +734,33 @@ export async function makeGoAiBotMove(
         }
     }
 
-    game.currentPlayer = opponentPlayerEnum;
-    if (game.settings.timeLimit > 0) {
-        const timeKey = game.currentPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
-        const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
-        const isNextInByoyomi = game[timeKey] <= 0 && game.settings.byoyomiCount > 0 && !isFischer;
-        
-        if (isNextInByoyomi) {
-            game.turnDeadline = now + game.settings.byoyomiTime * 1000;
+    // 히든 돌 공개 애니메이션 직후에는 턴을 넘기지 않음
+    // (updateHiddenState에서 이미 AI 턴을 유지하고 aiProcessingQueue에 추가했으므로)
+    const isAiReTurnAfterReveal = (game as any).isAiReTurnAfterReveal;
+    
+    if (!isAiReTurnAfterReveal) {
+        // 일반적인 경우: 턴 넘기기
+        game.currentPlayer = opponentPlayerEnum;
+        if (game.settings.timeLimit > 0) {
+            const timeKey = game.currentPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
+            const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
+            const isNextInByoyomi = game[timeKey] <= 0 && game.settings.byoyomiCount > 0 && !isFischer;
+            
+            if (isNextInByoyomi) {
+                game.turnDeadline = now + game.settings.byoyomiTime * 1000;
+            } else {
+                game.turnDeadline = now + game[timeKey] * 1000;
+            }
+            game.turnStartTime = now;
         } else {
-            game.turnDeadline = now + game[timeKey] * 1000;
+            game.turnDeadline = undefined;
+            game.turnStartTime = undefined;
         }
-        game.turnStartTime = now;
     } else {
-        game.turnDeadline = undefined;
-        game.turnStartTime = undefined;
+        // 히든 돌 공개 직후 AI 재턴: 플래그 제거 (다음 AI 수부터는 정상적으로 턴 넘김)
+        (game as any).isAiReTurnAfterReveal = false;
     }
+    // 히든 돌 공개 직후에는 턴을 넘기지 않고 AI 턴 유지 (updateHiddenState에서 이미 처리됨)
 }
 
 /**
@@ -655,16 +882,32 @@ function scoreMovesByProfile(
         let score = 0;
         const point: Point = { x: move.x, y: move.y };
 
-        // 1. 따내기 성향 반영 (최우선, 매우 높은 점수)
+        // 1. 따내기 성향 반영 (가치 판단 후 적용)
         const captureScore = evaluateCaptureOpportunity(game, logic, point, aiPlayer, opponentPlayer);
         if (captureScore > 0) {
             score += 2000 + captureScore * 500; // 매우 강력한 가중치
         }
         score += captureScore * profile.captureTendency * 300;
 
-        // 2. 영토 확보 성향 반영
-        const territoryScore = evaluateTerritory(game, logic, point, aiPlayer);
-        score += territoryScore * profile.territoryTendency * 50;
+        // 2. 영토 확보 성향 반영 (방어 우선)
+        const territoryScore = evaluateTerritory(game, logic, point, aiPlayer, profile);
+        // 방어적인 수는 더 높은 가중치 적용
+        if (territoryScore > 5.0) {
+            // 방어적인 수는 매우 높은 점수
+            score += territoryScore * profile.territoryTendency * 200;
+        } else if (territoryScore < 0) {
+            // 영토를 메우는 수는 패널티
+            score += territoryScore * profile.territoryTendency * 100;
+        } else {
+            score += territoryScore * profile.territoryTendency * 50;
+        }
+        
+        // 2-1. 방어 방향 평가 (선의 높이에 따른 방어 우선순위)
+        if (territoryScore > 5.0) {
+            // 방어적인 수일 때만 방어 방향 평가
+            const defensiveDirectionScore = evaluateDefensiveDirection(game, point, aiPlayer, profile);
+            score += defensiveDirectionScore * profile.territoryTendency * 150; // 방어 방향 점수
+        }
 
         // 3. 전투 성향 반영
         const combatScore = evaluateCombat(game, logic, point, aiPlayer, opponentPlayer);
@@ -712,10 +955,41 @@ function scoreMovesByProfile(
             score += winFocusScore * profile.winFocus * 150;
         }
 
-        // 9. 2단계: 자충수 방지
-        if (profile.avoidsSelfAtari) {
+        // 9. 2단계: 자충수 방지 (단수당한 자신의 돌을 살리는 경우는 예외)
+        // 먼저 단수당한 자신의 돌을 살리는지 확인
+        const testResultForSelfAtari = processMove(
+            game.boardState,
+            { ...point, player: aiPlayer },
+            game.koInfo,
+            game.moveHistory.length,
+            { ignoreSuicide: true }
+        );
+        let isSavingOwnAtariGroup = false;
+        if (testResultForSelfAtari.isValid) {
+            const myGroupsBefore = logic.getAllGroups(aiPlayer, game.boardState);
+            const myGroupsAfter = logic.getAllGroups(aiPlayer, testResultForSelfAtari.newBoardState);
+            for (const groupBefore of myGroupsBefore) {
+                if (groupBefore.libertyPoints.size === 1) {
+                    const matchingAfter = myGroupsAfter.find(ga =>
+                        ga.stones.some(ast => groupBefore.stones.some(bst => ast.x === bst.x && ast.y === bst.y))
+                    );
+                    if (matchingAfter && matchingAfter.libertyPoints.size > 1) {
+                        isSavingOwnAtariGroup = true;
+                        break;
+                    }
+                }
+            }
+        }
+        
+        // 단수당한 자신의 돌을 살리는 경우가 아니면 자충수 패널티 적용
+        if (profile.avoidsSelfAtari && !isSavingOwnAtariGroup) {
             const selfAtariPenalty = evaluateSelfAtari(game, logic, point, aiPlayer);
-            score += selfAtariPenalty * -500; // 자충수는 큰 패널티
+            // 자충수는 매우 큰 패널티 (다른 점수로 상쇄되지 않도록)
+            // evaluateSelfAtari는 자충수면 1.0, 아니면 0.0을 반환
+            if (selfAtariPenalty > 0) {
+                // 자충수인 경우 점수를 매우 낮게 설정하여 거의 선택되지 않도록 함
+                score = -100000; // 매우 큰 음수로 설정하여 다른 점수와 관계없이 최하위로
+            }
         }
 
         // 10. 3단계: 먹여치기 및 환격
@@ -724,9 +998,89 @@ function scoreMovesByProfile(
             score += sacrificeScore * 300;
         }
 
-        // 11. 4단계: 단수 상황 판단 (따내기 vs 살리기)
-        if (profile.knowsAtariJudgment) {
-            const atariJudgmentScore = evaluateAtariJudgment(game, logic, point, aiPlayer, opponentPlayer);
+        // 11. 4단계: 단수 상황 판단 (따내기 vs 살리기) - 가치 판단
+        const atariJudgmentScore = evaluateAtariJudgment(game, logic, point, aiPlayer, opponentPlayer);
+        const myGroupsBefore = logic.getAllGroups(aiPlayer, game.boardState);
+        const testResult = processMove(
+            game.boardState,
+            { ...point, player: aiPlayer },
+            game.koInfo,
+            game.moveHistory.length,
+            { ignoreSuicide: true }
+        );
+        
+        // 살리기 vs 따내기 가치 비교
+        if (testResult.isValid && profile.knowsAtariJudgment) {
+            let saveOwnGroupValue = 0;
+            let captureOpponentValue = 0;
+            
+            // 자신의 단수 그룹을 살리는 경우의 가치 평가
+            const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+            for (const groupBefore of myGroupsBefore) {
+                if (groupBefore.libertyPoints.size === 1) {
+                    const matchingAfter = myGroupsAfter.find(ga =>
+                        ga.stones.some(ast => groupBefore.stones.some(bst => ast.x === bst.x && ast.y === bst.y))
+                    );
+                    if (matchingAfter && matchingAfter.libertyPoints.size > 1) {
+                        // 자신의 단수 그룹을 살린 경우
+                        const groupSize = groupBefore.stones.length;
+                        // 그룹 크기, 위치, 중요도 등을 고려한 가치 평가
+                        saveOwnGroupValue = evaluateGroupValue(
+                            groupBefore,
+                            game,
+                            logic,
+                            aiPlayer,
+                            profile
+                        );
+                    }
+                }
+            }
+            
+            // 상대방 돌을 따내는 경우의 가치 평가
+            if (testResult.capturedStones.length > 0) {
+                // 따낼 돌의 개수와 가치 평가
+                let captureValue = 0;
+                for (const stone of testResult.capturedStones) {
+                    const wasPatternStone = (opponentPlayer === Player.Black && game.blackPatternStones?.some(p => p.x === stone.x && p.y === stone.y)) ||
+                                            (opponentPlayer === Player.White && game.whitePatternStones?.some(p => p.x === stone.x && p.y === stone.y));
+                    captureValue += wasPatternStone ? 3 : 1; // 문양돌은 더 가치 있음
+                }
+                
+                // 따낼 그룹의 크기와 중요도 평가
+                const opponentGroupsBefore = logic.getAllGroups(opponentPlayer, game.boardState);
+                for (const stone of testResult.capturedStones) {
+                    const capturedGroup = opponentGroupsBefore.find(g =>
+                        g.stones.some(s => s.x === stone.x && s.y === stone.y)
+                    );
+                    if (capturedGroup) {
+                        // 그룹 크기에 따라 가치 증가 (큰 그룹을 잡는 것이 더 가치 있음)
+                        captureValue += capturedGroup.stones.length * 0.5;
+                    }
+                }
+                
+                captureOpponentValue = captureValue;
+            }
+            
+            // 가치 비교 후 점수 부여
+            if (saveOwnGroupValue > 0 || captureOpponentValue > 0) {
+                // AI 난이도에 따라 가치 판단 능력 차등 적용
+                const judgmentSkill = profile.lifeDeathSkill; // 사활 판단 능력 사용
+                
+                if (saveOwnGroupValue > captureOpponentValue * (1.0 + (1.0 - judgmentSkill) * 0.5)) {
+                    // 자신의 그룹을 살리는 것이 더 가치 있음
+                    score += 5000 + saveOwnGroupValue * 500;
+                } else if (captureOpponentValue > saveOwnGroupValue * (1.0 + (1.0 - judgmentSkill) * 0.5)) {
+                    // 상대방 돌을 따내는 것이 더 가치 있음
+                    score += 3000 + captureOpponentValue * 400;
+                } else {
+                    // 가치가 비슷한 경우 둘 다 고려
+                    score += 4000 + (saveOwnGroupValue + captureOpponentValue) * 300;
+                }
+            } else {
+                // 일반적인 단수 상황 판단
+                score += atariJudgmentScore * 400;
+            }
+        } else if (profile.knowsAtariJudgment) {
             score += atariJudgmentScore * 400;
         }
 
@@ -755,6 +1109,12 @@ function scoreMovesByProfile(
         if (profile.knowsAdvancedTechniques) {
             const advancedScore = evaluateAdvancedTechniques(game, logic, point, aiPlayer, opponentPlayer);
             score += advancedScore * 250;
+        }
+
+        // 15-1. 포위된 그룹의 탈출 시도 (높은 우선순위)
+        const escapeScore = evaluateEscapeFromSurround(game, logic, point, aiPlayer, opponentPlayer);
+        if (escapeScore > 0) {
+            score += escapeScore * 1500; // 탈출 시도는 매우 높은 점수
         }
 
         // 16. 9단계: 연결/끊음, 사활, 행마
@@ -825,23 +1185,109 @@ function evaluateCaptureOpportunity(
 }
 
 /**
- * 영토 확보 평가
+ * 방어 방향 평가 (선의 높이에 따른 방어 우선순위)
+ * 낮은 단계: 1선부터 막으려고 함
+ * 높은 단계: 3~4선부터 막으려고 함, 중앙에 가까운 곳부터 막으려고 함
+ */
+function evaluateDefensiveDirection(
+    game: types.LiveGameSession,
+    point: Point,
+    aiPlayer: Player,
+    profile: GoAiBotProfile
+): number {
+    const boardSize = game.settings.boardSize;
+    
+    // 현재 위치의 선 계산 (가장자리에서 얼마나 떨어져 있는지)
+    // 1선 = 가장자리 (x=0, x=boardSize-1, y=0, y=boardSize-1)
+    // 2선 = 그 다음
+    // 3선, 4선 = 중앙에 가까운 선
+    const distanceFromEdge = Math.min(
+        point.x,                                    // 왼쪽 가장자리까지 거리
+        point.y,                                    // 위쪽 가장자리까지 거리
+        boardSize - 1 - point.x,                    // 오른쪽 가장자리까지 거리
+        boardSize - 1 - point.y                    // 아래쪽 가장자리까지 거리
+    );
+    
+    // 선 계산 (1선 = 가장자리, 2선, 3선, 4선...)
+    const line = distanceFromEdge + 1; // 1선부터 시작
+    const maxLine = Math.ceil(boardSize / 2);
+    const normalizedLine = (line - 1) / (maxLine - 1); // 0.0 (1선) ~ 1.0 (중앙)
+    
+    // 중앙까지의 거리 (중앙 선호도 계산용)
+    const centerX = boardSize / 2;
+    const centerY = boardSize / 2;
+    const distanceFromCenterX = Math.abs(point.x - centerX);
+    const distanceFromCenterY = Math.abs(point.y - centerY);
+    const distanceFromCenter = Math.sqrt(distanceFromCenterX * distanceFromCenterX + distanceFromCenterY * distanceFromCenterY);
+    const maxDistanceFromCenter = Math.sqrt((boardSize / 2) * (boardSize / 2) * 2);
+    const centrality = 1.0 - (distanceFromCenter / maxDistanceFromCenter); // 0.0 (가장자리) ~ 1.0 (중앙)
+    
+    // AI 난이도에 따른 방어 방향 선호도
+    // 낮은 단계(1-3): 1선부터 막으려고 함 (패널티 없음)
+    // 중간 단계(4-6): 2선부터 막으려고 함
+    // 높은 단계(7-10): 3~4선부터 막으려고 함, 중앙에 가까운 곳 선호
+    
+    const level = profile.level;
+    let directionScore = 0;
+    
+    if (level <= 3) {
+        // 낮은 단계: 1선부터 막으려고 함 (방향 점수 없음)
+        directionScore = 0;
+    } else if (level <= 6) {
+        // 중간 단계: 2선 이상 선호 (1선은 약간 패널티)
+        if (line === 1) {
+            directionScore = -1.0; // 1선은 약간 패널티
+        } else if (line >= 2 && line <= 3) {
+            directionScore = 1.0; // 2~3선 선호
+        } else {
+            directionScore = 0.5; // 그 외
+        }
+    } else {
+        // 높은 단계(7-10): 3~4선부터 막으려고 함, 중앙에 가까운 곳 선호
+        if (line === 1) {
+            directionScore = -3.0; // 1선은 큰 패널티 (죽음의 선)
+        } else if (line === 2) {
+            directionScore = -1.0; // 2선도 약간 패널티
+        } else if (line >= 3 && line <= 4) {
+            directionScore = 3.0; // 3~4선은 높은 점수
+        } else if (line >= 5) {
+            directionScore = 1.0; // 5선 이상도 괜찮음
+        }
+        
+        // 중앙에 가까울수록 추가 점수
+        directionScore += centrality * 2.0; // 중앙에 가까울수록 추가 점수
+    }
+    
+    return directionScore;
+}
+
+/**
+ * 영토 확보 평가 (방어 vs 영토 메우기 구분)
  */
 function evaluateTerritory(
     game: types.LiveGameSession,
     logic: ReturnType<typeof getGoLogic>,
     point: Point,
-    aiPlayer: Player
+    aiPlayer: Player,
+    profile?: GoAiBotProfile
 ): number {
     const boardSize = game.settings.boardSize;
     let territoryScore = 0;
 
-    // 주변 8방향 확인
+    // 주변 4방향 확인 (상하좌우)
     const directions = [
-        { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 },
         { x: -1, y: 0 }, { x: 1, y: 0 },
-        { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }
+        { x: 0, y: -1 }, { x: 0, y: 1 }
     ];
+
+    let myStonesCount = 0;
+    let emptySpacesCount = 0;
+    let opponentStonesCount = 0;
+    let isDefensiveMove = false; // 방어적인 수인지 확인
+    let isFillingTerritory = false; // 영토를 메우는 수인지 확인
+
+    // 상대 그룹들 확인 (방어 평가용)
+    const opponentGroups = logic.getAllGroups(aiPlayer === Player.Black ? Player.White : Player.Black, game.boardState);
 
     for (const dir of directions) {
         const nx = point.x + dir.x;
@@ -849,21 +1295,100 @@ function evaluateTerritory(
         if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize) {
             const cell = game.boardState[ny][nx];
             if (cell === Player.None) {
-                territoryScore += 0.5; // 빈 공간
+                emptySpacesCount++;
+                // 빈 공간이지만 상대가 침입할 수 있는 곳인지 확인
+                // 상대 돌이 근처에 있으면 방어적인 수
+                const neighbors = logic.getNeighbors(nx, ny);
+                for (const neighbor of neighbors) {
+                    const neighborCell = game.boardState[neighbor.y]?.[neighbor.x];
+                    if (neighborCell === (aiPlayer === Player.Black ? Player.White : Player.Black)) {
+                        isDefensiveMove = true;
+                        break;
+                    }
+                }
             } else if (cell === aiPlayer) {
-                territoryScore += 1.5; // 자신의 돌
+                myStonesCount++;
+            } else {
+                opponentStonesCount++;
+                isDefensiveMove = true; // 상대 돌 근처는 방어적인 수
             }
         }
     }
 
-    // 모서리와 변은 영토 확보에 유리
-    const isCorner = (point.x === 0 || point.x === boardSize - 1) && 
-                     (point.y === 0 || point.y === boardSize - 1);
-    const isEdge = (point.x === 0 || point.x === boardSize - 1) || 
-                  (point.y === 0 || point.y === boardSize - 1);
+    // 자신의 그룹으로 완전히 둘러싸인 영역인지 확인 (영토 메우기)
+    // 주변 8방향 모두 확인
+    const allDirections = [
+        { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 },
+        { x: -1, y: 0 }, { x: 1, y: 0 },
+        { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }
+    ];
+    let myStonesAround = 0;
+    let emptySpacesAround = 0;
+    let opponentStonesAround = 0;
     
-    if (isCorner) territoryScore += 2;
-    else if (isEdge) territoryScore += 1;
+    for (const dir of allDirections) {
+        const nx = point.x + dir.x;
+        const ny = point.y + dir.y;
+        if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize) {
+            const cell = game.boardState[ny][nx];
+            if (cell === aiPlayer) {
+                myStonesAround++;
+            } else if (cell === Player.None) {
+                emptySpacesAround++;
+            } else {
+                opponentStonesAround++;
+            }
+        }
+    }
+    
+    // 자신의 돌로 완전히 둘러싸인 곳 (빈 공간이 없고 상대 돌도 없음) - 영토 메우기
+    if (myStonesAround >= 4 && emptySpacesAround === 0 && opponentStonesAround === 0) {
+        isFillingTerritory = true;
+    }
+
+    // 방어적인 수 (상대가 침입할 수 있는 곳을 막는 수) - 높은 점수
+    if (isDefensiveMove) {
+        territoryScore += 5.0; // 방어적인 수는 높은 점수
+        if (opponentStonesCount > 0) {
+            territoryScore += opponentStonesCount * 2.0; // 상대 돌이 많을수록 더 중요
+        }
+        // 상대 그룹이 근처에 있으면 더 중요
+        for (const oppGroup of opponentGroups) {
+            for (const stone of oppGroup.stones) {
+                const distance = Math.abs(point.x - stone.x) + Math.abs(point.y - stone.y);
+                if (distance <= 2) {
+                    territoryScore += 1.0; // 상대 그룹 근처 방어는 더 중요
+                    break;
+                }
+            }
+        }
+        
+        // 방어 방향 평가 (선의 높이에 따른 방어 우선순위)
+        // 이 부분은 scoreMovesByProfile에서 profile을 전달받아 처리하므로 여기서는 기본 점수만 부여
+    } else if (isFillingTerritory) {
+        // 이미 확정된 영토 안에 두는 수 (영토 메우기) - 큰 패널티
+        territoryScore -= 15.0; // 영토를 메우는 것은 매우 비효율적
+    } else if (myStonesCount >= 3 && emptySpacesCount === 0) {
+        // 자신의 돌로 둘러싸인 곳 - 패널티
+        territoryScore -= 10.0; // 영토를 메우는 것은 비효율적
+    } else if (myStonesCount >= 2) {
+        // 자신의 돌이 많지만 방어적이지 않은 경우 - 약간의 점수만
+        territoryScore += 0.5;
+    } else {
+        // 새로운 영토 확보 시도
+        territoryScore += 1.0;
+    }
+
+    // 모서리와 변은 영토 확보에 유리 (단, 방어적인 수가 아닐 때만)
+    if (!isDefensiveMove) {
+        const isCorner = (point.x === 0 || point.x === boardSize - 1) && 
+                         (point.y === 0 || point.y === boardSize - 1);
+        const isEdge = (point.x === 0 || point.x === boardSize - 1) || 
+                      (point.y === 0 || point.y === boardSize - 1);
+        
+        if (isCorner) territoryScore += 2;
+        else if (isEdge) territoryScore += 1;
+    }
 
     return territoryScore;
 }
@@ -1148,6 +1673,31 @@ function scoreMovesFast(
         let score = 0;
         const point: Point = { x: move.x, y: move.y };
 
+        // 0. 자신의 단수 그룹을 살리기 (최우선 - 따내기보다도 우선)
+        const testResult = processMove(
+            game.boardState,
+            { ...point, player: aiPlayer },
+            game.koInfo,
+            game.moveHistory.length,
+            { ignoreSuicide: true }
+        );
+        if (testResult.isValid) {
+            const myGroupsBefore = logic.getAllGroups(aiPlayer, game.boardState);
+            const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+            for (const groupBefore of myGroupsBefore) {
+                if (groupBefore.libertyPoints.size === 1) {
+                    const matchingAfter = myGroupsAfter.find(ga =>
+                        ga.stones.some(ast => groupBefore.stones.some(bst => ast.x === bst.x && ast.y === bst.y))
+                    );
+                    if (matchingAfter && matchingAfter.libertyPoints.size > 1) {
+                        // 자신의 단수 그룹을 살린 경우 - 최우선 점수
+                        const groupSize = groupBefore.stones.length;
+                        score += 8000 + groupSize * 1000; // 매우 높은 점수로 최우선 처리
+                    }
+                }
+            }
+        }
+
         // 1. 즉시 따내기 기회 (가장 중요)
         const captureScore = evaluateCaptureOpportunity(game, logic, point, aiPlayer, opponentPlayer);
         if (captureScore > 0) {
@@ -1169,21 +1719,22 @@ function scoreMovesFast(
         score += attackScore * 250; // 유저 그룹을 위협하는 수
 
         // 3. 기본 안전성 (간단한 자유도 체크만)
-        const testResult = processMove(
-            game.boardState,
-            { ...point, player: aiPlayer },
-            game.koInfo,
-            game.moveHistory.length,
-            { ignoreSuicide: true }
-        );
+        // 자충수 체크 (먹여치기/환격수는 예외)
+        // testResult는 이미 위에서 선언되었으므로 재사용
         if (testResult.isValid) {
             const groups = logic.getAllGroups(aiPlayer, testResult.newBoardState);
             const pointGroup = groups.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
             if (pointGroup) {
                 const libertyCount = pointGroup.libertyPoints.size;
-                if (libertyCount >= 3) score += 50;
-                else if (libertyCount >= 2) score += 30;
-                else if (libertyCount >= 1) score += 10;
+                // 자충수 체크 (활로가 1개이고 따낸 돌이 없으면 자충수)
+                if (libertyCount === 1 && testResult.capturedStones.length === 0) {
+                    // 자충수인 경우 매우 낮은 점수로 설정
+                    score = -100000; // 매우 큰 음수로 설정하여 거의 선택되지 않도록 함
+                } else {
+                    if (libertyCount >= 3) score += 50;
+                    else if (libertyCount >= 2) score += 30;
+                    else if (libertyCount >= 1) score += 10;
+                }
             }
         }
 
@@ -1217,6 +1768,32 @@ function scoreMovesForAggressiveCapture(
         const point: Point = { x: move.x, y: move.y };
 
         // 살리기 바둑의 목표: 유저(흑)의 돌을 적극적으로 잡기
+        // 하지만 자신의 단수 그룹을 살리는 것은 최우선
+
+        // 0. 자신의 단수 그룹을 살리기 (최우선 - 따내기보다도 우선)
+        const testResult = processMove(
+            game.boardState,
+            { ...point, player: aiPlayer },
+            game.koInfo,
+            game.moveHistory.length,
+            { ignoreSuicide: true }
+        );
+        if (testResult.isValid) {
+            const myGroupsBefore = logic.getAllGroups(aiPlayer, game.boardState);
+            const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+            for (const groupBefore of myGroupsBefore) {
+                if (groupBefore.libertyPoints.size === 1) {
+                    const matchingAfter = myGroupsAfter.find(ga =>
+                        ga.stones.some(ast => groupBefore.stones.some(bst => ast.x === bst.x && ast.y === bst.y))
+                    );
+                    if (matchingAfter && matchingAfter.libertyPoints.size > 1) {
+                        // 자신의 단수 그룹을 살린 경우 - 최우선 점수
+                        const groupSize = groupBefore.stones.length;
+                        score += 10000 + groupSize * 1500; // 매우 높은 점수로 최우선 처리
+                    }
+                }
+            }
+        }
 
         // 1. 따내기 기회 평가 (최우선) - 유저의 돌을 잡을 수 있는 수
         const captureScore = evaluateCaptureOpportunity(game, logic, point, aiPlayer, opponentPlayer);
@@ -1239,6 +1816,21 @@ function scoreMovesForAggressiveCapture(
         // 5. 전투 성향 반영 - 유저와 전투를 벌이는 수
         const combatScore = evaluateCombat(game, logic, point, aiPlayer, opponentPlayer);
         score += combatScore * 150; // 전투 성향 (가중치 증가)
+
+        // 5-1. 자충수 방지 (먹여치기/환격수는 예외)
+        // 단수당한 자신의 돌을 살리는 경우는 이미 위에서 처리됨
+        if (testResult.isValid) {
+            const groups = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+            const pointGroup = groups.find(g => g.stones.some(p => p.x === point.x && p.y === point.y));
+            if (pointGroup) {
+                const libertyCount = pointGroup.libertyPoints.size;
+                // 자충수 체크 (활로가 1개이고 따낸 돌이 없으면 자충수)
+                if (libertyCount === 1 && testResult.capturedStones.length === 0) {
+                    // 자충수인 경우 매우 낮은 점수로 설정
+                    score = -100000; // 매우 큰 음수로 설정하여 거의 선택되지 않도록 함
+                }
+            }
+        }
 
         // 6. 자신의 안전성도 약간 고려 (너무 위험한 수는 피하기)
         const safetyScore = evaluateSafety(game, logic, point, aiPlayer);
@@ -1443,6 +2035,95 @@ function evaluateSafety(
 }
 
 /**
+ * 포위된 그룹의 탈출 평가 (넓은 방향으로 연결하며 탈출)
+ */
+function evaluateEscapeFromSurround(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player
+): number {
+    const testResult = processMove(
+        game.boardState,
+        { ...point, player: aiPlayer },
+        game.koInfo,
+        game.moveHistory.length,
+        { ignoreSuicide: true }
+    );
+
+    if (!testResult.isValid) return 0;
+
+    let escapeScore = 0;
+    const myGroups = logic.getAllGroups(aiPlayer, game.boardState);
+    const opponentGroups = logic.getAllGroups(opponentPlayer, game.boardState);
+
+    // 자신의 그룹 중 포위당한 그룹 찾기
+    for (const myGroup of myGroups) {
+        const libertyCount = myGroup.libertyPoints.size;
+        
+        // 활로가 적은 그룹 (포위당한 그룹)
+        if (libertyCount <= 3) {
+            // 이 수로 이 그룹과 연결되는지 확인
+            const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
+            const connectedGroup = myGroupsAfter.find(ga =>
+                ga.stones.some(ast => myGroup.stones.some(bst => ast.x === bst.x && ast.y === bst.y))
+            );
+
+            if (connectedGroup) {
+                const newLibertyCount = connectedGroup.libertyPoints.size;
+                
+                // 활로가 증가했으면 탈출 시도
+                if (newLibertyCount > libertyCount) {
+                    const libertyIncrease = newLibertyCount - libertyCount;
+                    
+                    // 활로 증가량에 따라 점수 부여
+                    escapeScore += 3.0 + libertyIncrease * 2.0; // 기본 3점 + 활로 증가당 2점
+                    
+                    // 넓은 방향으로 탈출하는지 확인
+                    // 주변의 빈 공간(활로) 개수 확인
+                    const directions = [
+                        { x: -1, y: 0 }, { x: 1, y: 0 },
+                        { x: 0, y: -1 }, { x: 0, y: 1 }
+                    ];
+                    
+                    let wideDirectionScore = 0;
+                    for (const dir of directions) {
+                        const nx = point.x + dir.x;
+                        const ny = point.y + dir.y;
+                        if (nx >= 0 && nx < game.settings.boardSize && ny >= 0 && ny < game.settings.boardSize) {
+                            const cell = testResult.newBoardState[ny][nx];
+                            if (cell === Player.None) {
+                                // 빈 공간이면 넓은 방향
+                                wideDirectionScore += 1.0;
+                            }
+                        }
+                    }
+                    
+                    // 넓은 방향으로 탈출하면 추가 점수
+                    if (wideDirectionScore >= 2) {
+                        escapeScore += 2.0; // 넓은 방향으로 탈출
+                    }
+                    
+                    // 상대 그룹이 근처에 있으면 더 긴급함
+                    for (const oppGroup of opponentGroups) {
+                        for (const stone of oppGroup.stones) {
+                            const distance = Math.abs(point.x - stone.x) + Math.abs(point.y - stone.y);
+                            if (distance <= 2) {
+                                escapeScore += 1.5; // 상대 그룹 근처 탈출은 더 중요
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    return escapeScore;
+}
+
+/**
  * 도망 평가 (상대 돌과 멀어지는 수)
  */
 function evaluateEscape(
@@ -1525,6 +2206,58 @@ function evaluateLibertyGain(
     }
 
     return 0.3; // 새로운 그룹
+}
+
+/**
+ * 그룹의 가치 평가 (살리기 vs 따내기 판단용)
+ */
+function evaluateGroupValue(
+    group: { stones: Point[]; liberties: number; libertyPoints: Set<string>; player: Player },
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    aiPlayer: Player,
+    profile: GoAiBotProfile
+): number {
+    const boardSize = game.settings.boardSize;
+    let value = 0;
+    
+    // 1. 그룹 크기 (큰 그룹일수록 더 가치 있음)
+    const groupSize = group.stones.length;
+    value += groupSize * 2.0; // 그룹 크기당 2점
+    
+    // 2. 그룹의 위치 (중앙에 가까울수록 더 가치 있음)
+    let avgX = 0, avgY = 0;
+    for (const stone of group.stones) {
+        avgX += stone.x;
+        avgY += stone.y;
+    }
+    avgX /= groupSize;
+    avgY /= groupSize;
+    const centerX = boardSize / 2;
+    const centerY = boardSize / 2;
+    const distanceFromCenter = Math.abs(avgX - centerX) + Math.abs(avgY - centerY);
+    const maxDistance = boardSize;
+    const centrality = 1.0 - (distanceFromCenter / maxDistance);
+    value += centrality * 5.0; // 중앙에 가까울수록 더 가치 있음
+    
+    // 3. 그룹의 활로 수 (활로가 많을수록 더 가치 있음)
+    const libertyCount = group.libertyPoints.size;
+    value += libertyCount * 1.5; // 활로당 1.5점
+    
+    // 4. 게임 진행 상황 (후반일수록 큰 그룹이 더 중요)
+    const moveCount = game.moveHistory.length;
+    const totalSpaces = boardSize * boardSize;
+    const gameProgress = Math.min(1.0, moveCount / (totalSpaces * 0.7)); // 70% 진행 시 1.0
+    if (gameProgress > 0.6) {
+        // 후반일수록 큰 그룹의 가치 증가
+        value += groupSize * gameProgress * 1.5;
+    }
+    
+    // 5. AI 난이도에 따른 가치 판단 능력 (높을수록 더 정확한 판단)
+    const judgmentSkill = profile.lifeDeathSkill;
+    value *= (0.7 + judgmentSkill * 0.3); // 낮은 난이도는 가치를 약간 낮게 평가
+    
+    return value;
 }
 
 /**
@@ -1651,7 +2384,7 @@ function evaluateAtariJudgment(
         }
     }
 
-    // 자신의 그룹이 단수 상태일 때 살리기
+    // 자신의 그룹이 단수 상태일 때 살리기 (최우선)
     const myGroupsBefore = logic.getAllGroups(aiPlayer, game.boardState);
     const myGroupsAfter = logic.getAllGroups(aiPlayer, testResult.newBoardState);
     
@@ -1661,8 +2394,10 @@ function evaluateAtariJudgment(
                 ga.stones.some(ast => groupBefore.stones.some(bst => ast.x === bst.x && ast.y === bst.y))
             );
             if (matchingAfter && matchingAfter.libertyPoints.size > 1) {
-                // 자신의 단수 그룹을 살린 경우
-                score += 3.0; // 살리기가 더 중요
+                // 자신의 단수 그룹을 살린 경우 - 매우 높은 점수 (최우선)
+                const groupSize = groupBefore.stones.length;
+                // 그룹 크기에 따라 점수 차등 (큰 그룹일수록 더 중요)
+                score += 15.0 + groupSize * 2.0; // 기본 15점 + 그룹 크기당 2점
             }
         }
     }
@@ -2163,3 +2898,4 @@ function evaluateEndgame(
 
     return score;
 }
+

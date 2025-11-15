@@ -72,6 +72,32 @@ const ItemObtainedModal: React.FC<ItemObtainedModalProps> = ({ item, onClose, is
     const starInfo = getStarDisplayInfo(item.stars);
     const borderClass = gradeBorderStyles[item.grade];
     const isCurrency = item.image === '/images/icon/Gold.png' || item.image === '/images/icon/Zem.png';
+    
+    // 등급별 글로우 효과 클래스
+    const getGlowClass = (grade: ItemGrade) => {
+        switch (grade) {
+            case 'rare': return 'item-glow-rare';
+            case 'epic': return 'item-glow-epic';
+            case 'legendary': return 'item-glow-legendary';
+            case 'mythic': return 'item-glow-mythic';
+            default: return '';
+        }
+    };
+    
+    // 등급별 텍스트 글로우 효과 클래스
+    const getTextGlowClass = (grade: ItemGrade) => {
+        switch (grade) {
+            case 'rare': return 'text-glow-rare';
+            case 'epic': return 'text-glow-epic';
+            case 'legendary': return 'text-glow-legendary';
+            case 'mythic': return 'text-glow-mythic';
+            default: return '';
+        }
+    };
+    
+    const isHighGrade = ['rare', 'epic', 'legendary', 'mythic'].includes(item.grade);
+    const glowClass = getGlowClass(item.grade);
+    const textGlowClass = getTextGlowClass(item.grade);
 
     useEffect(() => {
         if (['epic', 'legendary', 'mythic'].includes(item.grade)) {
@@ -83,11 +109,11 @@ const ItemObtainedModal: React.FC<ItemObtainedModalProps> = ({ item, onClose, is
         <DraggableWindow title="아이템 획득" onClose={onClose} windowId="item-obtained" initialWidth={400} isTopmost={isTopmost} zIndex={70}>
             <div className="text-center">
                 <div className="p-6 rounded-lg">
-                    <div className="relative w-48 h-48 mx-auto rounded-lg mb-4 overflow-hidden">
+                    <div className="relative w-48 h-48 mx-auto rounded-lg mb-4 overflow-visible">
                         {borderClass && (
                             <div className={`absolute -inset-1 rounded-lg ${borderClass}`}></div>
                         )}
-                        <div className="relative w-full h-full rounded-lg flex items-center justify-center border-2 border-black/50 overflow-hidden">
+                        <div className={`relative w-full h-full rounded-lg flex items-center justify-center border-2 border-black/50 overflow-hidden ${isHighGrade ? 'item-reveal-animation' : ''} ${glowClass}`}>
                             <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover" />
                             {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-4" />}
                             {isCurrency && (
@@ -99,10 +125,10 @@ const ItemObtainedModal: React.FC<ItemObtainedModalProps> = ({ item, onClose, is
                             )}
                         </div>
                     </div>
-                    <p className={`font-bold text-lg ${styles.text}`}>[{styles.name}]</p>
+                    <p className={`font-bold text-lg ${styles.text} ${textGlowClass}`}>[{styles.name}]</p>
                     <div className="flex items-baseline justify-center gap-2">
-                        <h2 className={`text-3xl font-bold ${starInfo.colorClass}`}>{item.name}</h2>
-                        {item.stars > 0 && <span className={`text-2xl font-bold ${starInfo.colorClass}`}>{starInfo.text}</span>}
+                        <h2 className={`text-3xl font-bold ${starInfo.colorClass} ${textGlowClass}`}>{item.name}</h2>
+                        {item.stars > 0 && <span className={`text-2xl font-bold ${starInfo.colorClass} ${textGlowClass}`}>{starInfo.text}</span>}
                     </div>
                     {requiredLevel && <p className="text-xs text-yellow-300">(착용 레벨 합: {requiredLevel})</p>}
                     {item.type === 'equipment' && (

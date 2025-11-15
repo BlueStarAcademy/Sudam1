@@ -21,6 +21,11 @@ export type ChatMessage = {
       itemId: string;
       userId: string;
       itemName: string;
+      itemGrade?: string; // 장비 등급 (색상 적용용)
+  };
+  userLink?: {
+      userId: string;
+      userName: string;
   };
 };
 

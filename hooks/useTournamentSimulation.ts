@@ -32,6 +32,13 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
             const isSimulationRunning = simulationIntervalRef.current !== null;
             const isNewMatch = newSeed && newSeed !== prevSeed;
             
+            // 플레이어 컨디션 변경 감지 (회복제 사용 등) - 모든 플레이어 확인
+            const hasConditionChanged = tournament.players.some((p) => {
+                const localPlayer = localTournament?.players.find(lp => lp.id === p.id);
+                return localPlayer && localPlayer.condition !== p.condition && 
+                       p.condition !== undefined && p.condition !== null && p.condition !== 1000;
+            });
+            
             // 시드가 새로 생성되면 시뮬레이션 재시작 (START_TOURNAMENT_MATCH에서만 시드가 생성됨)
             if (isNewMatch) {
                 if (import.meta.env.DEV) {
@@ -55,7 +62,7 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
                 setLocalTournament(tournament);
             } else if (isSimulationRunning && !isNewMatch) {
                 // 시뮬레이션이 진행 중이고 새로운 매치가 아니면 리셋하지 않음
-                // 하지만 서버에서 업데이트된 정보(예: 다른 경기 결과)는 반영해야 하므로
+                // 하지만 서버에서 업데이트된 정보(예: 다른 경기 결과, 회복제 사용으로 인한 컨디션 변경)는 반영해야 하므로
                 // currentSimulatingMatch가 같고 시드가 같으면 로컬 상태만 업데이트 (리셋 없이)
                 if (newStatus === 'round_in_progress' && 
                     tournament.currentSimulatingMatch && 
@@ -64,6 +71,9 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
                     tournament.currentSimulatingMatch.matchIndex === localTournament.currentSimulatingMatch.matchIndex &&
                     newSeed === prevSeed) {
                     // 같은 경기가 진행 중이면 리셋하지 않고 로컬 상태만 업데이트
+                    setLocalTournament(tournament);
+                } else if (hasConditionChanged && newStatus === 'bracket_ready') {
+                    // bracket_ready 상태에서 컨디션이 변경되었으면 (회복제 사용 등) 로컬 상태 업데이트
                     setLocalTournament(tournament);
                 }
                 // 그 외의 경우는 리셋하지 않음
@@ -139,11 +149,34 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
                     commentaryRef.current = [];
                     setLocalTournament(tournament);
                 }
+            } else if (newStatus === 'bracket_ready' && prevStatus === 'bracket_ready') {
+                // bracket_ready 상태에서 컨디션이 변경되었으면 (회복제 사용 등) 로컬 상태 업데이트
+                // 플레이어 컨디션 변경 감지
+                const hasConditionChanged = currentUser && tournament.players.some((p) => {
+                    const localPlayer = localTournament?.players.find(lp => lp.id === p.id);
+                    return localPlayer && localPlayer.condition !== p.condition && 
+                           p.condition !== undefined && p.condition !== null && p.condition !== 1000;
+                });
+                if (hasConditionChanged) {
+                    setLocalTournament(tournament);
+                }
+            } else if (newStatus === prevStatus && newSeed === prevSeed && !isSimulationRunning) {
+                // 같은 상태이고 시드가 같고 시뮬레이션이 진행 중이 아닐 때
+                // 컨디션 변경 등 다른 업데이트가 있을 수 있으므로 확인
+                const hasConditionChanged = currentUser && tournament.players.some((p) => {
+                    const localPlayer = localTournament?.players.find(lp => lp.id === p.id);
+                    return localPlayer && localPlayer.condition !== p.condition && 
+                           p.condition !== undefined && p.condition !== null && p.condition !== 1000;
+                });
+                if (hasConditionChanged) {
+                    // 컨디션이 변경되었으면 로컬 상태 업데이트
+                    setLocalTournament(tournament);
+                }
             }
         } else {
             setLocalTournament(null);
         }
-    }, [tournament]);
+    }, [tournament, currentUser]);
 
     useEffect(() => {
         if (!localTournament || !currentUser) {
@@ -213,8 +246,12 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
                 return;
             }
             
-            const p1 = localTournament.players.find(p => p.id === match.players[0]!.id);
-            const p2 = localTournament.players.find(p => p.id === match.players[1]!.id);
+            // 서버에서 업데이트된 최신 컨디션을 반영하기 위해 tournament prop에서 직접 플레이어를 가져옴
+            // localTournament는 이전 상태일 수 있으므로 tournament prop을 우선 사용
+            const p1FromTournament = tournament?.players.find(p => p.id === match.players[0]!.id);
+            const p2FromTournament = tournament?.players.find(p => p.id === match.players[1]!.id);
+            const p1 = p1FromTournament || localTournament.players.find(p => p.id === match.players[0]!.id);
+            const p2 = p2FromTournament || localTournament.players.find(p => p.id === match.players[1]!.id);
             
             if (!p1 || !p2) {
                 isSimulatingRef.current = false;
@@ -229,6 +266,8 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
             rngRef.current = new SeededRandom(localTournament.simulationSeed!);
             
             // 컨디션 설정 (시드 기반)
+            // 단, 이미 유효한 컨디션이 있으면(40-100 사이 값) 유지 (회복제로 회복한 컨디션 보존)
+            // undefined, null, 1000일 때만 새로 설정
             if (player1Ref.current.condition === undefined || player1Ref.current.condition === null || player1Ref.current.condition === 1000) {
                 player1Ref.current.condition = rngRef.current.randomInt(40, 100);
             }
@@ -407,7 +446,8 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
                         updated.currentMatchCommentary = [...commentaryRef.current];
                         // 시뮬레이션 완료 표시를 위해 시드 제거 (서버에서도 제거됨)
                         updated.simulationSeed = undefined;
-                        updated.currentSimulatingMatch = null;
+                        // currentSimulatingMatch는 null로 설정하지 않고 유지하여 경기 종료 화면이 사라지지 않도록 함
+                        // 서버에서 상태가 업데이트되면 자동으로 반영됨
                         return updated;
                     });
                     
@@ -488,6 +528,9 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
         localTournament?.simulationSeed, 
         localTournament?.currentSimulatingMatch?.roundIndex,
         localTournament?.currentSimulatingMatch?.matchIndex,
+        // tournament prop을 의존성에 추가하여 최신 컨디션 값이 반영되도록 함
+        // 경기 시작 대기 중에 회복제로 회복한 컨디션이 경기 시작 시에도 유지되도록 함
+        tournament,
         currentUser?.id
         // handlers를 의존성에서 제거: handlers가 변경되어도 시뮬레이션을 재시작할 필요 없음
         // handlers.handleAction은 interval 내부에서 사용되므로 closure로 캡처됨

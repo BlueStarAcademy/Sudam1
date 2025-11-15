@@ -137,8 +137,8 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             
             const { board, blackPattern, whitePattern } = generateSinglePlayerBoard(stage);
 
-            // 살리기 바둑 모드 확인
-            const isSurvivalMode = stage.survivalTurns !== undefined;
+            // 살리기 바둑 모드 확인 (survivalTurns > 0일 때만 살리기 바둑 모드)
+            const isSurvivalMode = stage.survivalTurns !== undefined && stage.survivalTurns > 0;
 
             // 시간룰 설정: 스피드바둑은 피셔, 나머지는 5분+초읽기30초 3회
             const enforcedMainTimeMinutes = isSpeedMode ? (stage.timeControl.mainTime ?? 5) : 5;

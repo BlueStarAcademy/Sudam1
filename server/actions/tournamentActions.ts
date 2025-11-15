@@ -502,19 +502,16 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             
             // bracket_ready 상태에서 컨디션이 부여되지 않은 경우 항상 컨디션 부여
             // (뒤로가기 후 다시 들어온 경우를 포함하여 모든 경우에 대응)
+            // startNextRound에서 컨디션을 부여했을 수도 있지만, 확실하게 부여하기 위해 다시 확인
             if (tournamentState.status === 'bracket_ready') {
-                const needsConditionAssignment = tournamentState.players.some(p => 
-                    p.condition === undefined || p.condition === null || p.condition === 1000
-                );
-                
-                if (needsConditionAssignment) {
-                    // 모든 플레이어의 컨디션을 부여 (40~100 사이 랜덤)
-                    tournamentState.players.forEach(p => {
-                        if (p.condition === undefined || p.condition === null || p.condition === 1000) {
-                            p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-                        }
-                    });
-                }
+                // 모든 플레이어의 컨디션을 확인하고, 유효하지 않으면 부여
+                tournamentState.players.forEach(p => {
+                    // 컨디션이 undefined, null, 1000이거나 유효 범위(40-100)를 벗어나면 새로 부여
+                    if (p.condition === undefined || p.condition === null || p.condition === 1000 || 
+                        p.condition < 40 || p.condition > 100) {
+                        p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+                    }
+                });
             }
             
             // The state object on the user is already mutated, so just save the user.
@@ -992,9 +989,72 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             // 클라이언트 타임스탬프를 시뮬레이션 함수에 전달
             (tournamentState as any).__clientTimestamp = timestamp;
             
+            const prevStatus = tournamentState.status;
             const advanced = advanceSimulation(tournamentState, freshUser);
             if (!advanced) {
                 return {}; // 아직 진행할 시간이 안 됨
+            }
+
+            // 토너먼트 완료 시점에 점수 자동 합산 (보상 수령 여부와 관계없이)
+            // 하루에 한번씩 각 경기장에서 모은 점수를 합산하여 주간 경쟁에 사용
+            if ((tournamentState.status === 'complete' || tournamentState.status === 'eliminated') && 
+                (prevStatus !== 'complete' && prevStatus !== 'eliminated')) {
+                // 토너먼트가 방금 완료된 경우에만 점수 추가 (중복 추가 방지)
+                let statusKey: keyof User;
+                switch (type) {
+                    case 'neighborhood':
+                        statusKey = 'neighborhoodRewardClaimed';
+                        break;
+                    case 'national':
+                        statusKey = 'nationalRewardClaimed';
+                        break;
+                    case 'world':
+                        statusKey = 'worldRewardClaimed';
+                        break;
+                    default:
+                        statusKey = 'neighborhoodRewardClaimed';
+                }
+                
+                // 보상을 이미 수령했는지 확인 (중복 추가 방지)
+                const alreadyClaimed = (freshUser as any)[statusKey];
+                if (!alreadyClaimed) {
+                    // 순위 계산 및 점수 추가
+                    const { calculateRanks } = await import('../tournamentService.js');
+                    const { TOURNAMENT_SCORE_REWARDS } = await import('../../constants.js');
+                    
+                    try {
+                        const rankings = calculateRanks(tournamentState);
+                        const userRanking = rankings.find(r => r.id === freshUser.id);
+                        
+                        if (userRanking) {
+                            const userRank = userRanking.rank;
+                            const scoreRewardInfo = TOURNAMENT_SCORE_REWARDS[type];
+                            let scoreRewardKey: number;
+                            
+                            if (type === 'neighborhood') {
+                                scoreRewardKey = userRank;
+                            } else if (type === 'national') {
+                                scoreRewardKey = userRank <= 4 ? userRank : 5;
+                            } else { // world
+                                if (userRank <= 4) scoreRewardKey = userRank;
+                                else if (userRank <= 8) scoreRewardKey = 5;
+                                else scoreRewardKey = 9;
+                            }
+                            
+                            const scoreReward = scoreRewardInfo[scoreRewardKey];
+                            if (scoreReward !== undefined) {
+                                const oldCumulativeScore = freshUser.cumulativeTournamentScore || 0;
+                                freshUser.cumulativeTournamentScore = oldCumulativeScore + scoreReward;
+                                const oldScore = freshUser.tournamentScore || 0;
+                                freshUser.tournamentScore = oldScore + scoreReward;
+                                console.log(`[ADVANCE_TOURNAMENT_SIMULATION] Auto-added score for ${type}: rank=${userRank}, scoreReward=${scoreReward}, tournamentScore: ${oldScore} -> ${freshUser.tournamentScore}, cumulativeTournamentScore: ${oldCumulativeScore} -> ${freshUser.cumulativeTournamentScore}`);
+                            }
+                        }
+                    } catch (error: any) {
+                        console.error(`[ADVANCE_TOURNAMENT_SIMULATION] Error calculating ranks for auto-score:`, error);
+                        // 에러가 발생해도 계속 진행 (보상 수령 시점에 점수가 추가될 수 있음)
+                    }
+                }
             }
 
             // Keep volatile state reference updated
@@ -1215,6 +1275,7 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
 
             // 매치 완료 처리
             const { processMatchCompletion } = await import('../tournamentService.js');
+            const prevStatus = tournamentState.status;
             processMatchCompletion(tournamentState, freshUser, match, roundIndex);
 
             // 모든 경기가 완료되었는지 확인
@@ -1226,6 +1287,68 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 tournamentState.players.forEach(p => {
                     p.condition = 1000;
                 });
+                
+                // 토너먼트 완료 시점에 점수 자동 합산 (보상 수령 여부와 관계없이)
+                // 하루에 한번씩 각 경기장에서 모은 점수를 합산하여 주간 경쟁에 사용
+                if ((tournamentState.status === 'complete' || tournamentState.status === 'eliminated') && 
+                    (prevStatus !== 'complete' && prevStatus !== 'eliminated')) {
+                    // 토너먼트가 방금 완료된 경우에만 점수 추가 (중복 추가 방지)
+                    let statusKey: keyof User;
+                    switch (type) {
+                        case 'neighborhood':
+                            statusKey = 'neighborhoodRewardClaimed';
+                            break;
+                        case 'national':
+                            statusKey = 'nationalRewardClaimed';
+                            break;
+                        case 'world':
+                            statusKey = 'worldRewardClaimed';
+                            break;
+                        default:
+                            statusKey = 'neighborhoodRewardClaimed';
+                    }
+                    
+                    // 보상을 이미 수령했는지 확인 (중복 추가 방지)
+                    const alreadyClaimed = (freshUser as any)[statusKey];
+                    if (!alreadyClaimed) {
+                        // 순위 계산 및 점수 추가
+                        const { calculateRanks } = await import('../tournamentService.js');
+                        const { TOURNAMENT_SCORE_REWARDS } = await import('../../constants.js');
+                        
+                        try {
+                            const rankings = calculateRanks(tournamentState);
+                            const userRanking = rankings.find(r => r.id === freshUser.id);
+                            
+                            if (userRanking) {
+                                const userRank = userRanking.rank;
+                                const scoreRewardInfo = TOURNAMENT_SCORE_REWARDS[type];
+                                let scoreRewardKey: number;
+                                
+                                if (type === 'neighborhood') {
+                                    scoreRewardKey = userRank;
+                                } else if (type === 'national') {
+                                    scoreRewardKey = userRank <= 4 ? userRank : 5;
+                                } else { // world
+                                    if (userRank <= 4) scoreRewardKey = userRank;
+                                    else if (userRank <= 8) scoreRewardKey = 5;
+                                    else scoreRewardKey = 9;
+                                }
+                                
+                                const scoreReward = scoreRewardInfo[scoreRewardKey];
+                                if (scoreReward !== undefined) {
+                                    const oldCumulativeScore = freshUser.cumulativeTournamentScore || 0;
+                                    freshUser.cumulativeTournamentScore = oldCumulativeScore + scoreReward;
+                                    const oldScore = freshUser.tournamentScore || 0;
+                                    freshUser.tournamentScore = oldScore + scoreReward;
+                                    console.log(`[COMPLETE_TOURNAMENT_SIMULATION] Auto-added score for ${type}: rank=${userRank}, scoreReward=${scoreReward}, tournamentScore: ${oldScore} -> ${freshUser.tournamentScore}, cumulativeTournamentScore: ${oldCumulativeScore} -> ${freshUser.cumulativeTournamentScore}`);
+                                }
+                            }
+                        } catch (error: any) {
+                            console.error(`[COMPLETE_TOURNAMENT_SIMULATION] Error calculating ranks for auto-score:`, error);
+                            // 에러가 발생해도 계속 진행 (보상 수령 시점에 점수가 추가될 수 있음)
+                        }
+                    }
+                }
             } else {
                 // 다음 라운드 진행 여부 확인
                 const allMatchesInRoundFinished = tournamentState.rounds[roundIndex].matches.every(m => m.isFinished);

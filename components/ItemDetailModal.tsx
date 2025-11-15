@@ -75,7 +75,7 @@ const ItemDetailModal: React.FC<ItemDetailModalProps> = ({ item, isOwnedByCurren
                         <div className="flex items-baseline justify-end gap-1">
                             <h3 className={`text-xl font-bold ${styles.color}`}>{item.name}</h3>
                         </div>
-                        <p className="text-gray-400 text-sm">[{styles.name}]</p>
+                        <p className={`text-sm ${styles.color}`}>[{styles.name}]</p>
                         <p className={`text-xs ${canEquip ? 'text-gray-500' : 'text-red-500'}`}>(착용레벨: {requiredLevel})</p>
                         {item.options?.main && (
                             <p className="font-semibold text-yellow-300 text-sm">{item.options.main.display}</p>

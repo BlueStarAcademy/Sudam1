@@ -112,9 +112,10 @@ const EquipmentSlotDisplay: React.FC<{
     if (item) {
         const padding = Math.max(4, Math.round(6 * scaleFactor));
         const borderWidth = Math.max(1, Math.round(2 * scaleFactor));
+        const isDivineMythic = item.isDivineMythic === true;
         return (
             <div
-                className={`relative aspect-square rounded-lg bg-tertiary/50 ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-accent/70' : ''} ${isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent'}`}
+                className={`relative aspect-square rounded-lg bg-tertiary/50 ${onClick ? 'cursor-pointer hover:ring-2 hover:ring-accent/70' : ''} ${isSelected ? 'ring-2 ring-accent' : 'ring-1 ring-transparent'} ${isDivineMythic ? 'divine-mythic-border' : ''}`}
                 title={item.name}
                 onClick={onClick}
                 style={{ 
@@ -124,7 +125,7 @@ const EquipmentSlotDisplay: React.FC<{
                     minHeight: 0, 
                     maxWidth: '100%', 
                     maxHeight: '100%',
-                    border: `${borderWidth}px solid rgba(255, 255, 255, 0.1)`,
+                    border: isDivineMythic ? undefined : `${borderWidth}px solid rgba(255, 255, 255, 0.1)`,
                     boxSizing: 'border-box'
                 }}
             >
@@ -299,7 +300,7 @@ const LocalItemDetailDisplay: React.FC<{
                         <h3 className={`font-bold ${styles.color}`} style={{ fontSize: `${Math.max(14, Math.round(18 * scaleFactor * mobileTextScale))}px` }}>{item.name}</h3>
                     </div>
                     <div className="flex items-center justify-end gap-2 mt-0.5" style={{ fontSize: `${Math.max(10, Math.round(11 * scaleFactor * mobileTextScale))}px` }}>
-                        <span className="text-gray-400">[{styles.name}]</span>
+                        <span className={styles.color}>[{styles.name}]</span>
                         {showRequirement && (
                             <span className={`${levelRequirementMet ? 'text-gray-300' : 'text-red-400'} whitespace-nowrap`} style={{ fontSize: `${Math.max(9, Math.round(10 * scaleFactor * mobileTextScale))}px` }}>
                                 착용 레벨 {requiredLevel}
@@ -341,8 +342,8 @@ const LocalItemDetailDisplay: React.FC<{
                         const differenceText = difference > 0 ? ` (+${difference})` : (difference < 0 ? ` (${difference})` : '');
                         const differenceColorClass = difference > 0 ? 'text-green-400' : (difference < 0 ? 'text-red-400' : '');
                         let colorClass = 'text-blue-300'; // Default for combat subs
-                        if (current.type in SpecialStat) colorClass = 'text-green-300';
-                        if (current.type in MythicStat) colorClass = 'text-red-400';
+                        if (Object.values(SpecialStat).includes(current.type as SpecialStat)) colorClass = 'text-green-300';
+                        if (Object.values(MythicStat).includes(current.type as MythicStat)) colorClass = 'text-orange-400';
 
                         // display에 이미 범위값이 포함되어 있으면 추가하지 않음
                         const rangeText = current.range && !current.display.includes('[') ? ` [${current.range[0]}~${current.range[1]}]` : '';
@@ -359,8 +360,8 @@ const LocalItemDetailDisplay: React.FC<{
                     } else if (current && !comparison) {
                         // Stat is new
                         let colorClass = 'text-green-400';
-                        if (current.type in SpecialStat) colorClass = 'text-green-300';
-                        if (current.type in MythicStat) colorClass = 'text-red-400';
+                        if (Object.values(SpecialStat).includes(current.type as SpecialStat)) colorClass = 'text-green-300';
+                        if (Object.values(MythicStat).includes(current.type as MythicStat)) colorClass = 'text-orange-400';
                         // display에 이미 범위값이 포함되어 있으면 추가하지 않음
                         const rangeText = current.range && !current.display.includes('[') ? ` [${current.range[0]}~${current.range[1]}]` : '';
                         return (
@@ -373,8 +374,8 @@ const LocalItemDetailDisplay: React.FC<{
                     } else if (!current && comparison) {
                         // Stat is removed
                         let colorClass = 'text-red-400';
-                        if (comparison.type in SpecialStat) colorClass = 'text-green-300';
-                        if (comparison.type in MythicStat) colorClass = 'text-red-400';
+                        if (Object.values(SpecialStat).includes(comparison.type as SpecialStat)) colorClass = 'text-green-300';
+                        if (Object.values(MythicStat).includes(comparison.type as MythicStat)) colorClass = 'text-orange-400';
                         // display에 이미 범위값이 포함되어 있으면 추가하지 않음
                         const rangeText = comparison.range && !comparison.display.includes('[') ? ` [${comparison.range[0]}~${comparison.range[1]}]` : '';
                         return (
@@ -916,7 +917,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
                                                 </div>
                                                 <div className="flex-grow text-right ml-2">
                                                     <h3 className={`font-bold ${gradeStyles[selectedItem.grade].color}`} style={{ fontSize: `${isMobile ? Math.max(16, Math.round(18 * scaleFactor * mobileTextScale)) : Math.max(14, Math.round(18 * scaleFactor * mobileTextScale))}px` }}>{selectedItem.name}</h3>
-                                                    <p className="text-gray-400" style={{ fontSize: `${isMobile ? Math.max(12, Math.round(13 * scaleFactor * mobileTextScale)) : Math.max(10, Math.round(11 * scaleFactor * mobileTextScale))}px` }}>[{gradeStyles[selectedItem.grade].name}]</p>
+                                                    <p className={gradeStyles[selectedItem.grade].color} style={{ fontSize: `${isMobile ? Math.max(12, Math.round(13 * scaleFactor * mobileTextScale)) : Math.max(10, Math.round(11 * scaleFactor * mobileTextScale))}px` }}>[{gradeStyles[selectedItem.grade].name}]</p>
                                                     <p className="text-gray-300 mt-1" style={{ fontSize: `${isMobile ? Math.max(12, Math.round(13 * scaleFactor * mobileTextScale)) : Math.max(10, Math.round(11 * scaleFactor * mobileTextScale))}px` }}>{selectedItem.description}</p>
                                                     <p className="text-gray-300 mt-1" style={{ fontSize: `${isMobile ? Math.max(12, Math.round(13 * scaleFactor * mobileTextScale)) : Math.max(10, Math.round(11 * scaleFactor * mobileTextScale))}px` }}>보유 수량: {selectedItem.quantity}</p>
                                                 </div>

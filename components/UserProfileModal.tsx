@@ -99,11 +99,13 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem
     const clickableClass = item && onClick ? 'cursor-pointer hover:scale-105 transition-transform' : '';
     
     if (item) {
+        const isDivineMythic = item.isDivineMythic === true;
         return (
             <div
-                className={`relative w-full aspect-square rounded-lg border-2 border-gray-700/50 bg-gray-900/50 ${clickableClass}`}
+                className={`relative w-full aspect-square rounded-lg border-2 border-gray-700/50 bg-gray-900/50 ${clickableClass} ${isDivineMythic ? 'divine-mythic-border' : ''}`}
                 title={item.name}
                 onClick={onClick}
+                style={{ border: isDivineMythic ? undefined : undefined }}
             >
                 <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-md" />
                 <div className="absolute top-1 right-1 text-sm font-bold z-10">

@@ -30,6 +30,18 @@ const gradeBorderStyles: Partial<Record<ItemGrade, string>> = {
 
 
 const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, onClose, isTopmost, tournamentScoreChange }) => {
+    // 등급별 글로우 효과 클래스
+    const getGlowClass = (grade: ItemGrade | undefined) => {
+        if (!grade) return '';
+        switch (grade) {
+            case 'rare': return 'item-glow-rare';
+            case 'epic': return 'item-glow-epic';
+            case 'legendary': return 'item-glow-legendary';
+            case 'mythic': return 'item-glow-mythic';
+            default: return '';
+        }
+    };
+    
     useEffect(() => {
         if (items && items.length > 0) {
             const gradeOrder: ItemGrade[] = ['normal', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
@@ -83,10 +95,13 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
                         const titleText = `${item.name}${requiredLevel ? ` (착용 레벨 합: ${requiredLevel})` : ''}`;
                         const isCurrency = item.image === '/images/icon/Gold.png' || item.image === '/images/icon/Zem.png';
 
+                        const isHighGrade = ['rare', 'epic', 'legendary', 'mythic'].includes(itemGrade);
+                        const glowClass = getGlowClass(itemGrade);
+                        
                         return (
-                            <div key={index} className="relative aspect-square rounded-md overflow-hidden" title={titleText}>
+                            <div key={index} className="relative aspect-square rounded-md overflow-visible" title={titleText}>
                                 {borderClass && <div className={`absolute -inset-0.5 rounded-md ${borderClass}`}></div>}
-                                <div className={`relative w-full h-full rounded-md flex items-center justify-center border-2 border-black/20 ${styles.bg}`}>
+                                <div className={`relative w-full h-full rounded-md flex items-center justify-center border-2 border-black/20 ${styles.bg} ${isHighGrade ? 'item-reveal-animation' : ''} ${glowClass}`}>
                                     {styles.background && <img src={styles.background} alt={itemGrade} className="absolute inset-0 w-full h-full object-cover rounded-sm" />}
                                     {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1" />}
                                     

@@ -272,7 +272,7 @@ const EncyclopediaModal: React.FC<EncyclopediaModalProps> = ({ onClose, isTopmos
                                     {selectedItem.image && <img src={selectedItem.image} alt={selectedItem.name} className="relative w-full h-full object-contain p-[15%]"/>}
                                 </div>
                                 <h3 className={`font-bold mt-2 md:mt-4 ${gradeStyles[selectedItem.grade].color} text-center ${mainTab === 'equipment' ? 'text-lg md:text-2xl' : 'text-xl md:text-2xl'}`}>{selectedItem.name}</h3>
-                                <p className="text-xs md:text-sm text-gray-400 text-center">
+                                <p className={`text-xs md:text-sm text-center ${selectedItem.type === 'equipment' ? gradeStyles[selectedItem.grade].color : 'text-gray-400'}`}>
                                     {selectedItem.type === 'equipment' ? (
                                         `[${gradeStyles[selectedItem.grade].name}] ${selectedItem.slot ? slotNames[selectedItem.slot] : ''}`
                                     ) : (

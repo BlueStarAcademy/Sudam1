@@ -10,12 +10,12 @@ export const emptySlotImages: Record<EquipmentSlot, string> = {
 };
 
 export const GRADE_LEVEL_REQUIREMENTS: Record<ItemGrade, number> = {
-    normal: 1,
-    uncommon: 1,
+    normal: 2,
+    uncommon: 3,
     rare: 5,
-    epic: 12,
-    legendary: 20,
-    mythic: 30,
+    epic: 10,
+    legendary: 12,
+    mythic: 15,
 };
 
 export const EQUIPMENT_POOL: (Omit<InventoryItem, 'id' | 'createdAt' | 'isEquipped' | 'level' | 'options' | 'quantity' | 'stars' | 'enhancementFails'> & { stars: 0 })[] = [
@@ -115,7 +115,7 @@ export const gradeStyles: Record<ItemGrade, { name: string; color: string; backg
     mythic: { name: '신화', color: 'text-orange-400', background: '/images/equipments/mythicbgi.png' },
 };
 
-export const ENHANCEMENT_SUCCESS_RATES = [100, 90, 80, 70, 60, 55, 50, 45, 40, 35]; // For +1 to +10
+export const ENHANCEMENT_SUCCESS_RATES = [100, 90, 80, 70, 60, 50, 40, 30, 20, 10]; // For +1 to +10
 
 export const ENHANCEMENT_FAIL_BONUS_RATES: Record<ItemGrade, number> = {
     normal: 5,

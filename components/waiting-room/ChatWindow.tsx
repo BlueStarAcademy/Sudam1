@@ -125,35 +125,97 @@ const ChatWindow: React.FC<ChatWindowProps> = ({ messages, onAction, mode, onVie
                                 {msg.system ? (isBotMessage ? 'AI 보안관봇' : '시스템') : msg.user.nickname}:
                             </span>
                             {msg.text && (() => {
-                                if (msg.itemLink) {
-                                    // 장비 이름에 링크 추가
-                                    const parts = msg.text.split(msg.itemLink.itemName);
-                                    if (parts.length === 2) {
-                                        return (
-                                            <span className={isBotMessage ? 'text-highlight' : ''}>
-                                                {parts[0]}
-                                                <span 
-                                                    className="text-blue-400 cursor-pointer hover:underline font-semibold"
-                                                    onClick={() => {
-                                                        const targetUser = allUsers.find(u => u.id === msg.itemLink!.userId);
-                                                        if (targetUser) {
-                                                            const item = targetUser.inventory?.find(i => i.id === msg.itemLink!.itemId);
-                                                            if (item) {
-                                                                handlers.openViewingItem(item, targetUser.id === currentUserWithStatus?.id);
-                                                            }
+                                const textStr = msg.text;
+                                const parts: (string | React.ReactElement)[] = [];
+                                let currentIndex = 0;
+                                
+                                // 사용자 이름과 장비 이름의 위치 찾기
+                                const userLinkIndex = msg.userLink ? textStr.indexOf(`${msg.userLink.userName}님`) : -1;
+                                const itemLinkIndex = msg.itemLink ? textStr.indexOf(msg.itemLink.itemName) : -1;
+                                
+                                // 정렬된 인덱스 배열 생성
+                                const linkIndices: Array<{ type: 'user' | 'item', index: number, length: number }> = [];
+                                if (userLinkIndex >= 0 && msg.userLink) {
+                                    linkIndices.push({ type: 'user', index: userLinkIndex, length: `${msg.userLink.userName}님`.length });
+                                }
+                                if (itemLinkIndex >= 0 && msg.itemLink) {
+                                    linkIndices.push({ type: 'item', index: itemLinkIndex, length: msg.itemLink.itemName.length });
+                                }
+                                linkIndices.sort((a, b) => a.index - b.index);
+                                
+                                // 링크가 없는 경우
+                                if (linkIndices.length === 0) {
+                                    return <span className={isBotMessage ? 'text-highlight' : ''}>{textStr}{isBotMessage && ' 🚓'}</span>;
+                                }
+                                
+                                // 링크가 있는 경우 순차적으로 처리
+                                linkIndices.forEach((link, idx) => {
+                                    // 링크 이전 텍스트 추가
+                                    if (link.index > currentIndex) {
+                                        parts.push(textStr.substring(currentIndex, link.index));
+                                    }
+                                    
+                                    // 링크 추가
+                                    if (link.type === 'user' && msg.userLink) {
+                                        parts.push(
+                                            <span 
+                                                key={`user-${idx}`}
+                                                className="text-blue-400 cursor-pointer hover:underline font-semibold"
+                                                onClick={() => {
+                                                    if (onViewUser) {
+                                                        onViewUser(msg.userLink!.userId);
+                                                    } else {
+                                                        handleUserClick(msg.userLink!.userId);
+                                                    }
+                                                }}
+                                                title={`${msg.userLink.userName} 프로필 보기`}
+                                            >
+                                                {msg.userLink.userName}
+                                            </span>
+                                        );
+                                        parts.push('님');
+                                    } else if (link.type === 'item' && msg.itemLink) {
+                                        // 등급별 색상 매핑
+                                        const gradeColorMap: Record<string, string> = {
+                                            'normal': 'text-gray-300',
+                                            'uncommon': 'text-green-400',
+                                            'rare': 'text-blue-400',
+                                            'epic': 'text-purple-400',
+                                            'legendary': 'text-red-500',
+                                            'mythic': 'text-orange-400'
+                                        };
+                                        const itemGrade = msg.itemLink.itemGrade || 'normal';
+                                        const gradeColor = gradeColorMap[itemGrade] || 'text-gray-300';
+                                        
+                                        parts.push(
+                                            <span 
+                                                key={`item-${idx}`}
+                                                className={`${gradeColor} cursor-pointer hover:underline font-semibold`}
+                                                onClick={() => {
+                                                    const targetUser = allUsers.find(u => u.id === msg.itemLink!.userId);
+                                                    if (targetUser) {
+                                                        const item = targetUser.inventory?.find(i => i.id === msg.itemLink!.itemId);
+                                                        if (item) {
+                                                            handlers.openViewingItem(item, targetUser.id === currentUserWithStatus?.id);
                                                         }
-                                                    }}
-                                                    title={`${msg.itemLink.itemName} 클릭하여 상세 정보 보기`}
-                                                >
-                                                    {msg.itemLink.itemName}
-                                                </span>
-                                                {parts[1]}
-                                                {isBotMessage && ' 🚓'}
+                                                    }
+                                                }}
+                                                title={`${msg.itemLink.itemName} 클릭하여 상세 정보 보기`}
+                                            >
+                                                {msg.itemLink.itemName}
                                             </span>
                                         );
                                     }
+                                    
+                                    currentIndex = link.index + link.length;
+                                });
+                                
+                                // 마지막 텍스트 추가
+                                if (currentIndex < textStr.length) {
+                                    parts.push(textStr.substring(currentIndex));
                                 }
-                                return <span className={isBotMessage ? 'text-highlight' : ''}>{msg.text}{isBotMessage && ' 🚓'}</span>;
+                                
+                                return <span className={isBotMessage ? 'text-highlight' : ''}>{parts}{isBotMessage && ' 🚓'}</span>;
                             })()}
                             {msg.emoji && <span className="text-xl">{msg.emoji}</span>}
                         </div>

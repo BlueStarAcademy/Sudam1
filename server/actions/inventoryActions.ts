@@ -59,7 +59,7 @@ const getRandomInt = (min: number, max: number): number => {
 };
 
 // Helper function to generate a new random item
-export const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot): InventoryItem => {
+export const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot, isDivineMythic: boolean = false): InventoryItem => {
     const template = EQUIPMENT_POOL.find(p => p.grade === grade && p.slot === slot);
     const baseItem = template || EQUIPMENT_POOL.find(p => p.grade === grade)!;
 
@@ -123,7 +123,8 @@ export const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot): Inventor
 
     // 4. Mythic Sub-options
     if (grade === 'mythic') {
-        const mythicSubCount = getRandomInt(rules.mythicCount[0], rules.mythicCount[1]);
+        // D.신화는 신화 옵션 2개, 일반 신화는 1개
+        const mythicSubCount = isDivineMythic ? 2 : getRandomInt(rules.mythicCount[0], rules.mythicCount[1]);
         const mythicPool = Object.values(MythicStat).filter(stat => !existingSubTypes.has(stat));
          for (let i = 0; i < mythicSubCount && mythicPool.length > 0; i++) {
             const subIndex = Math.floor(Math.random() * mythicPool.length);
@@ -149,6 +150,7 @@ export const generateNewItem = (grade: ItemGrade, slot: EquipmentSlot): Inventor
         options,
         stars: 0,
         enhancementFails: 0,
+        isDivineMythic: isDivineMythic,
     };
 
     return newItem;
@@ -246,8 +248,20 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             // 2. Determine outcome grade
             const greatSuccessRate = BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[blacksmithLevel - 1]?.[grade] ?? 0;
             const isGreatSuccess = Math.random() * 100 < greatSuccessRate;
-            const outcomeGradeIndex = Math.min(GRADE_ORDER.indexOf(grade) + (isGreatSuccess ? 1 : 0), GRADE_ORDER.length - 1);
-            const outcomeGrade = GRADE_ORDER[outcomeGradeIndex];
+            
+            // 신화 등급을 합성할 때는 대성공이 아니면 같은 등급(신화)이 나와야 함
+            // 대성공이면 D.신화(신화 등급이지만 특별한 형태)
+            let outcomeGrade: ItemGrade;
+            let isDivineMythic = false;
+            if (grade === 'mythic') {
+                // 신화 합성: 대성공이 아니면 신화, 대성공이면 D.신화
+                outcomeGrade = 'mythic';
+                isDivineMythic = isGreatSuccess;
+            } else {
+                // 다른 등급 합성: 기존 로직 유지
+                const outcomeGradeIndex = Math.min(GRADE_ORDER.indexOf(grade) + (isGreatSuccess ? 1 : 0), GRADE_ORDER.length - 1);
+                outcomeGrade = GRADE_ORDER[outcomeGradeIndex];
+            }
 
             // 3. Determine outcome slot
             let outcomeSlot: EquipmentSlot;
@@ -259,7 +273,13 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             }
 
             // 4. Generate new item
-            const newItem = generateNewItem(outcomeGrade, outcomeSlot);
+            const newItem = generateNewItem(outcomeGrade, outcomeSlot, isDivineMythic);
+
+            // 신화 합성 시 대성공 여부 조정: 신화 합성 대성공이 아니면 isGreatSuccess = false
+            let finalIsGreatSuccess = isGreatSuccess;
+            if (grade === 'mythic' && !isDivineMythic) {
+                finalIsGreatSuccess = false;
+            }
 
             // 5. Add to inventory
             const { success, finalItemsToAdd, updatedInventory } = addItemsToInventoryUtil(inventoryAfterRemoval, user.inventorySlots, [newItem]);
@@ -268,6 +288,9 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             }
             // 인벤토리를 깊은 복사하여 새로운 배열로 할당 (참조 문제 방지)
             user.inventory = JSON.parse(JSON.stringify(updatedInventory));
+            
+            // 실제로 인벤토리에 추가된 아이템 (ID가 변경되었을 수 있음)
+            const actualAddedItem = finalItemsToAdd[0] || newItem;
 
             // 6. Add blacksmith XP
             const xpGainRange = BLACKSMITH_COMBINATION_XP_GAIN[grade];
@@ -305,13 +328,76 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
 
+            // 시스템 메시지 전송 조건:
+            // 1. 전설등급 3개를 합쳐서 대성공하여 신화등급이 나온 경우
+            // 2. 신화등급 3개를 합쳐서 대성공하여 D.신화등급이 나온 경우
+            const shouldSendMessage = 
+                (grade === 'legendary' && outcomeGrade === 'mythic' && finalIsGreatSuccess) || // 전설 합성 대성공 → 신화
+                (grade === 'mythic' && outcomeGrade === 'mythic' && isDivineMythic); // 신화 합성 대성공 → D.신화
+            
+            if (shouldSendMessage) {
+                try {
+                    // DB에서 다시 읽은 후 인벤토리에서 실제 아이템 찾기
+                    const actualItem = user.inventory.find(i => 
+                        i.name === actualAddedItem.name && 
+                        i.grade === 'mythic' && 
+                        i.slot === actualAddedItem.slot &&
+                        (!actualAddedItem.isDivineMythic || i.isDivineMythic === actualAddedItem.isDivineMythic)
+                    ) || actualAddedItem;
+                    
+                    const itemName = actualItem.name;
+                    
+                    // 조사 처리 (을/를)
+                    const particle = /[가-힣]$/.test(itemName) && (itemName.charCodeAt(itemName.length - 1) - 0xAC00) % 28 === 0 ? '를' : '을';
+                    
+                    const systemMessage: ChatMessage = {
+                        id: `msg-${randomUUID()}`,
+                        user: { id: 'system', nickname: '시스템' },
+                        text: `${user.nickname}님이 장비 합성을 통해 ${itemName}${particle} 획득했습니다`,
+                        system: true,
+                        timestamp: Date.now(),
+                        itemLink: {
+                            itemId: actualItem.id,
+                            userId: user.id,
+                            itemName: itemName,
+                            itemGrade: actualItem.grade
+                        },
+                        userLink: {
+                            userId: user.id,
+                            userName: user.nickname
+                        }
+                    };
+
+                    // 전체 채팅창에 메시지 추가
+                    if (!volatileState.waitingRoomChats['global']) {
+                        volatileState.waitingRoomChats['global'] = [];
+                    }
+                    volatileState.waitingRoomChats['global'].push(systemMessage);
+                    if (volatileState.waitingRoomChats['global'].length > 100) {
+                        volatileState.waitingRoomChats['global'].shift();
+                    }
+
+                    console.log(`[COMBINE_ITEMS] 신화 등급 장비 획득 시스템 메시지 전송: ${user.nickname}님이 ${itemName} 획득 (grade: ${grade}, isDivineMythic: ${isDivineMythic})`);
+
+                    // 채팅 메시지를 모든 클라이언트에 브로드캐스트
+                    broadcast({
+                        type: 'WAITING_ROOM_CHAT_UPDATE',
+                        payload: {
+                            'global': volatileState.waitingRoomChats['global']
+                        }
+                    });
+                } catch (error: any) {
+                    console.error(`[COMBINE_ITEMS] 신화 등급 장비 시스템 메시지 전송 중 오류:`, error);
+                }
+            }
+
             return { 
                 clientResponse: { 
                     updatedUser,
                     combinationResult: { 
                         item: newItem, 
                         xpGained: xpGained, 
-                        isGreatSuccess: isGreatSuccess 
+                        isGreatSuccess: finalIsGreatSuccess 
                     }
                 }
             };
@@ -740,7 +826,12 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                         itemLink: {
                             itemId: item.id,
                             userId: user.id,
-                            itemName: item.name
+                            itemName: item.name,
+                            itemGrade: item.grade
+                        },
+                        userLink: {
+                            userId: user.id,
+                            userName: user.nickname
                         }
                     };
                     

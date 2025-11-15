@@ -148,7 +148,8 @@ class AiProcessingQueue {
             }
 
             // 게임이 종료되었거나 AI 차례가 아니면 무시
-            if (game.gameStatus !== 'playing' || game.currentPlayer === undefined) {
+            // 히든 돌 공개 애니메이션 중이면 무시
+            if (game.gameStatus !== 'playing' || game.currentPlayer === undefined || game.gameStatus === 'hidden_reveal_animating') {
                 return;
             }
 

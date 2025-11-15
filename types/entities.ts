@@ -43,6 +43,7 @@ export type InventoryItem = {
   stars: number;
   options?: ItemOptions;
   enhancementFails?: number;
+  isDivineMythic?: boolean; // D.신화 여부
 };
 
 // --- User & Associated Data ---

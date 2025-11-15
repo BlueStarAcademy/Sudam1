@@ -367,7 +367,7 @@ const BlacksmithModal: React.FC<BlacksmithModalProps> = ({ onClose, isTopmost, s
                                     </div>
                                 </div>
                                 <div className="bg-black/20 p-2 rounded-md">
-                                    <p className="font-semibold">합성 대성공 확률:</p>
+                                    <p className="font-semibold">장비합성 대성공 확률:</p>
                                     {GRADE_ORDER.slice(0, -1).map((grade, index) => {
                                         const rate = BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[currentLevelIndex]?.[grade] ?? 0;
                                         const nextRate = BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES[nextLevelIndex]?.[grade];

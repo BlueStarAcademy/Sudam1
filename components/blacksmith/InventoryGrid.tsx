@@ -79,7 +79,7 @@ const InventoryGrid: React.FC<InventoryGridProps> = ({ inventory, inventorySlots
                     >
                         {item ? (
                             <>
-                                <div className={`absolute inset-0 rounded-md border-2 ${selectedItemId === item.id ? 'border-accent ring-2 ring-accent' : 'border-black/20'} ${selectedItemIdsForDisassembly?.has(item.id) ? 'bg-gray-700/70' : ''}`} />
+                                <div className={`absolute inset-0 rounded-md border-2 ${selectedItemId === item.id ? 'border-accent ring-2 ring-accent' : 'border-black/20'} ${selectedItemIdsForDisassembly?.has(item.id) ? 'bg-gray-700/70' : ''} ${item.isDivineMythic ? 'divine-mythic-border' : ''}`} style={{ border: item.isDivineMythic ? undefined : undefined }} />
                                 <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 object-cover rounded-sm" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />
                                 {item.image && <img src={item.image} alt={item.name} className="relative object-contain p-1" style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />}
                                 {renderStarDisplay(item.stars)}

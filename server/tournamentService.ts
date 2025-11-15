@@ -180,7 +180,7 @@ const simulateAndFinishMatch = (match: Match, players: PlayerForTournament[], us
     match.commentary = [{text: "경기가 자동으로 진행되었습니다.", phase: 'end', isRandomEvent: false}];
 };
 
-const prepareNextRound = (state: TournamentState, user: User) => {
+export const prepareNextRound = (state: TournamentState, user: User) => {
     const lastRound = state.rounds[state.rounds.length - 1];
     if (lastRound.matches.every(m => m.isFinished)) {
         const winners = lastRound.matches.map(m => m.winner).filter(Boolean) as PlayerForTournament[];
@@ -337,6 +337,9 @@ export const processMatchCompletion = (state: TournamentState, user: User, compl
         if (currentRoundAllFinished) {
             // 다음 라운드 준비
             prepareNextRound(state, user);
+            // round_complete 상태로 설정 (다음 경기 버튼 표시를 위해)
+            // startNextRound에서 round_complete 상태를 감지하여 컨디션을 부여함
+            state.status = 'round_complete';
             // 다음 라운드 준비 후 startNextRound 호출하여 bracket_ready 상태로 설정
             startNextRound(state, user);
         }
@@ -364,6 +367,9 @@ export const processMatchCompletion = (state: TournamentState, user: User, compl
                 const currentRoundAllFinished = currentRound.matches.every(m => m.isFinished);
                 if (currentRoundAllFinished) {
                     prepareNextRound(state, user);
+                    // round_complete 상태로 설정 (다음 경기 버튼 표시를 위해)
+                    // startNextRound에서 round_complete 상태를 감지하여 컨디션을 부여함
+                    state.status = 'round_complete';
                     // 다음 라운드 준비 후 startNextRound 호출하여 bracket_ready 상태로 설정
                     startNextRound(state, user);
                 }
@@ -817,9 +823,15 @@ export const startNextRound = (state: TournamentState, user: User) => {
     );
     
     if (isComingFromRoundComplete) {
-        // round_complete에서 다음 라운드로 넘어갈 때: 항상 컨디션 새로 부여
+        // round_complete에서 다음 라운드로 넘어갈 때: 컨디션은 유지 (회복제로 변경된 컨디션도 유지)
+        // 단, 컨디션이 부여되지 않았거나 1000(초기값)이거나 유효 범위를 벗어난 경우에만 새로 부여
         state.players.forEach(p => {
-            p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            // 컨디션이 부여되지 않았거나 1000(초기값)이거나 유효 범위(40-100)를 벗어난 경우에만 새로 부여
+            // 1000은 경기 완료 후 초기화된 값이므로 새로 부여해야 함
+            if (p.condition === undefined || p.condition === null || p.condition === 1000 || 
+                p.condition < 40 || p.condition > 100) {
+                p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            }
             // 모든 플레이어의 능력치는 originalStats로 리셋 (토너먼트 생성 시점의 고정 능력치)
             if (p.originalStats) {
                 p.stats = JSON.parse(JSON.stringify(p.originalStats));
@@ -828,7 +840,8 @@ export const startNextRound = (state: TournamentState, user: User) => {
     } else if (!hasConditionAlreadyAssigned) {
         // bracket_ready 상태에서 컨디션이 부여되지 않은 경우: 컨디션 부여
         state.players.forEach(p => {
-            if (p.condition === undefined || p.condition === null || p.condition === 1000) {
+            if (p.condition === undefined || p.condition === null || p.condition === 1000 || 
+                p.condition < 40 || p.condition > 100) {
                 p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
             }
             // 능력치는 originalStats로 리셋
@@ -862,6 +875,17 @@ export const startNextRound = (state: TournamentState, user: User) => {
         // 유저의 매치가 있으면 대기 상태로 두고, 유저가 경기 시작 버튼을 눌러야 시작됨
         // 경기 시작은 START_TOURNAMENT_ROUND 액션으로 처리됨
         state.status = 'bracket_ready';
+        
+        // bracket_ready 상태로 변경할 때 항상 컨디션을 확인하고 부여
+        // (이전 경기에서 컨디션이 1000으로 초기화되었을 수 있음)
+        // 모든 플레이어의 컨디션이 유효한지 확인하고, 유효하지 않으면 부여
+        state.players.forEach(p => {
+            // 컨디션이 undefined, null, 1000이거나 유효 범위(40-100)를 벗어나면 새로 부여
+            if (p.condition === undefined || p.condition === null || p.condition === 1000 || 
+                p.condition < 40 || p.condition > 100) {
+                p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            }
+        });
     } else {
         // 유저의 매치가 없으면 모든 매치를 자동 처리
         state.rounds.forEach(round => {
@@ -1048,14 +1072,18 @@ export const advanceSimulation = (state: TournamentState, user: User): boolean =
             p2.stats = JSON.parse(JSON.stringify(p2.originalStats));
         }
 
-        // 경기가 완료된 상태에서는 컨디션을 변경하지 않음
-        // 컨디션은 이미 토너먼트 생성 시 랜덤 부여되었으므로 변경하지 않음
-        // 단, 경기가 진행 중이고 컨디션이 1000(초기값)인 경우에만 랜덤 부여 (하위 호환성)
+        // 경기 시작 시 컨디션은 절대 변경하지 않음 (이미 부여된 컨디션이나 회복제로 변경된 컨디션 유지)
+        // 단, 컨디션이 1000(초기값)이거나 undefined/null이거나 유효 범위(40-100)를 벗어난 경우에만 랜덤 부여 (하위 호환성)
+        // 유효한 컨디션(40-100 사이)이 이미 부여되어 있으면 절대 변경하지 않음
         if (state.status === 'round_in_progress') {
-            if (p1.condition === 1000) {
+            // p1 컨디션 확인 및 부여 (유효한 컨디션이 없을 때만)
+            if (p1.condition === undefined || p1.condition === null || p1.condition === 1000 || 
+                p1.condition < 40 || p1.condition > 100) {
                 p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
             }
-            if (p2.condition === 1000) {
+            // p2 컨디션 확인 및 부여 (유효한 컨디션이 없을 때만)
+            if (p2.condition === undefined || p2.condition === null || p2.condition === 1000 || 
+                p2.condition < 40 || p2.condition > 100) {
                 p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
             }
         }

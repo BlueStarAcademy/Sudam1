@@ -326,13 +326,17 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             if (game.blackPatternStones) {
                 game.blackPatternStones = game.blackPatternStones.filter(point => {
                     const occupant = game.boardState?.[point.y]?.[point.x];
-                    return occupant === types.Player.Black;
+                    // 히든 돌이 공개된 경우에도 문양 유지 (permanentlyRevealedStones에 있으면 유지)
+                    const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
+                    return occupant === types.Player.Black || isPermanentlyRevealed;
                 });
             }
             if (game.whitePatternStones) {
                 game.whitePatternStones = game.whitePatternStones.filter(point => {
                     const occupant = game.boardState?.[point.y]?.[point.x];
-                    return occupant === types.Player.White;
+                    // 히든 돌이 공개된 경우에도 문양 유지 (permanentlyRevealedStones에 있으면 유지)
+                    const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
+                    return occupant === types.Player.White || isPermanentlyRevealed;
                 });
             }
         };
@@ -390,7 +394,15 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     duration: 2000
                 };
                 game.revealAnimationEndTime = now + 2000;
-                game.pendingCapture = { stones: result.capturedStones, move, hiddenContributors: contributingHiddenStones.map(c => c.point) };
+                // pendingCapture에 히든 돌 정보 저장
+                // - contributingHiddenStones: 히든 돌이 따내는데 역할을 한 경우
+                // - capturedHiddenStones: 히든 돌이 공개되지 않은 상태에서 따내진 경우
+                game.pendingCapture = { 
+                    stones: result.capturedStones, 
+                    move, 
+                    hiddenContributors: contributingHiddenStones.map(c => c.point),
+                    capturedHiddenStones: capturedHiddenStones.map(c => c.point) // 공개되지 않은 히든 돌이 따내진 경우
+                };
             
                 game.lastMove = { x, y };
                 game.lastTurnStones = null;
@@ -401,9 +413,9 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 }
             
                 game.boardState = result.newBoardState;
-                for (const stone of result.capturedStones) {
-                    game.boardState[stone.y][stone.x] = opponentPlayerEnum;
-                }
+                // 따낸 돌은 보드에서 제거 (Player.None으로 설정)
+                // 애니메이션 종료 후 updateHiddenState에서 실제로 제거됨
+                // 여기서는 일단 보드 상태를 유지 (애니메이션 중에는 돌이 보이도록)
             
                 if (!game.permanentlyRevealedStones) game.permanentlyRevealedStones = [];
                 uniqueStonesToReveal.forEach(s => {
@@ -413,24 +425,18 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 });
                 prunePatternStones();
                 
-                // 공개된 히든 돌은 patternStones에서 제거 (문양 중복 방지)
-                if (game.isSinglePlayer) {
-                    uniqueStonesToReveal.forEach(s => {
-                        const patternStonesKey = s.player === types.Player.Black ? 'blackPatternStones' : 'whitePatternStones';
-                        if (game[patternStonesKey]) {
-                            const index = game[patternStonesKey].findIndex(p => p.x === s.point.x && p.y === s.point.y);
-                            if (index !== -1) {
-                                game[patternStonesKey].splice(index, 1);
-                            }
-                        }
-                    });
-                }
+                // 히든 돌이 공개되어도 patternStones에서 제거하지 않음 (문양 유지)
+                // 공개된 히든 돌도 문양이 그대로 표시되어야 함
             
                 if (game.turnDeadline) {
                     game.pausedTurnTimeLeft = (game.turnDeadline - now) / 1000;
                     game.turnDeadline = undefined;
                     game.turnStartTime = undefined;
                 }
+                
+                // 히든 돌 공개 애니메이션 중에는 턴을 넘기지 않음
+                // 애니메이션 종료 후 updateHiddenState에서 처리됨
+                // currentPlayer는 변경하지 않음 (현재 플레이어 유지)
                 return {};
             }
 
