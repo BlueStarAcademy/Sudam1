@@ -1,6 +1,6 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, LiveGameSession, Player, GameMode, Point, BoardState, SinglePlayerStageInfo, UserStatus } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, LiveGameSession, Player, GameMode, Point, BoardState, SinglePlayerStageInfo, UserStatus, GameCategory } from '../../types.js';
 import { TOWER_STAGES } from '../../constants/towerConstants.js';
 import { getAiUser } from '../aiPlayer.js';
 import { broadcast } from '../socket.js';
@@ -165,7 +165,7 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
                 id: gameId,
                 mode: gameMode,
                 isSinglePlayer: false, // 도전의 탑은 별도 카테고리
-                gameCategory: 'tower',
+                gameCategory: 'tower' as GameCategory,
                 stageId: stage.id,
                 towerFloor: floor,
                 isAiGame: true,
@@ -195,9 +195,9 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
                 blackPatternStones: blackPattern,
                 whitePatternStones: whitePattern,
                 moveHistory: [],
-                captures: { [Player.Black]: 0, [Player.White]: 0 },
-                baseStoneCaptures: { [Player.Black]: 0, [Player.White]: 0 },
-                hiddenStoneCaptures: { [Player.Black]: 0, [Player.White]: 0 },
+                captures: { [Player.Black]: 0, [Player.White]: 0, [Player.None]: 0 },
+                baseStoneCaptures: { [Player.Black]: 0, [Player.White]: 0, [Player.None]: 0 },
+                hiddenStoneCaptures: { [Player.Black]: 0, [Player.White]: 0, [Player.None]: 0 },
                 koInfo: null,
                 lastMove: null,
                 createdAt: now,
@@ -222,12 +222,15 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
 
             await db.saveGame(game);
             
-            volatileState.userStatuses[game.player1.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id, gameCategory: 'tower' };
-            volatileState.userStatuses[game.player2.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id, gameCategory: 'tower' };
+            volatileState.userStatuses[game.player1.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id, gameCategory: 'tower' as GameCategory };
+            // AI 플레이어는 userStatuses에 포함하지 않음 (실제 유저가 아니므로)
             
             await db.updateUser(user);
             
+            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (클라이언트가 게임 데이터를 먼저 받을 수 있도록)
             broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 그 다음 사용자 상태 브로드캐스트
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
 
             return {
@@ -283,7 +286,14 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
             }
             
             await db.saveGame(game);
+            
+            // 사용자 상태 업데이트
+            volatileState.userStatuses[game.player1.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id, gameCategory: 'tower' as GameCategory };
+            
+            // 게임 업데이트 먼저 브로드캐스트
             broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 그 다음 사용자 상태 브로드캐스트
+            broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             
             // 클라이언트가 즉시 게임 상태를 업데이트할 수 있도록 게임 데이터를 응답에 포함
             const gameCopy = JSON.parse(JSON.stringify(game));
@@ -298,6 +308,11 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
             
             if (game.gameCategory !== 'tower') {
                 return { error: 'Not a tower game.' };
+            }
+            
+            // 첫 수를 두기 전에만 배치변경 가능
+            if (game.gameStatus !== 'playing' || game.currentPlayer !== Player.Black || (game.moveHistory && game.moveHistory.length > 0)) {
+                return { error: '배치는 첫 수 전에만 새로고침할 수 있습니다.' };
             }
             
             // 배치변경 아이템 사용 가능 여부 확인 및 소모
@@ -401,6 +416,36 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
             
             return { clientResponse: { updatedUser: user, game } };
+        }
+        case 'END_TOWER_GAME': {
+            const { gameId, winner, winReason } = payload;
+            if (!gameId || typeof gameId !== 'string') {
+                return { error: 'Invalid gameId in payload.' };
+            }
+            
+            const game = await db.getLiveGame(gameId);
+            if (!game) {
+                return { error: 'Game not found.' };
+            }
+            
+            if (game.gameCategory !== 'tower') {
+                return { error: 'Not a tower game.' };
+            }
+            
+            // 게임 종료 상태 업데이트
+            game.winner = winner;
+            game.winReason = winReason;
+            game.gameStatus = 'ended';
+            game.endTime = now;
+            
+            // 서버에서 endGame 호출하여 클리어 정보 저장
+            const { endGame } = await import('../summaryService.js');
+            await endGame(game, winner, winReason);
+            
+            await db.saveGame(game);
+            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            
+            return { clientResponse: { gameId: game.id, game } };
         }
         default:
             return { error: 'Unknown action type.' };

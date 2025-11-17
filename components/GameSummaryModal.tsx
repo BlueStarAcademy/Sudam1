@@ -384,6 +384,43 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ session, currentUse
             return <p className={`text-center ${isMobile ? 'text-sm' : 'text-lg'}`} style={{ fontSize: isMobile ? `${12 * mobileTextScale}px` : undefined }}>{message}</p>;
         }
         
+        // 시간 패배/승리 처리
+        if (winReason === 'timeout') {
+            if (!isWinner) {
+                // 패배한 경우
+                if (session.stageId) {
+                    // stageId가 있으면 제한 턴 체크
+                    const isTower = session.gameCategory === 'tower';
+                    if (isTower) {
+                        try {
+                            const { TOWER_STAGES } = require('../constants/towerConstants.js');
+                            const currentStage = TOWER_STAGES.find((s: any) => s.id === session.stageId);
+                            if (currentStage?.blackTurnLimit) {
+                                return <p className={`text-center ${isMobile ? 'text-sm' : 'text-lg'} text-red-400`} style={{ fontSize: isMobile ? `${12 * mobileTextScale}px` : undefined }}>제한 턴이 다 되어 패배했습니다.</p>;
+                            }
+                        } catch (e) {
+                            console.error('[GameSummaryModal] Error loading TOWER_STAGES:', e);
+                        }
+                    } else if (session.isSinglePlayer) {
+                        try {
+                            const { SINGLE_PLAYER_STAGES } = require('../constants/singlePlayerConstants.js');
+                            const currentStage = SINGLE_PLAYER_STAGES.find((s: any) => s.id === session.stageId);
+                            if (currentStage?.blackTurnLimit) {
+                                return <p className={`text-center ${isMobile ? 'text-sm' : 'text-lg'} text-red-400`} style={{ fontSize: isMobile ? `${12 * mobileTextScale}px` : undefined }}>제한 턴이 다 되어 패배했습니다.</p>;
+                            }
+                        } catch (e) {
+                            console.error('[GameSummaryModal] Error loading SINGLE_PLAYER_STAGES:', e);
+                        }
+                    }
+                }
+                // 일반 게임에서 시간 패배한 경우
+                return <p className={`text-center ${isMobile ? 'text-sm' : 'text-lg'} text-red-400`} style={{ fontSize: isMobile ? `${12 * mobileTextScale}px` : undefined }}>시간이 다 되어 패배했습니다.</p>;
+            } else {
+                // 승리한 경우
+                return <p className={`text-center ${isMobile ? 'text-sm' : 'text-lg'} text-green-400`} style={{ fontSize: isMobile ? `${12 * mobileTextScale}px` : undefined }}>상대방의 시간이 다 되어 승리했습니다.</p>;
+            }
+        }
+        
         // 따내기 바둑: 따낸 점수를 이미지로 표시
         const isCaptureMode = session.mode === GameMode.Capture;
         const isMixWithCapture = session.mode === GameMode.Mix && session.settings.mixedModes && 

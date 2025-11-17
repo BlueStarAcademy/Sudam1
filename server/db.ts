@@ -1,4 +1,4 @@
-import { User, LiveGameSession, AppState, UserCredentials, AdminLog, Announcement, OverrideAnnouncement, GameMode } from '../types.ts';
+import { User, LiveGameSession, AppState, UserCredentials, AdminLog, Announcement, OverrideAnnouncement, GameMode, HomeBoardPost } from '../types.ts';
 import { getInitialState } from './initialData.ts';
 import {
     listUsers,
@@ -190,6 +190,116 @@ export const saveGame = async (game: LiveGameSession): Promise<void> => {
         console.warn(`[DB] Failed to update game cache for ${game.id}:`, error);
     }
 };
+export const createHomeBoardPost = async (data: { title: string; content: string; authorId: string; isPinned: boolean }): Promise<HomeBoardPost> => {
+    const { PrismaClient } = await import('../generated/prisma/client.js');
+    const prisma = new PrismaClient();
+    try {
+        const post = await prisma.homeBoardPost.create({
+            data: {
+                title: data.title,
+                content: data.content,
+                authorId: data.authorId,
+                isPinned: data.isPinned
+            }
+        });
+        return {
+            id: post.id,
+            title: post.title,
+            content: post.content,
+            authorId: post.authorId,
+            isPinned: post.isPinned,
+            createdAt: post.createdAt.getTime(),
+            updatedAt: post.updatedAt.getTime()
+        };
+    } finally {
+        await prisma.$disconnect();
+    }
+};
+
+export const getAllHomeBoardPosts = async (): Promise<HomeBoardPost[]> => {
+    const { PrismaClient } = await import('../generated/prisma/client.js');
+    const prisma = new PrismaClient();
+    try {
+        const posts = await prisma.homeBoardPost.findMany({
+            orderBy: [
+                { isPinned: 'desc' },
+                { createdAt: 'desc' }
+            ]
+        });
+        return posts.map(post => ({
+            id: post.id,
+            title: post.title,
+            content: post.content,
+            authorId: post.authorId,
+            isPinned: post.isPinned,
+            createdAt: post.createdAt.getTime(),
+            updatedAt: post.updatedAt.getTime()
+        }));
+    } finally {
+        await prisma.$disconnect();
+    }
+};
+
+export const getHomeBoardPost = async (id: string): Promise<HomeBoardPost | null> => {
+    const { PrismaClient } = await import('../generated/prisma/client.js');
+    const prisma = new PrismaClient();
+    try {
+        const post = await prisma.homeBoardPost.findUnique({
+            where: { id }
+        });
+        if (!post) return null;
+        return {
+            id: post.id,
+            title: post.title,
+            content: post.content,
+            authorId: post.authorId,
+            isPinned: post.isPinned,
+            createdAt: post.createdAt.getTime(),
+            updatedAt: post.updatedAt.getTime()
+        };
+    } finally {
+        await prisma.$disconnect();
+    }
+};
+
+export const updateHomeBoardPost = async (id: string, data: { title: string; content: string; isPinned: boolean }): Promise<HomeBoardPost> => {
+    const { PrismaClient } = await import('../generated/prisma/client.js');
+    const prisma = new PrismaClient();
+    try {
+        const post = await prisma.homeBoardPost.update({
+            where: { id },
+            data: {
+                title: data.title,
+                content: data.content,
+                isPinned: data.isPinned
+            }
+        });
+        return {
+            id: post.id,
+            title: post.title,
+            content: post.content,
+            authorId: post.authorId,
+            isPinned: post.isPinned,
+            createdAt: post.createdAt.getTime(),
+            updatedAt: post.updatedAt.getTime()
+        };
+    } finally {
+        await prisma.$disconnect();
+    }
+};
+
+export const deleteHomeBoardPost = async (id: string): Promise<void> => {
+    const { PrismaClient } = await import('../generated/prisma/client.js');
+    const prisma = new PrismaClient();
+    try {
+        await prisma.homeBoardPost.delete({
+            where: { id }
+        });
+    } finally {
+        await prisma.$disconnect();
+    }
+};
+
 export const deleteGame = async (id: string): Promise<void> => {
     const { deleteGame: prismaDeleteGame } = await import('./prisma/gameService.ts');
     await prismaDeleteGame(id);
@@ -223,6 +333,7 @@ export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCreden
     const globalOverrideAnnouncement = await kvRepository.getKV<OverrideAnnouncement | null>('globalOverrideAnnouncement');
     const gameModeAvailability = await kvRepository.getKV<Record<GameMode, boolean>>('gameModeAvailability') || {};
     const announcementInterval = await kvRepository.getKV<number>('announcementInterval') || 3;
+    const homeBoardPosts = await getAllHomeBoardPosts();
     
     // 사용자 데이터 최적화: 공개 정보만 포함 (인벤토리, 메일, 퀘스트 등은 제외)
     const optimizedUsers: Record<string, any> = {};
@@ -268,5 +379,6 @@ export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCreden
         globalOverrideAnnouncement,
         gameModeAvailability,
         announcementInterval,
+        homeBoardPosts,
     };
 };

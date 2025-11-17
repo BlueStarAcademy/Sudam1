@@ -58,19 +58,28 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             if (userStatus?.status === 'in-game' && activeGameId) {
                 const game = await db.getLiveGame(activeGameId);
                 if (game && game.gameStatus !== 'ended' && game.gameStatus !== 'no_contest') {
+                    // 도전의 탑, 싱글플레이, AI 게임에서는 접속 끊김 패널티 없음
+                    const isNoPenaltyGame = game.isSinglePlayer || game.gameCategory === 'tower' || game.isAiGame;
                     if (!game.disconnectionState) {
-                        game.disconnectionCounts[user.id] = (game.disconnectionCounts[user.id] || 0) + 1;
-                        if (game.disconnectionCounts[user.id] >= 3) {
+                        if (!isNoPenaltyGame) {
+                            // 일반 게임에서만 접속 끊김 카운트 및 패널티 적용
+                            game.disconnectionCounts[user.id] = (game.disconnectionCounts[user.id] || 0) + 1;
+                            if (game.disconnectionCounts[user.id] >= 3) {
+                                const winner = game.blackPlayerId === user.id ? types.Player.White : types.Player.Black;
+                                await summaryService.endGame(game, winner, 'disconnect');
+                            } else {
+                                game.disconnectionState = { disconnectedPlayerId: user.id, timerStartedAt: now };
+                                if (game.moveHistory.length < 10) {
+                                    const otherPlayerId = game.player1.id === user.id ? game.player2.id : game.player1.id;
+                                    if (!game.canRequestNoContest) game.canRequestNoContest = {};
+                                    game.canRequestNoContest[otherPlayerId] = true;
+                                }
+                                await db.saveGame(game);
+                            }
+                        } else {
+                            // 도전의 탑, 싱글플레이, AI 게임에서는 즉시 게임 종료 (패널티 없음)
                             const winner = game.blackPlayerId === user.id ? types.Player.White : types.Player.Black;
                             await summaryService.endGame(game, winner, 'disconnect');
-                        } else {
-                            game.disconnectionState = { disconnectedPlayerId: user.id, timerStartedAt: now };
-                            if (game.moveHistory.length < 10) {
-                                const otherPlayerId = game.player1.id === user.id ? game.player2.id : game.player1.id;
-                                if (!game.canRequestNoContest) game.canRequestNoContest = {};
-                                game.canRequestNoContest[otherPlayerId] = true;
-                            }
-                            await db.saveGame(game);
                         }
                     }
                 }

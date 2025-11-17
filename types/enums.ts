@@ -196,5 +196,5 @@ export enum GameCategory {
 
 // --- Game Primitives ---
 export type Point = { x: number; y: number; };
-export type Move = { player: Player; x: number; y: number; };
+export type Move = { player: Player; x: number; y: number; capturedHiddenStones?: Point[]; };
 export type BoardState = Player[][];

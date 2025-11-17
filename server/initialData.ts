@@ -158,6 +158,7 @@ export const getInitialState = (): Omit<AppState, 'liveGames' | 'singlePlayerGam
             [testUser2.id]: testUser2,
             [testUser3.id]: testUser3,
         },
+        homeBoardPosts: [],
         userCredentials: {
             '푸른별바둑학원': { passwordHash: '1217', userId: adminUser.id },
             '푸른별': { passwordHash: '1217', userId: testUser1.id },

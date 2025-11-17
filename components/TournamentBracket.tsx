@@ -672,10 +672,22 @@ const SimulationProgressBar: React.FC<{ timeElapsed: number; totalDuration: numb
 
     return (
         <div>
-            <div className="w-full bg-gray-900 rounded-full h-2 flex border border-gray-600">
-                <div className="bg-green-500 h-full rounded-l-full" style={{ width: `${earlyStage}%` }} title="초반전"></div>
-                <div className="bg-yellow-500 h-full" style={{ width: `${midStage}%` }} title="중반전"></div>
-                <div className="bg-red-500 h-full rounded-r-full" style={{ width: `${endStage}%` }} title="끝내기"></div>
+            <div className="w-full bg-gray-900 rounded-full h-2 flex border border-gray-600 overflow-hidden">
+                <div 
+                    className="bg-green-500 h-full rounded-l-full transition-all duration-1000 ease-linear" 
+                    style={{ width: `${earlyStage}%` }} 
+                    title="초반전"
+                ></div>
+                <div 
+                    className="bg-yellow-500 h-full transition-all duration-1000 ease-linear" 
+                    style={{ width: `${midStage}%` }} 
+                    title="중반전"
+                ></div>
+                <div 
+                    className="bg-red-500 h-full rounded-r-full transition-all duration-1000 ease-linear" 
+                    style={{ width: `${endStage}%` }} 
+                    title="끝내기"
+                ></div>
             </div>
             <div className="flex text-xs text-gray-400 mt-1">
                 <div style={{ width: `${(earlyDuration / totalDuration) * 100}%` }}>초반</div>

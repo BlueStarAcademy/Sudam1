@@ -186,9 +186,11 @@ const TowerControls: React.FC<TowerControlsProps> = ({ session, onAction, curren
     };
     
     // 배치변경 아이템 (모든 층, 최대 5개) - 비용/제한 없이 보유 개수만 체크
+    // 첫 수를 두기 전에만 사용 가능
     const refreshCount = getItemCount('배치 새로고침') || getItemCount('배치변경') || getItemCount('reflesh') || getItemCount('refresh');
     const refreshMaxCount = 5;
-    const refreshDisabled = refreshCount <= 0;
+    const canUseRefresh = session.moveHistory && session.moveHistory.length === 0 && session.gameStatus === 'playing' && session.currentPlayer === Player.Black;
+    const refreshDisabled = refreshCount <= 0 || !canUseRefresh;
 
 	return (
 		<footer className="responsive-controls flex-shrink-0 bg-stone-800/70 backdrop-blur-sm rounded-xl p-3 flex items-stretch justify-between gap-4 w-full min-h-[148px] border border-stone-700/50">

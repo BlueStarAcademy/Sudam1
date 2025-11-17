@@ -163,12 +163,26 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     const gameId = payload?.gameId;
     
 
+    // 타워 게임 관련 액션은 먼저 처리 (gameId가 있어도 타워 액션은 여기서 처리)
+    if (type === 'START_TOWER_GAME' || type === 'CONFIRM_TOWER_GAME_START' || type === 'TOWER_REFRESH_PLACEMENT' || type === 'TOWER_ADD_TURNS' || type === 'END_TOWER_GAME') {
+        const { handleTowerAction } = await import('./actions/towerActions.js');
+        return handleTowerAction(volatileState, action, user);
+    }
+
     // Game Actions (require gameId)
+    // 도전의 탑은 클라이언트에서만 실행되므로 서버에서 착수 액션을 처리하지 않음
     if (gameId && type !== 'LEAVE_AI_GAME') {
         // 캐시를 사용하여 DB 조회 최소화
         const { getCachedGame, updateGameCache } = await import('./gameCache.js');
         const game = await getCachedGame(gameId);
         if (!game) return { error: 'Game not found.' };
+        
+        // 타워 게임의 착수 액션은 클라이언트에서만 처리
+        if (game.gameCategory === 'tower') {
+            // 타워 게임 관련 특수 액션만 서버에서 처리 (TOWER_REFRESH_PLACEMENT, TOWER_ADD_TURNS 등은 이미 위에서 처리됨)
+            // 착수 액션(PLACE_STONE 등)은 클라이언트에서만 처리하므로 여기서는 조용히 무시
+            return {};
+        }
         
         let result: HandleActionResult | null | undefined = null;
         if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode)) {
@@ -196,9 +210,7 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     if (type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' || type === 'CLAIM_ALL_TRAINING_QUEST_REWARDS' || type === 'START_SINGLE_PLAYER_MISSION' || type === 'LEVEL_UP_TRAINING_QUEST') {
         return handleSinglePlayerAction(volatileState, action, user);
     }
-    if (type === 'START_TOWER_GAME' || type === 'CONFIRM_TOWER_GAME_START' || type === 'TOWER_REFRESH_PLACEMENT' || type === 'TOWER_ADD_TURNS') {
-        return handleTowerAction(volatileState, action, user);
-    }
+    // 타워 액션은 위에서 이미 처리됨 (중복 제거)
     if (type.startsWith('CLAIM_') || type.startsWith('DELETE_MAIL') || type === 'DELETE_ALL_CLAIMED_MAIL' || type === 'MARK_MAIL_AS_READ') return handleRewardAction(volatileState, action, user);
     if (type.startsWith('BUY_') || type === 'PURCHASE_ACTION_POINTS' || type === 'EXPAND_INVENTORY' || type === 'BUY_TOWER_ITEM') return handleShopAction(volatileState, action, user);
     if (type.startsWith('TOURNAMENT') || 

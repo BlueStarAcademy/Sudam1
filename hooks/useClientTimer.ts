@@ -48,10 +48,16 @@ export const useClientTimer = (session: LiveGameSession, options: ClientTimerOpt
 
         if (!baseDeadline) {
             // deadline이 없으면 서버 시간 사용, 없으면 설정에서 기본값 사용
+            // 단, 현재 클라이언트 시간이 서버 시간보다 작으면 클라이언트 시간 유지 (제한시간 모드)
             const defaultTime = session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0;
-            const blackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : defaultTime;
-            const whiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : defaultTime;
-            setClientTimes({ black: blackTime, white: whiteTime });
+            const serverBlackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : defaultTime;
+            const serverWhiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : defaultTime;
+            
+            // 클라이언트 시간이 서버 시간보다 작으면 클라이언트 시간 유지 (시간이 흐르고 있는 중)
+            setClientTimes(prev => ({
+                black: serverBlackTime > 0 && prev.black > 0 && prev.black < serverBlackTime ? prev.black : serverBlackTime,
+                white: serverWhiteTime > 0 && prev.white > 0 && prev.white < serverWhiteTime ? prev.white : serverWhiteTime
+            }));
             return;
         }
 
@@ -70,16 +76,28 @@ export const useClientTimer = (session: LiveGameSession, options: ClientTimerOpt
             if (isSharedDeadlinePhase) {
                 setClientTimes({ black: newTimeLeft, white: newTimeLeft });
             } else if (session.currentPlayer === Player.Black) {
-                const whiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : (session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0);
-                setClientTimes({ black: newTimeLeft, white: whiteTime });
+                // 흑의 턴: 흑은 deadline 기반, 백은 서버 시간 사용 (단, 클라이언트 시간이 더 작으면 유지)
+                const serverWhiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : (session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0);
+                setClientTimes(prev => ({
+                    black: newTimeLeft,
+                    white: serverWhiteTime > 0 && prev.white > 0 && prev.white < serverWhiteTime ? prev.white : serverWhiteTime
+                }));
             } else if (session.currentPlayer === Player.White) {
-                const blackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : (session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0);
-                setClientTimes({ black: blackTime, white: newTimeLeft });
+                // 백의 턴: 백은 deadline 기반, 흑은 서버 시간 사용 (단, 클라이언트 시간이 더 작으면 유지)
+                const serverBlackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : (session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0);
+                setClientTimes(prev => ({
+                    black: serverBlackTime > 0 && prev.black > 0 && prev.black < serverBlackTime ? prev.black : serverBlackTime,
+                    white: newTimeLeft
+                }));
             } else {
+                // 턴이 없는 경우: 서버 시간 사용 (단, 클라이언트 시간이 더 작으면 유지)
                 const defaultTime = session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0;
-                const blackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : defaultTime;
-                const whiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : defaultTime;
-                setClientTimes({ black: blackTime, white: whiteTime });
+                const serverBlackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : defaultTime;
+                const serverWhiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : defaultTime;
+                setClientTimes(prev => ({
+                    black: serverBlackTime > 0 && prev.black > 0 && prev.black < serverBlackTime ? prev.black : serverBlackTime,
+                    white: serverWhiteTime > 0 && prev.white > 0 && prev.white < serverWhiteTime ? prev.white : serverWhiteTime
+                }));
             }
             animationFrameId = requestAnimationFrame(updateTimer);
         };

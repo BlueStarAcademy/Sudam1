@@ -249,8 +249,15 @@ const processTowerGameSummary = async (game: LiveGameSession) => {
             // 아이템 보상 처리
             if (rewards.items && rewards.items.length > 0) {
                 const itemInstances = createItemInstancesFromReward(rewards.items);
-                addItemsToInventory(user, itemInstances);
-                summary.items = itemInstances;
+                const { success, updatedInventory, finalItemsToAdd } = addItemsToInventory([...user.inventory], user.inventorySlots, itemInstances);
+                
+                if (success) {
+                    user.inventory = updatedInventory;
+                    summary.items = finalItemsToAdd;
+                } else {
+                    console.error(`[Tower Summary] Insufficient inventory space for user ${user.id} on floor ${floor}. Items not granted.`);
+                    summary.items = [];
+                }
             }
             
             console.log(`[Tower Summary] Floor ${floor} - First clear reward: gold=${rewards.gold}, exp=${rewards.exp}, items=${rewards.items?.length || 0}`);
@@ -368,7 +375,9 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
     }
     
     // 조기 종료인 경우 행동력 환불 처리 및 패널티 메일 발송
-    if (isEarlyTermination && !game.isSinglePlayer) {
+    // 도전의 탑, 싱글플레이, AI 게임에서는 패널티 없음
+    const isNoPenaltyGame = game.isSinglePlayer || game.gameCategory === 'tower' || game.isAiGame;
+    if (isEarlyTermination && !isNoPenaltyGame) {
         await refundActionPointsForEarlyTermination(game, badMannerPlayerId);
         if (badMannerPlayerId) {
             await sendBadMannerPenaltyMail(game, badMannerPlayerId);

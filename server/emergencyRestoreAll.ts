@@ -38,7 +38,7 @@ const emergencyRestoreAll = async () => {
     
     try {
         // 모든 사용자의 장비 및 인벤토리 정보 확인
-        const users = await db.all<UserRow>('SELECT id, username, nickname, equipment, inventory FROM users');
+        const users: UserRow[] = await db.all<UserRow>('SELECT id, username, nickname, equipment, inventory FROM users');
         console.log(`[Emergency Restore] Found ${users.length} users in database\n`);
         
         let restoredEquipmentCount = 0;
@@ -153,7 +153,7 @@ const emergencyRestoreAll = async () => {
                 }
                 
                 // ========== 인벤토리 복구 ==========
-                let inventoryToRestore: any[] = null;
+                let inventoryToRestore: any[] = [];
                 let inventorySource = '';
                 
                 // 1. inventory 필드에서 인벤토리 정보 확인

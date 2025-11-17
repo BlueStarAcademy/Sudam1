@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 // FIX: The main types barrel file now exports settings types. Use it for consistency.
-import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, UserStatusInfo, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset } from '../types.js';
+import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, UserStatusInfo, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset, Player, HomeBoardPost } from '../types.js';
 import { audioService } from '../services/audioService.js';
 import { stableStringify, parseHash } from '../utils/appUtils.js';
 import { 
@@ -232,6 +232,7 @@ export const useApp = () => {
     const [announcements, setAnnouncements] = useState<Announcement[]>([]);
     const [globalOverrideAnnouncement, setGlobalOverrideAnnouncement] = useState<OverrideAnnouncement | null>(null);
     const [announcementInterval, setAnnouncementInterval] = useState(3);
+    const [homeBoardPosts, setHomeBoardPosts] = useState<HomeBoardPost[]>([]);
     
     // --- UI Modals & Toasts ---
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -483,6 +484,146 @@ export const useApp = () => {
 
     // --- Action Handler ---
     const handleAction = useCallback(async (action: ServerAction): Promise<{ gameId?: string } | void> => {
+        // 타워 게임과 싱글플레이 게임의 클라이언트 측 move 처리 (서버로 전송하지 않음)
+        if ((action as any).type === 'TOWER_CLIENT_MOVE' || (action as any).type === 'SINGLE_PLAYER_CLIENT_MOVE') {
+            const isTower = (action as any).type === 'TOWER_CLIENT_MOVE';
+            const actionTypeName = isTower ? 'TOWER_CLIENT_MOVE' : 'SINGLE_PLAYER_CLIENT_MOVE';
+            const { gameId, x, y, newBoardState, capturedStones, newKoInfo } = (action as any).payload;
+            console.log(`[handleAction] ${actionTypeName} - processing client-side:`, { gameId, x, y });
+            
+            // 타워 게임과 싱글플레이 게임을 각각의 상태로 관리
+            const updateGameState = isTower ? setTowerGames : setSinglePlayerGames;
+            
+            // 체크를 위한 정보 저장 (콜백 밖에서 접근 가능하도록)
+            let checkInfo: { towerFloor: number; stageId: string; newCaptures: { [key in Player]?: number } } | null = null;
+            
+            // 게임 상태 업데이트 및 체크 정보 준비
+            updateGameState((currentGames) => {
+                const game = currentGames[gameId];
+                if (!game) {
+                    console.warn(`[handleAction] ${actionTypeName} - Game not found:`, gameId);
+                    return currentGames;
+                }
+                
+                // 이동한 플레이어의 포획 수 업데이트
+                const movePlayer = game.currentPlayer;
+                const newCaptures = {
+                    ...game.captures,
+                    [movePlayer]: (game.captures[movePlayer] || 0) + capturedStones.length
+                };
+                
+                // 타워 게임: 1~20층 사이에서 목표 달성 체크 준비 (클로저를 통해 checkInfo 설정)
+                if (isTower && game.towerFloor !== undefined && game.towerFloor >= 1 && game.towerFloor <= 20 && game.stageId) {
+                    checkInfo = {
+                        towerFloor: game.towerFloor,
+                        stageId: game.stageId,
+                        newCaptures: newCaptures
+                    };
+                }
+                
+                // 게임 상태 업데이트
+                const updatedGame = {
+                    ...game,
+                    boardState: newBoardState,
+                    koInfo: newKoInfo,
+                    lastMove: { x, y },
+                    moveHistory: [...(game.moveHistory || []), { x, y, player: movePlayer }],
+                    captures: newCaptures,
+                    currentPlayer: game.currentPlayer === Player.Black ? Player.White : Player.Black,
+                    serverRevision: (game.serverRevision || 0) + 1,
+                };
+                
+                console.log(`[handleAction] ${actionTypeName} - Updated game state:`, {
+                    gameId,
+                    moveHistoryLength: updatedGame.moveHistory.length,
+                    currentPlayer: updatedGame.currentPlayer,
+                    captures: updatedGame.captures,
+                    checkInfo: checkInfo ? { floor: checkInfo.towerFloor, stageId: checkInfo.stageId } : null
+                });
+                
+                return { ...currentGames, [gameId]: updatedGame };
+            });
+            
+            // 타워 게임: 1~20층 사이에서 목표 달성 체크 (비동기 import 사용)
+            // 주의: updateGameState는 비동기적으로 실행될 수 있으므로, 
+            // checkInfo가 설정되었는지 확인하고 체크를 수행
+            if (checkInfo) {
+                console.log('[handleAction] Tower game - checkInfo set, proceeding with target score check:', checkInfo);
+                // TOWER_STAGES를 비동기적으로 import
+                import('../constants/towerConstants.js').then(({ TOWER_STAGES }) => {
+                    const stage = TOWER_STAGES.find((s: any) => s.id === checkInfo!.stageId);
+                    if (stage && stage.targetScore) {
+                        const blackCaptures = checkInfo.newCaptures[Player.Black] || 0;
+                        const whiteCaptures = checkInfo.newCaptures[Player.White] || 0;
+                        
+                        console.log('[handleAction] Tower game - Checking target score:', {
+                            floor: checkInfo.towerFloor,
+                            blackCaptures,
+                            whiteCaptures,
+                            targetBlack: stage.targetScore.black,
+                            targetWhite: stage.targetScore.white,
+                            blackReached: blackCaptures >= stage.targetScore.black,
+                            whiteReached: whiteCaptures >= stage.targetScore.white
+                        });
+                        
+                        // 흑(유저)이 목표 따낸 돌의 수를 달성하면 승리
+                        if (blackCaptures >= stage.targetScore.black) {
+                            console.log('[handleAction] Tower game - Black (user) reached target score, ending game:', {
+                                blackCaptures,
+                                target: stage.targetScore.black,
+                                floor: checkInfo.towerFloor
+                            });
+                            // 즉시 END_TOWER_GAME 액션 호출
+                            handleAction({
+                                type: 'END_TOWER_GAME',
+                                payload: {
+                                    gameId,
+                                    winner: Player.Black,
+                                    winReason: 'capture_limit'
+                                }
+                            } as any).catch(err => {
+                                console.error('[handleAction] Failed to end tower game (user win):', err);
+                            });
+                            return;
+                        }
+                        
+                        // 백(AI)이 목표 점수를 달성하면 패배
+                        if (whiteCaptures >= stage.targetScore.white) {
+                            console.log('[handleAction] Tower game - White (AI) reached target score, ending game:', {
+                                whiteCaptures,
+                                target: stage.targetScore.white,
+                                floor: checkInfo.towerFloor
+                            });
+                            // 즉시 END_TOWER_GAME 액션 호출
+                            handleAction({
+                                type: 'END_TOWER_GAME',
+                                payload: {
+                                    gameId,
+                                    winner: Player.White,
+                                    winReason: 'capture_limit'
+                                }
+                            } as any).catch(err => {
+                                console.error('[handleAction] Failed to end tower game (user loss):', err);
+                            });
+                            return;
+                        }
+                    } else {
+                        console.warn('[handleAction] Tower game - Stage not found or no targetScore:', {
+                            stageId: checkInfo.stageId,
+                            stage: stage,
+                            floor: checkInfo.towerFloor
+                        });
+                    }
+                }).catch(err => {
+                    console.error('[handleAction] Failed to import TOWER_STAGES:', err);
+                });
+            } else {
+                console.log('[handleAction] Tower game - checkInfo not set, skipping target score check');
+            }
+            
+            return { gameId };
+        }
+        
         if (action.type === 'CLEAR_TOURNAMENT_SESSION' && currentUserRef.current) {
             applyUserUpdate({
                     lastNeighborhoodTournament: null,
@@ -564,6 +705,31 @@ export const useApp = () => {
                     moveHistoryLength: Array.isArray(result.clientResponse?.game?.moveHistory) ? result.clientResponse.game.moveHistory.length : undefined,
                     raw: result,
                 });
+                
+                // CONFIRM_TOWER_GAME_START 액션에 대한 상세 로깅
+                if (action.type === 'CONFIRM_TOWER_GAME_START') {
+                    const responseGameId = result.clientResponse?.gameId || (result as any).gameId;
+                    const responseGame = result.clientResponse?.game || (result as any).game;
+                    console.log(`[handleAction] CONFIRM_TOWER_GAME_START - Full response:`, {
+                        result,
+                        hasClientResponse: !!result.clientResponse,
+                        gameId: responseGameId,
+                        hasGame: !!responseGame,
+                        game: responseGame,
+                        gameStatus: responseGame?.gameStatus,
+                        gameCategory: responseGame?.gameCategory,
+                    });
+                    
+                    // gameId가 없으면 경고
+                    if (!responseGameId) {
+                        console.warn('[handleAction] CONFIRM_TOWER_GAME_START - No gameId in response!', result);
+                    }
+                    // game 객체가 없으면 경고
+                    if (!responseGame) {
+                        console.warn('[handleAction] CONFIRM_TOWER_GAME_START - No game object in response!', result);
+                    }
+                }
+                
                 console.log(`[handleAction] ${action.type} - Response received:`, {
                     hasUpdatedUser: !!result.updatedUser,
                     hasClientResponse: !!result.clientResponse,
@@ -850,13 +1016,21 @@ export const useApp = () => {
                 const gameId = (result as any).gameId || result.clientResponse?.gameId;
                 const game = (result as any).game || result.clientResponse?.game;
                 
-                if (gameId && (action.type === 'ACCEPT_NEGOTIATION' || action.type === 'START_AI_GAME' || action.type === 'START_SINGLE_PLAYER_GAME' || action.type === 'START_TOWER_GAME' || action.type === 'CONFIRM_TOWER_GAME_START' || action.type === 'CONFIRM_SINGLE_PLAYER_GAME_START')) {
-                    console.log(`[handleAction] ${action.type} - gameId received:`, gameId, 'hasGame:', !!game, 'result keys:', Object.keys(result));
+                // CONFIRM_TOWER_GAME_START의 경우 gameId가 없어도 게임이 이미 있을 수 있으므로, session에서 gameId를 가져올 수 있음
+                let effectiveGameId = gameId;
+                if (!effectiveGameId && (action.type === 'CONFIRM_TOWER_GAME_START' || action.type === 'CONFIRM_SINGLE_PLAYER_GAME_START')) {
+                    effectiveGameId = (action.payload as any)?.gameId;
+                    console.log(`[handleAction] ${action.type} - gameId not in response, using payload gameId:`, effectiveGameId);
+                }
+                
+                if (effectiveGameId && (action.type === 'ACCEPT_NEGOTIATION' || action.type === 'START_AI_GAME' || action.type === 'START_SINGLE_PLAYER_GAME' || action.type === 'START_TOWER_GAME' || action.type === 'CONFIRM_TOWER_GAME_START' || action.type === 'CONFIRM_SINGLE_PLAYER_GAME_START')) {
+                    console.log(`[handleAction] ${action.type} - gameId received:`, effectiveGameId, 'hasGame:', !!game, 'result keys:', Object.keys(result), 'clientResponse keys:', result.clientResponse ? Object.keys(result.clientResponse) : []);
                     
                     // 응답에 게임 데이터가 있으면 즉시 상태에 추가 (WebSocket 업데이트를 기다리지 않음)
                     if (game) {
+                        console.log(`[handleAction] ${action.type} - Game object found in response:`, { gameId: game.id, gameStatus: game.gameStatus, gameCategory: game.gameCategory, isSinglePlayer: game.isSinglePlayer });
                         const isTowerGame = game.gameCategory === 'tower';
-                        console.log('[handleAction] Adding game to state immediately:', gameId, 'isSinglePlayer:', game.isSinglePlayer, 'gameCategory:', game.gameCategory, 'isTower:', isTowerGame);
+                        console.log('[handleAction] Adding game to state immediately:', effectiveGameId, 'isSinglePlayer:', game.isSinglePlayer, 'gameCategory:', game.gameCategory, 'isTower:', isTowerGame);
                         
                         // 게임 카테고리 확인
                         if (game.isSinglePlayer) {
@@ -869,9 +1043,10 @@ export const useApp = () => {
                             });
                         } else if (isTowerGame) {
                             setTowerGames(currentGames => {
-                                // CONFIRM 액션의 경우 게임 상태가 업데이트되었으므로 항상 업데이트
-                                if (action.type === 'CONFIRM_TOWER_GAME_START' || !currentGames[gameId]) {
-                                    return { ...currentGames, [gameId]: game };
+                                // CONFIRM 액션의 경우 게임 상태가 pending에서 playing으로 변경되었으므로 항상 업데이트
+                                if (action.type === 'CONFIRM_TOWER_GAME_START' || !currentGames[effectiveGameId]) {
+                                    console.log('[handleAction] Updating tower game:', effectiveGameId, 'gameStatus:', game.gameStatus, 'action type:', action.type, 'existing game status:', currentGames[effectiveGameId]?.gameStatus);
+                                    return { ...currentGames, [effectiveGameId]: game };
                                 }
                                 return currentGames;
                             });
@@ -893,13 +1068,13 @@ export const useApp = () => {
                                     const updatedUsers = [...prevUsers];
                                     updatedUsers[userIndex] = {
                                         ...updatedUsers[userIndex],
-                                        gameId: gameId,
-                                        status: 'in-game' as const,
+                                        gameId: effectiveGameId,
+                                        status: UserStatus.InGame,
                                         mode: game.mode
                                     };
                                     console.log('[handleAction] Updated user status in onlineUsers:', {
                                         userId: currentUser.id,
-                                        gameId: gameId,
+                                        gameId: effectiveGameId,
                                         status: 'in-game',
                                         mode: game.mode
                                     });
@@ -908,8 +1083,8 @@ export const useApp = () => {
                                     // 사용자가 onlineUsers에 없으면 추가
                                     const newUser: UserWithStatus = {
                                         id: currentUser.id,
-                                        status: 'in-game' as const,
-                                        gameId: gameId,
+                                        status: UserStatus.InGame,
+                                        gameId: effectiveGameId,
                                         mode: game.mode
                                     };
                                     console.log('[handleAction] Added user to onlineUsers:', newUser);
@@ -919,9 +1094,39 @@ export const useApp = () => {
                         }
                     }
                     
+                    // CONFIRM_TOWER_GAME_START의 경우 게임 객체가 없어도 WebSocket GAME_UPDATE를 기다림
+                    // 하지만 게임이 이미 towerGames에 있으면 상태를 업데이트해야 함
+                    if (!game && effectiveGameId && (action.type === 'CONFIRM_TOWER_GAME_START' || action.type === 'CONFIRM_SINGLE_PLAYER_GAME_START')) {
+                        console.log(`[handleAction] ${action.type} - No game in response, checking existing games for gameId:`, effectiveGameId);
+                        
+                        // 기존 게임 상태 확인
+                        const existingTowerGame = towerGames[effectiveGameId];
+                        const existingSinglePlayerGame = singlePlayerGames[effectiveGameId];
+                        const existingGame = existingTowerGame || existingSinglePlayerGame;
+                        
+                        if (existingGame) {
+                            console.log(`[handleAction] ${action.type} - Found existing game, updating status to playing:`, { gameId: effectiveGameId, currentStatus: existingGame.gameStatus });
+                            
+                            // 게임 상태를 playing으로 업데이트 (WebSocket 업데이트를 기다리지 않고 즉시)
+                            if (existingTowerGame) {
+                                setTowerGames(currentGames => {
+                                    const updatedGame = { ...currentGames[effectiveGameId], gameStatus: 'playing' as const, startTime: Date.now() };
+                                    return { ...currentGames, [effectiveGameId]: updatedGame };
+                                });
+                            } else if (existingSinglePlayerGame) {
+                                setSinglePlayerGames(currentGames => {
+                                    const updatedGame = { ...currentGames[effectiveGameId], gameStatus: 'playing' as const, startTime: Date.now() };
+                                    return { ...currentGames, [effectiveGameId]: updatedGame };
+                                });
+                            }
+                        } else {
+                            console.log(`[handleAction] ${action.type} - Game not found in state, will wait for GAME_UPDATE WebSocket message`);
+                        }
+                    }
+                    
                     // 즉시 라우팅 업데이트 (게임이 생성되었으므로)
                     // 게임 데이터가 없어도 gameId가 있으면 라우팅
-                    const targetHash = `#/game/${gameId}`;
+                    const targetHash = `#/game/${effectiveGameId}`;
                     if (window.location.hash !== targetHash) {
                         console.log('[handleAction] Setting immediate route to new game:', targetHash, 'hasGame:', !!game);
                         // 게임이 없으면 약간의 지연을 두고 라우팅 (WebSocket 업데이트 대기)
@@ -939,7 +1144,7 @@ export const useApp = () => {
                     }
                     
                     // gameId를 반환하여 컴포넌트에서 사용할 수 있도록 함
-                    return { gameId };
+                    return { gameId: effectiveGameId };
                 } else if (action.type === 'START_TOWER_GAME') {
                     // START_TOWER_GAME의 경우 gameId를 다시 확인 (다른 경로에서 올 수 있음)
                     const towerGameId = (result as any).gameId || result.clientResponse?.gameId;
@@ -1126,6 +1331,7 @@ export const useApp = () => {
                 if (otherData.globalOverrideAnnouncement !== undefined) setGlobalOverrideAnnouncement(otherData.globalOverrideAnnouncement || null);
                 if (otherData.gameModeAvailability !== undefined) setGameModeAvailability(otherData.gameModeAvailability || {});
                 if (otherData.announcementInterval !== undefined) setAnnouncementInterval(otherData.announcementInterval || 3);
+                if (otherData.homeBoardPosts !== undefined) setHomeBoardPosts(otherData.homeBoardPosts || []);
             }
         };
 
@@ -1297,7 +1503,8 @@ export const useApp = () => {
                                 announcements: message.payload.announcements,
                                 globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
                                 gameModeAvailability: message.payload.gameModeAvailability,
-                                announcementInterval: message.payload.announcementInterval
+                                announcementInterval: message.payload.announcementInterval,
+                                homeBoardPosts: message.payload.homeBoardPosts
                             };
                             startBuffer.receivedChunks++;
                             if (message.payload.isLast) {
@@ -1338,7 +1545,8 @@ export const useApp = () => {
                                         announcements: message.payload.announcements,
                                         globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
                                         gameModeAvailability: message.payload.gameModeAvailability,
-                                        announcementInterval: message.payload.announcementInterval
+                                        announcementInterval: message.payload.announcementInterval,
+                                        homeBoardPosts: message.payload.homeBoardPosts
                                     };
                                 }
                                 processInitialState(chunkBuffer.users, chunkBuffer.otherData);
@@ -1366,7 +1574,8 @@ export const useApp = () => {
                                 announcements,
                                 globalOverrideAnnouncement,
                                 gameModeAvailability,
-                                announcementInterval
+                                announcementInterval,
+                                homeBoardPosts
                             } = message.payload;
                             processInitialState(users, {
                                 onlineUsers,
@@ -1380,7 +1589,8 @@ export const useApp = () => {
                                 announcements,
                                 globalOverrideAnnouncement,
                                 gameModeAvailability,
-                                announcementInterval
+                                announcementInterval,
+                                homeBoardPosts
                             });
                             completeInitialState();
                             return;
@@ -1454,35 +1664,39 @@ export const useApp = () => {
                                     if (currentUserStatus) {
                                         if (currentUserStatus.gameId && currentUserStatus.status === 'in-game') {
                                             const gameId = currentUserStatus.gameId;
-                                            console.log('[WebSocket] Current user status updated to in-game:', gameId);
-                                            setLiveGames(currentGames => {
-                                                if (currentGames[gameId]) {
-                                                    console.log('[WebSocket] Game found in liveGames, routing immediately');
+                                            const gameCategory = currentUserStatus.gameCategory;
+                                            console.log('[WebSocket] Current user status updated to in-game:', gameId, 'gameCategory:', gameCategory);
+                                            
+                                            // 모든 게임 카테고리에서 게임 찾기
+                                            const checkAllGames = () => {
+                                                const game = liveGames[gameId] || singlePlayerGames[gameId] || towerGames[gameId];
+                                                if (game) {
+                                                    console.log('[WebSocket] Game found, routing immediately');
                                                     setTimeout(() => {
                                                         window.location.hash = `#/game/${gameId}`;
                                                     }, 100);
-                                                } else {
-                                                    console.log('[WebSocket] Game not in liveGames yet, will wait for GAME_UPDATE');
-                                                    let attempts = 0;
-                                                    const maxAttempts = 20;
-                                                    const checkGame = () => {
-                                                        attempts++;
-                                                        setLiveGames(games => {
-                                                            if (games[gameId]) {
-                                                                console.log('[WebSocket] Game received in delayed check, routing');
-                                                                setTimeout(() => {
-                                                                    window.location.hash = `#/game/${gameId}`;
-                                                                }, 100);
-                                                            } else if (attempts < maxAttempts) {
-                                                                setTimeout(checkGame, 200);
-                                                            }
-                                                            return games;
-                                                        });
-                                                    };
-                                                    setTimeout(checkGame, 200);
+                                                    return true;
                                                 }
-                                                return currentGames;
-                                            });
+                                                return false;
+                                            };
+                                            
+                                            // 즉시 확인
+                                            if (!checkAllGames()) {
+                                                console.log('[WebSocket] Game not found yet, will wait for GAME_UPDATE');
+                                                let attempts = 0;
+                                                const maxAttempts = 20;
+                                                const checkGame = () => {
+                                                    attempts++;
+                                                    if (checkAllGames()) {
+                                                        return;
+                                                    } else if (attempts < maxAttempts) {
+                                                        setTimeout(checkGame, 200);
+                                                    } else {
+                                                        console.warn('[WebSocket] Game not found after max attempts:', gameId);
+                                                    }
+                                                };
+                                                setTimeout(checkGame, 200);
+                                            }
                                         } else if (currentUserStatus.status === 'waiting' && currentUserStatus.mode && !currentUserStatus.gameId) {
                                             const currentHash = window.location.hash;
                                             const isGamePage = currentHash.startsWith('#/game/');
@@ -1537,6 +1751,7 @@ export const useApp = () => {
                         case 'GAME_UPDATE': {
                             Object.entries(message.payload || {}).forEach(([gameId, game]: [string, any]) => {
                                 const gameCategory = game.gameCategory || (game.isSinglePlayer ? 'singleplayer' : 'normal');
+                                console.log('[WebSocket] GAME_UPDATE received:', { gameId, gameCategory, gameStatus: game.gameStatus, isSinglePlayer: game.isSinglePlayer });
 
                                 if (gameCategory === 'singleplayer') {
                                     setSinglePlayerGames(currentGames => {
@@ -1594,6 +1809,30 @@ export const useApp = () => {
                                     });
                                 } else if (gameCategory === 'tower') {
                                     setTowerGames(currentGames => {
+                                        const existingGame = currentGames[gameId];
+                                        
+                                        // 타워 게임은 클라이언트에서만 실행되므로, 
+                                        // 클라이언트의 로컬 상태가 더 최신이면 서버 상태를 무시
+                                        if (existingGame) {
+                                            const localMoveHistoryLength = existingGame.moveHistory?.length || 0;
+                                            const serverMoveHistoryLength = game.moveHistory?.length || 0;
+                                            const localServerRevision = existingGame.serverRevision || 0;
+                                            const serverRevision = game.serverRevision || 0;
+                                            
+                                            // 클라이언트가 더 많은 수를 두었거나, 같은 수를 두었지만 클라이언트의 serverRevision이 더 크면 무시
+                                            if (localMoveHistoryLength > serverMoveHistoryLength || 
+                                                (localMoveHistoryLength === serverMoveHistoryLength && localServerRevision >= serverRevision)) {
+                                                console.log('[WebSocket] Tower game - Ignoring server update (client state is newer):', {
+                                                    gameId,
+                                                    localMoveHistoryLength,
+                                                    serverMoveHistoryLength,
+                                                    localServerRevision,
+                                                    serverRevision
+                                                });
+                                                return currentGames;
+                                            }
+                                        }
+                                        
                                         const signature = stableStringify(game);
                                         const previousSignature = towerGameSignaturesRef.current[gameId];
                                         if (previousSignature === signature) {
@@ -1744,6 +1983,11 @@ export const useApp = () => {
                         case 'GAME_MODE_AVAILABILITY_UPDATE': {
                             const { gameModeAvailability: availability } = message.payload || {};
                             if (availability) setGameModeAvailability(availability);
+                            return;
+                        }
+                        case 'HOME_BOARD_POSTS_UPDATE': {
+                            const { homeBoardPosts: posts } = message.payload || {};
+                            if (Array.isArray(posts)) setHomeBoardPosts(posts);
                             return;
                         }
                         case 'TOURNAMENT_STATE_UPDATE': {
@@ -2189,6 +2433,7 @@ export const useApp = () => {
         announcements,
         globalOverrideAnnouncement,
         announcementInterval,
+        homeBoardPosts,
         activeGame,
         activeNegotiation,
         showExitToast,

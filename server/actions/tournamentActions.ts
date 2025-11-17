@@ -422,6 +422,10 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                     userInTournament.borderId = user.borderId;
                 }
                 
+                // round_complete 상태는 그대로 유지 (다음 경기 버튼을 누르기 전 상태 보존)
+                // round_in_progress 상태가 저장되어 있으면 round_complete로 복원하지 않음 (이미 진행 중인 경기가 있을 수 있음)
+                // 단, round_in_progress 상태에서 뒤로가기를 했다가 다시 들어온 경우는 상태를 유지
+                
                 // bracket_ready 상태에서 컨디션이 부여되지 않은 경우 컨디션 부여
                 // 뒤로가기 후 다시 들어왔을 때 컨디션 유지 확인
                 if (existingState.status === 'bracket_ready') {
@@ -439,7 +443,15 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                     }
                 }
                 
+                // round_complete, bracket_ready, round_in_progress 상태는 모두 그대로 유지
+                // (뒤로가기 후 다시 들어왔을 때 나가기 직전의 상태를 보존)
+                
                 (user as any)[stateKey] = existingState; // Re-assign to mark for update
+                
+                // volatileState.activeTournaments도 DB 상태로 동기화 (뒤로가기 후 다시 들어왔을 때 상태 보존)
+                if (!volatileState.activeTournaments) volatileState.activeTournaments = {};
+                volatileState.activeTournaments[user.id] = existingState;
+                
                 // 사용자 캐시 업데이트
                 updateUserCache(user);
                 // DB 저장은 비동기로 처리하여 응답 지연 최소화
@@ -926,6 +938,22 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 }
             }
 
+            // 경기 시작 전: 플레이어 컨디션 확인 및 로깅
+            if (match.players[0] && match.players[1]) {
+                const p1 = tournamentState.players.find(p => p.id === match.players[0]!.id);
+                const p2 = tournamentState.players.find(p => p.id === match.players[1]!.id);
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[START_TOURNAMENT_MATCH] Player conditions before match start: p1=${p1?.condition}, p2=${p2?.condition}`);
+                }
+                // 컨디션이 유효하지 않으면(undefined, null, 1000, 또는 범위 밖) 경고
+                if (p1 && (p1.condition === undefined || p1.condition === null || p1.condition === 1000 || p1.condition < 40 || p1.condition > 100)) {
+                    console.warn(`[START_TOURNAMENT_MATCH] Invalid condition for p1: ${p1.condition}`);
+                }
+                if (p2 && (p2.condition === undefined || p2.condition === null || p2.condition === 1000 || p2.condition < 40 || p2.condition > 100)) {
+                    console.warn(`[START_TOURNAMENT_MATCH] Invalid condition for p2: ${p2.condition}`);
+                }
+            }
+            
             // 경기 시작: 상태를 round_in_progress로 변경
             tournamentState.status = 'round_in_progress';
             tournamentState.currentSimulatingMatch = { roundIndex, matchIndex };

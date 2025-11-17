@@ -161,22 +161,48 @@ const EquipmentSlotDisplay: React.FC<{
             </div>
         );
     } else {
+        const padding = Math.max(4, Math.round(6 * scaleFactor));
         const borderWidth = Math.max(1, Math.round(2 * scaleFactor));
-         return (
-             <img 
-                 src={emptySlotImages[slot]} 
-                 alt={`${slot} empty slot`} 
-                className="aspect-square rounded-lg bg-tertiary/50" 
-                 style={{ 
-                     width: '100%', 
-                     height: '100%', 
-                     maxWidth: '100%', 
-                     maxHeight: '100%', 
-                     objectFit: 'contain',
-                     border: `${borderWidth}px solid rgba(255, 255, 255, 0.1)`,
-                     boxSizing: 'border-box'
-                 }} 
-             />
+        return (
+            <div
+                className={`relative aspect-square rounded-lg bg-tertiary/50 ring-1 ring-transparent`}
+                style={{ 
+                    width: '100%', 
+                    height: '100%', 
+                    minWidth: 0, 
+                    minHeight: 0, 
+                    maxWidth: '100%', 
+                    maxHeight: '100%',
+                    border: `${borderWidth}px solid rgba(255, 255, 255, 0.1)`,
+                    boxSizing: 'border-box'
+                }}
+            >
+                {/* 배경 레이어 (장비가 있을 때와 동일한 구조) */}
+                <div 
+                    className="absolute inset-0 bg-tertiary/30 rounded-md" 
+                    style={{ 
+                        width: '100%', 
+                        height: '100%',
+                        maxWidth: '100%', 
+                        maxHeight: '100%',
+                    }} 
+                />
+                {/* 빈 슬롯 이미지 (장비 이미지와 동일한 스타일) */}
+                <img 
+                    src={emptySlotImages[slot]} 
+                    alt={`${slot} empty slot`} 
+                    className="relative object-contain" 
+                    style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        padding: `${padding}px`, 
+                        maxWidth: '100%', 
+                        maxHeight: '100%',
+                        boxSizing: 'border-box',
+                        objectFit: 'contain'
+                    }}
+                />
+            </div>
         );
     }
 };
@@ -188,9 +214,40 @@ const LocalItemDetailDisplay: React.FC<{
     scaleFactor?: number;
     userLevelSum?: number;
     mobileTextScale?: number;
-}> = ({ item, title, comparisonItem, scaleFactor = 1, userLevelSum = 0, mobileTextScale = 1 }) => {
+    emptySlot?: EquipmentSlot | null; // 빈 슬롯일 때 슬롯 타입
+}> = ({ item, title, comparisonItem, scaleFactor = 1, userLevelSum = 0, mobileTextScale = 1, emptySlot }) => {
+    // item이 없을 때도 "선택 장비" 뷰어와 동일한 구조로 표시
     if (!item) {
-        return <div className="h-full flex items-center justify-center text-tertiary" style={{ fontSize: `${Math.max(12, Math.round(14 * scaleFactor * mobileTextScale))}px` }}>{title}</div>;
+        return (
+            <div className="flex flex-col h-full" style={{ fontSize: `${Math.max(11, Math.round(12 * scaleFactor * mobileTextScale))}px` }}>
+                {/* Top Section: Image (left), Name (right) - 선택 장비 뷰어와 동일한 구조 */}
+                <div className="flex items-start justify-between mb-2">
+                    {/* Left: 빈 슬롯 이미지 */}
+                    {emptySlot && (
+                        <div 
+                            className="relative rounded-lg flex-shrink-0"
+                            style={{
+                                width: `${Math.max(60, Math.round(80 * scaleFactor))}px`,
+                                height: `${Math.max(60, Math.round(80 * scaleFactor))}px`
+                            }}
+                        >
+                            <EquipmentSlotDisplay slot={emptySlot} scaleFactor={scaleFactor * 0.8} />
+                        </div>
+                    )}
+                    {/* Right: Name */}
+                    <div className="flex-grow text-right ml-2">
+                        <div className="flex items-baseline justify-end gap-0.5">
+                            <h3 className="font-bold text-tertiary" style={{ fontSize: `${Math.max(14, Math.round(18 * scaleFactor * mobileTextScale))}px` }}>{title}</h3>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom Section: Sub Options - 비워둠 */}
+                <div className="w-full text-left space-y-1 bg-gray-900/50 p-2 rounded-lg flex-grow overflow-y-auto min-h-0 max-h-[200px]" style={{ fontSize: `${Math.max(10, Math.round(11 * scaleFactor * mobileTextScale))}px` }}>
+                    {/* 옵션 없음 */}
+                </div>
+            </div>
+        );
     }
 
     const styles = gradeStyles[item.grade];
@@ -826,22 +883,15 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
                             <div className={`flex flex-col ${isMobile ? 'w-1/2' : 'flex-1'} h-full bg-panel-secondary rounded-lg p-2 relative overflow-hidden ${isMobile ? '' : 'border-r border-gray-700'}`} style={{ minHeight: isMobile ? '300px' : undefined }}>
                                 <h3 className="font-bold text-on-panel mb-1 flex-shrink-0" style={{ fontSize: `${isMobile ? Math.max(10, Math.round(12 * scaleFactor * mobileTextScale)) : Math.max(14, Math.round(18 * scaleFactor * mobileTextScale))}px` }}>현재 장착</h3>
                                 <div className="flex-1 min-h-0 overflow-y-auto pb-16" style={{ WebkitOverflowScrolling: 'touch' }}>
-                                    {correspondingEquippedItem ? (
-                                        <LocalItemDetailDisplay item={correspondingEquippedItem} title="장착된 장비 없음" comparisonItem={selectedItem} scaleFactor={isMobile ? scaleFactor * 0.7 : scaleFactor} mobileTextScale={isMobile ? mobileTextScale * 0.8 : mobileTextScale} userLevelSum={currentUser.strategyLevel + currentUser.playfulLevel} />
-                                    ) : (
-                                        <div className="h-full flex flex-col items-center justify-center text-tertiary" style={{ fontSize: `${isMobile ? Math.max(9, Math.round(10 * scaleFactor * mobileTextScale)) : Math.max(12, Math.round(14 * scaleFactor * mobileTextScale))}px` }}>
-                                            {/* 빈 슬롯 표시 */}
-                                            {selectedItem?.slot && (
-                                                <div className="mb-2">
-                                                    <EquipmentSlotDisplay 
-                                                        slot={selectedItem.slot}
-                                                        scaleFactor={isMobile ? scaleFactor * 0.5 : scaleFactor * 0.7}
-                                                    />
-                                                </div>
-                                            )}
-                                            <div className="text-center">장착된 장비 없음</div>
-                                        </div>
-                                    )}
+                                    <LocalItemDetailDisplay 
+                                        item={correspondingEquippedItem} 
+                                        title="장착된 장비 없음" 
+                                        comparisonItem={selectedItem} 
+                                        scaleFactor={isMobile ? scaleFactor * 0.7 : scaleFactor} 
+                                        mobileTextScale={isMobile ? mobileTextScale * 0.8 : mobileTextScale} 
+                                        userLevelSum={currentUser.strategyLevel + currentUser.playfulLevel}
+                                        emptySlot={selectedItem?.slot}
+                                    />
                                 </div>
                             </div>
 
@@ -1008,7 +1058,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
                             </div>
                         </div>
                     </div>
-                    <div className="overflow-y-auto flex-1" style={{ width: '100%', minWidth: 0, minHeight: 0, paddingRight: `${isMobile ? Math.max(4, Math.round(6 * scaleFactor)) : Math.max(6, Math.round(8 * scaleFactor))}px`, WebkitOverflowScrolling: 'touch' }}>
+                    <div className="overflow-y-auto flex-1 min-h-0" style={{ width: '100%', minWidth: 0, paddingRight: `${isMobile ? Math.max(4, Math.round(6 * scaleFactor)) : Math.max(6, Math.round(8 * scaleFactor))}px`, WebkitOverflowScrolling: 'touch' }}>
                         <div 
                             className="grid gap-2" 
                             style={{ 
@@ -1016,7 +1066,7 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
                                 gap: `${isMobile ? Math.max(4, Math.round(8 * scaleFactor)) : Math.max(4, Math.round(8 * scaleFactor))}px`,
                                 width: '100%',
                                 minWidth: 0,
-                                paddingBottom: `${isMobile ? Math.max(60, Math.round(80 * scaleFactor)) : Math.max(80, Math.round(100 * scaleFactor))}px`
+                                paddingBottom: `${isMobile ? Math.max(150, Math.round(200 * scaleFactor)) : Math.max(200, Math.round(250 * scaleFactor))}px`
                             }}
                         >
                         {Array.from({ length: currentSlots }).map((_, index) => {

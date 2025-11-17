@@ -71,7 +71,16 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
                     tournament.currentSimulatingMatch.matchIndex === localTournament.currentSimulatingMatch.matchIndex &&
                     newSeed === prevSeed) {
                     // 같은 경기가 진행 중이면 리셋하지 않고 로컬 상태만 업데이트
-                    setLocalTournament(tournament);
+                    // 단, timeElapsed는 클라이언트에서 실시간으로 업데이트되므로 서버 값으로 덮어쓰지 않음
+                    setLocalTournament(prev => {
+                        if (!prev) return tournament;
+                        return {
+                            ...tournament,
+                            timeElapsed: prev.timeElapsed, // 클라이언트의 실시간 timeElapsed 유지
+                            currentMatchScores: prev.currentMatchScores, // 클라이언트의 실시간 점수 유지
+                            currentMatchCommentary: prev.currentMatchCommentary // 클라이언트의 실시간 중계 유지
+                        };
+                    });
                 } else if (hasConditionChanged && newStatus === 'bracket_ready') {
                     // bracket_ready 상태에서 컨디션이 변경되었으면 (회복제 사용 등) 로컬 상태 업데이트
                     setLocalTournament(tournament);
@@ -262,17 +271,41 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
             player1Ref.current = JSON.parse(JSON.stringify(p1));
             player2Ref.current = JSON.parse(JSON.stringify(p2));
             
+            // 디버깅: 서버에서 받은 컨디션 값 확인
+            if (import.meta.env.DEV) {
+                console.log(`[useTournamentSimulation] Player conditions before setting: p1=${p1.condition}, p2=${p2.condition}`);
+            }
+            
             // RNG 초기화 (컨디션 설정 전에 먼저 초기화)
             rngRef.current = new SeededRandom(localTournament.simulationSeed!);
             
             // 컨디션 설정 (시드 기반)
             // 단, 이미 유효한 컨디션이 있으면(40-100 사이 값) 유지 (회복제로 회복한 컨디션 보존)
             // undefined, null, 1000일 때만 새로 설정
+            // 중요: 서버에서 받은 컨디션 값(p1.condition, p2.condition)을 우선 사용
             if (player1Ref.current.condition === undefined || player1Ref.current.condition === null || player1Ref.current.condition === 1000) {
+                // 서버에서 받은 컨디션이 없거나 초기값이면 시드 기반으로 생성
                 player1Ref.current.condition = rngRef.current.randomInt(40, 100);
+                if (import.meta.env.DEV) {
+                    console.log(`[useTournamentSimulation] Generated new condition for p1: ${player1Ref.current.condition}`);
+                }
+            } else {
+                // 서버에서 받은 컨디션 값 유지
+                if (import.meta.env.DEV) {
+                    console.log(`[useTournamentSimulation] Preserving p1 condition from server: ${player1Ref.current.condition}`);
+                }
             }
             if (player2Ref.current.condition === undefined || player2Ref.current.condition === null || player2Ref.current.condition === 1000) {
+                // 서버에서 받은 컨디션이 없거나 초기값이면 시드 기반으로 생성
                 player2Ref.current.condition = rngRef.current.randomInt(40, 100);
+                if (import.meta.env.DEV) {
+                    console.log(`[useTournamentSimulation] Generated new condition for p2: ${player2Ref.current.condition}`);
+                }
+            } else {
+                // 서버에서 받은 컨디션 값 유지
+                if (import.meta.env.DEV) {
+                    console.log(`[useTournamentSimulation] Preserving p2 condition from server: ${player2Ref.current.condition}`);
+                }
             }
             
             // 초기화

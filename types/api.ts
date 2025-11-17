@@ -1,9 +1,10 @@
 import {
     User, LiveGameSession, Negotiation, KomiBid,
     AdminLog, Announcement, OverrideAnnouncement, InventoryItem,
-    QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus, EquipmentPreset, GameSettings, CommentaryLine
+    QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, TournamentState, UserWithStatus, EquipmentPreset, GameSettings, CommentaryLine, HomeBoardPost
 } from './entities.js';
-import { GameMode, RPSChoice, Point, Player, UserStatus, TournamentType, InventoryItemType, GameCategory, EquipmentSlot } from './enums.js';
+import { GameMode, RPSChoice, Point, Player, UserStatus, TournamentType, InventoryItemType, GameCategory, EquipmentSlot, BoardState } from './enums.js';
+import type { WinReason } from './enums.js';
 
 export type ChatMessage = {
   id: string;
@@ -51,6 +52,7 @@ export interface AppState {
     announcements: Announcement[];
     globalOverrideAnnouncement: OverrideAnnouncement | null;
     announcementInterval: number;
+    homeBoardPosts: HomeBoardPost[];
 }
 
 export interface VolatileState {
@@ -74,6 +76,7 @@ export interface UserStatusInfo {
     mode?: GameMode;
     gameId?: string;
     spectatingGameId?: string;
+    gameCategory?: GameCategory;
 }
 
 export type ServerAction =
@@ -208,6 +211,9 @@ export type ServerAction =
     | { type: 'ADMIN_FORCE_WIN', payload: { gameId: string, winnerId: string } }
     | { type: 'ADMIN_UPDATE_USER_DETAILS', payload: { targetUserId: string, updatedDetails: Partial<User> } }
     | { type: 'ADMIN_RESET_TOURNAMENT_SESSION', payload: { targetUserId: string; tournamentType: TournamentType } }
+    | { type: 'ADMIN_CREATE_HOME_BOARD_POST', payload: { title: string; content: string; isPinned: boolean } }
+    | { type: 'ADMIN_UPDATE_HOME_BOARD_POST', payload: { postId: string; title: string; content: string; isPinned: boolean } }
+    | { type: 'ADMIN_DELETE_HOME_BOARD_POST', payload: { postId: string } }
     // Tournament
     | { type: 'START_TOURNAMENT_SESSION', payload: { type: TournamentType } }
     | { type: 'START_TOURNAMENT_ROUND', payload: { type: TournamentType } }
@@ -231,8 +237,13 @@ export type ServerAction =
     | { type: 'START_TOWER_GAME', payload: { floor: number } }
     | { type: 'CONFIRM_TOWER_GAME_START', payload: { gameId: string } }
     | { type: 'TOWER_REFRESH_PLACEMENT', payload: { gameId: string } }
+    | { type: 'TOWER_ADD_TURNS', payload: { gameId: string } }
+    | { type: 'END_TOWER_GAME', payload: { gameId: string; winner: Player; winReason: WinReason } }
+    | { type: 'TOWER_CLIENT_MOVE', payload: { gameId: string; x: number; y: number; newBoardState: BoardState; capturedStones: Point[]; newKoInfo: LiveGameSession['koInfo']; } }
+    | { type: 'SINGLE_PLAYER_CLIENT_MOVE', payload: { gameId: string; x: number; y: number; newBoardState: BoardState; capturedStones: Point[]; newKoInfo: LiveGameSession['koInfo']; } }
     | { type: 'START_SINGLE_PLAYER_MISSION', payload: { missionId: string } }
     | { type: 'CLAIM_SINGLE_PLAYER_MISSION_REWARD', payload: { missionId: string } }
+    | { type: 'CLAIM_ALL_TRAINING_QUEST_REWARDS', payload?: never }
     | { type: 'LEVEL_UP_TRAINING_QUEST', payload: { missionId: string } }
     | { type: 'MANNER_ACTION', payload: { targetUserId: string, actionType: 'up' | 'down' } }
     ;

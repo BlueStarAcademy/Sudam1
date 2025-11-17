@@ -4,7 +4,7 @@ import React from 'react';
 import { AdminProps, LiveGameSession, TournamentType } from '../../types/index.js';
 import Button from '../Button.js';
 
-type AdminView = 'dashboard' | 'userManagement' | 'mailSystem' | 'serverSettings';
+type AdminView = 'dashboard' | 'userManagement' | 'mailSystem' | 'serverSettings' | 'homeBoard';
 
 interface AdminDashboardProps extends Omit<AdminProps, 'onBack'> {
     onNavigate: (view: AdminView) => void;
@@ -55,6 +55,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onNavigate, onBackToPro
                 <div onClick={() => onNavigate('serverSettings')} className="bg-yellow-800/50 hover:bg-yellow-700/50 p-6 rounded-lg shadow-lg cursor-pointer transition-all transform hover:-translate-y-1 border border-color">
                     <h2 className="text-2xl font-bold text-yellow-300">서버 설정</h2>
                     <p className="mt-2 text-gray-400">공지사항, 게임 모드 활성화 등 서버 전체 설정을 관리합니다.</p>
+                </div>
+                <div onClick={() => onNavigate('homeBoard')} className="bg-purple-800/50 hover:bg-purple-700/50 p-6 rounded-lg shadow-lg cursor-pointer transition-all transform hover:-translate-y-1 border border-color">
+                    <h2 className="text-2xl font-bold text-purple-300">홈 게시판</h2>
+                    <p className="mt-2 text-gray-400">홈 화면에 표시되는 공지사항과 업데이트 내역을 관리합니다.</p>
                 </div>
             </div>
 

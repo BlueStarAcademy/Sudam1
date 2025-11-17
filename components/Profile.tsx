@@ -15,6 +15,7 @@ import ChatWindow from './waiting-room/ChatWindow.js';
 import GameRankingBoard from './GameRankingBoard.js';
 import BadukRankingBoard from './BadukRankingBoard.js';
 import MannerRankModal from './MannerRankModal.js';
+import HomeBoardPanel from './HomeBoardPanel.js';
 
 interface ProfileProps {
 }
@@ -170,19 +171,19 @@ const LobbyCard: React.FC<{
 };
 
 const PveCard: React.FC<{ title: string; imageUrl: string; layout: 'grid' | 'tall'; footerContent?: React.ReactNode; onClick?: () => void; isComingSoon?: boolean; }> = ({ title, imageUrl, layout, footerContent, onClick, isComingSoon }) => {
-    const isTall = layout === 'tall';
+    const shadowColor = "hover:shadow-purple-500/30";
     return (
         <div 
             onClick={onClick}
-            className={`${isComingSoon ? 'bg-panel border border-color opacity-60 grayscale' : 'bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-purple-500/50'} rounded-lg p-1 lg:p-2 flex flex-col text-center shadow-lg ${isComingSoon ? 'cursor-not-allowed' : onClick ? 'cursor-pointer hover:-translate-y-1 transition-all transform shadow-purple-500/20' : 'cursor-not-allowed'} h-full text-on-panel relative overflow-hidden group`}
+            className={`${isComingSoon ? 'bg-panel border border-color opacity-60 grayscale' : 'bg-panel border border-color'} rounded-lg p-1 lg:p-2 flex flex-col text-center transition-all transform ${isComingSoon ? 'cursor-not-allowed' : onClick ? `cursor-pointer hover:-translate-y-1 ${shadowColor}` : 'cursor-not-allowed'} shadow-lg h-full text-on-panel relative overflow-hidden group`}
         >
             {isComingSoon && (
                 <div className="absolute top-1 lg:top-2 -right-8 lg:-right-10 transform rotate-45 bg-purple-600 text-white text-[8px] lg:text-[10px] font-bold px-8 lg:px-10 py-0.5 z-10">
                     Coming Soon
                 </div>
             )}
-            <h2 className={`text-xs lg:text-base font-bold mt-0.5 lg:mt-1 h-4 lg:h-6 mb-0.5 lg:mb-1 ${isComingSoon ? 'text-gray-400' : 'text-purple-300'}`}>{title}</h2>
-            <div className={`w-full flex-1 ${isComingSoon ? 'bg-tertiary' : 'bg-black'} rounded-md flex items-center justify-center text-tertiary overflow-hidden transition-transform duration-300 ${!isComingSoon && 'group-hover:scale-105'} min-h-0`}>
+            <h2 className={`text-xs lg:text-base font-bold mt-0.5 lg:mt-1 h-4 lg:h-6 mb-0.5 lg:mb-1 ${isComingSoon ? 'text-gray-400' : ''}`}>{title}</h2>
+            <div className={`w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden transition-transform duration-300 ${!isComingSoon && 'group-hover:scale-105'} min-h-0`}>
                 <img src={imageUrl} alt={title} className="w-full h-full object-cover object-center" />
             </div>
             {footerContent && (
@@ -245,7 +246,7 @@ const StatSummaryPanel: React.FC<{ title: string; color: string; children: React
 
 
 const Profile: React.FC<ProfileProps> = () => {
-    const { currentUserWithStatus, allUsers, handlers, waitingRoomChats, hasClaimableQuest, presets } = useAppContext();
+    const { currentUserWithStatus, allUsers, handlers, waitingRoomChats, hasClaimableQuest, presets, homeBoardPosts } = useAppContext();
     const [detailedStatsType, setDetailedStatsType] = useState<'strategic' | 'playful' | null>(null);
     const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
     const [hasNewMessage, setHasNewMessage] = useState(false);
@@ -599,7 +600,7 @@ const Profile: React.FC<ProfileProps> = () => {
             <div className="col-span-4 row-span-1">
                 <LobbyCard type="playful" stats={aggregatedStats.playful} onEnter={() => onSelectLobby('playful')} onViewStats={() => setDetailedStatsType('playful')} level={currentUserWithStatus.playfulLevel} title="놀이 바둑" imageUrl={PLAYFUL_GO_LOBBY_IMG} tier={overallTiers.playfulTier} />
             </div>
-    
+
             <div className="col-span-4 row-span-1">
                 <PveCard 
                     title="바둑능력PVP" 
@@ -608,7 +609,7 @@ const Profile: React.FC<ProfileProps> = () => {
                     isComingSoon={true}
                 />
             </div>
-    
+
             <div className="col-span-4 row-span-1">
                 <div onClick={onSelectTournamentLobby} className="bg-panel border border-color rounded-lg p-1 lg:p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full text-on-panel">
                     <h2 className="text-xs lg:text-base font-bold flex items-center justify-center gap-0.5 lg:gap-1 h-4 lg:h-6 mb-0.5 lg:mb-1">챔피언십</h2>
@@ -734,7 +735,10 @@ const Profile: React.FC<ProfileProps> = () => {
                         <div className="col-span-3 bg-panel border border-color text-on-panel rounded-lg min-h-0 flex flex-col">
                             <ChatWindow messages={globalChat} mode="global" onAction={handlers.handleAction} onViewUser={handlers.openViewingUser} locationPrefix="[홈]" />
                         </div>
-                        <div className="col-span-9 min-h-0 flex flex-col justify-end">
+                        <div className="col-span-2 bg-panel border border-color text-on-panel rounded-lg min-h-0 flex flex-col">
+                            <HomeBoardPanel posts={homeBoardPosts || []} isAdmin={currentUserWithStatus.isAdmin} onAction={handlers.handleAction} />
+                        </div>
+                        <div className="col-span-7 min-h-0 flex flex-col justify-end">
                             {LobbyCards}
                         </div>
                     </div>

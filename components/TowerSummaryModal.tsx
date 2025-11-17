@@ -3,7 +3,7 @@ import { LiveGameSession, UserWithStatus, ServerAction, Player, AnalysisResult, 
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import Avatar from './Avatar.js';
-import { TOWER_STAGES, AVATAR_POOL, BORDER_POOL } from '../constants';
+import { TOWER_STAGES, AVATAR_POOL, BORDER_POOL } from '../constants/towerConstants.js';
 
 interface TowerSummaryModalProps {
     session: LiveGameSession;
@@ -134,12 +134,12 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
     const summary = session.summary?.[currentUser.id];
 
     const currentFloor = session.towerFloor ?? 1;
-    const currentStage = TOWER_STAGES.find(s => {
+    const currentStage = TOWER_STAGES.find((s: any) => {
         const stageFloor = parseInt(s.id.replace('tower-', ''));
         return stageFloor === currentFloor;
     });
     const nextFloor = currentFloor < 100 ? currentFloor + 1 : null;
-    const nextStage = nextFloor ? TOWER_STAGES.find(s => {
+    const nextStage = nextFloor ? TOWER_STAGES.find((s: any) => {
         const stageFloor = parseInt(s.id.replace('tower-', ''));
         return stageFloor === nextFloor;
     }) : null;

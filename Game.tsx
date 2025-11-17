@@ -22,6 +22,7 @@ import TowerControls from './components/game/TowerControls.js';
 import TowerSidebar from './components/game/TowerSidebar.js';
 import { useClientTimer } from './hooks/useClientTimer.js';
 import { calculateSimpleAiMove } from './client/goAiBotClient.js';
+import { processMoveClient } from './client/goLogicClient.js';
 
 // AI 유저 ID (싱글플레이에서 AI 차례 판단용)
 const AI_USER_ID = 'ai-player-01';
@@ -276,6 +277,38 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
             const myStones = currentUser.id === player1.id ? session.baseStones_p1 : session.baseStones_p2;
             if ((myStones?.length || 0) < (session.settings.baseStones || 4)) actionType = 'PLACE_BASE_STONE';
         } else if (['playing', 'hidden_placing'].includes(gameStatus) && isMyTurn) {
+            // 도전의 탑과 싱글플레이 게임은 클라이언트에서만 처리 (서버로 전송하지 않음)
+            if (isTower || isSinglePlayer) {
+                // 클라이언트에서 직접 게임 상태 업데이트
+                console.log(`[Game] ${isTower ? 'Tower' : 'Single player'} game - processing move client-side:`, { x, y, gameId, currentPlayer: myPlayerEnum });
+                
+                // 클라이언트에서 move 처리
+                const moveResult = processMoveClient(
+                    session.boardState,
+                    { x, y, player: myPlayerEnum },
+                    session.koInfo,
+                    session.moveHistory?.length || 0
+                );
+                
+                if (!moveResult.isValid) {
+                    console.warn(`[Game] ${isTower ? 'Tower' : 'Single player'} game - Invalid move:`, moveResult.reason);
+                    return;
+                }
+                
+                // 게임 상태 업데이트 (handlers를 통해)
+                handlers.handleAction({
+                    type: isTower ? 'TOWER_CLIENT_MOVE' : 'SINGLE_PLAYER_CLIENT_MOVE',
+                    payload: {
+                        gameId,
+                        x,
+                        y,
+                        newBoardState: moveResult.newBoardState,
+                        capturedStones: moveResult.capturedStones,
+                        newKoInfo: moveResult.newKoInfo,
+                    }
+                } as any);
+                return;
+            }
             actionType = 'PLACE_STONE'; 
             payload.isHidden = gameStatus === 'hidden_placing';
             if (payload.isHidden) audioService.stopScanBgm();
@@ -533,12 +566,13 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         const aiPlayerId = currentPlayer === Player.Black ? session.blackPlayerId : session.whitePlayerId;
         const isAiTurn = aiPlayerId === AI_USER_ID;
 
-        // 디버깅: AI 차례 판단 로그 (도전의 탑에서 더 상세하게)
-        if (isTower && currentPlayer !== Player.None) {
+        // 디버깅: AI 차례 판단 로그 (도전의 탑과 싱글플레이에서 상세하게)
+        if ((isTower || session.isSinglePlayer) && (currentPlayer === Player.Black || currentPlayer === Player.White)) {
             const logData = {
                 gameId: session.id,
                 gameCategory: session.gameCategory,
                 isTower,
+                isSinglePlayer: session.isSinglePlayer,
                 currentPlayer,
                 'currentPlayer === Player.White': currentPlayer === Player.White,
                 'currentPlayer === Player.Black': currentPlayer === Player.Black,
@@ -554,12 +588,22 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                 lastAiMove: lastAiMoveRef.current,
                 moveHistoryLength: session.moveHistory?.length || 0
             };
-            console.log('[Game] Tower AI turn check:', logData);
+            console.log(`[Game] ${isTower ? 'Tower' : 'Single player'} AI turn check:`, logData);
             if (currentPlayer === Player.White && session.whitePlayerId !== AI_USER_ID) {
-                console.error('[Game] MISMATCH: Current player is White but whitePlayerId is not AI_USER_ID!', {
+                console.error(`[Game] MISMATCH: Current player is White but whitePlayerId is not AI_USER_ID!`, {
                     whitePlayerId: session.whitePlayerId,
                     AI_USER_ID,
-                    blackPlayerId: session.blackPlayerId
+                    blackPlayerId: session.blackPlayerId,
+                    gameCategory: session.gameCategory,
+                    isSinglePlayer: session.isSinglePlayer
+                });
+            }
+            if (currentPlayer === Player.Black && session.blackPlayerId !== AI_USER_ID && session.isSinglePlayer) {
+                console.error(`[Game] MISMATCH: Single player - Current player is Black but blackPlayerId is not user!`, {
+                    blackPlayerId: session.blackPlayerId,
+                    whitePlayerId: session.whitePlayerId,
+                    AI_USER_ID,
+                    currentUserId: currentUser.id
                 });
             }
         }
@@ -657,6 +701,42 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                         session.id === currentGameId &&
                         session.gameStatus === currentGameStatus &&
                         currentMoveHistoryLength === moveHistoryLengthAtCalculation) {
+                        // 타워 게임과 싱글플레이 게임의 AI move도 클라이언트에서만 처리
+                        if (session.gameCategory === 'tower' || session.isSinglePlayer) {
+                            console.log(`[Game] ${session.gameCategory === 'tower' ? 'Tower' : 'Single player'} game - processing AI move client-side:`, {
+                                gameId: currentGameId,
+                                x: aiMove.x,
+                                y: aiMove.y,
+                                currentPlayer: currentPlayerAtCalculation
+                            });
+                            
+                            // 클라이언트에서 AI move 처리
+                            const aiMoveResult = processMoveClient(
+                                boardStateAtCalculation,
+                                { x: aiMove.x, y: aiMove.y, player: currentPlayerAtCalculation },
+                                koInfoAtCalculation,
+                                moveHistoryLengthAtCalculation
+                            );
+                            
+                            if (!aiMoveResult.isValid) {
+                                console.warn(`[Game] ${session.gameCategory === 'tower' ? 'Tower' : 'Single player'} game - Invalid AI move:`, aiMoveResult.reason);
+                                lastAiMoveRef.current = null;
+                                return;
+                            }
+                            
+                            // 게임 상태 업데이트 (handlers를 통해)
+                            handlers.handleAction({
+                                type: session.gameCategory === 'tower' ? 'TOWER_CLIENT_MOVE' : 'SINGLE_PLAYER_CLIENT_MOVE',
+                                payload: {
+                                    gameId: currentGameId,
+                                    x: aiMove.x,
+                                    y: aiMove.y,
+                                    newBoardState: aiMoveResult.newBoardState,
+                                    capturedStones: aiMoveResult.capturedStones,
+                                    newKoInfo: aiMoveResult.newKoInfo,
+                                }
+                            } as any);
+                        } else {
                         console.log('[Game] Sending AI move:', {
                             gameId: currentGameId,
                             x: aiMove.x,
@@ -672,6 +752,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                 isClientAiMove: true, // 클라이언트가 계산한 AI 수임을 표시
                             },
                         } as ServerAction);
+                        }
                     } else {
                         console.log('[Game] AI move cancelled due to state change:', {
                             gameStatus: session.gameStatus,

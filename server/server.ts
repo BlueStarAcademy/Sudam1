@@ -11,6 +11,7 @@ import * as db from './db.js';
 import { analyzeGame, initializeKataGo } from './kataGoService.js';
 // FIX: Import missing types from the centralized types file.
 import * as types from '../types/index.js';
+import { Player } from '../types/index.js';
 import { processGameSummary, endGame } from './summaryService.js';
 // FIX: Correctly import from the placeholder module.
 import * as aiPlayer from './aiPlayer.js';
@@ -455,20 +456,29 @@ const startServer = async () => {
                     if (activeGame) {
                         // User was in a game. Set the disconnection state for the single-player-disconnect logic.
                         // Their userStatus remains for now, so we know they were in this game.
+                        // 도전의 탑, 싱글플레이, AI 게임에서는 접속 끊김 패널티 없음
+                        const isNoPenaltyGame = activeGame.isSinglePlayer || activeGame.gameCategory === 'tower' || activeGame.isAiGame;
                         if (!activeGame.disconnectionState) {
-                            if (!activeGame.disconnectionCounts) activeGame.disconnectionCounts = {};
-                            activeGame.disconnectionCounts[userId] = (activeGame.disconnectionCounts[userId] || 0) + 1;
-                            if (activeGame.disconnectionCounts[userId] >= 3) {
+                            if (!isNoPenaltyGame) {
+                                // 일반 게임에서만 접속 끊김 카운트 및 패널티 적용
+                                if (!activeGame.disconnectionCounts) activeGame.disconnectionCounts = {};
+                                activeGame.disconnectionCounts[userId] = (activeGame.disconnectionCounts[userId] || 0) + 1;
+                                if (activeGame.disconnectionCounts[userId] >= 3) {
+                                    const winner = activeGame.blackPlayerId === userId ? types.Player.White : types.Player.Black;
+                                    await endGame(activeGame, winner, 'disconnect');
+                                } else {
+                                    activeGame.disconnectionState = { disconnectedPlayerId: userId, timerStartedAt: now };
+                                    if (activeGame.moveHistory.length < 10) {
+                                        const otherPlayerId = activeGame.player1.id === userId ? activeGame.player2.id : activeGame.player1.id;
+                                        if (!activeGame.canRequestNoContest) activeGame.canRequestNoContest = {};
+                                        activeGame.canRequestNoContest[otherPlayerId] = true;
+                                    }
+                                    await db.saveGame(activeGame);
+                                }
+                            } else {
+                                // 도전의 탑, 싱글플레이, AI 게임에서는 즉시 게임 종료 (패널티 없음)
                                 const winner = activeGame.blackPlayerId === userId ? types.Player.White : types.Player.Black;
                                 await endGame(activeGame, winner, 'disconnect');
-                            } else {
-                                activeGame.disconnectionState = { disconnectedPlayerId: userId, timerStartedAt: now };
-                                if (activeGame.moveHistory.length < 10) {
-                                    const otherPlayerId = activeGame.player1.id === userId ? activeGame.player2.id : activeGame.player1.id;
-                                    if (!activeGame.canRequestNoContest) activeGame.canRequestNoContest = {};
-                                    activeGame.canRequestNoContest[otherPlayerId] = true;
-                                }
-                                await db.saveGame(activeGame);
                             }
                         }
                     } else if (userStatus?.status === types.UserStatus.Waiting) {
@@ -652,6 +662,16 @@ const startServer = async () => {
             // Handle post-game summary processing for all games that finished
             const summaryGamesToBroadcast: Record<string, types.LiveGameSession> = {};
             for (const game of updatedGames) {
+                // 타워 게임 종료 처리
+                if (game.gameCategory === 'tower' && (game.gameStatus === 'ended' || game.gameStatus === 'no_contest') && !game.statsUpdated) {
+                    // 타워 게임은 클라이언트에서 실행되지만, 서버에서 종료 처리 필요
+                    const { endGame } = await import('./summaryService.js');
+                    if (game.winner !== undefined && game.winner !== null) {
+                        await endGame(game, game.winner as Player, game.winReason || 'score');
+                    }
+                    summaryGamesToBroadcast[game.id] = game;
+                }
+                // 일반 게임 종료 처리
                 const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === game.mode);
                 const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === game.mode);
                 if (!game.isSinglePlayer && (isPlayful || isStrategic) && (game.gameStatus === 'ended' || game.gameStatus === 'no_contest') && !game.statsUpdated) {

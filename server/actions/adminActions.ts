@@ -737,6 +737,72 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             }
         }
         
+        case 'ADMIN_CREATE_HOME_BOARD_POST': {
+            const { title, content, isPinned } = payload;
+            if (!title || !content) {
+                return { error: '제목과 내용을 입력해주세요.' };
+            }
+
+            const post = await db.createHomeBoardPost({
+                title,
+                content,
+                authorId: user.id,
+                isPinned: isPinned || false
+            });
+
+            await createAdminLog(user, 'create_home_board_post', { id: user.id, nickname: user.nickname }, { postId: post.id, title });
+
+            // 모든 게시글을 다시 로드하고 브로드캐스트
+            const allPosts = await db.getAllHomeBoardPosts();
+            broadcast({ type: 'HOME_BOARD_POSTS_UPDATE', payload: { homeBoardPosts: allPosts } });
+
+            return { clientResponse: { message: '게시글이 작성되었습니다.', post } };
+        }
+
+        case 'ADMIN_UPDATE_HOME_BOARD_POST': {
+            const { postId, title, content, isPinned } = payload;
+            if (!title || !content) {
+                return { error: '제목과 내용을 입력해주세요.' };
+            }
+
+            const existingPost = await db.getHomeBoardPost(postId);
+            if (!existingPost) {
+                return { error: '게시글을 찾을 수 없습니다.' };
+            }
+
+            const updatedPost = await db.updateHomeBoardPost(postId, {
+                title,
+                content,
+                isPinned: isPinned || false
+            });
+
+            await createAdminLog(user, 'update_home_board_post', { id: user.id, nickname: user.nickname }, { postId, title });
+
+            // 모든 게시글을 다시 로드하고 브로드캐스트
+            const allPosts = await db.getAllHomeBoardPosts();
+            broadcast({ type: 'HOME_BOARD_POSTS_UPDATE', payload: { homeBoardPosts: allPosts } });
+
+            return { clientResponse: { message: '게시글이 수정되었습니다.', post: updatedPost } };
+        }
+
+        case 'ADMIN_DELETE_HOME_BOARD_POST': {
+            const { postId } = payload;
+
+            const existingPost = await db.getHomeBoardPost(postId);
+            if (!existingPost) {
+                return { error: '게시글을 찾을 수 없습니다.' };
+            }
+
+            await db.deleteHomeBoardPost(postId);
+            await createAdminLog(user, 'delete_home_board_post', { id: user.id, nickname: user.nickname }, { postId, title: existingPost.title });
+
+            // 모든 게시글을 다시 로드하고 브로드캐스트
+            const allPosts = await db.getAllHomeBoardPosts();
+            broadcast({ type: 'HOME_BOARD_POSTS_UPDATE', payload: { homeBoardPosts: allPosts } });
+
+            return { clientResponse: { message: '게시글이 삭제되었습니다.' } };
+        }
+        
         default:
             return { error: 'Unknown admin action type.' };
     }

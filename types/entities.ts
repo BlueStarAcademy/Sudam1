@@ -586,13 +586,15 @@ export type LiveGameSession = {
   moveHistory: Move[];
   serverRevision?: number;
   lastSyncedAt?: number;
-  captures: { [key in Player]: number };
-  baseStoneCaptures: { [key in Player]: number };
-  hiddenStoneCaptures: { [key in Player]: number };
+  captures: { [key in Player]: number; [Player.None]: number; };
+  baseStoneCaptures: { [key in Player]: number; [Player.None]: number; };
+  hiddenStoneCaptures: { [key in Player]: number; [Player.None]: number; };
   winner: Player | null;
   winReason: WinReason | null;
   finalScores?: { black: number, white: number };
   createdAt: number;
+  startTime?: number;
+  endTime?: number;
   lastMove: Point | null;
   lastTurnStones?: Point[] | null;
   stonesPlacedThisTurn?: Point[] | null;
@@ -618,6 +620,9 @@ export type LiveGameSession = {
   revealEndTime?: number;
   disconnectionState?: { disconnectedPlayerId: string; timerStartedAt: number; } | null;
   disconnectionCounts: { [playerId: string]: number; };
+  aiHiddenItemUsed?: boolean;
+  aiHiddenItemTurn?: number;
+  aiHiddenItemAnimationEndTime?: number;
   noContestInitiatorIds?: string[];
   currentActionButtons: { [playerId: string]: any[] }; // ActionButton
   actionButtonCooldownDeadline?: { [playerId: string]: number | undefined };
@@ -769,8 +774,8 @@ export type AdminLog = {
   adminNickname: string;
   targetUserId: string;
   targetNickname: string;
-  action: 'reset_stats' | 'reset_full' | 'delete_user' | 'force_logout' | 'force_delete_game' | 'send_mail' | 'set_game_description' | 'update_user_details' | 'apply_sanction' | 'lift_sanction' | 'force_win' | 'reset_tournament_session';
-  backupData: Partial<User> | { status: UserStatusInfo } | LiveGameSession | { mailTitle: string } | SanctionLogData | { gameId: string, winnerId: string };
+  action: 'reset_stats' | 'reset_full' | 'delete_user' | 'force_logout' | 'force_delete_game' | 'send_mail' | 'set_game_description' | 'update_user_details' | 'apply_sanction' | 'lift_sanction' | 'force_win' | 'reset_tournament_session' | 'create_home_board_post' | 'update_home_board_post' | 'delete_home_board_post';
+  backupData: Partial<User> | { status: UserStatusInfo } | LiveGameSession | { mailTitle: string } | SanctionLogData | { gameId: string, winnerId: string } | { postId: string, title: string };
 };
 
 export type Announcement = {
@@ -781,6 +786,16 @@ export type Announcement = {
 export type OverrideAnnouncement = {
     message: string;
     modes: GameMode[] | 'all';
+};
+
+export type HomeBoardPost = {
+    id: string;
+    title: string;
+    content: string;
+    authorId: string;
+    isPinned: boolean;
+    createdAt: number;
+    updatedAt: number;
 };
 
 export type ActionButton = {

@@ -555,6 +555,8 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                     allObtainedItems.unshift({ name: `${accumulatedGold} 골드 (경기 보상)`, image: '/images/icon/Gold.png' });
                 }
                 
+                // oldCumulativeScore를 먼저 정의 (나중에 사용하기 위해)
+                const oldCumulativeScore = freshUser.cumulativeTournamentScore || 0;
                 return { clientResponse: { obtainedItemsBulk: allObtainedItems, updatedUser, tournamentScoreChange: { oldScore: oldCumulativeScore, newScore: freshUser.cumulativeTournamentScore, scoreReward: scoreReward } }};
             }
 
@@ -592,9 +594,11 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 const currentCumulativeScore = freshUser.cumulativeTournamentScore || 0;
                 const currentScore = freshUser.tournamentScore || 0;
                 
+                // oldCumulativeScore를 먼저 정의 (나중에 사용하기 위해)
+                const oldCumulativeScore = freshUser.cumulativeTournamentScore || 0;
+                
                 // 점수가 아직 추가되지 않았으면 추가 (토너먼트 완료 시점에 점수가 추가되지 않은 경우 대비)
                 if (currentCumulativeScore < scoreReward || currentScore < scoreReward) {
-                    const oldCumulativeScore = freshUser.cumulativeTournamentScore || 0;
                     freshUser.cumulativeTournamentScore = oldCumulativeScore + scoreReward;
                     // tournamentScore는 주간 점수로 유지 (주간 리셋용)
                     const oldScore = freshUser.tournamentScore || 0;
