@@ -500,15 +500,20 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
                 tournamentService.startNextRound(tournamentState, freshUser);
             }
             
-            // bracket_ready 상태에서 컨디션이 부여되지 않은 경우 항상 컨디션 부여
-            // (뒤로가기 후 다시 들어온 경우를 포함하여 모든 경우에 대응)
-            // startNextRound에서 컨디션을 부여했을 수도 있지만, 확실하게 부여하기 위해 다시 확인
+            // bracket_ready 상태에서 컨디션이 부여되지 않은 경우에만 컨디션 부여
+            // 이미 컨디션이 부여되어 있으면(40-100 사이의 유효한 값) 다시 부여하지 않음
+            // (뒤로가기 후 다시 들어온 경우 컨디션을 유지하기 위함)
             if (tournamentState.status === 'bracket_ready') {
                 // 모든 플레이어의 컨디션을 확인하고, 유효하지 않으면 부여
                 tournamentState.players.forEach(p => {
                     // 컨디션이 undefined, null, 1000이거나 유효 범위(40-100)를 벗어나면 새로 부여
-                    if (p.condition === undefined || p.condition === null || p.condition === 1000 || 
-                        p.condition < 40 || p.condition > 100) {
+                    // 이미 유효한 컨디션이 있으면(40-100 사이) 다시 부여하지 않음
+                    const hasValidCondition = p.condition !== undefined && 
+                                             p.condition !== null && 
+                                             p.condition !== 1000 && 
+                                             p.condition >= 40 && 
+                                             p.condition <= 100;
+                    if (!hasValidCondition) {
                         p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
                     }
                 });

@@ -1151,7 +1151,9 @@ export const makeAiMove = async (game: LiveGameSession) => {
 
         // 새로운 바둑 AI 봇 시스템 사용 여부 확인
         // 싱글플레이, 도전의탑, 전략바둑에서 사용
+        const isTower = game.gameCategory === 'tower';
         const useGoAiBot = game.isSinglePlayer ||
+                           isTower ||
                            (game.settings as any)?.useGoAiBot === true ||
                            (game.settings as any)?.goAiBotLevel !== undefined;
         
@@ -1159,8 +1161,8 @@ export const makeAiMove = async (game: LiveGameSession) => {
             // AI 봇 단계 결정
             let aiLevel = 1; // 기본값
             
-            if (game.isSinglePlayer) {
-                // 싱글플레이: 게임 설정의 aiDifficulty를 사용 (katagoLevel 제거됨)
+            if (game.isSinglePlayer || isTower) {
+                // 싱글플레이/도전의 탑: 게임 설정의 aiDifficulty를 사용 (katagoLevel 제거됨)
                 aiLevel = (game.settings.aiDifficulty || 1);
             } else if ((game.settings as any)?.goAiBotLevel !== undefined) {
                 aiLevel = (game.settings as any).goAiBotLevel;

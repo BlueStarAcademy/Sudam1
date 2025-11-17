@@ -26,9 +26,10 @@ interface GameArenaProps extends GameProps {
 const GameArena: React.FC<GameArenaProps> = (props) => {
     const { session, isSinglePlayerPaused, resumeCountdown, isBoardLocked, ...restProps } = props;
     const sharedProps = { ...restProps, session };
-    const { mode, isSinglePlayer } = session;
+    const { mode, isSinglePlayer, gameCategory } = session;
     
-    if (isSinglePlayer) {
+    // 도전의 탑 게임도 싱글플레이어 아레나와 동일하게 처리 (바둑 게임이므로)
+    if (isSinglePlayer || gameCategory === 'tower') {
         return <SinglePlayerArena {...sharedProps} isPaused={isSinglePlayerPaused} resumeCountdown={resumeCountdown} isBoardLocked={isBoardLocked} />;
     }
 

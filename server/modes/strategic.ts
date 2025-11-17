@@ -79,10 +79,10 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
 
         if (isFischer) {
             // Fischer timeout is an immediate loss.
-        } else if (game[timeKey] > 0) { // Main time expired
+        } else if (game[timeKey] > 0) { // Main time expired -> enter byoyomi without consuming a period
             game[timeKey] = 0;
-            if (game.settings.byoyomiCount > 0 && game[byoyomiKey] > 0) {
-                game[byoyomiKey]--;
+            if (game.settings.byoyomiCount > 0) {
+                // Do not decrement period on entering byoyomi
                 game.turnDeadline = now + game.settings.byoyomiTime * 1000;
                 game.turnStartTime = now;
                 return;
@@ -134,11 +134,39 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         }
     }
 
+    // 도전의 탑 또는 싱글플레이: 흑돌 턴 제한 체크
+    const isTower = game.gameCategory === 'tower';
+    if ((game.isSinglePlayer || isTower) && game.gameStatus === 'playing' && game.stageId) {
+        const { TOWER_STAGES } = await import('../../constants/towerConstants.js');
+        const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
+        const stage = isTower 
+            ? TOWER_STAGES.find(s => s.id === game.stageId)
+            : SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+        
+        if (stage?.blackTurnLimit) {
+            const blackMovesCount = game.moveHistory.filter(m => m.player === types.Player.Black && m.x !== -1).length;
+            const blackTurnLimitBonus = (game as any).blackTurnLimitBonus || 0;
+            const effectiveBlackTurnLimit = stage.blackTurnLimit + blackTurnLimitBonus;
+            const remainingTurns = effectiveBlackTurnLimit - blackMovesCount;
+            
+            if (remainingTurns <= 0 && effectiveBlackTurnLimit > 0) {
+                console.log(`[Tower/SinglePlayer] Black ran out of turns in update loop (${blackMovesCount}/${effectiveBlackTurnLimit}), White wins. Game status before endGame: ${game.gameStatus}`);
+                if (game.gameStatus === 'playing') {
+                    await summaryService.endGame(game, types.Player.White, 'timeout');
+                    console.log(`[Tower/SinglePlayer] endGame called in update loop. Game status after: ${game.gameStatus}`);
+                } else {
+                    console.log(`[Tower/SinglePlayer] Game already ended in update loop (status: ${game.gameStatus}), skipping endGame`);
+                }
+                return;
+            }
+        }
+    }
+
     // Delegate to mode-specific update logic
     updateNigiriState(game, now);
     updateCaptureState(game, now);
     updateBaseState(game, now);
-    updateHiddenState(game, now);
+    await updateHiddenState(game, now);
     updateMissileState(game, now);
 };
 

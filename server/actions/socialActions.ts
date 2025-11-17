@@ -323,20 +323,34 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
         case 'LEAVE_AI_GAME': {
             const { gameId } = payload;
             const game = await db.getLiveGame(gameId);
-            if (!game) return { error: 'Game not found.' };
+            if (!game) {
+                // 게임이 없어도 사용자 상태는 업데이트 (이미 종료된 게임일 수 있음)
+                const userStatus = volatileState.userStatuses[user.id];
+                if (userStatus) {
+                    userStatus.status = UserStatus.Online;
+                    delete userStatus.mode;
+                    delete userStatus.gameId;
+                    delete userStatus.spectatingGameId;
+                } else {
+                    volatileState.userStatuses[user.id] = { status: UserStatus.Online };
+                }
+                broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
+                return {}; // 에러를 반환하지 않고 성공 처리
+            }
 
             if (volatileState.userStatuses[user.id]) {
-                // 싱글플레이 게임이 아닌 경우, 게임 모드를 strategic/playful로 변환
+                const isTower = game.gameCategory === 'tower';
+                // 싱글플레이 게임이나 도전의 탑이 아닌 경우, 게임 모드를 strategic/playful로 변환
                 let lobbyMode: GameMode | 'strategic' | 'playful' | undefined = undefined;
-                if (!game.isSinglePlayer) {
+                if (!game.isSinglePlayer && !isTower) {
                     if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode)) {
                         lobbyMode = 'strategic';
                     } else if (PLAYFUL_GAME_MODES.some(m => m.mode === game.mode)) {
                         lobbyMode = 'playful';
                     }
                 }
-                // 싱글플레이 게임이거나 모드를 찾을 수 없는 경우 Online 상태로 변경 (게임 모드 없음)
-                if (game.isSinglePlayer || !lobbyMode) {
+                // 싱글플레이 게임이나 도전의 탑이거나 모드를 찾을 수 없는 경우 Online 상태로 변경 (게임 모드 없음)
+                if (game.isSinglePlayer || isTower || !lobbyMode) {
                     volatileState.userStatuses[user.id] = { status: UserStatus.Online };
                     delete volatileState.userStatuses[user.id].mode;
                     delete volatileState.userStatuses[user.id].gameId;

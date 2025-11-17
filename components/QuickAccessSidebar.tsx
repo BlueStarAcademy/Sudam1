@@ -34,7 +34,7 @@ const QuickAccessSidebar: React.FC<QuickAccessSidebarProps> = ({ mobile = false,
         ? "flex flex-col items-center justify-center p-1 rounded-md w-14 h-14 bg-gray-700/50 hover:bg-gray-600/50"
         : `flex flex-col items-center justify-center p-1 rounded-lg w-full bg-gray-700/50 hover:bg-gray-600/50`;
     
-    const iconSize = mobile ? "w-6 h-6 object-contain" : compact ? "w-7 h-7 object-contain" : "w-8 h-8 object-contain";
+    const iconSize = mobile ? "w-6 h-6 object-contain" : compact ? "w-8 h-8 object-contain" : "w-8 h-8 object-contain";
     const labelSize = mobile ? "text-[10px] mt-1" : compact ? "text-[10px] mt-1" : "text-xs mt-1";
     
     const notificationDotClass = mobile

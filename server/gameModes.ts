@@ -83,6 +83,45 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
         return game;
     }
     
+    // 계가 시작 전: 아직 공개되지 않은 히든 돌들을 모두 공개
+    if (isHiddenMode && game.hiddenMoves && game.moveHistory) {
+        if (!game.permanentlyRevealedStones) {
+            game.permanentlyRevealedStones = [];
+        }
+        
+        // 모든 히든 돌을 확인하여 아직 공개되지 않은 것들을 찾기
+        const stonesToReveal: types.Point[] = [];
+        
+        for (const [moveIndexStr, isHidden] of Object.entries(game.hiddenMoves)) {
+            if (!isHidden) continue;
+            
+            const moveIndex = parseInt(moveIndexStr);
+            const move = game.moveHistory[moveIndex];
+            
+            if (!move) continue;
+            
+            const { x, y } = move;
+            
+            // 이미 영구적으로 공개된 돌인지 확인
+            const isAlreadyRevealed = game.permanentlyRevealedStones.some(
+                p => p.x === x && p.y === y
+            );
+            
+            if (isAlreadyRevealed) continue;
+            
+            // 돌이 보드에 아직 남아있는지 확인 (캡처되지 않았는지)
+            if (game.boardState[y]?.[x] !== types.Player.None) {
+                stonesToReveal.push({ x, y });
+            }
+        }
+        
+        // 발견되지 않은 히든 돌들을 모두 영구적으로 공개
+        if (stonesToReveal.length > 0) {
+            game.permanentlyRevealedStones.push(...stonesToReveal);
+            console.log(`[getGameResult] Revealed ${stonesToReveal.length} hidden stones before scoring for game ${game.id}`);
+        }
+    }
+    
     game.gameStatus = 'scoring';
     game.winReason = 'score';
     game.isAnalyzing = true;
@@ -306,11 +345,12 @@ export const resetGameForRematch = (game: LiveGameSession, negotiation: types.Ne
 
 export const updateGameStates = async (games: LiveGameSession[], now: number): Promise<LiveGameSession[]> => {
     // 싱글플레이 게임과 멀티플레이 게임을 분리하여 처리
+    // 도전의 탑도 싱글플레이어 게임과 동일하게 처리
     const singlePlayerGames: LiveGameSession[] = [];
     const multiPlayerGames: LiveGameSession[] = [];
     
     for (const game of games) {
-        if (game.isSinglePlayer) {
+        if (game.isSinglePlayer || game.gameCategory === 'tower') {
             singlePlayerGames.push(game);
         } else {
             multiPlayerGames.push(game);
@@ -361,45 +401,51 @@ const processGame = async (game: LiveGameSession, now: number): Promise<LiveGame
                 return game;
             }
 
-            // 싱글플레이 게임 최적화: 최소한의 처리만 수행
-            if (game.isSinglePlayer) {
-                // 싱글플레이에서는 player1 정보만 필요시 업데이트 (액션 버튼 등)
+            // 싱글플레이 게임 및 도전의 탑 최적화: 최소한의 처리만 수행
+            const isTower = game.gameCategory === 'tower';
+            if (game.isSinglePlayer || isTower) {
+                // 싱글플레이/도전의 탑에서는 player1 정보만 필요시 업데이트
                 // player2는 AI이므로 업데이트 불필요
                 const { getCachedUser } = await import('./gameCache.js');
                 const p1 = await getCachedUser(game.player1.id);
                 if (p1) game.player1 = p1;
 
-                const playableStatuses: types.GameStatus[] = [
-                    'playing', 'hidden_placing', 'scanning', 'missile_selecting',
-                    'alkkagi_playing',
-                    'curling_playing',
-                    'dice_rolling',
-                    'dice_placing',
-                    'thief_rolling',
-                    'thief_placing',
-                ];
+                // 도전의 탑은 클라이언트에서 모든 처리가 이루어지므로 서버에서 액션 버튼 업데이트 불필요
+                // 싱글플레이어만 액션 버튼 업데이트 수행
+                if (game.isSinglePlayer && !isTower) {
+                    const playableStatuses: types.GameStatus[] = [
+                        'playing', 'hidden_placing', 'scanning', 'missile_selecting',
+                        'alkkagi_playing',
+                        'curling_playing',
+                        'dice_rolling',
+                        'dice_placing',
+                        'thief_rolling',
+                        'thief_placing',
+                    ];
 
-                // 액션 버튼 업데이트만 수행 (싱글플레이에서도 필요)
-                if (playableStatuses.includes(game.gameStatus)) {
-                    const deadline = game.actionButtonCooldownDeadline?.[game.player1.id];
-                    if (typeof deadline !== 'number' || now >= deadline) {
-                        game.currentActionButtons[game.player1.id] = getNewActionButtons(game);
+                    // 액션 버튼 업데이트만 수행 (싱글플레이에서만)
+                    if (playableStatuses.includes(game.gameStatus)) {
+                        if (!game.currentActionButtons) game.currentActionButtons = {};
+                        const deadline = game.actionButtonCooldownDeadline?.[game.player1.id];
+                        if (typeof deadline !== 'number' || now >= deadline) {
+                            game.currentActionButtons[game.player1.id] = getNewActionButtons(game);
 
-                        const effects = effectService.calculateUserEffects(game.player1);
-                        const cooldown = (5 * 60 - (effects.mythicStatBonuses[types.MythicStat.MannerActionCooldown]?.flat || 0)) * 1000;
+                            const effects = effectService.calculateUserEffects(game.player1);
+                            const cooldown = (5 * 60 - (effects.mythicStatBonuses[types.MythicStat.MannerActionCooldown]?.flat || 0)) * 1000;
 
-                        if (!game.actionButtonCooldownDeadline) game.actionButtonCooldownDeadline = {};
-                        game.actionButtonCooldownDeadline[game.player1.id] = now + cooldown;
-                        if (game.actionButtonUsedThisCycle) {
-                            game.actionButtonUsedThisCycle[game.player1.id] = false;
+                            if (!game.actionButtonCooldownDeadline) game.actionButtonCooldownDeadline = {};
+                            game.actionButtonCooldownDeadline[game.player1.id] = now + cooldown;
+                            if (game.actionButtonUsedThisCycle) {
+                                game.actionButtonUsedThisCycle[game.player1.id] = false;
+                            }
                         }
                     }
                 }
 
-                // 싱글플레이에서는 AI 수 처리를 게임 루프에서 하지 않음
-                // (PLACE_STONE 액션에서 setImmediate로 즉시 처리됨)
+                // 싱글플레이/도전의 탑에서는 AI 수 처리를 게임 루프에서 하지 않음
+                // (클라이언트에서 처리됨)
                 // 단, 타임아웃 체크 등 게임 상태 업데이트는 필요
-                if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) || game.isSinglePlayer) {
+                if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) || game.isSinglePlayer || isTower) {
                     await updateStrategicGameState(game, now);
                 }
 
@@ -430,6 +476,11 @@ const processGame = async (game: LiveGameSession, now: number): Promise<LiveGame
             ];
 
             if (playableStatuses.includes(game.gameStatus)) {
+                // Ensure maps are initialized before per-player writes
+                if (!game.currentActionButtons) game.currentActionButtons = {};
+                if (!game.actionButtonCooldownDeadline) game.actionButtonCooldownDeadline = {};
+                if (!game.actionButtonUsedThisCycle) game.actionButtonUsedThisCycle = {};
+
                 for (const player of players) {
                     const deadline = game.actionButtonCooldownDeadline?.[player.id];
                     if (typeof deadline !== 'number' || now >= deadline) {
@@ -438,17 +489,16 @@ const processGame = async (game: LiveGameSession, now: number): Promise<LiveGame
                         const effects = effectService.calculateUserEffects(player);
                         const cooldown = (5 * 60 - (effects.mythicStatBonuses[types.MythicStat.MannerActionCooldown]?.flat || 0)) * 1000;
 
-                        if (!game.actionButtonCooldownDeadline) game.actionButtonCooldownDeadline = {};
                         game.actionButtonCooldownDeadline[player.id] = now + cooldown;
-                        if (game.actionButtonUsedThisCycle) {
-                            game.actionButtonUsedThisCycle[player.id] = false;
-                        }
+                        game.actionButtonUsedThisCycle[player.id] = false;
                     }
                 }
             }
 
             const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None &&
-                (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
+                (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId) &&
+                // 클라이언트 전용 AI로 동작시킬 게임(도전의 탑)은 서버에서 AI 수를 처리하지 않음
+                game.gameCategory !== 'tower';
 
             // 멀티플레이 AI 게임의 경우에만 메인 루프에서 AI 수 처리
             if (isAiTurn && game.gameStatus !== 'ended' && !['missile_animating', 'hidden_reveal_animating', 'alkkagi_animating', 'curling_animating'].includes(game.gameStatus)) {

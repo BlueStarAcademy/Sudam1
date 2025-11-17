@@ -71,10 +71,10 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
 
         if (isFischer) {
             // Fischer timeout is an immediate loss.
-        } else if (game[timeKey] > 0) { // Main time expired
+        } else if (game[timeKey] > 0) { // Main time expired -> enter byoyomi without consuming a period
             game[timeKey] = 0;
-            if (game.settings.byoyomiCount > 0 && game[byoyomiKey] > 0) {
-                game[byoyomiKey]--;
+            if (game.settings.byoyomiCount > 0) {
+                // Do not decrement period on entering byoyomi
                 game.turnDeadline = now + game.settings.byoyomiTime * 1000;
                 game.turnStartTime = now;
                 return;
@@ -139,8 +139,9 @@ export const handleStrategicGameAction = async (volatileState: types.VolatileSta
 const handleStandardAction = async (volatileState: types.VolatileState, game: types.LiveGameSession, action: types.ServerAction, user: types.User): Promise<types.HandleActionResult | null> => {
     const { type, payload } = action as any;
     const now = Date.now();
-    // 싱글플레이 게임에서는 player1이 유저, player2가 AI
-    const myPlayerEnum = game.isSinglePlayer
+    // 싱글플레이 게임 및 도전의 탑에서는 player1이 유저, player2가 AI
+    const isTower = game.gameCategory === 'tower';
+    const myPlayerEnum = (game.isSinglePlayer || isTower)
         ? (user.id === game.player1.id ? (game.player1.id === game.blackPlayerId ? types.Player.Black : types.Player.White) : types.Player.None)
         : (user.id === game.blackPlayerId ? types.Player.Black : (user.id === game.whitePlayerId ? types.Player.White : types.Player.None));
     const isMyTurn = myPlayerEnum === game.currentPlayer;
@@ -165,10 +166,12 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
             // 동시성 제어: 이미 처리 중인 수가 있으면 거부 (싱글플레이에서 빠른 착수 방지)
             // 단, AI 수(isClientAiMove)인 경우에는 processingMove를 무시하고 진행 (AI는 빠르게 처리되어야 함)
+            // 도전의 탑에서는 processingMove 체크를 더 짧게 조정 (빠른 반응성)
+            const processingTimeout = isTower ? 1000 : 3000; // 도전의 탑: 1초, 싱글플레이: 3초
             if (game.processingMove && !isClientAiMove) {
                 const processingAge = now - game.processingMove.timestamp;
-                // 3초 이상 지난 처리 중인 수는 타임아웃으로 간주하고 해제 (더 짧게 조정)
-                if (processingAge > 3000) {
+                // 타임아웃 이상 지난 처리 중인 수는 타임아웃으로 간주하고 해제
+                if (processingAge > processingTimeout) {
                     console.warn(`[PLACE_STONE] Clearing stale processingMove for game ${game.id} (age: ${processingAge}ms)`);
                     game.processingMove = null;
                 } else {
@@ -189,14 +192,13 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 const movePlayerEnum = game.currentPlayer;
                 // 이미 같은 위치에 같은 플레이어의 돌이 있는지 확인
                 if (game.boardState[y][x] === movePlayerEnum) {
-                    // 이미 돌이 있으면 중복 요청으로 간주하고 무시
-                    console.log(`[PLACE_STONE] Duplicate AI move ignored: ${movePlayerEnum} at (${x}, ${y}) already exists`);
+                    // 이미 돌이 있으면 중복 요청으로 간주하고 무시 (조용히 처리)
                     return {};
                 }
                 // moveHistory에 이미 같은 수가 있는지 확인
                 const existingMove = game.moveHistory.find(m => m.x === x && m.y === y && m.player === movePlayerEnum);
                 if (existingMove) {
-                    console.log(`[PLACE_STONE] Duplicate AI move ignored: move already in history at (${x}, ${y})`);
+                    // 중복 요청으로 간주하고 무시 (조용히 처리)
                     return {};
                 }
             }
@@ -266,6 +268,77 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 
                 if (!game.permanentlyRevealedStones) game.permanentlyRevealedStones = [];
                 game.permanentlyRevealedStones.push({ x, y });
+
+                // 공개된 히든 돌의 문양 유지 (원래 플레이어의 문양으로 유지)
+                // moveHistory에서 원래 플레이어 확인
+                const moveIndexAtTarget = game.moveHistory.findIndex(m => m.x === x && m.y === y);
+                if (moveIndexAtTarget !== -1) {
+                    const originalMove = game.moveHistory[moveIndexAtTarget];
+                    const originalPlayer = originalMove.player; // 원래 플레이어
+                    
+                    // 원래 플레이어가 흑인 경우
+                    if (originalPlayer === types.Player.Black) {
+                        // blackPatternStones에 추가 (이미 있으면 유지)
+                        if (!game.blackPatternStones) game.blackPatternStones = [];
+                        if (!game.blackPatternStones.some(p => p.x === x && p.y === y)) {
+                            game.blackPatternStones.push({ x, y });
+                        }
+                        // whitePatternStones에서 제거 (잘못 추가된 경우)
+                        if (game.whitePatternStones) {
+                            game.whitePatternStones = game.whitePatternStones.filter(p => !(p.x === x && p.y === y));
+                        }
+                    } else {
+                        // 원래 플레이어가 백인 경우
+                        if (!game.whitePatternStones) game.whitePatternStones = [];
+                        if (!game.whitePatternStones.some(p => p.x === x && p.y === y)) {
+                            game.whitePatternStones.push({ x, y });
+                        }
+                        // blackPatternStones에서 제거 (잘못 추가된 경우)
+                        if (game.blackPatternStones) {
+                            game.blackPatternStones = game.blackPatternStones.filter(p => !(p.x === x && p.y === y));
+                        }
+                    }
+                }
+                
+                // 일반적인 prunePatternStones 로직
+                // 주의: permanentlyRevealedStones에 있는 위치는 boardState의 player와 관계없이 원래 플레이어의 문양을 유지해야 함
+                const prunePatternStones = () => {
+                    if (game.blackPatternStones) {
+                        game.blackPatternStones = game.blackPatternStones.filter(point => {
+                            const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
+                            if (isPermanentlyRevealed) {
+                                // 공개된 히든 돌의 경우, moveHistory에서 원래 플레이어 확인
+                                const moveIndex = game.moveHistory.findIndex(m => m.x === point.x && m.y === point.y);
+                                if (moveIndex !== -1) {
+                                    const originalMove = game.moveHistory[moveIndex];
+                                    // 원래 플레이어가 흑이면 유지
+                                    return originalMove.player === types.Player.Black;
+                                }
+                            }
+                            // 일반적인 경우: boardState의 player 확인
+                            const occupant = game.boardState?.[point.y]?.[point.x];
+                            return occupant === types.Player.Black;
+                        });
+                    }
+                    if (game.whitePatternStones) {
+                        game.whitePatternStones = game.whitePatternStones.filter(point => {
+                            const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
+                            if (isPermanentlyRevealed) {
+                                // 공개된 히든 돌의 경우, moveHistory에서 원래 플레이어 확인
+                                const moveIndex = game.moveHistory.findIndex(m => m.x === point.x && m.y === point.y);
+                                if (moveIndex !== -1) {
+                                    const originalMove = game.moveHistory[moveIndex];
+                                    // 원래 플레이어가 백이면 유지
+                                    return originalMove.player === types.Player.White;
+                                }
+                            }
+                            // 일반적인 경우: boardState의 player 확인
+                            const occupant = game.boardState?.[point.y]?.[point.x];
+                            return occupant === types.Player.White;
+                        });
+                    }
+                };
+                prunePatternStones();
 
                 game.animation = { 
                     type: 'hidden_reveal', 
@@ -559,10 +632,13 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     return {};
                 }
                 
-                // 유단자 1~5 스테이지: 흑돌 개수제한 체크
-                if (stage?.blackTurnLimit && movePlayerEnum === types.Player.Black) {
+                // 유단자 1~5 스테이지 또는 도전의 탑: 흑돌 개수제한 체크
+                if ((stage?.blackTurnLimit || (isTower && game.settings.blackTurnLimit)) && movePlayerEnum === types.Player.Black) {
                     const blackMovesCount = game.moveHistory.filter(m => m.player === types.Player.Black && m.x !== -1).length;
-                    if (blackMovesCount >= stage.blackTurnLimit) {
+                    // 도전의 탑에서 턴 추가 아이템으로 증가한 턴을 반영
+                    const blackTurnLimitBonus = (game as any).blackTurnLimitBonus || 0;
+                    const effectiveBlackTurnLimit = (stage?.blackTurnLimit || game.settings.blackTurnLimit || 0) + blackTurnLimitBonus;
+                    if (blackMovesCount >= effectiveBlackTurnLimit) {
                         // 흑돌 개수제한 도달 시 AI 승리
                         const { endGame } = await import('../summaryService.js');
                         await endGame(game, types.Player.White, 'timeout');
@@ -650,8 +726,8 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             // 처리 중인 수 해제
             game.processingMove = null;
 
-            // 싱글플레이인 경우 AI 수 처리
-            if (game.isSinglePlayer && game.gameStatus === 'playing' && game.currentPlayer !== types.Player.None) {
+            // 싱글플레이 및 도전의 탑인 경우 AI 수 처리
+            if ((game.isSinglePlayer || isTower) && game.gameStatus === 'playing' && game.currentPlayer !== types.Player.None) {
                 const aiPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId : game.whitePlayerId;
                 const isAiTurn = aiPlayerId === aiUserId;
                 
@@ -665,10 +741,16 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         // 단, 클라이언트가 잘못 계산한 경우를 대비해 검증은 이미 위에서 수행됨
                         // 클라이언트에서 AI 수를 보내는 경우 1초 대기는 클라이언트에서 처리하므로 서버에서는 대기하지 않음
                     } else {
-                        // 클라이언트가 AI 수를 계산하지 않은 경우에만 서버에서 처리
-                        // (하위 호환성을 위해 유지, 점진적으로 클라이언트 측 AI로 전환)
-                        const { aiProcessingQueue } = await import('../aiProcessingQueue.js');
-                        aiProcessingQueue.enqueue(game.id, Date.now());
+                        // 도전의 탑에서는 클라이언트 측 AI만 사용 (서버 측 AI 처리 비활성화)
+                        if (isTower) {
+                            // 도전의 탑에서는 서버 측 AI 처리를 하지 않음
+                            // 클라이언트에서 AI 수를 계산하지 않은 경우는 조용히 무시
+                        } else {
+                            // 싱글플레이: 클라이언트가 AI 수를 계산하지 않은 경우에만 서버에서 처리
+                            // (하위 호환성을 위해 유지, 점진적으로 클라이언트 측 AI로 전환)
+                            const { aiProcessingQueue } = await import('../aiProcessingQueue.js');
+                            aiProcessingQueue.enqueue(game.id, Date.now());
+                        }
                     }
                 }
             }

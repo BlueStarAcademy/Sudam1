@@ -93,9 +93,10 @@ export const updateHiddenState = (game: types.LiveGameSession, now: number) => {
                         // 히든 돌이 따내는데 역할을 한 경우 (contributingHiddenStones만 있고 capturedHiddenStones가 없는 경우)
                         const hasContributingHidden = pendingCaptureBeforeClear.hiddenContributors.length > 0;
                         const isAiMove = myPlayerEnum === types.Player.White;
+                        const isUserMove = myPlayerEnum === types.Player.Black;
                         
                         if (hasContributingHidden && isAiMove && !hasUnrevealedHiddenStones) {
-                            // 케이스 2: 히든 돌이 상대방 돌을 따내거나 따내는데 역할을 한 경우
+                            // 케이스 2: AI가 히든 돌을 사용해서 상대방 돌을 따내거나 따내는데 역할을 한 경우
                             // 4. 대국 재개를 시킨다 (AI 턴)
                             game.currentPlayer = types.Player.White; // AI 턴 유지
                             
@@ -122,8 +123,36 @@ export const updateHiddenState = (game: types.LiveGameSession, now: number) => {
                             }).catch(err => {
                                 console.error('[Hidden Mode] Failed to enqueue AI move after capture:', err);
                             });
+                        } else if (hasContributingHidden && isUserMove && !hasUnrevealedHiddenStones) {
+                            // 케이스 2-2: 유저가 히든 돌을 사용해서 상대방 돌을 따내거나 따내는데 역할을 한 경우
+                            // 4. 대국 재개를 시킨다 (AI 턴으로 넘어감)
+                            game.currentPlayer = types.Player.White; // AI 턴으로 넘어감
+                            
+                            if (game.settings.timeLimit > 0) {
+                                const nextTimeKey = game.currentPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
+                                const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
+                                const isNextInByoyomi = game[nextTimeKey] <= 0 && game.settings.byoyomiCount > 0 && !isFischer;
+                                if (isNextInByoyomi) {
+                                    game.turnDeadline = now + game.settings.byoyomiTime * 1000;
+                                } else {
+                                    game.turnDeadline = now + game[nextTimeKey] * 1000;
+                                }
+                                game.turnStartTime = now;
+                            } else {
+                                game.turnDeadline = undefined;
+                                game.turnStartTime = undefined;
+                            }
+                            
+                            game.pausedTurnTimeLeft = undefined;
+                            
+                            // AI 수를 두도록 aiProcessingQueue에 추가
+                            import('../aiProcessingQueue.js').then(({ aiProcessingQueue: queue }) => {
+                                queue.enqueue(game.id, Date.now() + 1000); // 1초 후 처리
+                            }).catch(err => {
+                                console.error('[Hidden Mode] Failed to enqueue AI move after user capture:', err);
+                            });
                         } else if (hasUnrevealedHiddenStones && isAiMove) {
-                            // 케이스 3: 히든 돌이 공개되지 않은 상태에서 따내진 경우
+                            // 케이스 3: AI가 히든 돌이 공개되지 않은 상태에서 따내진 경우
                             // 4. 대국 재개를 시킨다 (유저 턴)
                             game.currentPlayer = types.Player.Black; // 유저 턴으로 넘어감
                             
@@ -169,6 +198,41 @@ export const updateHiddenState = (game: types.LiveGameSession, now: number) => {
                     const isAiTurnCancelled = (game as any).isAiTurnCancelledAfterReveal;
                     
                     if (isAiTurnCancelled) {
+                        // 히든 돌이 공개된 위치의 문양을 원래 플레이어(유저)의 문양으로 유지
+                        // AI가 유저의 히든 돌 위에 착점을 시도한 경우, 공개된 히든 돌은 유저(흑)의 문양이어야 함
+                        if (game.permanentlyRevealedStones && game.permanentlyRevealedStones.length > 0) {
+                            const lastRevealedStone = game.permanentlyRevealedStones[game.permanentlyRevealedStones.length - 1];
+                            const moveIndexAtRevealed = game.moveHistory.findIndex(m => m.x === lastRevealedStone.x && m.y === lastRevealedStone.y);
+                            
+                            if (moveIndexAtRevealed !== -1) {
+                                const originalMove = game.moveHistory[moveIndexAtRevealed];
+                                const originalPlayer = originalMove.player; // 원래 플레이어 (유저 = Black)
+                                
+                                // 원래 플레이어가 흑인 경우
+                                if (originalPlayer === types.Player.Black) {
+                                    // blackPatternStones에 추가 (이미 있으면 유지)
+                                    if (!game.blackPatternStones) game.blackPatternStones = [];
+                                    if (!game.blackPatternStones.some(p => p.x === lastRevealedStone.x && p.y === lastRevealedStone.y)) {
+                                        game.blackPatternStones.push({ x: lastRevealedStone.x, y: lastRevealedStone.y });
+                                    }
+                                    // whitePatternStones에서 제거 (잘못 추가된 경우)
+                                    if (game.whitePatternStones) {
+                                        game.whitePatternStones = game.whitePatternStones.filter(p => !(p.x === lastRevealedStone.x && p.y === lastRevealedStone.y));
+                                    }
+                                } else {
+                                    // 원래 플레이어가 백인 경우
+                                    if (!game.whitePatternStones) game.whitePatternStones = [];
+                                    if (!game.whitePatternStones.some(p => p.x === lastRevealedStone.x && p.y === lastRevealedStone.y)) {
+                                        game.whitePatternStones.push({ x: lastRevealedStone.x, y: lastRevealedStone.y });
+                                    }
+                                    // blackPatternStones에서 제거 (잘못 추가된 경우)
+                                    if (game.blackPatternStones) {
+                                        game.blackPatternStones = game.blackPatternStones.filter(p => !(p.x === lastRevealedStone.x && p.y === lastRevealedStone.y));
+                                    }
+                                }
+                            }
+                        }
+                        
                         // 3. 애니메이션 종료 후 자동계가까지 남은 턴을 1회복시킨다 (턴 사용 취소)
                         // moveHistory에서 마지막 AI 수 제거 (턴 복구)
                         if (game.moveHistory.length > 0) {

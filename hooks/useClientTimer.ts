@@ -7,12 +7,17 @@ interface ClientTimerOptions {
 }
 
 export const useClientTimer = (session: LiveGameSession, options: ClientTimerOptions = {}) => {
-    const [clientTimes, setClientTimes] = useState({ black: session.blackTimeLeft, white: session.whiteTimeLeft });
+    const coerce = (v: any) => (typeof v === 'number' && isFinite(v) && v > 0 ? v : 0);
+    // 게임이 pending 상태이고 시간이 없으면 설정에서 기본값 가져오기
+    const defaultTime = session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0;
+    const initialBlackTime = session.gameStatus === 'pending' && !session.blackTimeLeft ? defaultTime : coerce(session.blackTimeLeft);
+    const initialWhiteTime = session.gameStatus === 'pending' && !session.whiteTimeLeft ? defaultTime : coerce(session.whiteTimeLeft);
+    const [clientTimes, setClientTimes] = useState({ black: initialBlackTime, white: initialWhiteTime });
 
     useEffect(() => {
         const isGameEnded = ['ended', 'no_contest', 'scoring'].includes(session.gameStatus);
         if (isGameEnded) {
-            setClientTimes({ black: session.blackTimeLeft, white: session.whiteTimeLeft });
+            setClientTimes({ black: coerce(session.blackTimeLeft), white: coerce(session.whiteTimeLeft) });
             return;
         }
 
@@ -23,7 +28,11 @@ export const useClientTimer = (session: LiveGameSession, options: ClientTimerOpt
 
         // pending 상태의 게임은 시간이 흐르지 않도록 함
         if (session.gameStatus === 'pending') {
-            setClientTimes({ black: session.blackTimeLeft, white: session.whiteTimeLeft });
+            // pending 상태에서는 설정에서 기본값 사용
+            const defaultTime = session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0;
+            const blackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : defaultTime;
+            const whiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : defaultTime;
+            setClientTimes({ black: blackTime, white: whiteTime });
             return;
         }
 
@@ -38,7 +47,11 @@ export const useClientTimer = (session: LiveGameSession, options: ClientTimerOpt
             || session.itemUseDeadline;
 
         if (!baseDeadline) {
-            setClientTimes({ black: session.blackTimeLeft, white: session.whiteTimeLeft });
+            // deadline이 없으면 서버 시간 사용, 없으면 설정에서 기본값 사용
+            const defaultTime = session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0;
+            const blackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : defaultTime;
+            const whiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : defaultTime;
+            setClientTimes({ black: blackTime, white: whiteTime });
             return;
         }
 
@@ -57,11 +70,16 @@ export const useClientTimer = (session: LiveGameSession, options: ClientTimerOpt
             if (isSharedDeadlinePhase) {
                 setClientTimes({ black: newTimeLeft, white: newTimeLeft });
             } else if (session.currentPlayer === Player.Black) {
-                setClientTimes({ black: newTimeLeft, white: session.whiteTimeLeft });
+                const whiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : (session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0);
+                setClientTimes({ black: newTimeLeft, white: whiteTime });
             } else if (session.currentPlayer === Player.White) {
-                setClientTimes({ black: session.blackTimeLeft, white: newTimeLeft });
+                const blackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : (session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0);
+                setClientTimes({ black: blackTime, white: newTimeLeft });
             } else {
-                setClientTimes({ black: session.blackTimeLeft, white: session.whiteTimeLeft });
+                const defaultTime = session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0;
+                const blackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : defaultTime;
+                const whiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : defaultTime;
+                setClientTimes({ black: blackTime, white: whiteTime });
             }
             animationFrameId = requestAnimationFrame(updateTimer);
         };
@@ -83,6 +101,7 @@ export const useClientTimer = (session: LiveGameSession, options: ClientTimerOpt
         session.whiteTimeLeft,
         session.gameStatus,
         session.id,
+        session.settings?.timeLimit,
         options.isPaused,
     ]);
 

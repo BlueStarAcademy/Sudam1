@@ -508,8 +508,8 @@ const PlayerProfilePanel: React.FC<{
     }
     
     return (
-        <div className={`bg-gray-900/50 p-2 md:p-3 rounded-lg flex flex-col gap-1 md:gap-2 h-full min-h-0 overflow-hidden ${isClickable ? 'cursor-pointer hover:bg-gray-700/50' : ''}`} onClick={isClickable ? () => onViewUser(playerId) : undefined} title={isClickable ? `${playerNickname} 프로필 보기` : ''}>
-            <div className="flex items-center gap-1.5 md:gap-3 w-full flex-shrink-0">
+        <div className={`bg-gray-900/50 p-1.5 md:p-2 rounded-lg flex flex-col gap-0.5 md:gap-1 h-full min-h-0 overflow-hidden ${isClickable ? 'cursor-pointer hover:bg-gray-700/50' : ''}`} onClick={isClickable ? () => onViewUser(playerId) : undefined} title={isClickable ? `${playerNickname} 프로필 보기` : ''}>
+            <div className="flex items-center gap-1 md:gap-2 w-full flex-shrink-0">
                 {leagueInfo && (
                     <img
                         key={`league-${playerId}-${leagueInfo.tier}`}
@@ -529,10 +529,10 @@ const PlayerProfilePanel: React.FC<{
                  </div>
             </div>
             {/* 컨디션 표시 영역 - 항상 동일한 공간 유지 (경기 종료 후에는 숨김) */}
-            <div className={`font-bold ${isMobile ? 'text-[8px]' : 'text-xs md:text-sm'} mt-0.5 relative flex items-center gap-1 md:gap-2 w-full justify-center flex-shrink-0`} style={{ 
+            <div className={`font-bold ${isMobile ? 'text-[8px]' : 'text-xs md:text-sm'} mt-0 relative flex items-center gap-1 md:gap-2 w-full justify-center flex-shrink-0`} style={{ 
                 visibility: (tournamentStatus === 'round_in_progress' || tournamentStatus === 'bracket_ready') ? 'visible' : 'hidden',
-                height: (tournamentStatus === 'round_in_progress' || tournamentStatus === 'bracket_ready') ? 'auto' : '1.5rem',
-                minHeight: '1.5rem'
+                height: (tournamentStatus === 'round_in_progress' || tournamentStatus === 'bracket_ready') ? 'auto' : '1.25rem',
+                minHeight: '1.25rem'
             }}>
                 <span className={isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}>컨디션:</span> 
                 <span className={`text-yellow-300 ${isMobile ? 'text-[8px]' : 'text-xs md:text-sm'} relative transition-all duration-300 ${
@@ -566,7 +566,7 @@ const PlayerProfilePanel: React.FC<{
                     </button>
                 )}
             </div>
-            <div className={`w-full grid grid-cols-2 md:grid-cols-4 gap-x-0.5 md:gap-x-1 lg:gap-x-3 gap-y-0.5 ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs'} mt-0.5 md:mt-1 border-t border-gray-600 pt-0.5 md:pt-1 flex-shrink-0`}>
+            <div className={`w-full grid grid-cols-2 md:grid-cols-4 gap-x-0.5 md:gap-x-1 lg:gap-x-3 gap-y-0.5 ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-xs'} mt-0 border-t border-gray-600 pt-0.5 flex-shrink-0`}>
                 {Object.values(CoreStat).map(stat => {
                     try {
                         // 초기값: initialPlayer가 있으면 그것을 사용, 없으면 initialStats 사용
@@ -632,18 +632,18 @@ const PlayerProfilePanel: React.FC<{
             </div>
             {/* 초반/중반/종반 능력치 표시 */}
             {phaseStats && typeof phaseStats === 'object' && (
-                <div className="w-full border-t border-gray-600 mt-0.5 md:mt-1 pt-0.5 md:pt-1 flex-shrink-0">
-                    <div className={`grid grid-cols-3 gap-1 md:gap-2 ${isMobile ? 'text-[8px]' : 'text-[9px] md:text-xs'}`}>
-                        <div className={`bg-blue-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 md:px-2 py-0.5 md:py-1'} text-center border border-blue-700/50`}>
-                            <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0.5'}`}>초반능력</div>
+                <div className="w-full border-t border-gray-600 mt-0 pt-0.5 flex-shrink-0">
+                    <div className={`grid grid-cols-3 gap-0.5 md:gap-1 ${isMobile ? 'text-[8px]' : 'text-[9px] md:text-xs'}`}>
+                        <div className={`bg-blue-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 py-0.5'} text-center border border-blue-700/50`}>
+                            <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0'}`}>초반능력</div>
                             <div className={`text-blue-300 font-bold ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}`}>{phaseStats?.early ?? 0}</div>
                         </div>
-                        <div className={`bg-purple-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 md:px-2 py-0.5 md:py-1'} text-center border border-purple-700/50`}>
-                            <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0.5'}`}>중반능력</div>
+                        <div className={`bg-purple-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 py-0.5'} text-center border border-purple-700/50`}>
+                            <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0'}`}>중반능력</div>
                             <div className={`text-purple-300 font-bold ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}`}>{phaseStats?.mid ?? 0}</div>
                         </div>
-                        <div className={`bg-orange-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 md:px-2 py-0.5 md:py-1'} text-center border border-orange-700/50`}>
-                            <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0.5'}`}>종반능력</div>
+                        <div className={`bg-orange-900/30 rounded ${isMobile ? 'px-0.5 py-0.5' : 'px-1 py-0.5'} text-center border border-orange-700/50`}>
+                            <div className={`text-gray-300 font-semibold ${isMobile ? 'mb-0' : 'mb-0'}`}>종반능력</div>
                             <div className={`text-orange-300 font-bold ${isMobile ? 'text-[8px]' : 'text-[10px] md:text-sm'}`}>{phaseStats?.end ?? 0}</div>
                         </div>
                     </div>
@@ -2948,6 +2948,38 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
         );
 
         if ((status === 'round_complete' || status === 'bracket_ready') && hasUnfinishedUserMatch) {
+            // 다음 경기의 선수 정보가 준비되었는지 확인
+            let nextMatch: Match | undefined = undefined;
+            if (tournament.type === 'neighborhood') {
+                const currentRound = tournament.currentRoundRobinRound || 1;
+                const currentRoundObj = safeRounds.find(r => r.name === `${currentRound}회차`);
+                if (currentRoundObj) {
+                    nextMatch = currentRoundObj.matches.find(m => m.isUserMatch && !m.isFinished);
+                }
+            } else {
+                nextMatch = safeRounds.flatMap(r => r.matches).find(m => m.isUserMatch && !m.isFinished);
+            }
+            
+            // 선수 정보 준비 여부 확인
+            const p1 = nextMatch ? tournament.players.find(p => p.id === nextMatch.players[0]?.id) : null;
+            const p2 = nextMatch ? tournament.players.find(p => p.id === nextMatch.players[1]?.id) : null;
+            const playersReady = p1 && p2 && p1.stats && p2.stats && 
+                                 Object.keys(p1.stats).length > 0 && Object.keys(p2.stats).length > 0;
+            
+            if (!playersReady) {
+                return (
+                    <>
+                        <Button 
+                            disabled
+                            colorScheme="gray" 
+                            className="!text-sm !py-2 !px-4 cursor-not-allowed opacity-50"
+                        >
+                            다음 상대를 기다리는 중...
+                        </Button>
+                    </>
+                );
+            }
+            
             return (
                 <>
                     <Button 
@@ -3024,7 +3056,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
             <div className={`${isMobile ? 'w-full' : 'flex-1'} flex flex-col gap-2 ${isMobile ? '' : 'min-h-0 min-w-0 overflow-hidden'}`}>
                 {/* 플레이어 프로필 섹션 */}
                 {matchForDisplay && (p1 || p2) ? (
-                    <section className={`flex-shrink-0 flex flex-row gap-1 md:gap-2 items-stretch p-1.5 md:p-2 bg-gray-800/50 rounded-lg ${isMobile ? 'mt-2 mb-2' : 'h-[250px] md:h-[270px]'} ${isMobile ? '' : 'overflow-hidden'}`} style={isMobile ? {} : { minHeight: '250px', maxHeight: '250px' }}>
+                    <section className={`flex-shrink-0 flex flex-row gap-1 md:gap-2 items-stretch p-1.5 md:p-2 bg-gray-800/50 rounded-lg ${isMobile ? 'mt-2 mb-2' : 'h-[280px] md:h-[300px]'} ${isMobile ? '' : 'overflow-hidden'}`} style={isMobile ? {} : { minHeight: '280px', maxHeight: '280px' }}>
                         <div ref={p1ProfileRef} className="flex-1 min-w-0 min-h-0 overflow-hidden">
                             <PlayerProfilePanelErrorBoundary>
                                 <PlayerProfilePanel 
@@ -3075,7 +3107,7 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                     </section>
                 ) : (
                     // matchForDisplay가 null이거나 플레이어가 없는 경우 로딩 화면 표시
-                    <section className={`flex-shrink-0 flex flex-row gap-1 md:gap-2 items-stretch p-1.5 md:p-2 bg-gray-800/50 rounded-lg ${isMobile ? 'mt-2 mb-2' : 'h-[250px] md:h-[270px]'} ${isMobile ? '' : 'overflow-hidden'}`} style={isMobile ? {} : { minHeight: '250px', maxHeight: '250px' }}>
+                    <section className={`flex-shrink-0 flex flex-row gap-1 md:gap-2 items-stretch p-1.5 md:p-2 bg-gray-800/50 rounded-lg ${isMobile ? 'mt-2 mb-2' : 'h-[280px] md:h-[300px]'} ${isMobile ? '' : 'overflow-hidden'}`} style={isMobile ? {} : { minHeight: '280px', maxHeight: '280px' }}>
                         <div className="flex-1 flex items-center justify-center text-gray-400">
                             경기 정보를 불러오는 중...
                         </div>

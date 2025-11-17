@@ -2,7 +2,7 @@
 import { GameMode } from "../types.js";
 
 export type AppRoute = {
-    view: 'login' | 'register' | 'profile' | 'lobby' | 'waiting' | 'game' | 'admin' | 'tournament' | 'singleplayer';
+    view: 'login' | 'register' | 'profile' | 'lobby' | 'waiting' | 'game' | 'admin' | 'tournament' | 'singleplayer' | 'guild' | 'tower';
     params: any;
 };
 
@@ -16,6 +16,8 @@ export function parseHash(hash: string): AppRoute {
         case 'game': return { view: 'game', params: { id: rest[0] } };
         case 'tournament': return { view: 'tournament', params: { type: rest[0] || null } };
         case 'singleplayer': return { view: 'singleplayer', params: {} };
+        case 'guild': return { view: 'guild', params: {} };
+        case 'tower': return { view: 'tower', params: {} };
         case 'admin': return { view: 'admin', params: {} };
         case 'register': return { view: 'register', params: {} };
         case 'profile': return { view: 'profile', params: {} };

@@ -18,6 +18,8 @@ import SinglePlayerControls from './components/game/SinglePlayerControls.js';
 import SinglePlayerInfoPanel from './components/game/SinglePlayerInfoPanel.js';
 import SinglePlayerGameDescriptionModal from './components/SinglePlayerGameDescriptionModal.js';
 import SinglePlayerSidebar from './components/game/SinglePlayerSidebar.js';
+import TowerControls from './components/game/TowerControls.js';
+import TowerSidebar from './components/game/TowerSidebar.js';
 import { useClientTimer } from './hooks/useClientTimer.js';
 import { calculateSimpleAiMove } from './client/goAiBotClient.js';
 
@@ -66,7 +68,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     const pauseStartedAtRef = useRef<number | null>(null);
     const pauseCountdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
     const [pauseButtonCooldown, setPauseButtonCooldown] = useState(0);
-    const clientTimes = useClientTimer(session, session.isSinglePlayer ? { isPaused } : {});
+    const clientTimes = useClientTimer(session, (session.isSinglePlayer || (session.gameCategory === 'tower')) ? { isPaused } : {});
     
     // 보드 잠금 메커니즘: AI가 돌을 둔 직후 최신 serverRevision을 받을 때까지 보드 잠금
     const [lastReceivedServerRevision, setLastReceivedServerRevision] = useState<number>(session.serverRevision ?? 0);
@@ -82,6 +84,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
 
     const isSpectator = useMemo(() => currentUserWithStatus?.status === 'spectating', [currentUserWithStatus]);
     const isSinglePlayer = session.isSinglePlayer;
+    const isTower = session.gameCategory === 'tower';
     
     // --- Mobile UI State ---
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
@@ -118,13 +121,13 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         // 일반 게임: 게임이 종료되었거나 계가 중일 때 모달 표시
         const currentAnalysisResult = session.analysisResult?.['system'];
         const isScoringComplete = gameStatus === 'scoring' && currentAnalysisResult;
-        const analysisResultJustArrived = isSinglePlayer && 
+        const analysisResultJustArrived = (isSinglePlayer || isTower) && 
             gameStatus === 'scoring' && 
             currentAnalysisResult && 
             !prevAnalysisResult;
         
         const shouldShowModal = gameHasJustEnded || 
-            (isSinglePlayer 
+            ((isSinglePlayer || isTower)
                 ? ((gameStatus === 'ended' && currentAnalysisResult && prevGameStatus !== 'ended') ||
                    (gameStatus === 'scoring' && currentAnalysisResult && analysisResultJustArrived))
                 : (gameStatus === 'scoring' && prevGameStatus !== 'scoring' && prevGameStatus !== 'ended'));
@@ -142,7 +145,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                 setShowFinalTerritory(true);
             }
         }
-    }, [gameStatus, prevGameStatus, session.analysisResult, prevAnalysisResult, isSinglePlayer]);
+    }, [gameStatus, prevGameStatus, session.analysisResult, prevAnalysisResult, isSinglePlayer, isTower]);
     
     const myPlayerEnum = useMemo(() => {
         if (isSpectator) return Player.None;
@@ -249,8 +252,8 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     const handleBoardClick = useCallback((x: number, y: number) => {
         audioService.stopTimerWarning();
         if (isSpectator || gameStatus === 'missile_animating') return;
-        if (session.isSinglePlayer && isPaused) return;
-        if (session.isSinglePlayer && isBoardLocked) {
+        if ((session.isSinglePlayer || isTower) && isPaused) return;
+        if ((session.isSinglePlayer || isTower) && isBoardLocked) {
             console.log('[Game] Board is locked, ignoring click', { isBoardLocked, serverRevision: session.serverRevision });
             return;
         }
@@ -364,13 +367,14 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     }, [isPaused, pauseButtonCooldown, clearPauseCountdown]);
 
     const handlePauseToggle = useCallback(() => {
-        if (!session.isSinglePlayer) return;
+        const isTower = session.gameCategory === 'tower';
+        if (!(session.isSinglePlayer || isTower)) return;
         if (!isPaused) {
             initiatePause();
         } else {
             resumeFromPause();
         }
-    }, [isPaused, initiatePause, resumeFromPause, session.isSinglePlayer]);
+    }, [isPaused, initiatePause, resumeFromPause, session.isSinglePlayer, session.gameCategory]);
 
     useEffect(() => {
         if (pauseButtonCooldown <= 0) return;
@@ -423,11 +427,12 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     }, [clearPauseCountdown]);
 
     useEffect(() => {
-        if (!session.isSinglePlayer) return;
+        const isTower = session.gameCategory === 'tower';
+        if (!(session.isSinglePlayer || isTower)) return;
         if (isPaused && ['ended', 'no_contest'].includes(gameStatus)) {
             resumeFromPause();
         }
-    }, [session.isSinglePlayer, isPaused, gameStatus, resumeFromPause]);
+    }, [session.isSinglePlayer, isPaused, gameStatus, resumeFromPause, session.gameCategory]);
 
     useEffect(() => {
         setIsPaused(false);
@@ -464,7 +469,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
 
     // serverRevision 변경 감지: 최신 상태를 받은 경우 보드 잠금 해제
     useEffect(() => {
-        if (session.isSinglePlayer && session.serverRevision !== undefined) {
+        if ((session.isSinglePlayer || isTower) && session.serverRevision !== undefined) {
             const newRevision = session.serverRevision;
             if (newRevision > lastReceivedServerRevision) {
                 setLastReceivedServerRevision(newRevision);
@@ -475,12 +480,30 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                 }
             }
         }
-    }, [session.serverRevision, session.isSinglePlayer, lastReceivedServerRevision, isBoardLocked]);
+    }, [session.serverRevision, session.isSinglePlayer, isTower, lastReceivedServerRevision, isBoardLocked]);
 
     // 싱글플레이: 클라이언트 측 AI 자동 처리 (서버 부하 최소화)
     // 보드 잠금은 사용자 입력만 막는 것이므로, AI 수 계산은 보드 잠금과 독립적으로 실행
     const aiMoveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-    const lastAiMoveRef = useRef<{ gameId: string; moveHistoryLength: number; player: Player } | null>(null);
+    const lastAiMoveRef = useRef<{ gameId: string; moveHistoryLength: number; player: Player; timestamp: number } | null>(null);
+    
+    // moveHistoryLength 변경 시 lastAiMoveRef 검증 및 초기화
+    useEffect(() => {
+        if (lastAiMoveRef.current) {
+            const currentMoveHistoryLength = session.moveHistory?.length || 0;
+            // moveHistoryLength가 증가했거나, 타임스탬프가 3초 이상 지났으면 초기화
+            const timeSinceLastMove = Date.now() - lastAiMoveRef.current.timestamp;
+            if (currentMoveHistoryLength > lastAiMoveRef.current.moveHistoryLength || timeSinceLastMove > 3000) {
+                console.log('[Game] Resetting lastAiMoveRef:', {
+                    reason: currentMoveHistoryLength > lastAiMoveRef.current.moveHistoryLength ? 'moveHistoryLength increased' : 'timeout',
+                    lastMove: lastAiMoveRef.current,
+                    currentMoveHistoryLength,
+                    timeSinceLastMove
+                });
+                lastAiMoveRef.current = null;
+            }
+        }
+    }, [session.moveHistory?.length]);
     
     useEffect(() => {
         // 이전 timeout이 있으면 취소
@@ -489,8 +512,9 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
             aiMoveTimeoutRef.current = null;
         }
         
+        const isTower = session.gameCategory === 'tower';
         // 게임이 종료되었거나 일시정지되었거나 플레이 중이 아니면 AI 수를 보내지 않음
-        if (!session.isSinglePlayer || isPaused || gameStatus !== 'playing') {
+        if (!(session.isSinglePlayer || isTower) || isPaused || gameStatus !== 'playing') {
             lastAiMoveRef.current = null;
             return;
         }
@@ -509,7 +533,45 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         const aiPlayerId = currentPlayer === Player.Black ? session.blackPlayerId : session.whitePlayerId;
         const isAiTurn = aiPlayerId === AI_USER_ID;
 
+        // 디버깅: AI 차례 판단 로그 (도전의 탑에서 더 상세하게)
+        if (isTower && currentPlayer !== Player.None) {
+            const logData = {
+                gameId: session.id,
+                gameCategory: session.gameCategory,
+                isTower,
+                currentPlayer,
+                'currentPlayer === Player.White': currentPlayer === Player.White,
+                'currentPlayer === Player.Black': currentPlayer === Player.Black,
+                aiPlayerId,
+                AI_USER_ID,
+                'aiPlayerId === AI_USER_ID': aiPlayerId === AI_USER_ID,
+                isAiTurn,
+                blackPlayerId: session.blackPlayerId,
+                whitePlayerId: session.whitePlayerId,
+                'whitePlayerId === AI_USER_ID': session.whitePlayerId === AI_USER_ID,
+                'blackPlayerId === AI_USER_ID': session.blackPlayerId === AI_USER_ID,
+                gameStatus,
+                lastAiMove: lastAiMoveRef.current,
+                moveHistoryLength: session.moveHistory?.length || 0
+            };
+            console.log('[Game] Tower AI turn check:', logData);
+            if (currentPlayer === Player.White && session.whitePlayerId !== AI_USER_ID) {
+                console.error('[Game] MISMATCH: Current player is White but whitePlayerId is not AI_USER_ID!', {
+                    whitePlayerId: session.whitePlayerId,
+                    AI_USER_ID,
+                    blackPlayerId: session.blackPlayerId
+                });
+            }
+        }
+
         if (isAiTurn) {
+            console.log('[Game] Entering AI move calculation block:', {
+                gameId: session.id,
+                gameCategory: session.gameCategory,
+                isTower,
+                currentPlayer,
+                moveHistoryLength: session.moveHistory?.length || 0
+            });
             const moveHistoryLength = session.moveHistory?.length || 0;
             
             // 이미 같은 게임, 같은 moveHistory 길이, 같은 플레이어에 대해 AI 수를 보냈는지 확인
@@ -518,8 +580,27 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                 lastAiMoveRef.current.gameId === session.id &&
                 lastAiMoveRef.current.moveHistoryLength === moveHistoryLength &&
                 lastAiMoveRef.current.player === currentPlayer) {
-                // 이미 이 상태에 대해 AI 수를 보냈으므로 무시
-                return;
+                // 타임스탬프 확인: 3초 이상 지났으면 초기화하고 재시도
+                const timeSinceLastMove = Date.now() - lastAiMoveRef.current.timestamp;
+                if (timeSinceLastMove > 3000) {
+                    console.log('[Game] lastAiMoveRef timeout, resetting and retrying:', {
+                        gameId: session.id,
+                        lastMove: lastAiMoveRef.current,
+                        timeSinceLastMove
+                    });
+                    lastAiMoveRef.current = null;
+                    // 초기화 후 계속 진행하여 AI 수 재계산
+                } else {
+                    // 이미 이 상태에 대해 AI 수를 보냈으므로 무시
+                    console.log('[Game] AI move already sent, skipping:', {
+                        gameId: session.id,
+                        lastAiMove: lastAiMoveRef.current,
+                        currentMoveHistoryLength: moveHistoryLength,
+                        currentPlayer,
+                        timeSinceLastMove
+                    });
+                    return;
+                }
             }
             
             // 클라이언트 측에서 AI 수 계산
@@ -550,8 +631,19 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                 lastAiMoveRef.current = {
                     gameId: currentGameId,
                     moveHistoryLength: moveHistoryLengthAtCalculation,
-                    player: currentPlayerAtCalculation
+                    player: currentPlayerAtCalculation,
+                    timestamp: Date.now()
                 };
+                
+                console.log('[Game] AI move calculated:', {
+                    gameId: currentGameId,
+                    gameCategory: session.gameCategory,
+                    isTower: session.gameCategory === 'tower',
+                    aiMove,
+                    currentPlayer: currentPlayerAtCalculation,
+                    aiLevel,
+                    moveHistoryLength: moveHistoryLengthAtCalculation
+                });
                 
                 // 약 1초 지연 후 AI 수 전송 (봇도 시간을 사용해야 하므로)
                 const delay = 1000; // 1초 고정
@@ -565,6 +657,12 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                         session.id === currentGameId &&
                         session.gameStatus === currentGameStatus &&
                         currentMoveHistoryLength === moveHistoryLengthAtCalculation) {
+                        console.log('[Game] Sending AI move:', {
+                            gameId: currentGameId,
+                            x: aiMove.x,
+                            y: aiMove.y,
+                            isClientAiMove: true
+                        });
                         handlers.handleAction({
                             type: 'PLACE_STONE',
                             payload: {
@@ -587,6 +685,18 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                     }
                     aiMoveTimeoutRef.current = null;
                 }, delay);
+            } else {
+                console.warn('[Game] calculateSimpleAiMove returned null:', {
+                    gameId: currentGameId,
+                    gameCategory: session.gameCategory,
+                    isTower: session.gameCategory === 'tower',
+                    currentPlayer: currentPlayerAtCalculation,
+                    aiLevel,
+                    boardSize: boardStateAtCalculation.length,
+                    moveHistoryLength: moveHistoryLengthAtCalculation
+                });
+                // AI 수를 계산할 수 없으면 lastAiMoveRef 초기화하여 다음 시도 허용
+                lastAiMoveRef.current = null;
             }
         } else {
             // AI 차례가 아니면 lastAiMoveRef 초기화 (다음 AI 차례를 위해)
@@ -600,7 +710,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                 aiMoveTimeoutRef.current = null;
             }
         };
-    }, [session.isSinglePlayer, isPaused, gameStatus, currentPlayer, session.blackPlayerId, session.whitePlayerId, session.boardState, session.koInfo, session.moveHistory?.length, session.settings.aiDifficulty, isBoardLocked, session.id, session.gameStatus, handlers.handleAction]);
+    }, [session.isSinglePlayer, session.gameCategory, isPaused, gameStatus, currentPlayer, session.blackPlayerId, session.whitePlayerId, session.boardState, session.koInfo, session.moveHistory?.length, session.settings.aiDifficulty, isBoardLocked, session.id, session.gameStatus, handlers.handleAction]);
     
     const globalChat = useMemo(() => waitingRoomChats['global'] || [], [waitingRoomChats]);
     
@@ -617,6 +727,13 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
 
     // 싱글플레이 게임 설명창 표시 여부
     const showGameDescription = isSinglePlayer && gameStatus === 'pending';
+    // 도전의 탑 게임 설명창 표시 여부
+    const showTowerGameDescription = isTower && gameStatus === 'pending';
+    
+    // 도전의 탑 배경 이미지 설정
+    const towerBackgroundImage = isTower && session.towerFloor 
+        ? (session.towerFloor === 100 ? '/images/tower/Tower100.png' : '/images/tower/InTower.png')
+        : null;
     
     // 디버깅: 게임 상태 확인
     useEffect(() => {
@@ -629,14 +746,38 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                 stageId: session.stageId
             });
         }
-    }, [isSinglePlayer, gameStatus, showGameDescription, session.id, session.stageId]);
+        if (isTower) {
+            console.log('[Game] Tower game status:', {
+                gameStatus,
+                isTower,
+                showTowerGameDescription,
+                gameId: session.id,
+                towerFloor: session.towerFloor
+            });
+        }
+    }, [isSinglePlayer, isTower, gameStatus, showGameDescription, showTowerGameDescription, session.id, session.stageId, session.towerFloor]);
 
     const handleStartGame = useCallback(() => {
-        handlers.handleAction({ 
-            type: 'CONFIRM_SINGLE_PLAYER_GAME_START', 
-            payload: { gameId } 
-        } as ServerAction);
-    }, [handlers.handleAction, gameId]);
+        if (!gameId) {
+            console.error('[Game] handleStartGame: gameId is missing', { sessionId: session.id, gameStatus });
+            return;
+        }
+        
+        if (isSinglePlayer) {
+            handlers.handleAction({ 
+                type: 'CONFIRM_SINGLE_PLAYER_GAME_START', 
+                payload: { gameId } 
+            } as ServerAction);
+        } else if (isTower) {
+            console.log('[Game] handleStartGame: Sending CONFIRM_TOWER_GAME_START', { gameId, gameStatus, isTower });
+            handlers.handleAction({ 
+                type: 'CONFIRM_TOWER_GAME_START', 
+                payload: { gameId } 
+            } as ServerAction);
+        }
+    }, [handlers.handleAction, gameId, isSinglePlayer, isTower, session.id, gameStatus]);
+
+    // 도전의 탑: 싱글플레이와 동일하게 시작 모달에서 시작 버튼을 눌러 확정
     
     const gameProps: GameProps = {
         session, onAction: handlers.handleAction, currentUser: currentUserWithStatus, waitingRoomChat: globalChat,
@@ -646,6 +787,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     const gameControlsProps = {
         session, isMyTurn, isSpectator, onAction: handlers.handleAction, setShowResultModal, setConfirmModalType, currentUser: currentUserWithStatus,
         onlineUsers, pendingMove, onConfirmMove: handleConfirmMove, onCancelMove: handleCancelMove, settings, isMobile,
+        showResultModal,
     };
 
     if (isSinglePlayer) {
@@ -691,7 +833,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                     onOpenSidebar={() => setIsMobileSidebarOpen(true)}
                                     onAction={handlers.handleAction}
                                 />
-                                <GameControls {...gameControlsProps} isSinglePlayer={true} isSinglePlayerPaused={isPaused} />
+                                <SinglePlayerControls {...gameControlsProps} />
                             </div>
                         </div>
                     </main>
@@ -726,6 +868,110 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                     resumeCountdown={resumeCountdown}
                                     pauseButtonCooldown={pauseButtonCooldown}
                                     onTogglePause={handlePauseToggle}
+                                />
+                            </div>
+                            {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}
+                        </>
+                    )}
+                </div>
+                
+                <GameModals 
+                    {...gameProps}
+                    confirmModalType={confirmModalType}
+                    onHideConfirmModal={() => setConfirmModalType(null)}
+                    showResultModal={showResultModal}
+                    onCloseResults={handleCloseResults}
+                />
+            </div>
+        );
+    }
+
+    if (isTower) {
+        return (
+            <div 
+                className={`w-full h-dvh flex flex-col p-1 lg:p-2 relative max-w-full text-stone-200`}
+                style={towerBackgroundImage ? {
+                    backgroundImage: `url(${towerBackgroundImage})`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center',
+                    backgroundRepeat: 'no-repeat'
+                } : {}}
+            >
+                {showTowerGameDescription && (
+                    <SinglePlayerGameDescriptionModal 
+                        session={session}
+                        onStart={handleStartGame}
+                    />
+                )}
+                <div className="flex-1 flex flex-col lg:flex-row gap-2 min-h-0">
+                    <main className="flex-1 flex items-center justify-center min-w-0 min-h-0">
+                        <div className="w-full h-full max-h-full max-w-full lg:max-w-[calc(100vh-8rem)] flex flex-col items-center gap-1 lg:gap-2">
+                            <div className="flex-shrink-0 w-full flex items-center gap-2">
+                                <div className="flex-1 min-w-0">
+                                    <PlayerPanel {...gameProps} clientTimes={clientTimes.clientTimes} isSinglePlayer={true} isMobile={isMobile} />
+                                </div>
+                            </div>
+                            <div className="flex-1 w-full relative">
+                                <div className="absolute inset-0">
+                                <GameArena 
+                                        {...gameProps}
+                                        isMyTurn={isMyTurn} 
+                                        myPlayerEnum={myPlayerEnum} 
+                                        handleBoardClick={handleBoardClick} 
+                                        isItemModeActive={isItemModeActive} 
+                                        showTerritoryOverlay={showFinalTerritory} 
+                                        isMobile={isMobile}
+                                        myRevealedMoves={session.revealedHiddenMoves?.[currentUser.id] || []}
+                                        showLastMoveMarker={settings.features.lastMoveMarker}
+                                        isSinglePlayerPaused={isPaused}
+                                        resumeCountdown={resumeCountdown}
+                                        isBoardLocked={isBoardLocked}
+                                    />
+                                </div>
+                            </div>
+                            <div className="flex-shrink-0 w-full flex flex-col gap-1">
+                                <TurnDisplay
+                                    session={session}
+                                    isPaused={isPaused}
+                                    isMobile={isMobile}
+                                    onOpenSidebar={() => setIsMobileSidebarOpen(true)}
+                                    onAction={handlers.handleAction}
+                                />
+                                <TowerControls {...gameControlsProps} />
+                            </div>
+                        </div>
+                    </main>
+                    
+                    {!isMobile && (
+                        <div className="w-full lg:w-[320px] xl:w-[360px] flex-shrink-0">
+                            <TowerSidebar 
+                                session={session}
+                                gameChat={gameChat}
+                                onAction={handlers.handleAction}
+                                currentUser={currentUserWithStatus}
+                                onOpenSettings={handlers.openSettingsModal}
+                                onTogglePause={handlePauseToggle}
+                                isPaused={isPaused}
+                                resumeCountdown={resumeCountdown}
+                                pauseButtonCooldown={pauseButtonCooldown}
+                            />
+                        </div>
+                    )}
+                    
+                    {isMobile && (
+                        <>
+                            <div className={`fixed top-0 right-0 h-full w-[280px] bg-secondary shadow-2xl z-50 transition-transform duration-300 ease-in-out ${isMobileSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+                                <TowerSidebar 
+                                    session={session}
+                                    gameChat={gameChat}
+                                    onAction={handlers.handleAction}
+                                    currentUser={currentUserWithStatus}
+                                    onClose={() => setIsMobileSidebarOpen(false)}
+                                    onOpenSettings={handlers.openSettingsModal}
+                                    onTogglePause={handlePauseToggle}
+                                    isPaused={isPaused}
+                                    resumeCountdown={resumeCountdown}
+                                    pauseButtonCooldown={pauseButtonCooldown}
                                 />
                             </div>
                             {isMobileSidebarOpen && <div className="fixed inset-0 bg-black/60 z-40" onClick={() => setIsMobileSidebarOpen(false)}></div>}

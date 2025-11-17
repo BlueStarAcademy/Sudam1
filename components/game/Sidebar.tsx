@@ -105,9 +105,16 @@ export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () =>
         if (mode === GameMode.Capture || (mode === GameMode.Mix && settings.mixedModes?.includes(GameMode.Capture))) {
             const isSurvivalMode = (settings as any)?.isSurvivalMode === true;
             let captureTargetText: string;
+
+            // 도전의 탑: 유저는 항상 흑, 입찰/결정 단계 없음 → "결정 중" 문구 제거
+            const isTower = (session as any).gameCategory === 'tower';
+
             if (effectiveCaptureTargets) {
-                if (isSurvivalMode) {
-                    // 살리기 바둑: 흑은 목표점수 없음(-), 백은 목표점수 표시
+                if (isTower) {
+                    const blackTarget = effectiveCaptureTargets[Player.Black];
+                    const whiteTarget = effectiveCaptureTargets[Player.White];
+                    captureTargetText = `흑: ${blackTarget} / 백: ${whiteTarget}`;
+                } else if (isSurvivalMode) {
                     const blackTarget = effectiveCaptureTargets[Player.Black] === 999 ? '-' : effectiveCaptureTargets[Player.Black];
                     const whiteTarget = effectiveCaptureTargets[Player.White];
                     captureTargetText = `흑: ${blackTarget} / 백: ${whiteTarget}`;
@@ -115,7 +122,12 @@ export const GameInfoPanel: React.FC<{ session: LiveGameSession, onClose?: () =>
                     captureTargetText = `흑: ${effectiveCaptureTargets[Player.Black]} / 백: ${effectiveCaptureTargets[Player.White]}`;
                 }
             } else {
-                captureTargetText = `${settings.captureTarget}개 (흑/백 결정 중)`;
+                if (isTower) {
+                    const baseTarget = settings.captureTarget ?? '-';
+                    captureTargetText = `흑: ${baseTarget} / 백: ${baseTarget}`;
+                } else {
+                    captureTargetText = `${settings.captureTarget}개 (흑/백 결정 중)`;
+                }
             }
             details.push(renderSetting("따내기 목표", captureTargetText));
         }

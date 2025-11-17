@@ -318,6 +318,8 @@ export type User = {
   cumulativeTournamentScore?: number; // 누적 챔피언십 점수 (홈 화면 랭킹용)
   yesterdayTournamentScore?: number; // 어제의 챔피언십 점수 (변화량 계산용)
   inventorySlotsMigrated?: boolean;
+  towerFloor?: number; // 도전의 탑 최고 층수
+  lastTowerClearTime?: number; // 마지막 층 클리어 시간 (랭킹 정렬용)
   dailyRankings?: {
     strategic?: { rank: number; score: number; lastUpdated: number };
     playful?: { rank: number; score: number; lastUpdated: number };

@@ -155,7 +155,7 @@ const LobbyCard: React.FC<{
                 <span className="text-[10px] lg:text-sm text-highlight font-normal">Lv.{level}</span>
             </h2>
             <div className="w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden min-h-0">
-                <img src={imageUrl} alt={title} className="w-full h-full object-cover" />
+                <img src={imageUrl} alt={title} className="w-full h-full object-cover object-center" />
             </div>
             <div 
                 onClick={(e) => { e.stopPropagation(); onViewStats(); }}
@@ -169,16 +169,21 @@ const LobbyCard: React.FC<{
     );
 };
 
-const PveCard: React.FC<{ title: string; imageUrl: string; layout: 'grid' | 'tall'; footerContent?: React.ReactNode; }> = ({ title, imageUrl, layout, footerContent }) => {
+const PveCard: React.FC<{ title: string; imageUrl: string; layout: 'grid' | 'tall'; footerContent?: React.ReactNode; onClick?: () => void; isComingSoon?: boolean; }> = ({ title, imageUrl, layout, footerContent, onClick, isComingSoon }) => {
     const isTall = layout === 'tall';
     return (
-        <div className={`bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-purple-500/50 rounded-lg p-1 lg:p-2 flex flex-col text-center shadow-lg shadow-purple-500/20 h-full text-on-panel relative overflow-hidden cursor-not-allowed group`}>
-            <div className="absolute top-1 lg:top-2 -right-8 lg:-right-10 transform rotate-45 bg-purple-600 text-white text-[8px] lg:text-[10px] font-bold px-8 lg:px-10 py-0.5 z-10">
-                Coming Soon
-            </div>
-            <h2 className="text-xs lg:text-base font-bold text-purple-300 mt-0.5 lg:mt-1 h-4 lg:h-6 mb-0.5 lg:mb-1">{title}</h2>
-            <div className={`w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden transition-transform duration-300 group-hover:scale-105 bg-black/20 min-h-0`}>
-                <img src={imageUrl} alt={title} className={`w-full h-full object-contain p-1 lg:p-2 ${isTall ? 'object-contain' : 'object-cover'}`} />
+        <div 
+            onClick={onClick}
+            className={`${isComingSoon ? 'bg-panel border border-color opacity-60 grayscale' : 'bg-gradient-to-br from-gray-800 to-gray-900 border-2 border-purple-500/50'} rounded-lg p-1 lg:p-2 flex flex-col text-center shadow-lg ${isComingSoon ? 'cursor-not-allowed' : onClick ? 'cursor-pointer hover:-translate-y-1 transition-all transform shadow-purple-500/20' : 'cursor-not-allowed'} h-full text-on-panel relative overflow-hidden group`}
+        >
+            {isComingSoon && (
+                <div className="absolute top-1 lg:top-2 -right-8 lg:-right-10 transform rotate-45 bg-purple-600 text-white text-[8px] lg:text-[10px] font-bold px-8 lg:px-10 py-0.5 z-10">
+                    Coming Soon
+                </div>
+            )}
+            <h2 className={`text-xs lg:text-base font-bold mt-0.5 lg:mt-1 h-4 lg:h-6 mb-0.5 lg:mb-1 ${isComingSoon ? 'text-gray-400' : 'text-purple-300'}`}>{title}</h2>
+            <div className={`w-full flex-1 ${isComingSoon ? 'bg-tertiary' : 'bg-black'} rounded-md flex items-center justify-center text-tertiary overflow-hidden transition-transform duration-300 ${!isComingSoon && 'group-hover:scale-105'} min-h-0`}>
+                <img src={imageUrl} alt={title} className="w-full h-full object-cover object-center" />
             </div>
             {footerContent && (
                 <div className="w-full bg-tertiary/50 rounded-md p-0.5 lg:p-1 text-[10px] lg:text-xs mt-1 lg:mt-2">
@@ -586,55 +591,67 @@ const Profile: React.FC<ProfileProps> = () => {
     ), [currentUserWithStatus, handlers, mannerRank, mannerStyle, totalMannerScore, availablePoints, coreStatBonuses]);
     
     const LobbyCards = (
-        <div className="grid grid-cols-10 grid-rows-2 lg:grid-rows-7 gap-2 lg:gap-4 h-full">
-            <div className="col-span-5 row-span-1 lg:col-span-5 lg:row-span-3">
+        <div className="grid grid-cols-12 grid-rows-2 gap-2 lg:gap-4 h-full">
+            <div className="col-span-4 row-span-1">
                 <LobbyCard type="strategic" stats={aggregatedStats.strategic} onEnter={() => onSelectLobby('strategic')} onViewStats={() => setDetailedStatsType('strategic')} level={currentUserWithStatus.strategyLevel} title="전략 바둑" imageUrl={STRATEGIC_GO_LOBBY_IMG} tier={overallTiers.strategicTier} />
             </div>
     
-            <div className="col-span-5 row-span-1 lg:col-span-5 lg:row-span-3">
+            <div className="col-span-4 row-span-1">
                 <LobbyCard type="playful" stats={aggregatedStats.playful} onEnter={() => onSelectLobby('playful')} onViewStats={() => setDetailedStatsType('playful')} level={currentUserWithStatus.playfulLevel} title="놀이 바둑" imageUrl={PLAYFUL_GO_LOBBY_IMG} tier={overallTiers.playfulTier} />
             </div>
     
-            <div className="col-span-4 row-span-1 lg:col-span-4 lg:row-span-4">
+            <div className="col-span-4 row-span-1">
+                <PveCard 
+                    title="바둑능력PVP" 
+                    imageUrl={STRATEGIC_GO_LOBBY_IMG} 
+                    layout="tall" 
+                    isComingSoon={true}
+                />
+            </div>
+    
+            <div className="col-span-4 row-span-1">
                 <div onClick={onSelectTournamentLobby} className="bg-panel border border-color rounded-lg p-1 lg:p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-purple-500/30 cursor-pointer h-full text-on-panel">
-                    <h2 className="text-xs lg:text-base font-bold h-5 lg:h-6 mb-0.5 lg:mb-1 whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.625rem, 1.5vw, 1rem)' }}>챔피언십</h2>
+                    <h2 className="text-xs lg:text-base font-bold flex items-center justify-center gap-0.5 lg:gap-1 h-4 lg:h-6 mb-0.5 lg:mb-1">챔피언십</h2>
                     <div className="w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden min-h-0">
-                        <img src={TOURNAMENT_LOBBY_IMG} alt="챔피언십" className="w-full h-full object-cover" />
+                        <img src={TOURNAMENT_LOBBY_IMG} alt="챔피언십" className="w-full h-full object-cover object-center" />
                     </div>
-                    <div className="w-full bg-tertiary/50 rounded-md p-0.5 lg:p-1 text-[10px] lg:text-xs mt-1 lg:mt-2 whitespace-nowrap overflow-hidden" title="챔피언십 정보" style={{ fontSize: 'clamp(0.5rem, 1.2vw, 0.75rem)' }}>
-                         <span className="whitespace-nowrap overflow-hidden">점수: {(currentUserWithStatus.cumulativeTournamentScore ?? 0).toLocaleString()} / 리그: {currentUserWithStatus.league || '없음'}</span>
-                        </div>
+                    <div className="w-full bg-tertiary/50 rounded-md p-0.5 lg:p-1 text-[10px] lg:text-xs flex justify-between items-center cursor-pointer hover:bg-tertiary transition-colors mt-1 lg:mt-2" title="챔피언십 정보">
+                        <span>점수: {(currentUserWithStatus.cumulativeTournamentScore ?? 0).toLocaleString()} / 리그: {currentUserWithStatus.league || '없음'}</span>
+                        <span className="text-accent font-semibold">&rarr;</span>
                     </div>
                 </div>
+            </div>
                 
-                <div className="col-span-4 row-span-1 lg:col-span-4 lg:row-span-4">
-                    <div onClick={onSelectSinglePlayerLobby} className="bg-panel border border-color rounded-lg p-1 lg:p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-green-500/30 cursor-pointer h-full text-on-panel relative">
-                        {hasFullTrainingQuestReward && (
-                            <div className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full z-10 border-2 border-gray-900"></div>
-                        )}
-                        <h2 className="text-xs lg:text-base font-bold h-5 lg:h-6 mb-0.5 lg:mb-1">싱글플레이</h2>
-                        <div className="w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden min-h-0">
-                            <img src={SINGLE_PLAYER_LOBBY_IMG} alt="싱글플레이" className="w-full h-full object-cover" />
-                        </div>
-                        <div className="w-full bg-tertiary/50 rounded-md p-0.5 lg:p-1 text-[10px] lg:text-xs mt-1 lg:mt-2" title="싱글플레이 정보">
-                             <span>진행도: {currentUserWithStatus.singlePlayerProgress ?? 0} / {SINGLE_PLAYER_STAGES.length}</span>
-                        </div>
+            <div className="col-span-4 row-span-1">
+                <div onClick={onSelectSinglePlayerLobby} className="bg-panel border border-color rounded-lg p-1 lg:p-2 flex flex-col text-center transition-all transform hover:-translate-y-1 shadow-lg hover:shadow-green-500/30 cursor-pointer h-full text-on-panel relative">
+                    {hasFullTrainingQuestReward && (
+                        <div className="absolute top-1 right-1 w-3 h-3 bg-red-500 rounded-full z-10 border-2 border-gray-900"></div>
+                    )}
+                    <h2 className="text-xs lg:text-base font-bold flex items-center justify-center gap-0.5 lg:gap-1 h-4 lg:h-6 mb-0.5 lg:mb-1">싱글플레이</h2>
+                    <div className="w-full flex-1 bg-tertiary rounded-md flex items-center justify-center text-tertiary overflow-hidden min-h-0">
+                        <img src={SINGLE_PLAYER_LOBBY_IMG} alt="싱글플레이" className="w-full h-full object-cover object-center" />
+                    </div>
+                    <div className="w-full bg-tertiary/50 rounded-md p-0.5 lg:p-1 text-[10px] lg:text-xs flex justify-between items-center cursor-pointer hover:bg-tertiary transition-colors mt-1 lg:mt-2" title="싱글플레이 정보">
+                        <span>진행도: {currentUserWithStatus.singlePlayerProgress ?? 0} / {SINGLE_PLAYER_STAGES.length}</span>
+                        <span className="text-accent font-semibold">&rarr;</span>
                     </div>
                 </div>
+            </div>
                 
-                <div className="col-span-2 row-span-1 lg:col-span-2 lg:row-span-4">
-                    <PveCard 
-                        title="도전의 탑" 
-                        imageUrl={TOWER_CHALLENGE_LOBBY_IMG} 
-                        layout="tall" 
-                        footerContent={
-                            <div className="flex flex-col items-center">
-                                <span>현재 층: 1층</span>
-                                <span className="text-tertiary">{towerTimeLeft}</span>
-                            </div>
-                        }
-                    />
-                </div>
+            <div className="col-span-4 row-span-1">
+                <PveCard 
+                    title="도전의 탑" 
+                    imageUrl="/images/tower/Tower1.png" 
+                    layout="tall" 
+                    onClick={() => window.location.hash = '#/tower'}
+                    footerContent={
+                        <div className="flex flex-col items-center">
+                            <span>현재 층: 1층</span>
+                            <span className="text-tertiary">{towerTimeLeft}</span>
+                        </div>
+                    }
+                />
+            </div>
             </div>
         );
     return (
@@ -714,10 +731,10 @@ const Profile: React.FC<ProfileProps> = () => {
                         </div>
                     </div>
                     <div className="flex-1 grid grid-cols-12 gap-2 min-h-0">
-                        <div className="col-span-5 bg-panel border border-color text-on-panel rounded-lg min-h-0 flex flex-col">
+                        <div className="col-span-3 bg-panel border border-color text-on-panel rounded-lg min-h-0 flex flex-col">
                             <ChatWindow messages={globalChat} mode="global" onAction={handlers.handleAction} onViewUser={handlers.openViewingUser} locationPrefix="[홈]" />
                         </div>
-                        <div className="col-span-7 min-h-0 flex flex-col justify-end">
+                        <div className="col-span-9 min-h-0 flex flex-col justify-end">
                             {LobbyCards}
                         </div>
                     </div>

@@ -14,7 +14,7 @@ import * as types from '../types/index.js';
 import { processGameSummary, endGame } from './summaryService.js';
 // FIX: Correctly import from the placeholder module.
 import * as aiPlayer from './aiPlayer.js';
-import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset, resetAllTournamentScores, resetAllUsersLeagueScoresForNewWeek, processDailyRankings, processDailyQuestReset, resetAllChampionshipScoresToZero } from './scheduledTasks.js';
+import { processRankingRewards, processWeeklyLeagueUpdates, updateWeeklyCompetitorsIfNeeded, processWeeklyTournamentReset, resetAllTournamentScores, resetAllUsersLeagueScoresForNewWeek, processDailyRankings, processDailyQuestReset, resetAllChampionshipScoresToZero, processTowerRankingRewards } from './scheduledTasks.js';
 import * as tournamentService from './tournamentService.js';
 import { AVATAR_POOL, BOT_NAMES, PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, SINGLE_PLAYER_MISSIONS, GRADE_LEVEL_REQUIREMENTS, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH } from '../constants';
 import { calculateTotalStats } from './statService.js';
@@ -426,6 +426,7 @@ const startServer = async () => {
                 
                 // Handle daily ranking calculations (매일 0시 정산)
                 await processDailyRankings();
+                await processTowerRankingRewards();
                 
                 // Handle daily quest reset (매일 0시 KST)
                 await processDailyQuestReset();
@@ -455,6 +456,7 @@ const startServer = async () => {
                         // User was in a game. Set the disconnection state for the single-player-disconnect logic.
                         // Their userStatus remains for now, so we know they were in this game.
                         if (!activeGame.disconnectionState) {
+                            if (!activeGame.disconnectionCounts) activeGame.disconnectionCounts = {};
                             activeGame.disconnectionCounts[userId] = (activeGame.disconnectionCounts[userId] || 0) + 1;
                             if (activeGame.disconnectionCounts[userId] >= 3) {
                                 const winner = activeGame.blackPlayerId === userId ? types.Player.White : types.Player.Black;

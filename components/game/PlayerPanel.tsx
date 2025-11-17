@@ -4,6 +4,7 @@ import { Player, GameProps, GameMode, User, AlkkagiPlacementType, GameSettings, 
 import Avatar from '../Avatar.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, ALKKAGI_TURN_TIME_LIMIT, CURLING_TURN_TIME_LIMIT, DICE_GO_MAIN_PLACE_TIME, DICE_GO_MAIN_ROLL_TIME, ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_SIMULTANEOUS_PLACEMENT_TIME_LIMIT, aiUserId, AVATAR_POOL, BORDER_POOL, PLAYFUL_MODE_FOUL_LIMIT } from '../../constants';
 import { SINGLE_PLAYER_STAGES } from '../../constants/singlePlayerConstants.js';
+import { TOWER_STAGES } from '../../constants/towerConstants.js';
 
 const formatTime = (seconds: number) => {
     if (seconds < 0) seconds = 0;
@@ -114,10 +115,12 @@ const SinglePlayerPanel: React.FC<SinglePlayerPanelProps> = (props) => {
     const isCurling = mode === GameMode.Curling;
     
     const foulLimit = PLAYFUL_MODE_FOUL_LIMIT;
-    const effectiveByoyomiTime = isFoulMode ? totalTime : byoyomiTime;
-    const effectiveTotalByoyomi = isFoulMode ? foulLimit : totalByoyomi;
-    const effectiveByoyomiPeriodsLeft = Math.max(0, isFoulMode ? foulLimit - (session.timeoutFouls?.[user.id] || 0) : byoyomiPeriodsLeft);
-    const showByoyomiStatus = isFoulMode ? true : effectiveTotalByoyomi > 0;
+    const safeTotalByoyomi = typeof totalByoyomi === 'number' ? totalByoyomi : (session.settings.byoyomiCount ?? 0);
+    const safeByoyomiPeriodsLeft = typeof byoyomiPeriodsLeft === 'number' ? byoyomiPeriodsLeft : (session.settings.byoyomiCount ?? 0);
+    const effectiveByoyomiTime = isFoulMode ? totalTime : (byoyomiTime ?? 0);
+    const effectiveTotalByoyomi = isFoulMode ? foulLimit : safeTotalByoyomi;
+    const effectiveByoyomiPeriodsLeft = Math.max(0, isFoulMode ? (foulLimit - (session.timeoutFouls?.[user.id] || 0)) : safeByoyomiPeriodsLeft);
+    const showByoyomiStatus = isFoulMode ? true : (effectiveTotalByoyomi > 0);
 
     const levelToDisplay = isStrategic ? user.strategyLevel : user.playfulLevel;
     const levelLabel = isStrategic ? '전략' : '놀이';
@@ -344,22 +347,29 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
     
     const turnDuration = getTurnDuration(mode, session.gameStatus, settings);
 
-    // 싱글플레이 턴 안내 패널 계산
+    // 싱글플레이/도전의 탑 턴 안내 패널 계산
     const turnInfo = useMemo(() => {
-        if (!isSinglePlayer || !session.stageId) return null;
+        const isTower = session.gameCategory === 'tower';
+        if ((!isSinglePlayer && !isTower) || !session.stageId) return null;
         
-        const stage = SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
+        // 도전의 탑이면 TOWER_STAGES에서, 싱글플레이면 SINGLE_PLAYER_STAGES에서 스테이지 찾기
+        const stage = isTower 
+            ? TOWER_STAGES.find(s => s.id === session.stageId)
+            : SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
         if (!stage) return null;
         
         // 따내기바둑: 흑의 남은 턴 (blackTurnLimit이 있는 경우)
         if (stage.blackTurnLimit) {
             const blackMovesCount = session.moveHistory.filter(m => m.player === Player.Black && m.x !== -1).length;
-            const remainingTurns = Math.max(0, stage.blackTurnLimit - blackMovesCount);
+            // 도전의 탑에서 턴 추가 아이템으로 증가한 턴을 반영
+            const blackTurnLimitBonus = (session as any).blackTurnLimitBonus || 0;
+            const effectiveBlackTurnLimit = stage.blackTurnLimit + blackTurnLimitBonus;
+            const remainingTurns = Math.max(0, effectiveBlackTurnLimit - blackMovesCount);
             return {
                 type: 'capture' as const,
                 label: '흑 남은 턴',
                 remaining: remainingTurns,
-                total: stage.blackTurnLimit
+                total: effectiveBlackTurnLimit
             };
         }
         
@@ -391,7 +401,7 @@ const PlayerPanel: React.FC<PlayerPanelProps> = (props) => {
         // 기본: 현재 턴 표시 (다른 조건이 없는 경우)
         // 이 경우에는 턴 정보를 표시하지 않음
         return null;
-    }, [isSinglePlayer, session.stageId, session.moveHistory, session.totalTurns, session.settings]);
+    }, [isSinglePlayer, session.stageId, session.moveHistory, session.totalTurns, session.settings, session.gameCategory]);
     
     const turnInfoSize = isMobile ? 'w-16 h-16' : 'w-24 h-24 md:w-28 md:h-28';
     const turnInfoLabelSize = isMobile ? 'text-[0.5rem]' : 'text-[11px] md:text-xs';

@@ -44,16 +44,21 @@ const getGameStatusText = (session: LiveGameSession): string => {
     }
 
     const lastMoveInHistory = moveHistory.length > 0 ? moveHistory[moveHistory.length - 1] : null;
+    
+    // 싱글플레이어 게임에서는 통과 기능이 없으므로 통과 텍스트를 표시하지 않음
+    const isSinglePlayer = session.isSinglePlayer || session.gameCategory === 'singleplayer';
+    
+    if (!isSinglePlayer) {
+        if (passCount >= 2 && lastMoveInHistory?.x === -1) {
+            return "양측 모두 통과하여 계가를 시작합니다.";
+        }
 
-    if (passCount >= 2 && lastMoveInHistory?.x === -1) {
-        return "양측 모두 통과하여 계가를 시작합니다.";
-    }
-
-    if (gameStatus !== 'ended' && passCount === 1 && lastMoveInHistory?.x === -1) {
-        const opponentOfCurrent = currentPlayer === Player.Black ? Player.White : Player.Black;
-        const passingPlayer = getPlayerByEnum(opponentOfCurrent);
-        if (passingPlayer) {
-            return `${passingPlayer.nickname}님이 통과했습니다.`;
+        if (gameStatus !== 'ended' && passCount === 1 && lastMoveInHistory?.x === -1) {
+            const opponentOfCurrent = currentPlayer === Player.Black ? Player.White : Player.Black;
+            const passingPlayer = getPlayerByEnum(opponentOfCurrent);
+            if (passingPlayer) {
+                return `${passingPlayer.nickname}님이 통과했습니다.`;
+            }
         }
     }
 

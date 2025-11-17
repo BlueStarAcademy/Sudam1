@@ -184,6 +184,7 @@ export type ServerAction =
     // Shop
     | { type: 'BUY_SHOP_ITEM', payload: { itemId: string, quantity: number } }
     | { type: 'BUY_MATERIAL_BOX', payload: { itemId: string, quantity: number } }
+    | { type: 'BUY_TOWER_ITEM', payload: { itemId: string, quantity: number } }
     | { type: 'PURCHASE_ACTION_POINTS', payload?: never }
     | { type: 'EXPAND_INVENTORY', payload: { category: InventoryItemType } }
     | { type: 'BUY_BORDER', payload: { borderId: string } }
@@ -227,6 +228,9 @@ export type ServerAction =
     | { type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: string } }
     | { type: 'CONFIRM_SINGLE_PLAYER_GAME_START', payload: { gameId: string } }
     | { type: 'SINGLE_PLAYER_REFRESH_PLACEMENT', payload: { gameId: string } }
+    | { type: 'START_TOWER_GAME', payload: { floor: number } }
+    | { type: 'CONFIRM_TOWER_GAME_START', payload: { gameId: string } }
+    | { type: 'TOWER_REFRESH_PLACEMENT', payload: { gameId: string } }
     | { type: 'START_SINGLE_PLAYER_MISSION', payload: { missionId: string } }
     | { type: 'CLAIM_SINGLE_PLAYER_MISSION_REWARD', payload: { missionId: string } }
     | { type: 'LEVEL_UP_TRAINING_QUEST', payload: { missionId: string } }

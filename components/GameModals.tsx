@@ -24,6 +24,7 @@ import DiceGoStartConfirmationModal from './DiceGoStartConfirmationModal.js';
 import CurlingStartConfirmationModal from './CurlingStartConfirmationModal.js';
 import AlkkagiStartConfirmationModal from './AlkkagiStartConfirmationModal.js';
 import SinglePlayerSummaryModal from './SinglePlayerSummaryModal.js';
+import TowerSummaryModal from './TowerSummaryModal.js';
 
 interface GameModalsProps extends GameProps {
     confirmModalType: 'resign' | null;
@@ -44,6 +45,11 @@ const GameModals: React.FC<GameModalsProps> = (props) => {
         // 싱글플레이: scoring 상태이거나 ended 상태일 때 SinglePlayerSummaryModal 표시
         if (session.isSinglePlayer && (showResultModal || gameStatus === 'scoring')) {
             return <SinglePlayerSummaryModal session={session} currentUser={currentUser} onAction={onAction} onClose={onCloseResults} />;
+        }
+
+        // 도전의 탑: scoring 상태이거나 ended 상태일 때 TowerSummaryModal 표시
+        if (session.gameCategory === 'tower' && (showResultModal || gameStatus === 'scoring' || gameStatus === 'ended')) {
+            return <TowerSummaryModal session={session} currentUser={currentUser} onAction={onAction} onClose={onCloseResults} />;
         }
         
         const playerOnlyStates: GameStatus[] = [

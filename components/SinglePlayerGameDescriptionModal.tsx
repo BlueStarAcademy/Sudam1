@@ -1,6 +1,7 @@
 import React from 'react';
 import { LiveGameSession, SinglePlayerStageInfo } from '../types.js';
 import { SINGLE_PLAYER_STAGES } from '../constants/singlePlayerConstants.js';
+import { TOWER_STAGES } from '../constants/towerConstants.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants/gameModes.js';
 import { GameMode, Player } from '../types/enums.js';
 import Button from './Button.js';
@@ -12,7 +13,11 @@ interface SinglePlayerGameDescriptionModalProps {
 }
 
 const SinglePlayerGameDescriptionModal: React.FC<SinglePlayerGameDescriptionModalProps> = ({ session, onStart, onClose }) => {
-    const stage = SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
+    // 싱글플레이어 게임이면 SINGLE_PLAYER_STAGES에서, 도전의 탑 게임이면 TOWER_STAGES에서 스테이지 찾기
+    const isTower = session.gameCategory === 'tower';
+    const stage = isTower 
+        ? TOWER_STAGES.find(s => s.id === session.stageId)
+        : SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
     
     if (!stage) {
         return null;

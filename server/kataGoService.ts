@@ -215,7 +215,6 @@ class KataGoManager {
 
         this.isStarting = true;
         this.readyPromise = new Promise<void>((resolve, reject) => {
-            console.log('[KataGo] Lazily attempting to start engine...');
 
             // 여러 경로 시도 (환경 변수 > 프로젝트 루트 katago 폴더 > 대체 경로들)
             let actualKataGoPath = KATAGO_PATH;
@@ -247,10 +246,6 @@ class KataGoManager {
                 path.resolve(__dirname, '../../katago/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz'),
             ];
             
-            console.log(`[KataGo] Checking path: ${KATAGO_PATH}`);
-            console.log(`[KataGo] PROJECT_ROOT: ${PROJECT_ROOT}`);
-            console.log(`[KataGo] __dirname: ${__dirname}`);
-            
             // KataGo 실행 파일 찾기
             let foundKataGo = false;
             for (const tryPath of pathsToTry) {
@@ -259,8 +254,6 @@ class KataGoManager {
                     console.log(`[KataGo] Engine found at: ${actualKataGoPath}`);
                     foundKataGo = true;
                     break;
-                } else {
-                    console.log(`[KataGo] Not found at: ${tryPath}`);
                 }
             }
             
@@ -277,7 +270,6 @@ class KataGoManager {
             for (const tryPath of modelPathsToTry) {
                 if (fs.existsSync(tryPath)) {
                     actualModelPath = tryPath;
-                    console.log(`[KataGo] Model found at: ${actualModelPath}`);
                     foundModel = true;
                     break;
                 }
@@ -312,12 +304,6 @@ numAnalysisThreads = ${KATAGO_NUM_ANALYSIS_THREADS}
 numSearchThreads = ${KATAGO_NUM_SEARCH_THREADS}
 maxVisits = ${KATAGO_MAX_VISITS}
             `.trim();
-            
-            console.log(`[KataGo] Configuration:`);
-            console.log(`  - Analysis Threads: ${KATAGO_NUM_ANALYSIS_THREADS}`);
-            console.log(`  - Search Threads: ${KATAGO_NUM_SEARCH_THREADS}`);
-            console.log(`  - Max Visits: ${KATAGO_MAX_VISITS}`);
-            console.log(`  - NN Max Batch Size: ${KATAGO_NN_MAX_BATCH_SIZE}`);
 
             try {
                 fs.writeFileSync(CONFIG_PATH, configContent);
@@ -330,12 +316,6 @@ maxVisits = ${KATAGO_MAX_VISITS}
             }
 
             try {
-                console.log(`[KataGo] Spawning process with:`);
-                console.log(`  - Executable: ${actualKataGoPath}`);
-                console.log(`  - Model: ${actualModelPath}`);
-                console.log(`  - Config: ${CONFIG_PATH}`);
-                console.log(`  - Home: ${KATAGO_HOME_PATH}`);
-                
                 this.process = spawn(actualKataGoPath, [
                     'analysis', 
                     '-model', actualModelPath, 
@@ -352,7 +332,6 @@ maxVisits = ${KATAGO_MAX_VISITS}
             }
 
             this.process.on('spawn', () => {
-                console.log('[KataGo] Engine process spawned successfully.');
                 // KataGo가 실제로 준비될 때까지 약간의 대기 시간 필요
                 setTimeout(() => {
                     this.isStarting = false;
@@ -412,13 +391,12 @@ maxVisits = ${KATAGO_MAX_VISITS}
                     const response = JSON.parse(line);
                     const query = this.pendingQueries.get(response.id);
                     if (query) {
-                        console.log(`[KataGo] Received response for query ${response.id}`);
                         clearTimeout(query.timeout);
                         query.resolve(response);
                         this.pendingQueries.delete(response.id);
                     } else {
                         // 응답받았지만 대기 중인 쿼리가 없는 경우 (이미 타임아웃됨)
-                        console.warn(`[KataGo] Received response for unknown query ${response.id}`);
+                        // 조용히 무시
                     }
                 } catch (e) {
                     // JSON 파싱 실패는 일반적인 로그 라인이거나 에러 메시지일 수 있음
@@ -459,7 +437,6 @@ maxVisits = ${KATAGO_MAX_VISITS}
 
         return new Promise((resolve, reject) => {
             const id = analysisQuery.id;
-            console.log(`[KataGo] Sending query ${id}...`);
             
             const timeout = setTimeout(() => {
                 console.error(`[KataGo] Query ${id} timed out after 60 seconds.`);
@@ -477,16 +454,13 @@ maxVisits = ${KATAGO_MAX_VISITS}
                         clearTimeout(timeout);
                         this.pendingQueries.delete(id);
                         reject(err);
-                    } else {
-                        console.log(`[KataGo] Query ${id} sent successfully.`);
                     }
                 });
                 
                 if (!written) {
-                    // 버퍼가 가득 찬 경우
-                    console.log('[KataGo] stdin buffer full, waiting for drain...');
+                    // 버퍼가 가득 찬 경우 (조용히 처리)
                     stdin.once('drain', () => {
-                        console.log('[KataGo] stdin buffer drained');
+                        // 버퍼가 비워짐
                     });
                 }
             } catch (err: any) {
@@ -511,12 +485,11 @@ const getKataGoManager = (): KataGoManager => {
 // 서버 시작 시 KataGo 엔진을 미리 초기화하는 함수
 export const initializeKataGo = async (): Promise<void> => {
     try {
-        console.log('[KataGo] Initializing KataGo engine on server startup...');
         const manager = getKataGoManager();
         await manager.ensureStarted();
-        console.log('[KataGo] KataGo engine initialized and ready for analysis.');
+        console.log('[KataGo] Engine ready.');
     } catch (error: any) {
-        console.error('[KataGo] Failed to initialize KataGo on startup:', error);
+        console.error('[KataGo] Failed to initialize:', error.message);
         // 초기화 실패해도 서버는 계속 실행 (KataGo 없이도 서버는 동작 가능)
     }
 };

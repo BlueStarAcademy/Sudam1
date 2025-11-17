@@ -844,31 +844,36 @@ export const useApp = () => {
                     showError(result.declinedMessage.message);
                 }
                 
-                // ACCEPT_NEGOTIATION, START_AI_GAME, 또는 START_SINGLE_PLAYER_GAME 후 게임이 생성되었을 때 라우팅 처리
-                if (result.clientResponse?.gameId && (action.type === 'ACCEPT_NEGOTIATION' || action.type === 'START_AI_GAME' || action.type === 'START_SINGLE_PLAYER_GAME')) {
-                    const gameId = result.clientResponse.gameId;
-                    const game = result.clientResponse?.game;
-                    console.log(`[handleAction] ${action.type} - gameId received:`, gameId, 'hasGame:', !!game);
+                // ACCEPT_NEGOTIATION, START_AI_GAME, START_SINGLE_PLAYER_GAME, START_TOWER_GAME, CONFIRM_TOWER_GAME_START, CONFIRM_SINGLE_PLAYER_GAME_START 후 게임이 생성되었거나 업데이트되었을 때 처리
+                // 서버 응답 구조: { success: true, ...result.clientResponse }
+                // 따라서 result.gameId 또는 result.clientResponse?.gameId 둘 다 확인
+                const gameId = (result as any).gameId || result.clientResponse?.gameId;
+                const game = (result as any).game || result.clientResponse?.game;
+                
+                if (gameId && (action.type === 'ACCEPT_NEGOTIATION' || action.type === 'START_AI_GAME' || action.type === 'START_SINGLE_PLAYER_GAME' || action.type === 'START_TOWER_GAME' || action.type === 'CONFIRM_TOWER_GAME_START' || action.type === 'CONFIRM_SINGLE_PLAYER_GAME_START')) {
+                    console.log(`[handleAction] ${action.type} - gameId received:`, gameId, 'hasGame:', !!game, 'result keys:', Object.keys(result));
                     
                     // 응답에 게임 데이터가 있으면 즉시 상태에 추가 (WebSocket 업데이트를 기다리지 않음)
                     if (game) {
-                        console.log('[handleAction] Adding game to state immediately:', gameId, 'isSinglePlayer:', game.isSinglePlayer, 'isTower:', game.isTower);
+                        const isTowerGame = game.gameCategory === 'tower';
+                        console.log('[handleAction] Adding game to state immediately:', gameId, 'isSinglePlayer:', game.isSinglePlayer, 'gameCategory:', game.gameCategory, 'isTower:', isTowerGame);
                         
                         // 게임 카테고리 확인
                         if (game.isSinglePlayer) {
                             setSinglePlayerGames(currentGames => {
-                                if (currentGames[gameId]) {
-                                    // 이미 있으면 업데이트하지 않음 (WebSocket이 이미 업데이트했을 수 있음)
-                                    return currentGames;
+                                // CONFIRM 액션의 경우 게임 상태가 업데이트되었으므로 항상 업데이트
+                                if (action.type === 'CONFIRM_SINGLE_PLAYER_GAME_START' || !currentGames[gameId]) {
+                                    return { ...currentGames, [gameId]: game };
                                 }
-                                return { ...currentGames, [gameId]: game };
+                                return currentGames;
                             });
-                        } else if (game.isTower) {
+                        } else if (isTowerGame) {
                             setTowerGames(currentGames => {
-                                if (currentGames[gameId]) {
-                                    return currentGames;
+                                // CONFIRM 액션의 경우 게임 상태가 업데이트되었으므로 항상 업데이트
+                                if (action.type === 'CONFIRM_TOWER_GAME_START' || !currentGames[gameId]) {
+                                    return { ...currentGames, [gameId]: game };
                                 }
-                                return { ...currentGames, [gameId]: game };
+                                return currentGames;
                             });
                         } else {
                             setLiveGames(currentGames => {
@@ -915,14 +920,51 @@ export const useApp = () => {
                     }
                     
                     // 즉시 라우팅 업데이트 (게임이 생성되었으므로)
+                    // 게임 데이터가 없어도 gameId가 있으면 라우팅
                     const targetHash = `#/game/${gameId}`;
                     if (window.location.hash !== targetHash) {
-                        console.log('[handleAction] Setting immediate route to new game:', targetHash);
-                        window.location.hash = targetHash;
+                        console.log('[handleAction] Setting immediate route to new game:', targetHash, 'hasGame:', !!game);
+                        // 게임이 없으면 약간의 지연을 두고 라우팅 (WebSocket 업데이트 대기)
+                        if (!game) {
+                            setTimeout(() => {
+                                if (window.location.hash !== targetHash) {
+                                    console.log('[handleAction] Delayed route to new game:', targetHash);
+                                    window.location.hash = targetHash;
+                                }
+                            }, 300);
+                        } else {
+                            // 게임이 있으면 즉시 라우팅
+                            window.location.hash = targetHash;
+                        }
                     }
                     
                     // gameId를 반환하여 컴포넌트에서 사용할 수 있도록 함
                     return { gameId };
+                } else if (action.type === 'START_TOWER_GAME') {
+                    // START_TOWER_GAME의 경우 gameId를 다시 확인 (다른 경로에서 올 수 있음)
+                    const towerGameId = (result as any).gameId || result.clientResponse?.gameId;
+                    if (towerGameId) {
+                        const targetHash = `#/game/${towerGameId}`;
+                        console.log('[handleAction] START_TOWER_GAME - gameId found in fallback, routing to:', targetHash, 'current hash:', window.location.hash);
+                        // 즉시 라우팅 시도
+                        if (window.location.hash !== targetHash) {
+                            window.location.hash = targetHash;
+                        }
+                        // 혹시 모를 경우를 대비해 지연 라우팅도 추가
+                        setTimeout(() => {
+                            if (window.location.hash !== targetHash) {
+                                console.log('[handleAction] START_TOWER_GAME - Delayed routing to:', targetHash);
+                                window.location.hash = targetHash;
+                            }
+                        }, 100);
+                        return { gameId: towerGameId };
+                    } else {
+                        console.warn('[handleAction] START_TOWER_GAME - No gameId found in response:', {
+                            resultKeys: Object.keys(result),
+                            hasClientResponse: !!result.clientResponse,
+                            clientResponseKeys: result.clientResponse ? Object.keys(result.clientResponse) : []
+                        });
+                    }
                 }
             }
         } catch (err: any) {
@@ -1494,7 +1536,7 @@ export const useApp = () => {
                         }
                         case 'GAME_UPDATE': {
                             Object.entries(message.payload || {}).forEach(([gameId, game]: [string, any]) => {
-                                const gameCategory = game.gameCategory || (game.isSinglePlayer ? 'singleplayer' : game.isTower ? 'tower' : 'normal');
+                                const gameCategory = game.gameCategory || (game.isSinglePlayer ? 'singleplayer' : 'normal');
 
                                 if (gameCategory === 'singleplayer') {
                                     setSinglePlayerGames(currentGames => {

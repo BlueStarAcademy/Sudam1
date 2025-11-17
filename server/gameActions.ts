@@ -25,6 +25,7 @@ import { handleSocialAction } from './actions/socialActions.js';
 import { handleTournamentAction } from './actions/tournamentActions.js';
 import { handleUserAction } from './actions/userActions.js';
 import { handleSinglePlayerAction } from './actions/singlePlayerActions.js';
+import { handleTowerAction } from './actions/towerActions.js';
 import { broadcast } from './socket.js';
 
 
@@ -195,8 +196,11 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     if (type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' || type === 'CLAIM_ALL_TRAINING_QUEST_REWARDS' || type === 'START_SINGLE_PLAYER_MISSION' || type === 'LEVEL_UP_TRAINING_QUEST') {
         return handleSinglePlayerAction(volatileState, action, user);
     }
+    if (type === 'START_TOWER_GAME' || type === 'CONFIRM_TOWER_GAME_START' || type === 'TOWER_REFRESH_PLACEMENT' || type === 'TOWER_ADD_TURNS') {
+        return handleTowerAction(volatileState, action, user);
+    }
     if (type.startsWith('CLAIM_') || type.startsWith('DELETE_MAIL') || type === 'DELETE_ALL_CLAIMED_MAIL' || type === 'MARK_MAIL_AS_READ') return handleRewardAction(volatileState, action, user);
-    if (type.startsWith('BUY_') || type === 'PURCHASE_ACTION_POINTS' || type === 'EXPAND_INVENTORY') return handleShopAction(volatileState, action, user);
+    if (type.startsWith('BUY_') || type === 'PURCHASE_ACTION_POINTS' || type === 'EXPAND_INVENTORY' || type === 'BUY_TOWER_ITEM') return handleShopAction(volatileState, action, user);
     if (type.startsWith('TOURNAMENT') || 
         type.startsWith('START_TOURNAMENT') || 
         type.startsWith('SKIP_TOURNAMENT') || 

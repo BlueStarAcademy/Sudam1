@@ -3,9 +3,9 @@ import { LiveGameSession, UserWithStatus, ServerAction, Player, AnalysisResult, 
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import Avatar from './Avatar.js';
-import { SINGLE_PLAYER_STAGES, AVATAR_POOL, BORDER_POOL } from '../constants';
+import { TOWER_STAGES, AVATAR_POOL, BORDER_POOL } from '../constants';
 
-interface SinglePlayerSummaryModalProps {
+interface TowerSummaryModalProps {
     session: LiveGameSession;
     currentUser: UserWithStatus;
     onAction: (action: ServerAction) => void;
@@ -13,9 +13,9 @@ interface SinglePlayerSummaryModalProps {
 }
 
 const handleClose = (session: LiveGameSession, onClose: () => void) => {
-    // 게임이 종료된 상태이고, 싱글플레이 게임인 경우 싱글플레이 로비로 리다이렉트
-    if (session.gameStatus === 'ended' && session.isSinglePlayer) {
-        sessionStorage.setItem('postGameRedirect', '#/singleplayer');
+    // 게임이 종료된 상태이고, 도전의 탑 게임인 경우 도전의 탑 로비로 리다이렉트
+    if (session.gameStatus === 'ended' && session.gameCategory === 'tower') {
+        sessionStorage.setItem('postGameRedirect', '#/tower');
     }
     onClose();
 };
@@ -68,7 +68,7 @@ const getXpRequirementForLevel = (level: number): number => {
     return xp;
 };
 
-// 계가 결과 표시 컴포넌트 (GameSummaryModal에서 가져옴)
+// 계가 결과 표시 컴포넌트 (SinglePlayerSummaryModal에서 가져옴)
 const ScoreDetailsComponent: React.FC<{ analysis: AnalysisResult, session: LiveGameSession, isMobile?: boolean, mobileTextScale?: number }> = ({ analysis, session, isMobile = false, mobileTextScale = 1 }) => {
     const { scoreDetails } = analysis;
     const { mode, settings } = session;
@@ -108,7 +108,7 @@ const ScoreDetailsComponent: React.FC<{ analysis: AnalysisResult, session: LiveG
     );
 };
 
-const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ session, currentUser, onAction, onClose }) => {
+const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentUser, onAction, onClose }) => {
     const [viewportWidth, setViewportWidth] = useState<number | null>(null);
     const [isProcessing, setIsProcessing] = useState(false);
 
@@ -126,46 +126,50 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
     const isScoring = session.gameStatus === 'scoring';
     const isEnded = session.gameStatus === 'ended';
     const analysisResult = session.analysisResult?.['system'];
-    const summary = session.summary?.[currentUser.id];
-
-    const currentStageIndex = SINGLE_PLAYER_STAGES.findIndex(s => s.id === session.stageId);
-    const currentStage = SINGLE_PLAYER_STAGES.find(s => s.id === session.stageId);
-    
     // 계가 결과가 있으면 점수를 기반으로 승리/실패 판단, 없으면 session.winner 사용
     // 계가 중일 때는 승리/실패를 판단하지 않음 (잘못된 실패 표시 방지)
-    // 살리기 바둑 모드에서는 session.winner를 우선 사용 (계가 전에 종료될 수 있음)
-    const isSurvivalMode = currentStage?.survivalTurns;
-    const isWinner = isSurvivalMode && session.winner !== null
-        ? (session.winner === Player.Black)
-        : (analysisResult 
-            ? (analysisResult.scoreDetails?.black?.total ?? 0) > (analysisResult.scoreDetails?.white?.total ?? 0)
-            : (session.winner === Player.Black)); // Human is always Black
-    const nextStage = SINGLE_PLAYER_STAGES[currentStageIndex + 1];
-    const highestClearedStageIndex = currentUser.singlePlayerProgress ?? -1;
+    const isWinner = analysisResult 
+        ? (analysisResult.scoreDetails?.black?.total ?? 0) > (analysisResult.scoreDetails?.white?.total ?? 0)
+        : (session.winner === Player.Black); // Human is always Black
+    const summary = session.summary?.[currentUser.id];
+
+    const currentFloor = session.towerFloor ?? 1;
+    const currentStage = TOWER_STAGES.find(s => {
+        const stageFloor = parseInt(s.id.replace('tower-', ''));
+        return stageFloor === currentFloor;
+    });
+    const nextFloor = currentFloor < 100 ? currentFloor + 1 : null;
+    const nextStage = nextFloor ? TOWER_STAGES.find(s => {
+        const stageFloor = parseInt(s.id.replace('tower-', ''));
+        return stageFloor === nextFloor;
+    }) : null;
+    
+    // 다음 층으로 갈 수 있는지 확인: 승리했고 다음 층이 있으며 현재 층을 클리어한 경우
     // 계가 결과가 있을 때만 다음 단계 가능 여부 판단 (잘못된 판단 방지)
-    const canTryNext = analysisResult && isWinner && !!nextStage && highestClearedStageIndex >= currentStageIndex;
+    const userTowerFloor = (currentUser as any).towerFloor ?? 0;
+    const canTryNext = analysisResult && isWinner && !!nextStage && userTowerFloor >= currentFloor;
     
     const retryActionPointCost = currentStage?.actionPointCost ?? 0;
-    const nextStageActionPointCost = nextStage?.actionPointCost ?? 0;
+    const nextFloorActionPointCost = nextStage?.actionPointCost ?? 0;
 
     const failureReason = useMemo(() => {
         if (isWinner) return null;
         switch (session.winReason) {
             case 'timeout':
                 if (currentStage?.blackTurnLimit) {
-                    return '제한 턴이 부족하여 미션에 실패했습니다.';
+                    return '제한 턴이 부족하여 층에 실패했습니다.';
                 }
-                return '제한시간이 초과되어 미션에 실패했습니다.';
+                return '제한시간이 초과되어 층에 실패했습니다.';
             case 'capture_limit':
                 return currentStage?.survivalTurns
-                    ? '백이 정해진 턴을 모두 버텨 미션에 실패했습니다.'
+                    ? '백이 정해진 턴을 모두 버텨 층에 실패했습니다.'
                     : '상대가 목표 점수를 먼저 달성했습니다.';
             case 'score':
                 return '계가 결과 상대가 더 많은 집을 차지했습니다.';
             case 'resign':
-                return '기권하여 미션이 종료되었습니다.';
+                return '기권하여 층이 종료되었습니다.';
             case 'disconnect':
-                return '연결이 끊어져 미션이 실패 처리되었습니다.';
+                return '연결이 끊어져 층이 실패 처리되었습니다.';
             case 'total_score':
                 return '총 점수 합계에서 상대에게 밀렸습니다.';
             case 'dice_win':
@@ -192,7 +196,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
         switch (session.winReason) {
             case 'capture_limit':
                 return currentStage?.survivalTurns
-                    ? '제한 턴만큼 점수를 잘 지켜냈습니다.'
+                    ? '백이 정해진 턴을 모두 버텼습니다.'
                     : '목표 점수를 달성했습니다.';
             case 'score':
                 return '계가 결과 승리했습니다.';
@@ -222,17 +226,6 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                 return '승리했습니다.';
         }
     }, [isWinner, session.winReason, currentStage]);
-    
-    // 살리기 바둑: 백의 목표 점수와 획득 점수
-    const survivalModeInfo = useMemo(() => {
-        if (!currentStage?.survivalTurns) return null;
-        const whiteTarget = currentStage.targetScore?.black || session.effectiveCaptureTargets?.[Player.White] || 0;
-        const whiteCaptured = session.captures?.[Player.White] || 0;
-        return {
-            target: whiteTarget,
-            captured: whiteCaptured
-        };
-    }, [currentStage, session.effectiveCaptureTargets, session.captures]);
 
     const gameDuration = useMemo(() => {
         const startTime = session.createdAt;
@@ -250,7 +243,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
         try {
             // onAction이 완료될 때까지 기다림 (gameId 반환 가능)
             // handleAction에서 이미 라우팅을 업데이트하므로 여기서는 모달만 닫으면 됨
-            const result = await onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: session.stageId! } });
+            const result = await onAction({ type: 'START_TOWER_GAME', payload: { floor: currentFloor } });
             const gameId = (result as any)?.gameId;
             
             if (gameId) {
@@ -263,18 +256,18 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
             }
             onClose();
         } catch (error) {
-            console.error('[SinglePlayerSummaryModal] Failed to retry stage:', error);
+            console.error('[TowerSummaryModal] Failed to retry floor:', error);
             setIsProcessing(false);
         }
     };
 
-    const handleNextStage = async () => {
-        if (!canTryNext || !nextStage || isProcessing) return;
+    const handleNextFloor = async () => {
+        if (!canTryNext || !nextStage || !nextFloor || isProcessing) return;
         setIsProcessing(true);
         try {
             // onAction이 완료될 때까지 기다림 (gameId 반환 가능)
             // handleAction에서 이미 라우팅을 업데이트하므로 여기서는 모달만 닫으면 됨
-            const result = await onAction({ type: 'START_SINGLE_PLAYER_GAME', payload: { stageId: nextStage.id } });
+            const result = await onAction({ type: 'START_TOWER_GAME', payload: { floor: nextFloor } });
             const gameId = (result as any)?.gameId;
             
             if (gameId) {
@@ -287,7 +280,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
             }
             onClose();
         } catch (error) {
-            console.error('[SinglePlayerSummaryModal] Failed to start next stage:', error);
+            console.error('[TowerSummaryModal] Failed to start next floor:', error);
             setIsProcessing(false);
         }
     };
@@ -295,14 +288,14 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
     const handleExitToLobby = async () => {
         if (isProcessing) return;
         setIsProcessing(true);
-        sessionStorage.setItem('postGameRedirect', '#/singleplayer');
+        sessionStorage.setItem('postGameRedirect', '#/tower');
         // 라우팅을 먼저 설정하여 홈화면이 보이지 않도록 함
-        window.location.hash = '#/singleplayer';
+        window.location.hash = '#/tower';
         try {
             // onAction이 완료될 때까지 기다림 (Promise 반환)
             await onAction({ type: 'LEAVE_AI_GAME', payload: { gameId: session.id } });
         } catch (error) {
-            console.error('[SinglePlayerSummaryModal] Failed to leave AI game:', error);
+            console.error('[TowerSummaryModal] Failed to leave AI game:', error);
         } finally {
             onClose();
         }
@@ -322,7 +315,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
     const modalTitle = (!analysisResult && isScoring)
         ? "계가 중..." 
         : (analysisResult) 
-            ? (isWinner ? "미션 클리어" : "미션 실패")
+            ? (isWinner ? "층 클리어" : "층 실패")
             : "게임 결과";
 
     const isMobile = isMobileView;
@@ -332,7 +325,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
         <DraggableWindow 
             title={modalTitle}
             onClose={() => handleClose(session, onClose)} 
-            windowId="sp-summary-redesigned"
+            windowId="tower-summary-redesigned"
             initialWidth={isMobile ? 500 : 750}
             initialHeight={isMobile ? 480 : 620}
         >
@@ -340,7 +333,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                 {/* Title */}
                 {(analysisResult || (isEnded && session.winner !== null)) && (
                     <h1 className={`${isMobile ? 'text-base' : 'text-2xl'} font-black text-center mb-1 sm:mb-2 tracking-widest flex-shrink-0 ${isWinner ? 'text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-amber-300 to-yellow-400' : 'text-red-400'}`} style={{ fontSize: isMobile ? `${14 * mobileTextScale}px` : undefined }}>
-                        {isWinner ? 'MISSION CLEAR' : 'MISSION FAILED'}
+                        {isWinner ? 'FLOOR CLEAR' : 'FLOOR FAILED'}
                     </h1>
                 )}
                 {isScoring && !analysisResult && (
@@ -363,6 +356,10 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                             {(analysisResult || (isEnded && session.winner !== null)) && (
                                 <div className={`${isMobile ? 'p-1' : 'p-1.5'} bg-gray-800/50 rounded-lg space-y-0.5 flex-shrink-0`}>
                                     <div className="flex justify-between items-center" style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>
+                                        <span className="text-gray-400">층:</span>
+                                        <span className="text-gray-200 font-semibold">{currentFloor}층</span>
+                                    </div>
+                                    <div className="flex justify-between items-center" style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>
                                         <span className="text-gray-400">총 걸린 시간:</span>
                                         <span className="text-gray-200 font-semibold">{gameDuration}</span>
                                     </div>
@@ -371,14 +368,6 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                                             <span className="text-gray-400">{isWinner ? '승리 이유:' : '패배 이유:'}</span>
                                             <span className={`font-semibold ${isWinner ? 'text-green-400' : 'text-red-400'}`}>
                                                 {winReasonText || failureReason}
-                                            </span>
-                                        </div>
-                                    )}
-                                    {survivalModeInfo && (
-                                        <div className="flex justify-between items-center pt-0.5 border-t border-gray-700 mt-0.5" style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>
-                                            <span className="text-gray-400">백 목표/획득 점수:</span>
-                                            <span className={`font-semibold ${survivalModeInfo.captured < survivalModeInfo.target ? 'text-green-400' : 'text-red-400'}`}>
-                                                {survivalModeInfo.captured}/{survivalModeInfo.target}
                                             </span>
                                         </div>
                                     )}
@@ -496,7 +485,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                                     ))}
                                 </div>
                             )}
-                            {summary?.items && summary.items.length > 2 && (
+                            {isWinner && summary?.items && summary.items.length > 2 && (
                                 <p className="text-center text-gray-400" style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : '11px' }}>
                                     외 {summary.items.length - 2}개 아이템
                                 </p>
@@ -508,12 +497,12 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                 {/* Buttons */}
                 <div className={`mt-1.5 sm:mt-2 flex-shrink-0 grid ${isMobile ? 'grid-cols-2 gap-1.5' : 'grid-cols-4 gap-1.5'}`}>
                     <Button
-                        onClick={handleNextStage}
+                        onClick={handleNextFloor}
                         colorScheme="none"
                         className={`w-full justify-center ${isMobile ? '!py-1.5 !text-xs' : '!py-2 !text-sm'} rounded-xl border ${canTryNext && !isProcessing ? 'border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400' : 'border-gray-500/50 bg-gray-700/50 text-gray-400 cursor-not-allowed'}`}
                         disabled={!canTryNext || isProcessing}
                     >
-                        {nextStage ? `다음 단계 (${nextStage.name.replace('스테이지 ', '')})` : '다음 단계'} {nextStageActionPointCost > 0 && `⚡${nextStageActionPointCost}`}
+                        {nextFloor ? `${nextFloor}층 도전` : '다음 층'} {nextFloorActionPointCost > 0 && `⚡${nextFloorActionPointCost}`}
                     </Button>
                     <Button
                         onClick={handleRetry}
@@ -544,4 +533,5 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
     );
 };
 
-export default SinglePlayerSummaryModal;
+export default TowerSummaryModal;
+

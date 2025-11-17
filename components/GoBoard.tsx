@@ -749,12 +749,19 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
                     );
 
                     const isBaseStone = baseStones?.some(stone => stone.x === x && stone.y === y && stone.player === player);
-                    // 공개된 히든 돌은 isKnownHidden을 false로 설정 (문양 중복 방지)
-                    // 공개되지 않은 히든 돌만 isKnownHidden을 true로 설정
-                    const isKnownHidden = isHiddenMove && !isPermanentlyRevealed;
+                    // 히든 돌은 공개되어도 히든 문양을 유지해야 함
+                    // isKnownHidden: 히든 돌인지 여부 (공개 여부와 관계없이)
+                    const isKnownHidden = isHiddenMove; // 공개 여부와 관계없이 히든 돌이면 true
                     const isSelectedMissileForRender = selectedMissileStone?.x === x && selectedMissileStone?.y === y;
                     const isHoverSelectableMissile = gameStatus === 'missile_selecting' && !selectedMissileStone && player === myPlayerEnum;
-                    const isPatternStone = (player === Player.Black && blackPatternStones?.some(p => p.x === x && p.y === y)) || (player === Player.White && whitePatternStones?.some(p => p.x === x && p.y === y));
+                    
+                    // 문양 결정: 히든 돌이 아닌 경우에만 패턴 문양 표시
+                    // 히든 돌(공개 여부와 관계없이)은 히든 문양을 우선 표시하므로 패턴 문양을 표시하지 않음
+                    let isPatternStone = false;
+                    if (!isHiddenMove) {
+                        // 히든 돌이 아닌 경우에만 패턴 문양 확인
+                        isPatternStone = (player === Player.Black && blackPatternStones?.some(p => p.x === x && p.y === y)) || (player === Player.White && whitePatternStones?.some(p => p.x === x && p.y === y));
+                    }
 
                     
                     return <Stone key={`${x}-${y}`} player={player} cx={cx} cy={cy} isLastMove={isLast} isKnownHidden={isKnownHidden} isBaseStone={isBaseStone} isPatternStone={isPatternStone} isNewlyRevealed={isNewlyRevealedForAnim} animationClass={isNewlyRevealedForAnim ? 'sparkle-animation' : ''} isSelectedMissile={isSelectedMissileForRender} isHoverSelectableMissile={isHoverSelectableMissile} radius={stone_radius} isFaint={isFaint} />;

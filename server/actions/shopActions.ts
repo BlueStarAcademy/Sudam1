@@ -436,6 +436,121 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 } 
             };
         }
+        case 'BUY_TOWER_ITEM': {
+            const { itemId, quantity } = payload;
+            
+            if (!itemId || typeof quantity !== 'number' || quantity <= 0) {
+                return { error: '유효하지 않은 요청입니다.' };
+            }
+
+            // 도전의 탑 아이템 정의
+            const towerItems: Record<string, { name: string; price: { gold?: number; diamonds?: number }; maxOwned: number; dailyLimit: number }> = {
+                '턴 추가': { name: '턴 추가', price: { gold: 300 }, maxOwned: 3, dailyLimit: 3 },
+                '미사일': { name: '미사일', price: { gold: 300 }, maxOwned: 2, dailyLimit: 2 },
+                '히든': { name: '히든', price: { gold: 500 }, maxOwned: 2, dailyLimit: 2 },
+                '배치변경': { name: '배치변경', price: { gold: 100 }, maxOwned: 5, dailyLimit: 5 }
+            };
+
+            const itemInfo = towerItems[itemId];
+            if (!itemInfo) {
+                return { error: '유효하지 않은 아이템입니다.' };
+            }
+
+            const now = Date.now();
+            
+            // 현재 보유 개수 확인
+            const inventory = user.inventory || [];
+            const currentItem = inventory.find((inv: any) => inv.name === itemInfo.name || inv.id === itemInfo.name);
+            const currentOwned = currentItem?.quantity ?? 0;
+
+            // 보유 제한 확인
+            if (!user.isAdmin && currentOwned + quantity > itemInfo.maxOwned) {
+                return { error: `최대 보유 개수(${itemInfo.maxOwned}개)를 초과할 수 없습니다.` };
+            }
+
+            // 하루 구매 제한 확인
+            if (!user.dailyShopPurchases) user.dailyShopPurchases = {};
+            const purchaseRecord = user.dailyShopPurchases[itemId];
+            const todayPurchased = (purchaseRecord && isSameDayKST(purchaseRecord.date, now)) ? purchaseRecord.quantity : 0;
+
+            if (!user.isAdmin && todayPurchased + quantity > itemInfo.dailyLimit) {
+                return { error: `하루 구매 한도(${itemInfo.dailyLimit}개)를 초과했습니다.` };
+            }
+
+            // 가격 확인
+            const totalGoldCost = (itemInfo.price.gold || 0) * quantity;
+            const totalDiamondCost = (itemInfo.price.diamonds || 0) * quantity;
+
+            if (!user.isAdmin) {
+                if (user.gold < totalGoldCost || user.diamonds < totalDiamondCost) {
+                    return { error: '재화가 부족합니다.' };
+                }
+            }
+
+            // 아이템 템플릿 찾기
+            const template = CONSUMABLE_ITEMS.find(item => item.name === itemInfo.name);
+            if (!template) {
+                return { error: '아이템 템플릿을 찾을 수 없습니다.' };
+            }
+
+            // 아이템 생성
+            const newItem: InventoryItem = {
+                ...template,
+                id: `item-${randomUUID()}`,
+                createdAt: now,
+                quantity: quantity,
+                isEquipped: false,
+                level: 1,
+                stars: 0,
+            };
+
+            if (!user.inventory) {
+                user.inventory = [];
+            }
+            if (!user.inventorySlots) {
+                user.inventorySlots = { equipment: 30, consumable: 30, material: 30 };
+            }
+
+            // 인벤토리에 추가
+            const { success, finalItemsToAdd, updatedInventory } = addItemsToInventory(user.inventory, user.inventorySlots, [newItem]);
+            if (!success || !updatedInventory) {
+                return { error: '인벤토리 공간이 부족합니다.' };
+            }
+
+            // 골드/다이아 차감
+            if (!user.isAdmin) {
+                user.gold -= totalGoldCost;
+                user.diamonds -= totalDiamondCost;
+            }
+
+            // 인벤토리 업데이트
+            user.inventory = JSON.parse(JSON.stringify(updatedInventory));
+
+            // 구매 기록 업데이트
+            if (!user.isAdmin) {
+                if (!purchaseRecord || !isSameDayKST(purchaseRecord.date, now)) {
+                    user.dailyShopPurchases[itemId] = { quantity: 0, date: now };
+                }
+                user.dailyShopPurchases[itemId].quantity = todayPurchased + quantity;
+                user.dailyShopPurchases[itemId].date = now;
+            }
+
+            try {
+                await db.updateUser(user);
+                const updatedUser = getSelectiveUserUpdate(user, 'BUY_TOWER_ITEM', { includeAll: true });
+                broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+
+                return {
+                    clientResponse: {
+                        obtainedItems: finalItemsToAdd,
+                        updatedUser
+                    }
+                };
+            } catch (error: any) {
+                console.error(`[BUY_TOWER_ITEM] Error updating user ${user.id}:`, error);
+                return { error: '구매 처리 중 오류가 발생했습니다.' };
+            }
+        }
         default:
             return { error: 'Unknown shop action.' };
     }

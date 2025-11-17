@@ -520,7 +520,11 @@ export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
       safeBoolean(legacy.inventorySlotsMigrated, false),
     dailyRankings: ensureDailyRankings(
       coalesce(status.dailyRankings, legacy.dailyRankings)
-    )
+    ),
+    towerFloor: safeNumber(prismaUser.towerFloor, safeNumber(legacy.towerFloor, 0)),
+    lastTowerClearTime: prismaUser.lastTowerClearTime != null 
+      ? Number(prismaUser.lastTowerClearTime) 
+      : safeNumber(legacy.lastTowerClearTime, undefined)
   };
 
   const applied = applyDefaults(partial, prismaUser, status);

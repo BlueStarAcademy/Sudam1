@@ -30,6 +30,8 @@ model User {
   diamonds         BigInt   @default(0)
   league           String?
   tournamentScore  Int      @default(0)
+  towerFloor       Int      @default(0)
+  lastTowerClearTime BigInt?
   status           Json?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
@@ -45,6 +47,8 @@ model User {
 
   @@index([league])
   @@index([tournamentScore])
+  @@index([towerFloor])
+  @@index([towerFloor, lastTowerClearTime])
 }
 
 model UserInventory {

@@ -28,6 +28,8 @@ const buildPersistentFields = (user: User) => {
     diamonds: toBigInt(user.diamonds),
     league: user.league ?? null,
     tournamentScore: user.tournamentScore ?? 0,
+    towerFloor: user.towerFloor ?? 0,
+    lastTowerClearTime: user.lastTowerClearTime != null ? BigInt(user.lastTowerClearTime) : null,
     status: statusJson
   };
 };

@@ -100,10 +100,10 @@ export const updateCaptureState = (game: types.LiveGameSession, now: number) => 
                 const timeKey = timedOutPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
                 const byoyomiKey = timedOutPlayer === types.Player.Black ? 'blackByoyomiPeriodsLeft' : 'whiteByoyomiPeriodsLeft';
 
-                if (game[timeKey] > 0) { // Main time expired
+                if (game[timeKey] > 0) { // Main time expired -> enter byoyomi without consuming a period
                     game[timeKey] = 0;
-                    if (game.settings.byoyomiCount > 0 && game[byoyomiKey] > 0) {
-                        game[byoyomiKey]--;
+                    if (game.settings.byoyomiCount > 0) {
+                        // Do not decrement period on entering byoyomi
                         game.turnDeadline = now + game.settings.byoyomiTime * 1000;
                         game.turnStartTime = now;
                         return;

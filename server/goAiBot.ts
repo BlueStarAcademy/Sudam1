@@ -487,8 +487,75 @@ export async function makeGoAiBotMove(
                 game.permanentlyRevealedStones.push({ x, y });
             }
             
-            // 공개된 히든 돌은 patternStones에서 제거하지 않음 (문양 유지)
-            // 히든 돌이 공개되어도 문양은 그대로 유지되어야 함
+            // 공개된 히든 돌의 문양 유지 (원래 플레이어의 문양으로 명시적으로 설정)
+            // 싱글플레이에서는 유저(흑)만 히든 돌을 사용하므로, opponentPlayerEnum은 항상 Black
+            // moveHistory에서 원래 플레이어 확인 (확인용)
+            const originalPlayer = moveIndexAtTarget !== -1 
+                ? game.moveHistory[moveIndexAtTarget].player 
+                : opponentPlayerEnum; // moveHistory에서 찾지 못하면 opponentPlayerEnum 사용 (싱글플레이에서는 Black)
+            
+            // 싱글플레이에서는 항상 유저(흑)의 히든 돌이므로, blackPatternStones에 명시적으로 추가
+            if (originalPlayer === Player.Black || opponentPlayerEnum === Player.Black) {
+                // blackPatternStones에 추가 (이미 있으면 유지)
+                if (!game.blackPatternStones) game.blackPatternStones = [];
+                if (!game.blackPatternStones.some(p => p.x === x && p.y === y)) {
+                    game.blackPatternStones.push({ x, y });
+                }
+                // whitePatternStones에서 제거 (잘못 추가된 경우)
+                if (game.whitePatternStones) {
+                    game.whitePatternStones = game.whitePatternStones.filter(p => !(p.x === x && p.y === y));
+                }
+            } else {
+                // 백의 히든 돌인 경우 (일반적으로는 발생하지 않지만 안전을 위해)
+                if (!game.whitePatternStones) game.whitePatternStones = [];
+                if (!game.whitePatternStones.some(p => p.x === x && p.y === y)) {
+                    game.whitePatternStones.push({ x, y });
+                }
+                // blackPatternStones에서 제거 (잘못 추가된 경우)
+                if (game.blackPatternStones) {
+                    game.blackPatternStones = game.blackPatternStones.filter(p => !(p.x === x && p.y === y));
+                }
+            }
+            
+            // 일반적인 prunePatternStones 로직
+            // 주의: permanentlyRevealedStones에 있는 위치는 boardState의 player와 관계없이 원래 플레이어의 문양을 유지해야 함
+            const prunePatternStones = () => {
+                if (game.blackPatternStones) {
+                    game.blackPatternStones = game.blackPatternStones.filter(point => {
+                        const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
+                        if (isPermanentlyRevealed) {
+                            // 공개된 히든 돌의 경우, moveHistory에서 원래 플레이어 확인
+                            const moveIndex = game.moveHistory.findIndex(m => m.x === point.x && m.y === point.y);
+                            if (moveIndex !== -1) {
+                                const originalMove = game.moveHistory[moveIndex];
+                                // 원래 플레이어가 흑이면 유지
+                                return originalMove.player === Player.Black;
+                            }
+                        }
+                        // 일반적인 경우: boardState의 player 확인
+                        const occupant = game.boardState?.[point.y]?.[point.x];
+                        return occupant === Player.Black;
+                    });
+                }
+                if (game.whitePatternStones) {
+                    game.whitePatternStones = game.whitePatternStones.filter(point => {
+                        const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
+                        if (isPermanentlyRevealed) {
+                            // 공개된 히든 돌의 경우, moveHistory에서 원래 플레이어 확인
+                            const moveIndex = game.moveHistory.findIndex(m => m.x === point.x && m.y === point.y);
+                            if (moveIndex !== -1) {
+                                const originalMove = game.moveHistory[moveIndex];
+                                // 원래 플레이어가 백이면 유지
+                                return originalMove.player === Player.White;
+                            }
+                        }
+                        // 일반적인 경우: boardState의 player 확인
+                        const occupant = game.boardState?.[point.y]?.[point.x];
+                        return occupant === Player.White;
+                    });
+                }
+            };
+            prunePatternStones();
             
             // 2. 히든 돌 공개 애니메이션 설정
             game.animation = { 
@@ -891,6 +958,11 @@ function scoreMovesByProfile(
 
         // 2. 영토 확보 성향 반영 (방어 우선)
         const territoryScore = evaluateTerritory(game, logic, point, aiPlayer, profile);
+        
+        // 영토 확보 전략 단계별 평가
+        const territoryStrategyScore = evaluateTerritoryStrategy(game, logic, point, aiPlayer, opponentPlayer, profile);
+        score += territoryStrategyScore;
+        
         // 방어적인 수는 더 높은 가중치 적용
         if (territoryScore > 5.0) {
             // 방어적인 수는 매우 높은 점수
@@ -1094,7 +1166,7 @@ function scoreMovesByProfile(
         if (profile.knowsFuseki) {
             const moveCount = game.moveHistory.length;
             if (moveCount <= 50) {
-                const fusekiScore = evaluateFuseki(game, point, aiPlayer);
+                const fusekiScore = evaluateFuseki(game, point, aiPlayer, profile.level);
                 score += fusekiScore * 150;
             }
         }
@@ -1391,6 +1463,241 @@ function evaluateTerritory(
     }
 
     return territoryScore;
+}
+
+/**
+ * 영토 확보 전략 단계별 평가
+ * 1. 최고 단계: 상대방의 영토가 넓어지지 못하게 하면서 내 영토를 넓혀나가는 자리
+ * 2. 중간 단계: 내 영토만 넓어지는 자리 또는 상대방의 영토만 넓어지지 못하게 두는 자리
+ * 3. 초보 단계: 영토의 개념을 막 이해하고 10집 이상의 영토를 만들려고 노력
+ * 4. 최하 단계: 내 영토를 넓히기는 커녕 메워서 없애는 단계 (이미 패널티 있음)
+ */
+function evaluateTerritoryStrategy(
+    game: types.LiveGameSession,
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player,
+    profile: GoAiBotProfile
+): number {
+    const boardSize = game.settings.boardSize;
+    let strategyScore = 0;
+    
+    // 임시 보드로 수를 시뮬레이션
+    const tempBoard = game.boardState.map(row => [...row]);
+    tempBoard[point.y][point.x] = aiPlayer;
+    
+    // 내 영토 확장 가능성 평가
+    const myTerritoryExpansion = evaluateMyTerritoryExpansion(tempBoard, logic, point, aiPlayer, boardSize);
+    
+    // 상대방 영토 확장 방지 평가
+    const opponentTerritoryBlock = evaluateOpponentTerritoryBlock(tempBoard, logic, point, aiPlayer, opponentPlayer, boardSize);
+    
+    // 10집 이상 영토 만들기 평가
+    const largeTerritoryScore = evaluateLargeTerritory(tempBoard, logic, point, aiPlayer, boardSize);
+    
+    // AI 레벨에 따른 전략 선택
+    if (profile.level >= 7) {
+        // 최고 단계: 상대방 영토 확장 방지 + 내 영토 확장
+        if (opponentTerritoryBlock > 0 && myTerritoryExpansion > 0) {
+            strategyScore += (opponentTerritoryBlock + myTerritoryExpansion) * 300; // 매우 높은 점수
+        } else if (opponentTerritoryBlock > 0) {
+            strategyScore += opponentTerritoryBlock * 200; // 상대방 방어도 중요
+        } else if (myTerritoryExpansion > 0) {
+            strategyScore += myTerritoryExpansion * 150; // 내 영토 확장
+        }
+    } else if (profile.level >= 4) {
+        // 중간 단계: 내 영토 확장 또는 상대방 영토 확장 방지
+        if (myTerritoryExpansion > 0) {
+            strategyScore += myTerritoryExpansion * 200;
+        }
+        if (opponentTerritoryBlock > 0) {
+            strategyScore += opponentTerritoryBlock * 200;
+        }
+    } else if (profile.level >= 2) {
+        // 초보 단계: 10집 이상 영토 만들기 노력
+        strategyScore += largeTerritoryScore * 150;
+    }
+    // 최하 단계(level 1)는 이미 evaluateTerritory에서 영토 메우기 패널티가 있음
+    
+    return strategyScore;
+}
+
+/**
+ * 내 영토 확장 가능성 평가
+ */
+function evaluateMyTerritoryExpansion(
+    board: Player[][],
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    boardSize: number
+): number {
+    let expansionScore = 0;
+    
+    // 주변 8방향 확인
+    const directions = [
+        { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 },
+        { x: -1, y: 0 }, { x: 1, y: 0 },
+        { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }
+    ];
+    
+    let myStonesNearby = 0;
+    let emptySpacesNearby = 0;
+    
+    for (const dir of directions) {
+        const nx = point.x + dir.x;
+        const ny = point.y + dir.y;
+        if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize) {
+            const cell = board[ny][nx];
+            if (cell === aiPlayer) {
+                myStonesNearby++;
+            } else if (cell === Player.None) {
+                emptySpacesNearby++;
+            }
+        }
+    }
+    
+    // 내 돌이 있고 빈 공간이 많으면 영토 확장 가능
+    if (myStonesNearby >= 2 && emptySpacesNearby >= 3) {
+        expansionScore += 5.0; // 영토 확장 가능성 높음
+    } else if (myStonesNearby >= 1 && emptySpacesNearby >= 2) {
+        expansionScore += 2.0; // 영토 확장 가능성 있음
+    }
+    
+    return expansionScore;
+}
+
+/**
+ * 상대방 영토 확장 방지 평가
+ */
+function evaluateOpponentTerritoryBlock(
+    board: Player[][],
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    opponentPlayer: Player,
+    boardSize: number
+): number {
+    let blockScore = 0;
+    
+    // 주변 8방향 확인
+    const directions = [
+        { x: -1, y: -1 }, { x: 0, y: -1 }, { x: 1, y: -1 },
+        { x: -1, y: 0 }, { x: 1, y: 0 },
+        { x: -1, y: 1 }, { x: 0, y: 1 }, { x: 1, y: 1 }
+    ];
+    
+    let opponentStonesNearby = 0;
+    let emptySpacesNearby = 0;
+    
+    for (const dir of directions) {
+        const nx = point.x + dir.x;
+        const ny = point.y + dir.y;
+        if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize) {
+            const cell = board[ny][nx];
+            if (cell === opponentPlayer) {
+                opponentStonesNearby++;
+            } else if (cell === Player.None) {
+                emptySpacesNearby++;
+                // 상대방이 이 빈 공간에 두면 영토를 확장할 수 있는지 확인
+                const neighbors = logic.getNeighbors(nx, ny);
+                let opponentCanExpand = false;
+                for (const neighbor of neighbors) {
+                    if (neighbor.x >= 0 && neighbor.x < boardSize && neighbor.y >= 0 && neighbor.y < boardSize) {
+                        if (board[neighbor.y][neighbor.x] === opponentPlayer) {
+                            opponentCanExpand = true;
+                            break;
+                        }
+                    }
+                }
+                if (opponentCanExpand) {
+                    emptySpacesNearby += 0.5; // 상대방이 확장할 수 있는 빈 공간
+                }
+            }
+        }
+    }
+    
+    // 상대방 돌이 있고, 상대방이 확장할 수 있는 빈 공간이 많으면 방어 중요
+    if (opponentStonesNearby >= 1 && emptySpacesNearby >= 2) {
+        blockScore += 5.0; // 상대방 영토 확장 방지 중요
+    } else if (opponentStonesNearby >= 1 && emptySpacesNearby >= 1) {
+        blockScore += 2.0; // 상대방 영토 확장 방지
+    }
+    
+    return blockScore;
+}
+
+/**
+ * 10집 이상 영토 만들기 평가
+ */
+function evaluateLargeTerritory(
+    board: Player[][],
+    logic: ReturnType<typeof getGoLogic>,
+    point: Point,
+    aiPlayer: Player,
+    boardSize: number
+): number {
+    let largeTerritoryScore = 0;
+    
+    // BFS로 연결된 빈 공간과 내 돌의 개수 확인
+    const visited = new Set<string>();
+    const queue: Point[] = [point];
+    visited.add(`${point.x},${point.y}`);
+    
+    let myStonesInArea = 0;
+    let emptySpacesInArea = 0;
+    
+    const directions = [
+        { x: -1, y: 0 }, { x: 1, y: 0 },
+        { x: 0, y: -1 }, { x: 0, y: 1 }
+    ];
+    
+    while (queue.length > 0) {
+        const current = queue.shift()!;
+        
+        for (const dir of directions) {
+            const nx = current.x + dir.x;
+            const ny = current.y + dir.y;
+            const key = `${nx},${ny}`;
+            
+            if (nx >= 0 && nx < boardSize && ny >= 0 && ny < boardSize && !visited.has(key)) {
+                visited.add(key);
+                const cell = board[ny][nx];
+                
+                if (cell === aiPlayer) {
+                    myStonesInArea++;
+                    queue.push({ x: nx, y: ny });
+                } else if (cell === Player.None) {
+                    emptySpacesInArea++;
+                    // 내 돌로 둘러싸인 빈 공간인지 확인
+                    const neighbors = logic.getNeighbors(nx, ny);
+                    let surroundedByMyStones = true;
+                    for (const neighbor of neighbors) {
+                        if (neighbor.x >= 0 && neighbor.x < boardSize && neighbor.y >= 0 && neighbor.y < boardSize) {
+                            if (board[neighbor.y][neighbor.x] !== aiPlayer && board[neighbor.y][neighbor.x] !== Player.None) {
+                                surroundedByMyStones = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (surroundedByMyStones) {
+                        queue.push({ x: nx, y: ny });
+                    }
+                }
+            }
+        }
+    }
+    
+    // 10집 이상의 영토를 만들 수 있는지 평가
+    const potentialTerritory = myStonesInArea + emptySpacesInArea;
+    if (potentialTerritory >= 10) {
+        largeTerritoryScore += 10.0; // 10집 이상 영토 가능
+    } else if (potentialTerritory >= 5) {
+        largeTerritoryScore += 5.0; // 5집 이상 영토 가능
+    }
+    
+    return largeTerritoryScore;
 }
 
 /**
@@ -2488,11 +2795,13 @@ function evaluateDirectionalAttack(
 
 /**
  * 6단계: 초반 포석 평가 (3-4선 선호)
+ * AI 레벨에 따라 선의 높이 선호도가 달라짐
  */
 function evaluateFuseki(
     game: types.LiveGameSession,
     point: Point,
-    aiPlayer: Player
+    aiPlayer: Player,
+    aiLevel: number
 ): number {
     const boardSize = game.settings.boardSize;
     const moveCount = game.moveHistory.length;
@@ -2501,20 +2810,45 @@ function evaluateFuseki(
 
     let score = 0;
 
-    // 3선과 4선 선호
-    const line3 = point.x === 2 || point.x === boardSize - 3 || point.y === 2 || point.y === boardSize - 3;
-    const line4 = point.x === 3 || point.x === boardSize - 4 || point.y === 3 || point.y === boardSize - 4;
-    
-    if (line3 || line4) {
-        score += 2.0; // 좋은 선
+    // 선의 높이 계산 (1선 = 가장자리, 2선, 3선, 4선...)
+    const distanceFromEdge = Math.min(
+        point.x,
+        point.y,
+        boardSize - 1 - point.x,
+        boardSize - 1 - point.y
+    );
+    const line = distanceFromEdge + 1; // 1선부터 시작
+
+    // AI 레벨에 따른 선의 높이 선호도
+    if (aiLevel >= 7) {
+        // 최고 등급 (7-10단계): 3-4선 주로, 가끔 2선과 5선, 1선과 6선 이상은 거의 안 둠
+        if (line === 3 || line === 4) {
+            score += 5.0; // 3-4선: 매우 높은 점수
+        } else if (line === 2 || line === 5) {
+            score += 0.5; // 2선, 5선: 약간의 점수 (가끔)
+        } else if (line === 1) {
+            score -= 10.0; // 1선: 매우 큰 패널티 (거의 안 둠)
+        } else if (line >= 6) {
+            score -= 8.0; // 6선 이상: 큰 패널티 (거의 안 둠)
+        }
+    } else if (aiLevel >= 4) {
+        // 중간 등급 (4-6단계): 3-4선 선호, 2선과 5선은 약간 패널티, 1선과 6선 이상은 패널티
+        if (line === 3 || line === 4) {
+            score += 3.0; // 3-4선: 높은 점수
+        } else if (line === 2 || line === 5) {
+            score -= 1.0; // 2선, 5선: 약간 패널티
+        } else if (line === 1) {
+            score -= 3.0; // 1선: 패널티
+        } else if (line >= 6) {
+            score -= 2.0; // 6선 이상: 패널티
+        }
     } else {
-        // 나쁜 선 (1선, 2선, 5선 이상)
-        const line1 = point.x === 0 || point.x === boardSize - 1 || point.y === 0 || point.y === boardSize - 1;
-        const line2 = point.x === 1 || point.x === boardSize - 2 || point.y === 1 || point.y === boardSize - 2;
-        
-        if (line1) {
+        // 하위 등급 (1-3단계): 기존 로직 유지
+        if (line === 3 || line === 4) {
+            score += 2.0; // 좋은 선
+        } else if (line === 1) {
             score -= 1.5; // 1선은 나쁨
-        } else if (line2) {
+        } else if (line === 2) {
             score -= 1.0; // 2선도 나쁨
         } else {
             score -= 0.5; // 5선 이상도 나쁨

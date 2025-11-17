@@ -4,6 +4,7 @@ import { LiveGameSession, Player, User, GameSummary, StatChange, GameMode, Inven
 import * as db from './db.js';
 import { clearAiSession } from './aiSessionManager.js';
 import { SPECIAL_GAME_MODES, NO_CONTEST_MANNER_PENALTY, NO_CONTEST_RANKING_PENALTY, CONSUMABLE_ITEMS, PLAYFUL_GAME_MODES, SINGLE_PLAYER_STAGES } from '../constants';
+import { TOWER_STAGES } from '../constants/towerConstants.js';
 import { updateQuestProgress } from './questService.js';
 import { getSelectiveUserUpdate } from './utils/userUpdateHelper.js';
 import * as mannerService from './mannerService.js';
@@ -192,6 +193,97 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
     broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
 };
 
+const processTowerGameSummary = async (game: LiveGameSession) => {
+    // DB에서 최신 사용자 데이터를 가져와서 towerFloor가 정확한지 확인
+    const freshUser = await db.getUser(game.player1.id);
+    if (!freshUser) {
+        console.error(`[Tower Summary] Could not find user ${game.player1.id} in database`);
+        return;
+    }
+    
+    const user = freshUser; // 최신 사용자 데이터 사용
+    const isWinner = game.winner === Player.Black; // Human is always black
+    
+    // 디버깅: 승자 판정 로그
+    console.log(`[processTowerGameSummary] Game ${game.id}: game.winner=${game.winner === Player.Black ? 'Black' : game.winner === Player.White ? 'White' : 'None'}, isWinner=${isWinner}, finalScores=${JSON.stringify(game.finalScores)}`);
+    
+    const floor = game.towerFloor ?? 1;
+    const userTowerFloor = user.towerFloor ?? 0;
+    const stage = TOWER_STAGES.find(s => {
+        const stageFloor = parseInt(s.id.replace('tower-', ''));
+        return stageFloor === floor;
+    });
+
+    if (!stage) {
+        console.error(`[Tower Summary] Could not find stage for floor: ${floor}`);
+        return;
+    }
+
+    // Initialize with a base structure
+    const summary: GameSummary = {
+        xp: { initial: user.strategyXp, change: 0, final: user.strategyXp },
+        rating: { initial: 1200, change: 0, final: 1200 }, // Not applicable
+        manner: { initial: user.mannerScore, change: 0, final: user.mannerScore },
+        gold: 0,
+        items: [],
+    };
+    
+    if (isWinner) {
+        // 클리어한 층 재도전 여부 확인
+        const isCleared = floor <= userTowerFloor;
+        
+        if (isCleared) {
+            // 클리어한 층 재도전 시 보상 없음
+            console.log(`[Tower Summary] Floor ${floor} - Already cleared, no reward on retry`);
+        } else {
+            // 최초 클리어 시에만 보상 지급
+            const rewards = stage.rewards.firstClear;
+            
+            user.gold += rewards.gold;
+            const initialXp = user.strategyXp;
+            user.strategyXp += rewards.exp;
+            
+            summary.gold = rewards.gold;
+            summary.xp = { initial: initialXp, change: rewards.exp, final: user.strategyXp };
+            
+            // 아이템 보상 처리
+            if (rewards.items && rewards.items.length > 0) {
+                const itemInstances = createItemInstancesFromReward(rewards.items);
+                addItemsToInventory(user, itemInstances);
+                summary.items = itemInstances;
+            }
+            
+            console.log(`[Tower Summary] Floor ${floor} - First clear reward: gold=${rewards.gold}, exp=${rewards.exp}, items=${rewards.items?.length || 0}`);
+        }
+    } else {
+        // 실패 시 보상 없음
+        console.log(`[Tower Summary] Floor ${floor} - Failed, no reward`);
+    }
+
+    // Always create a summary object, even on loss (with no rewards)
+    if (!game.summary) game.summary = {};
+    game.summary[user.id] = summary;
+    
+    // Handle level up logic after potentially adding XP (승리 시에만)
+    if (isWinner) {
+        let currentLevel = user.strategyLevel;
+        let currentXp = user.strategyXp;
+        let requiredXp = getXpForLevel(currentLevel);
+        while (currentXp >= requiredXp) {
+            currentXp -= requiredXp;
+            currentLevel++;
+            requiredXp = getXpForLevel(currentLevel);
+        }
+        user.strategyLevel = currentLevel;
+        user.strategyXp = currentXp;
+    }
+
+    await db.updateUser(user);
+    
+    // 사용자 업데이트를 클라이언트에 브로드캐스트
+    const { broadcast } = await import('./socket.js');
+    broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
+};
 
 export const endGame = async (game: LiveGameSession, winner: Player, winReason: WinReason): Promise<void> => {
     if (game.gameStatus === 'ended' || game.gameStatus === 'no_contest') {
@@ -230,7 +322,32 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
     game.isEarlyTermination = isEarlyTermination; // 조기 종료 플래그
     game.badMannerPlayerId = badMannerPlayerId ?? undefined; // 비매너 행동자 ID
 
-    if (game.isSinglePlayer) {
+    // 도전의 탑 게임 처리
+    if (game.gameCategory === 'tower' && game.towerFloor && winner === Player.Black) {
+        // 사용자가 승리한 경우 (도전의 탑에서는 사용자가 항상 Black)
+        const user = await db.getUser(game.player1.id);
+        if (user) {
+            const currentFloor = game.towerFloor;
+            const userTowerFloor = user.towerFloor ?? 0;
+            
+            // 현재 층이 사용자의 최고 층수보다 높거나 같으면 업데이트
+            if (currentFloor >= userTowerFloor) {
+                user.towerFloor = currentFloor;
+                user.lastTowerClearTime = now;
+                await db.updateUser(user);
+                
+                // 사용자 업데이트 브로드캐스트
+                const { broadcast } = await import('./socket.js');
+                broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
+                
+                console.log(`[Tower] User ${user.nickname} cleared floor ${currentFloor}`);
+            }
+        }
+    }
+    
+    if (game.gameCategory === 'tower') {
+        await processTowerGameSummary(game);
+    } else if (game.isSinglePlayer) {
         await processSinglePlayerGameSummary(game);
     } else {
         const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === game.mode);

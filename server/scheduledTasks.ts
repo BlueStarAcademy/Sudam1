@@ -17,6 +17,7 @@ let lastWeeklyResetTimestamp: number | null = null;
 let lastWeeklyLeagueUpdateTimestamp: number | null = null;
 let lastDailyRankingUpdateTimestamp: number | null = null;
 let lastDailyQuestResetTimestamp: number | null = null;
+let lastTowerRankingRewardTimestamp: number | null = null;
 
 export function setLastWeeklyLeagueUpdateTimestamp(timestamp: number): void {
     lastWeeklyLeagueUpdateTimestamp = timestamp;
@@ -227,12 +228,48 @@ export async function processWeeklyResetAndRematch(): Promise<void> {
         // 2. 모든 점수 리셋 (유저 점수 0, 봇 점수 0, yesterdayScore 0)
         
         // 티어변동 후 새로운 경쟁상대 매칭
+        // 모든 유저를 처리하되, 관리자나 초기데이터 아이디도 포함하여 처리
         for (const user of allUsers) {
             // 최신 유저 데이터 가져오기 (티어변동이 반영된 상태)
             const freshUser = await db.getUser(user.id);
             if (!freshUser) continue;
             
-            let updatedUser = await updateWeeklyCompetitorsIfNeeded(freshUser, allUsers);
+            // 월요일 0시에는 강제로 경쟁 상대를 업데이트 (주간 체크 무시)
+            // 관리자나 초기데이터 아이디도 포함하여 처리
+            let updatedUser = freshUser;
+            const nowForUpdate = Date.now();
+            if (isDifferentWeekKST(freshUser.lastWeeklyCompetitorsUpdate ?? undefined, nowForUpdate) || !freshUser.weeklyCompetitors || freshUser.weeklyCompetitors.length === 0) {
+                // 경쟁 상대 업데이트가 필요한 경우
+                console.log(`[WeeklyReset] Updating weekly competitors for ${freshUser.nickname} (${freshUser.id})`);
+                
+                // Find 15 other users in the same league
+                const potentialCompetitors = allUsers.filter(
+                    u => u.id !== freshUser.id && u.league === freshUser.league
+                );
+                
+                const shuffledCompetitors = potentialCompetitors.sort(() => 0.5 - Math.random());
+                const selectedCompetitors = shuffledCompetitors.slice(0, 15);
+                
+                // Create the list of competitors including the current user
+                const competitorList: types.WeeklyCompetitor[] = [freshUser, ...selectedCompetitors].map(u => ({
+                    id: u.id,
+                    nickname: u.nickname,
+                    avatarId: u.avatarId,
+                    borderId: u.borderId,
+                    league: u.league,
+                    initialScore: 0 // All scores reset to 0 at the start of the week
+                }));
+                
+                updatedUser = JSON.parse(JSON.stringify(freshUser));
+                updatedUser.weeklyCompetitors = competitorList;
+                updatedUser.lastWeeklyCompetitorsUpdate = nowForUpdate;
+                
+                // 새로운 주간 경쟁상대가 매칭되면 봇 점수도 0으로 리셋
+                updatedUser.weeklyCompetitorsBotScores = {};
+            } else {
+                // 이미 경쟁 상대가 있고 주간 체크를 통과한 경우에도 updateWeeklyCompetitorsIfNeeded 호출
+                updatedUser = await updateWeeklyCompetitorsIfNeeded(freshUser, allUsers);
+            }
             
             // 모든 유저의 주간 점수를 0으로 리셋 (processWeeklyLeagueUpdates에서 이미 누적 점수에 추가됨)
             updatedUser.tournamentScore = 0;
@@ -261,11 +298,26 @@ export async function processWeeklyResetAndRematch(): Promise<void> {
             }
             
             // 새로운 경쟁상대에 봇이 포함된 경우, 봇 점수를 0으로 초기화하고 yesterdayScore도 0으로 설정
+            // 그리고 월요일 0시에 경쟁 상대가 갱신된 직후이므로 봇 점수에 1~50점을 한번 추가
             if (updatedUser.weeklyCompetitors) {
                 for (const competitor of updatedUser.weeklyCompetitors) {
                     if (competitor.id.startsWith('bot-')) {
+                        // 1-50 사이의 랜덤값 생성 (봇 ID와 KST 기준 날짜를 시드로 사용)
+                        const kstYear = getKSTFullYear(now);
+                        const kstMonth = getKSTMonth(now) + 1; // 0-based to 1-based
+                        const kstDate = getKSTDate_UTC(now);
+                        const dateStr = `${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDate).padStart(2, '0')}`;
+                        const seedStr = `${competitor.id}-${dateStr}`;
+                        let seed = 0;
+                        for (let i = 0; i < seedStr.length; i++) {
+                            seed = ((seed << 5) - seed) + seedStr.charCodeAt(i);
+                            seed = seed & seed; // Convert to 32bit integer
+                        }
+                        const randomVal = Math.abs(Math.sin(seed)) * 10000;
+                        const initialGain = Math.floor((randomVal % 50)) + 1; // 1-50
+                        
                         updatedUser.weeklyCompetitorsBotScores[competitor.id] = {
-                            score: 0,
+                            score: initialGain, // 월요일 0시에 경쟁 상대 갱신 직후 1~50점 추가
                             lastUpdate: now,
                             yesterdayScore: 0 // 변화없음으로 표시
                         };
@@ -273,19 +325,37 @@ export async function processWeeklyResetAndRematch(): Promise<void> {
                 }
             }
             
-            // 기존 봇 점수가 있으면 0으로 리셋 (새로운 경쟁상대에 포함되지 않은 봇)
+            // 기존 봇 점수가 있으면 처리 (새로운 경쟁상대에 포함되지 않은 봇)
             for (const botId in updatedUser.weeklyCompetitorsBotScores) {
                 const competitorExists = updatedUser.weeklyCompetitors?.some(c => c.id === botId);
                 if (!competitorExists) {
                     // 새로운 경쟁상대에 포함되지 않은 봇은 삭제
                     delete updatedUser.weeklyCompetitorsBotScores[botId];
                 } else {
-                    // 새로운 경쟁상대에 포함된 봇은 0으로 리셋
-                    updatedUser.weeklyCompetitorsBotScores[botId] = {
-                        score: 0,
-                        lastUpdate: now,
-                        yesterdayScore: 0 // 변화없음으로 표시
-                    };
+                    // 새로운 경쟁상대에 포함된 봇은 이미 위에서 처리됨
+                    // 하지만 혹시 모를 경우를 대비해 점수 확인 및 업데이트
+                    const botScoreData = updatedUser.weeklyCompetitorsBotScores[botId];
+                    if (botScoreData && botScoreData.score === 0 && botScoreData.lastUpdate === now) {
+                        // 1-50 사이의 랜덤값 생성 (봇 ID와 KST 기준 날짜를 시드로 사용)
+                        const kstYear = getKSTFullYear(now);
+                        const kstMonth = getKSTMonth(now) + 1; // 0-based to 1-based
+                        const kstDate = getKSTDate_UTC(now);
+                        const dateStr = `${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDate).padStart(2, '0')}`;
+                        const seedStr = `${botId}-${dateStr}`;
+                        let seed = 0;
+                        for (let i = 0; i < seedStr.length; i++) {
+                            seed = ((seed << 5) - seed) + seedStr.charCodeAt(i);
+                            seed = seed & seed; // Convert to 32bit integer
+                        }
+                        const randomVal = Math.abs(Math.sin(seed)) * 10000;
+                        const initialGain = Math.floor((randomVal % 50)) + 1; // 1-50
+                        
+                        updatedUser.weeklyCompetitorsBotScores[botId] = {
+                            score: initialGain, // 월요일 0시에 경쟁 상대 갱신 직후 1~50점 추가
+                            lastUpdate: now,
+                            yesterdayScore: 0 // 변화없음으로 표시
+                        };
+                    }
                 }
             }
             
@@ -888,4 +958,141 @@ export async function processDailyQuestReset(): Promise<void> {
 
     lastDailyQuestResetTimestamp = now;
     console.log(`[DailyQuestReset] Reset daily quests for ${resetCount} users, tournament states for ${tournamentResetCount} users, started tournament sessions for ${tournamentSessionStartedCount} user-tournament combinations`);
+}
+
+// 매일 0시 KST에 도전의 탑 랭킹 보상 지급
+export async function processTowerRankingRewards(): Promise<void> {
+    const now = Date.now();
+    const kstHours = getKSTHours(now);
+    const kstMinutes = getKSTMinutes(now);
+    const kstDate = getKSTDate_UTC(now);
+    const isMidnight = kstHours === 0 && kstMinutes < 5;
+    
+    // 디버깅: 현재 KST 시간 정보 로그
+    if (process.env.NODE_ENV === 'development' && kstHours === 0) {
+        console.log(`[TowerRankingReward] Checking: KST Date=${kstDate}, Hours=${kstHours}, Minutes=${kstMinutes}, isMidnight=${isMidnight}`);
+    }
+    
+    if (!isMidnight) {
+        return;
+    }
+    
+    // 이미 오늘 처리했는지 확인
+    if (lastTowerRankingRewardTimestamp !== null) {
+        const todayStart = getStartOfDayKST(now);
+        const lastUpdateStart = getStartOfDayKST(lastTowerRankingRewardTimestamp);
+        
+        if (lastUpdateStart === todayStart) {
+            return; // Already processed today
+        }
+    }
+    
+    console.log(`[TowerRankingReward] Processing tower ranking rewards at midnight KST`);
+    
+    const allUsers = await db.getAllUsers();
+    
+    // 1층 이상 클리어한 사용자만 필터링
+    const eligibleUsers = allUsers.filter(user => {
+        const towerFloor = (user as any).towerFloor ?? 0;
+        return towerFloor > 0;
+    });
+    
+    // 랭킹 계산: 층수 높은 순, 같은 층이면 먼저 클리어한 순
+    const sortedUsers = eligibleUsers.sort((a, b) => {
+        const floorA = (a as any).towerFloor ?? 0;
+        const floorB = (b as any).towerFloor ?? 0;
+        
+        if (floorA !== floorB) {
+            return floorB - floorA; // 층수 높은 순
+        }
+        
+        // 같은 층이면 먼저 클리어한 순
+        const timeA = (a as any).lastTowerClearTime ?? Infinity;
+        const timeB = (b as any).lastTowerClearTime ?? Infinity;
+        return timeA - timeB;
+    });
+    
+    // 보상 정의
+    const getRewardForRank = (rank: number): { gold: number; diamonds: number; items: { itemId: string; quantity: number }[] } => {
+        if (rank === 1) {
+            return {
+                gold: 50000,
+                diamonds: 300,
+                items: [{ itemId: '장비상자6', quantity: 3 }]
+            };
+        } else if (rank === 2) {
+            return {
+                gold: 30000,
+                diamonds: 200,
+                items: [{ itemId: '장비상자6', quantity: 2 }]
+            };
+        } else if (rank >= 3 && rank <= 5) {
+            return {
+                gold: 20000,
+                diamonds: 150,
+                items: [{ itemId: '장비상자6', quantity: 1 }]
+            };
+        } else if (rank >= 6 && rank <= 10) {
+            return {
+                gold: 10000,
+                diamonds: 100,
+                items: [{ itemId: '장비상자5', quantity: 1 }]
+            };
+        } else if (rank >= 11 && rank <= 50) {
+            return {
+                gold: 7500,
+                diamonds: 75,
+                items: [{ itemId: '장비상자4', quantity: 2 }]
+            };
+        } else if (rank >= 51 && rank <= 100) {
+            return {
+                gold: 5000,
+                diamonds: 50,
+                items: [{ itemId: '장비상자4', quantity: 1 }]
+            };
+        }
+        // 순위권 밖 (101위 이상이지만 1층 이상 클리어)
+        return {
+            gold: 1000,
+            diamonds: 25,
+            items: [{ itemId: '장비상자3', quantity: 1 }]
+        };
+    };
+    
+    // 각 사용자에게 보상 지급
+    let rewardCount = 0;
+    for (let i = 0; i < sortedUsers.length; i++) {
+        const user = sortedUsers[i];
+        const rank = i + 1;
+        const reward = getRewardForRank(rank);
+        
+        // 메일 생성
+        const mailTitle = `도전의 탑 랭킹 보상 (${rank}위)`;
+        const mailMessage = `도전의 탑 랭킹에서 ${rank}위를 기록하셨습니다.\n\n보상이 지급되었습니다. 30일 이내에 수령해주세요.`;
+        
+        const mail: types.Mail = {
+            id: `mail-tower-ranking-${randomUUID()}`,
+            from: 'System',
+            title: mailTitle,
+            message: mailMessage,
+            attachments: {
+                gold: reward.gold,
+                diamonds: reward.diamonds,
+                items: reward.items
+            },
+            receivedAt: now,
+            expiresAt: now + 30 * 24 * 60 * 60 * 1000, // 30 days
+            isRead: false,
+            attachmentsClaimed: false,
+        };
+        
+        if (!user.mail) user.mail = [];
+        user.mail.unshift(mail);
+        
+        await db.updateUser(user);
+        rewardCount++;
+    }
+    
+    lastTowerRankingRewardTimestamp = now;
+    console.log(`[TowerRankingReward] Sent rewards to ${rewardCount} users`);
 }

@@ -87,6 +87,10 @@ export const CONSUMABLE_ITEMS: (Omit<InventoryItem, 'id'|'createdAt'|'isEquipped
     { name: '컨디션회복제(소)', description: '컨디션을 1~10 회복합니다.', type: 'consumable', slot: null, image: '/images/use/con1.png', grade: 'normal' },
     { name: '컨디션회복제(중)', description: '컨디션을 10~20 회복합니다.', type: 'consumable', slot: null, image: '/images/use/con2.png', grade: 'uncommon' },
     { name: '컨디션회복제(대)', description: '컨디션을 20~30 회복합니다.', type: 'consumable', slot: null, image: '/images/use/con3.png', grade: 'rare' },
+    { name: '턴 추가', description: '도전의 탑에서 사용할 수 있는 턴 추가 아이템입니다.', type: 'consumable', slot: null, image: '/images/button/addturn.png', grade: 'normal' },
+    { name: '미사일', description: '도전의 탑에서 사용할 수 있는 미사일 아이템입니다.', type: 'consumable', slot: null, image: '/images/button/missile.png', grade: 'normal' },
+    { name: '히든', description: '도전의 탑에서 사용할 수 있는 히든 아이템입니다.', type: 'consumable', slot: null, image: '/images/button/hidden.png', grade: 'normal' },
+    { name: '배치변경', description: '도전의 탑에서 사용할 수 있는 배치변경 아이템입니다.', type: 'consumable', slot: null, image: '/images/button/reflesh.png', grade: 'normal' },
 ];
 
 export const MATERIAL_ITEMS: Record<string, Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'|'enhancementFails'>> = {
