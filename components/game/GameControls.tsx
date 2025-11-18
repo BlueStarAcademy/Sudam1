@@ -618,7 +618,7 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
             };
 
             return (
-                <footer className="responsive-controls flex-shrink-0 bg-gray-800 rounded-lg p-2 flex flex-col items-stretch justify-center gap-2 w-full min-h-[148px]">
+                <footer className="responsive-controls flex-shrink-0 bg-gray-800 rounded-lg p-2 flex flex-col items-stretch justify-center gap-2 w-full h-[148px]">
                     {isMobile && settings.features.mobileConfirm && pendingMove && (
                         <div className="flex gap-4 p-2 justify-center">
                             <Button onClick={onCancelMove} colorScheme="none" className={`${getLuxuryButtonClasses('danger')} !py-3 !px-6`}>취소</Button>
@@ -627,13 +627,13 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                     )}
                     <div className="bg-gray-900/70 border border-stone-700 rounded-xl px-4 py-3 flex flex-wrap items-center justify-center gap-3">
                         <Button onClick={handleShowResults} colorScheme="none" className="justify-center !py-1.5 !px-4 !text-sm rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400 whitespace-nowrap">
-                            결과 보기
-                        </Button>
-                        <Button onClick={handleRetry} colorScheme="none" className="justify-center !py-1.5 !px-4 !text-sm rounded-xl border border-amber-400/50 bg-gradient-to-r from-amber-500/90 via-amber-300/90 to-amber-500/90 text-slate-900 shadow-[0_12px_32px_-18px_rgba(251,191,36,0.85)] hover:from-amber-300 hover:to-amber-500 whitespace-nowrap">
-                            재도전 {retryActionPointCost > 0 && `(⚡${retryActionPointCost})`}
+                            결과 확인
                         </Button>
                         <Button onClick={handleNextStage} colorScheme="none" className="justify-center !py-1.5 !px-4 !text-sm rounded-xl border border-cyan-400/50 bg-gradient-to-r from-cyan-500/90 via-sky-500/90 to-blue-500/90 text-white shadow-[0_12px_32px_-18px_rgba(56,189,248,0.85)] hover:from-cyan-300 hover:to-blue-500 whitespace-nowrap" disabled={!canTryNextStage}>
                             다음 단계{canTryNextStage && nextStage ? `: ${nextStage.name}` : ''}{nextStageActionPointCost > 0 && ` (⚡${nextStageActionPointCost})`}
+                        </Button>
+                        <Button onClick={handleRetry} colorScheme="none" className="justify-center !py-1.5 !px-4 !text-sm rounded-xl border border-amber-400/50 bg-gradient-to-r from-amber-500/90 via-amber-300/90 to-amber-500/90 text-slate-900 shadow-[0_12px_32px_-18px_rgba(251,191,36,0.85)] hover:from-amber-300 hover:to-amber-500 whitespace-nowrap">
+                            재도전 {retryActionPointCost > 0 && `(⚡${retryActionPointCost})`}
                         </Button>
                         <Button onClick={handleCloseResults} colorScheme="none" className="justify-center !py-1.5 !px-4 !text-sm rounded-xl border border-slate-400/50 bg-gradient-to-r from-slate-800/90 via-slate-900/90 to-black/90 text-slate-100 shadow-[0_12px_32px_-18px_rgba(148,163,184,0.85)] hover:from-slate-700 hover:to-slate-900 whitespace-nowrap">
                             나가기
@@ -682,8 +682,16 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
                                 onClick={handleRefreshClick}
                                 disabled={refreshDisabled}
                             />
-                            <span className="text-[10px] text-amber-200 font-semibold tracking-wide">
-                                {remainingRefreshes}/5 · {nextCost === 0 ? '무료' : `${nextCost.toLocaleString()}G`}
+                            <span className="text-[10px] text-amber-200 font-semibold tracking-wide flex items-center gap-1">
+                                {remainingRefreshes}/5
+                                {nextCost > 0 && (
+                                    <>
+                                        <span>·</span>
+                                        <img src="/images/icon/Gold.png" alt="골드" className="w-3 h-3" />
+                                        <span>{nextCost.toLocaleString()}</span>
+                                    </>
+                                )}
+                                {nextCost === 0 && <span>· 무료</span>}
                             </span>
                         </div>
                     </div>

@@ -634,11 +634,17 @@ export const analyzeGame = async (session: LiveGameSession, options?: { maxVisit
     }
 
     try {
+        console.log(`[KataGo] Starting analysis query for game ${session.id} (isSinglePlayer: ${session.isSinglePlayer}, stageId: ${session.stageId})`);
+        console.log(`[KataGo] Query details: boardSize=${query.boardXSize}x${query.boardYSize}, moves=${query.moves?.length || 0}, initialStones=${(query as any).initialStones?.length || 0}`);
         const response = await getKataGoManager().query(query);
+        console.log(`[KataGo] Analysis query completed for game ${session.id}`);
         return kataGoResponseToAnalysisResult(session, response, isCurrentPlayerWhite);
     } catch (error) {
         console.error('[KataGo] Analysis query failed:', error);
+        console.error('[KataGo] Error details:', error instanceof Error ? error.message : String(error));
+        console.error('[KataGo] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
         // Fallback to a default "error" state analysis result
+        console.log(`[KataGo] Returning fallback analysis result for game ${session.id}`);
         return {
             winRateBlack: 50,
             winRateChange: 0,

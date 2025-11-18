@@ -101,8 +101,18 @@ const WeeklyCompetitorsPanel: React.FC<{ setHasRankChanged: (changed: boolean) =
                 const liveData = allUsers.find(u => u.id === competitor.id);
                 // cumulativeTournamentScore를 사용하여 일주일 동안의 모든 경기장 점수 합계 표시
                 const liveScore = liveData ? (liveData.cumulativeTournamentScore || 0) : competitor.initialScore;
-                // 어제 점수를 기준으로 변화량 계산 (yesterdayTournamentScore가 없으면 initialScore로 간주)
-                const yesterdayScore = liveData?.yesterdayTournamentScore ?? competitor.initialScore;
+                // 어제 점수를 기준으로 변화량 계산
+                // yesterdayTournamentScore가 있으면 그것을 사용, 없으면 dailyRankings.championship.score를 사용
+                // 둘 다 없으면 현재 점수를 어제 점수로 간주 (변화 없음)
+                let yesterdayScore: number;
+                if (liveData?.yesterdayTournamentScore !== undefined && liveData.yesterdayTournamentScore !== null) {
+                    yesterdayScore = liveData.yesterdayTournamentScore;
+                } else if (liveData?.dailyRankings?.championship?.score !== undefined) {
+                    yesterdayScore = liveData.dailyRankings.championship.score;
+                } else {
+                    // 어제 점수가 없으면 현재 점수를 어제 점수로 간주 (변화 없음)
+                    yesterdayScore = liveScore;
+                }
                 const scoreChange = liveScore - yesterdayScore;
                 return { ...competitor, liveScore, scoreChange };
             }

@@ -356,7 +356,7 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                 
                 <div className={`flex flex-row gap-1.5 sm:gap-2 overflow-hidden flex-1 min-h-0`}>
                     {/* Left Panel: 경기 결과 */}
-                    <div className={`w-1/2 bg-gray-900/50 ${isMobile ? 'p-1.5' : 'p-2'} rounded-lg overflow-y-auto flex flex-col`}>
+                    <div className={`w-1/2 bg-gray-900/50 ${isMobile ? 'p-1.5' : 'p-2'} rounded-lg overflow-y-auto flex flex-col sp-summary-left-panel`}>
                         <h2 className={`${isMobile ? 'text-xs' : 'text-base'} font-bold text-center text-gray-200 mb-1 sm:mb-2 border-b border-gray-700 pb-0.5 sm:pb-1 flex-shrink-0`} style={{ fontSize: isMobile ? `${11 * mobileTextScale}px` : '15px' }}>경기 결과</h2>
                         <div className="flex-1 min-h-0 flex flex-col gap-1.5">
                             {/* 경기 정보 */}
@@ -508,6 +508,16 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                 {/* Buttons */}
                 <div className={`mt-1.5 sm:mt-2 flex-shrink-0 grid ${isMobile ? 'grid-cols-2 gap-1.5' : 'grid-cols-4 gap-1.5'}`}>
                     <Button
+                        onClick={() => {
+                            // 확인: 모달 닫기
+                            handleClose(session, onClose);
+                        }}
+                        colorScheme="none"
+                        className={`w-full justify-center ${isMobile ? '!py-1.5 !text-xs' : '!py-2 !text-sm'} rounded-xl border border-blue-400/50 bg-gradient-to-r from-blue-500/90 via-cyan-500/90 to-teal-500/90 text-white shadow-[0_12px_32px_-18px_rgba(59,130,246,0.85)] hover:from-blue-400 hover:to-teal-400`}
+                    >
+                        확인
+                    </Button>
+                    <Button
                         onClick={handleNextStage}
                         colorScheme="none"
                         className={`w-full justify-center ${isMobile ? '!py-1.5 !text-xs' : '!py-2 !text-sm'} rounded-xl border ${canTryNext && !isProcessing ? 'border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400' : 'border-gray-500/50 bg-gray-700/50 text-gray-400 cursor-not-allowed'}`}
@@ -530,13 +540,6 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
                         disabled={isProcessing}
                     >
                         나가기
-                    </Button>
-                    <Button
-                        onClick={() => handleClose(session, onClose)}
-                        colorScheme="none"
-                        className={`w-full justify-center ${isMobile ? '!py-1.5 !text-xs' : '!py-2 !text-sm'} rounded-xl border border-emerald-400/50 bg-gradient-to-r from-emerald-500/90 via-teal-500/90 to-cyan-500/90 text-white shadow-[0_12px_32px_-18px_rgba(16,185,129,0.85)] hover:from-emerald-400 hover:to-cyan-400`}
-                    >
-                        확인
                     </Button>
                 </div>
             </div>

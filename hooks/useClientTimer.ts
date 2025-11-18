@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 // FIX: Import missing types from the centralized types file.
-import { LiveGameSession, Player } from '../types/index.js';
+import { LiveGameSession, Player, GameMode } from '../types/index.js';
 
 interface ClientTimerOptions {
     isPaused?: boolean;
@@ -73,30 +73,37 @@ export const useClientTimer = (session: LiveGameSession, options: ClientTimerOpt
         const updateTimer = () => {
             const newTimeLeft = Math.max(0, (baseDeadline - Date.now()) / 1000);
             
+            // 피셔 방식 확인
+            const isFischer = session.mode === GameMode.Speed || (session.mode === GameMode.Mix && session.settings?.mixedModes?.includes(GameMode.Speed));
+            
             if (isSharedDeadlinePhase) {
                 setClientTimes({ black: newTimeLeft, white: newTimeLeft });
             } else if (session.currentPlayer === Player.Black) {
-                // 흑의 턴: 흑은 deadline 기반, 백은 서버 시간 사용 (단, 클라이언트 시간이 더 작으면 유지)
+                // 흑의 턴: 흑은 deadline 기반, 백은 서버 시간 사용
                 const serverWhiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : (session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0);
+                // 피셔 방식이면 백의 시간도 서버 시간 직접 사용 (수를 두지 않았으므로)
+                // 피셔 방식이 아니면 백의 시간도 서버 시간 직접 사용 (턴이 바뀌었으므로)
                 setClientTimes(prev => ({
                     black: newTimeLeft,
-                    white: serverWhiteTime > 0 && prev.white > 0 && prev.white < serverWhiteTime ? prev.white : serverWhiteTime
+                    white: serverWhiteTime
                 }));
             } else if (session.currentPlayer === Player.White) {
-                // 백의 턴: 백은 deadline 기반, 흑은 서버 시간 사용 (단, 클라이언트 시간이 더 작으면 유지)
+                // 백의 턴: 백은 deadline 기반, 흑은 서버 시간 사용
                 const serverBlackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : (session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0);
+                // 피셔 방식이면 흑의 시간도 서버 시간 직접 사용 (수를 두지 않았으므로)
+                // 피셔 방식이 아니면 흑의 시간도 서버 시간 직접 사용 (턴이 바뀌었으므로)
                 setClientTimes(prev => ({
-                    black: serverBlackTime > 0 && prev.black > 0 && prev.black < serverBlackTime ? prev.black : serverBlackTime,
+                    black: serverBlackTime,
                     white: newTimeLeft
                 }));
             } else {
-                // 턴이 없는 경우: 서버 시간 사용 (단, 클라이언트 시간이 더 작으면 유지)
+                // 턴이 없는 경우: 서버 시간 사용 (피셔 방식이면 직접 사용)
                 const defaultTime = session.settings?.timeLimit ? session.settings.timeLimit * 60 : 0;
                 const serverBlackTime = session.blackTimeLeft ? coerce(session.blackTimeLeft) : defaultTime;
                 const serverWhiteTime = session.whiteTimeLeft ? coerce(session.whiteTimeLeft) : defaultTime;
                 setClientTimes(prev => ({
-                    black: serverBlackTime > 0 && prev.black > 0 && prev.black < serverBlackTime ? prev.black : serverBlackTime,
-                    white: serverWhiteTime > 0 && prev.white > 0 && prev.white < serverWhiteTime ? prev.white : serverWhiteTime
+                    black: isFischer ? serverBlackTime : (serverBlackTime > 0 && prev.black > 0 && prev.black < serverBlackTime ? prev.black : serverBlackTime),
+                    white: isFischer ? serverWhiteTime : (serverWhiteTime > 0 && prev.white > 0 && prev.white < serverWhiteTime ? prev.white : serverWhiteTime)
                 }));
             }
             animationFrameId = requestAnimationFrame(updateTimer);
@@ -120,6 +127,8 @@ export const useClientTimer = (session: LiveGameSession, options: ClientTimerOpt
         session.gameStatus,
         session.id,
         session.settings?.timeLimit,
+        session.mode,
+        session.settings?.mixedModes,
         options.isPaused,
     ]);
 

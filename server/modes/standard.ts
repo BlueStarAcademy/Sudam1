@@ -62,6 +62,11 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         return;
     }
     
+    // scoring 상태인 게임은 업데이트하지 않음 (계가 진행 중)
+    if (game.gameStatus === 'scoring' || (game as any).isScoringProtected) {
+        return;
+    }
+    
     // This is the core update logic for all Go-based games.
     if (game.gameStatus === 'playing' && game.turnDeadline && now > game.turnDeadline) {
         const timedOutPlayer = game.currentPlayer;
@@ -150,6 +155,8 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
         case 'PLACE_STONE': {
             try {
             const isClientAiMove = (payload as any).isClientAiMove === true;
+            const clientTotalTurns = (payload as any).totalTurns; // 클라이언트에서 전달한 totalTurns
+            const triggerAutoScoring = (payload as any).triggerAutoScoring === true; // 자동 계가 트리거 플래그
             
             // 클라이언트가 계산한 AI 수인 경우 AI 차례인지 확인
             if (isClientAiMove) {
@@ -159,7 +166,150 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 }
             } else {
                 // 사용자 수인 경우 내 차례인지 확인
+                
+                // 자동 계가 트리거 플래그가 있으면 즉시 처리 (scoring 상태일 때도 처리)
+                // triggerAutoScoring 플래그가 있으면 실제 수를 두는 것이 아니라 자동 계가만 트리거
+                if (triggerAutoScoring && game.isSinglePlayer && game.stageId) {
+                    console.log(`[SinglePlayer] triggerAutoScoring flag detected: gameId=${game.id}, stageId=${game.stageId}, gameStatus=${game.gameStatus}, moveHistoryLength=${game.moveHistory.length}`);
+                    
+                    // DB에서 최신 게임 상태를 가져와서 moveHistory가 보존되어 있는지 확인
+                    const freshGame = await db.getLiveGame(game.id);
+                    if (!freshGame) {
+                        console.error(`[SinglePlayer] Game ${game.id} not found in database`);
+                        return { error: 'Game not found.' };
+                    }
+                    
+                    // 싱글플레이어는 클라이언트에서만 처리되므로 서버의 moveHistory가 비어있을 수 있음
+                    // 클라이언트에서 전달한 totalTurns를 우선 사용
+                    const validMoves = freshGame.moveHistory.filter(m => m.x !== -1 && m.y !== -1);
+                    const totalTurns = clientTotalTurns ?? freshGame.totalTurns ?? validMoves.length;
+                    
+                    console.log(`[SinglePlayer] Auto-scoring check (triggerAutoScoring flag): totalTurns=${totalTurns}, moveHistoryLength=${freshGame.moveHistory.length}, validMovesLength=${validMoves.length}, gameStatus=${freshGame.gameStatus}, clientTotalTurns=${clientTotalTurns}`);
+                    
+                    const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
+                    const stage = SINGLE_PLAYER_STAGES.find(s => s.id === freshGame.stageId);
+                    if (stage?.autoScoringTurns) {
+                        if (totalTurns >= stage.autoScoringTurns) {
+                            // 이미 scoring 상태이면 getGameResult만 호출 (중복 호출 방지)
+                            if (freshGame.gameStatus === 'scoring') {
+                                console.log(`[SinglePlayer] Auto-scoring already triggered, ensuring getGameResult is called (stage: ${freshGame.stageId}, isAnalyzing: ${freshGame.isAnalyzing})`);
+                                // scoring 상태이지만 getGameResult가 호출되지 않았을 수 있으므로 확인
+                                if (!freshGame.isAnalyzing) {
+                                    console.log(`[SinglePlayer] Calling getGameResult for scoring game (stage: ${freshGame.stageId})`);
+                                    const { getGameResult } = await import('../gameModes.js');
+                                    await getGameResult(freshGame);
+                                } else {
+                                    console.log(`[SinglePlayer] Game is already analyzing, skipping getGameResult call`);
+                                }
+                                return {};
+                            }
+                            
+                            // playing 상태이면 scoring으로 변경하고 getGameResult 호출
+                            if (freshGame.gameStatus === 'playing') {
+                                console.log(`[SinglePlayer] Auto-scoring triggered from client (explicit request) at ${totalTurns} turns (stage: ${freshGame.stageId}, moveHistoryLength: ${validMoves.length})`);
+                                
+                                // 싱글플레이어는 클라이언트에서만 처리되므로 서버의 moveHistory가 비어있을 수 있음
+                                // 클라이언트에서 전달한 moveHistory가 있으면 사용 (payload에서 확인)
+                                const clientMoveHistory = (payload as any).moveHistory;
+                                if (clientMoveHistory && Array.isArray(clientMoveHistory) && clientMoveHistory.length > 0) {
+                                    console.log(`[SinglePlayer] Using client moveHistory (length: ${clientMoveHistory.length}) for scoring`);
+                                    freshGame.moveHistory = clientMoveHistory;
+                                    
+                                    // boardState도 클라이언트의 moveHistory로부터 재구성 (KataGo 분석용)
+                                    // 클라이언트에서 전달한 boardState가 있으면 사용
+                                    const clientBoardState = (payload as any).boardState;
+                                    if (clientBoardState && Array.isArray(clientBoardState) && clientBoardState.length > 0) {
+                                        console.log(`[SinglePlayer] Using client boardState for scoring`);
+                                        freshGame.boardState = clientBoardState;
+                                    }
+                                } else if (freshGame.moveHistory.length === 0 && totalTurns > 0) {
+                                    // 서버의 moveHistory가 비어있지만 totalTurns가 있으면 경고
+                                    console.warn(`[SinglePlayer] WARNING: Server moveHistory is empty but totalTurns=${totalTurns}. KataGo analysis may fail.`);
+                                }
+                                
+                                // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
+                                freshGame.gameStatus = 'scoring';
+                                freshGame.isAnalyzing = true; // 분석 시작 플래그 설정
+                                freshGame.totalTurns = totalTurns; // totalTurns 저장
+                                
+                                // scoring 상태 보호: 다른 로직이 게임을 재시작하지 않도록 플래그 설정
+                                (freshGame as any).isScoringProtected = true;
+                                
+                                // 게임 상태 보존: 바둑판과 moveHistory가 초기화되지 않도록 보존
+                                // (이미 클라이언트에서 전달받은 moveHistory와 boardState가 설정되어 있음)
+                                // 추가로 보존 플래그 설정
+                                (freshGame as any).preserveGameState = true;
+                                
+                                await db.saveGame(freshGame);
+                                const { broadcast } = await import('../socket.js');
+                                broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
+                                console.log(`[SinglePlayer] Calling getGameResult for playing game (stage: ${freshGame.stageId}, moveHistoryLength: ${freshGame.moveHistory.length}, totalTurns: ${freshGame.totalTurns})`);
+                                const { getGameResult } = await import('../gameModes.js');
+                                await getGameResult(freshGame);
+                                return {};
+                            }
+                        } else {
+                            console.log(`[SinglePlayer] Auto-scoring not triggered: totalTurns (${totalTurns}) < autoScoringTurns (${stage.autoScoringTurns})`);
+                        }
+                    } else {
+                        console.log(`[SinglePlayer] Auto-scoring check failed: stage not found or no autoScoringTurns (stageId: ${freshGame.stageId})`);
+                    }
+                    // triggerAutoScoring 플래그가 있으면 실제 수를 두지 않고 자동 계가만 처리하므로 여기서 종료
+                    return {};
+                }
+                
+                // scoring 상태일 때는 PLACE_STONE 액션을 완전히 무시 (계가 진행 중, triggerAutoScoring 플래그가 없을 때만)
+                if (game.gameStatus === 'scoring') {
+                    console.log(`[SinglePlayer] PLACE_STONE ignored: game is already in scoring state (stage: ${game.stageId})`);
+                    return {};
+                }
+                
+                // 단, 싱글플레이어에서 자동 계가 트리거를 위해 게임 상태를 동기화하는 경우는 예외
                 if (!isMyTurn || (game.gameStatus !== 'playing' && game.gameStatus !== 'hidden_placing')) {
+                    // 싱글플레이어에서 자동 계가 트리거 확인 (playing 상태일 때만)
+                    if (game.isSinglePlayer && game.stageId && game.gameStatus === 'playing') {
+                        // 클라이언트에서 자동 계가 트리거를 위해 요청한 경우
+                        const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
+                        const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+                        if (stage?.autoScoringTurns) {
+                            // totalTurns를 먼저 확인 (클라이언트에서 전달한 totalTurns 우선, 없으면 서버의 totalTurns 또는 moveHistory 기반)
+                            const validMoves = game.moveHistory.filter(m => m.x !== -1 && m.y !== -1);
+                            const totalTurns = clientTotalTurns ?? game.totalTurns ?? validMoves.length;
+                            
+                            // 이미 처리된 수인지 확인 (보드 상태 또는 moveHistory에서)
+                            const existingMove = game.moveHistory.find(m => m.x === x && m.y === y && m.player === movePlayerEnum);
+                            const boardHasStone = game.boardState[y]?.[x] === movePlayerEnum;
+                            
+                            // totalTurns가 autoScoringTurns에 도달했고, 이미 처리된 수이면 자동 계가만 처리
+                            if (totalTurns >= stage.autoScoringTurns && (existingMove || boardHasStone)) {
+                                // 이미 처리된 수이므로 자동 계가만 처리
+                                console.log(`[SinglePlayer] Auto-scoring triggered from client (duplicate move ignored) at ${totalTurns} turns (stage: ${game.stageId}, moveHistoryLength: ${validMoves.length})`);
+                                // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
+                                game.gameStatus = 'scoring';
+                                await db.saveGame(game);
+                                const { broadcast } = await import('../socket.js');
+                                broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+                                const { getGameResult } = await import('../gameModes.js');
+                                await getGameResult(game);
+                                return {};
+                            }
+                            
+                            // totalTurns가 autoScoringTurns에 도달했지만, 아직 처리되지 않은 수인 경우
+                            // (클라이언트에서 자동 계가를 트리거했지만 서버의 moveHistory가 동기화되지 않은 경우)
+                            if (totalTurns >= stage.autoScoringTurns && !existingMove && !boardHasStone) {
+                                // 이 경우는 실제로 새로운 수를 두려는 것이므로, 자동 계가를 먼저 처리
+                                console.log(`[SinglePlayer] Auto-scoring triggered from client (new move at limit) at ${totalTurns} turns (stage: ${game.stageId}, moveHistoryLength: ${validMoves.length})`);
+                                // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
+                                game.gameStatus = 'scoring';
+                                await db.saveGame(game);
+                                const { broadcast } = await import('../socket.js');
+                                broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+                                const { getGameResult } = await import('../gameModes.js');
+                                await getGameResult(game);
+                                return {};
+                            }
+                        }
+                    }
                     return { error: '내 차례가 아닙니다.' };
                 }
             }
@@ -526,10 +676,16 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                 game.hiddenMoves[game.moveHistory.length - 1] = true;
                 
                 // 싱글플레이어에서 유저가 놓은 히든 돌에 문양 표시 추가
-                if (game.isSinglePlayer && !isClientAiMove) {
+                // 단, 배치 변경 후에는 기존 문양돌 목록에 있는 위치가 아니면 문양을 추가하지 않음
+                if (game.isSinglePlayer && !isClientAiMove && isHidden) {
                     const patternStonesKey = movePlayerEnum === types.Player.Black ? 'blackPatternStones' : 'whitePatternStones';
-                    if (!game[patternStonesKey]) game[patternStonesKey] = [];
-                    game[patternStonesKey].push({ x, y });
+                    const patternStones = game[patternStonesKey] || [];
+                    // 기존 문양돌 목록에 있는 위치인지 확인 (배치 변경 후에는 새로운 문양돌 목록만 유효)
+                    const isPatternLocation = patternStones.some(p => p.x === x && p.y === y);
+                    if (isPatternLocation) {
+                        // 이미 문양돌 목록에 있으면 추가하지 않음 (중복 방지)
+                        // 문양돌은 배치 시점에만 설정되므로, 여기서는 추가하지 않음
+                    }
                 }
             }
 
@@ -591,10 +747,18 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
             // 싱글플레이 턴 카운팅 및 자동 계가 트리거
             if (game.isSinglePlayer && game.stageId) {
-                game.totalTurns = game.moveHistory.length;
+                // 흑/백 모두 카운팅: moveHistory에 추가된 수를 카운팅 (x !== -1인 수만)
+                const validMoves = game.moveHistory.filter(m => m.x !== -1 && m.y !== -1);
+                const newTotalTurns = validMoves.length;
+                game.totalTurns = newTotalTurns;
                 
                 const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
                 const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+                
+                // 디버깅: totalTurns 업데이트 로그
+                if (stage?.autoScoringTurns) {
+                    console.log(`[SinglePlayer] totalTurns updated: ${newTotalTurns}/${stage.autoScoringTurns} (stage: ${game.stageId}, player: ${movePlayerEnum === types.Player.Black ? 'Black' : 'White'})`);
+                }
                 
                 // 살리기 바둑 모드: 백의 턴 수 체크
                 const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
@@ -625,11 +789,19 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                     }
                 }
                 
-                // 자동 계가 트리거 체크
+                // 자동 계가 트리거 체크: 정확히 autoScoringTurns에 도달했을 때 또는 초과했을 때
                 if (stage?.autoScoringTurns && game.totalTurns >= stage.autoScoringTurns) {
-                    const { getGameResult } = await import('../gameModes.js');
-                    await getGameResult(game);
-                    return {};
+                    // 게임 상태를 먼저 확인하여 중복 트리거 방지
+                    if (game.gameStatus === 'playing') {
+                        console.log(`[SinglePlayer] Auto-scoring triggered at ${game.totalTurns} turns (stage: ${game.stageId}, player: ${movePlayerEnum === types.Player.Black ? 'Black' : 'White'})`);
+                        // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
+                        game.gameStatus = 'scoring';
+                        await db.saveGame(game);
+                        broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+                        const { getGameResult } = await import('../gameModes.js');
+                        await getGameResult(game);
+                        return {};
+                    }
                 }
                 
                 // 유단자 1~5 스테이지 또는 도전의 탑: 흑돌 개수제한 체크

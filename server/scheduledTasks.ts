@@ -643,27 +643,90 @@ export async function updateBotLeagueScores(user: types.User): Promise<types.Use
             const lastUpdateDay = getStartOfDayKST(lastUpdate);
             const currentScore = botScoreData?.score || 0;
             
+            // 봇 점수가 없거나 0점인 경우 초기화 (월요일 0시가 아닌 경우)
+            if (!botScoreData || currentScore === 0) {
+                // 주간 경쟁상대가 업데이트된 날짜부터 오늘까지의 점수 계산
+                const competitorsUpdateDay = user.lastWeeklyCompetitorsUpdate 
+                    ? getStartOfDayKST(user.lastWeeklyCompetitorsUpdate)
+                    : todayStart;
+                const startDay = Math.max(competitorsUpdateDay, lastUpdateDay);
+                const daysDiff = Math.floor((todayStart - startDay) / (1000 * 60 * 60 * 24));
+                
+                if (daysDiff > 0) {
+                    // 누락된 날짜만큼 점수 추가 (각 날짜마다 1~50점)
+                    let totalGain = 0;
+                    let yesterdayScore = 0;
+                    
+                    // 시작일 다음 날부터 오늘까지 각 날짜의 점수 추가
+                    for (let dayOffset = 1; dayOffset <= daysDiff; dayOffset++) {
+                        const targetDate = new Date(startDay + (dayOffset * 24 * 60 * 60 * 1000));
+                        const kstYear = getKSTFullYear(targetDate.getTime());
+                        const kstMonth = getKSTMonth(targetDate.getTime()) + 1; // 0-based to 1-based
+                        const kstDate = getKSTDate_UTC(targetDate.getTime());
+                        const dateStr = `${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDate).padStart(2, '0')}`;
+                        const seedStr = `${competitor.id}-${dateStr}`;
+                        let seed = 0;
+                        for (let i = 0; i < seedStr.length; i++) {
+                            seed = ((seed << 5) - seed) + seedStr.charCodeAt(i);
+                            seed = seed & seed; // Convert to 32bit integer
+                        }
+                        const randomVal = Math.abs(Math.sin(seed)) * 10000;
+                        const dailyGain = Math.floor((randomVal % 50)) + 1; // 1-50
+                        totalGain += dailyGain;
+                        
+                        // 어제 점수는 오늘 전날의 점수로 설정
+                        if (dayOffset === daysDiff) {
+                            yesterdayScore = totalGain - dailyGain;
+                        }
+                    }
+                    
+                    if (!updatedUser.weeklyCompetitorsBotScores) {
+                        updatedUser.weeklyCompetitorsBotScores = {};
+                    }
+                    updatedUser.weeklyCompetitorsBotScores[competitor.id] = {
+                        score: totalGain,
+                        lastUpdate: now,
+                        yesterdayScore: yesterdayScore // 어제 점수 저장
+                    };
+                    
+                    hasChanges = true;
+                    continue; // 다음 봇으로
+                }
+            }
+            
             // 오늘 아직 업데이트하지 않았으면 점수 증가
             if (lastUpdateDay < todayStart) {
-                // 어제 점수를 yesterdayScore로 저장 (0시 직전의 점수)
-                const yesterdayScore = currentScore;
+                // 누락된 날짜 수 계산 (마지막 업데이트일부터 오늘까지)
+                const daysDiff = Math.floor((todayStart - lastUpdateDay) / (1000 * 60 * 60 * 24));
                 
-                // 1-50 사이의 랜덤값 생성 (봇 ID와 KST 기준 날짜를 시드로 사용)
-                // KST 기준 날짜 문자열 생성 (YYYY-MM-DD 형식)
-                const kstYear = getKSTFullYear(now);
-                const kstMonth = getKSTMonth(now) + 1; // 0-based to 1-based
-                const kstDate = getKSTDate_UTC(now);
-                const dateStr = `${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDate).padStart(2, '0')}`;
-                const seedStr = `${competitor.id}-${dateStr}`;
-                let seed = 0;
-                for (let i = 0; i < seedStr.length; i++) {
-                    seed = ((seed << 5) - seed) + seedStr.charCodeAt(i);
-                    seed = seed & seed; // Convert to 32bit integer
+                // 누락된 날짜만큼 점수 추가 (각 날짜마다 1~50점)
+                let totalGain = 0;
+                let yesterdayScore = currentScore;
+                
+                // 마지막 업데이트일 다음 날부터 오늘까지 각 날짜의 점수 추가
+                for (let dayOffset = 1; dayOffset <= daysDiff; dayOffset++) {
+                    const targetDate = new Date(lastUpdateDay + (dayOffset * 24 * 60 * 60 * 1000));
+                    const kstYear = getKSTFullYear(targetDate.getTime());
+                    const kstMonth = getKSTMonth(targetDate.getTime()) + 1; // 0-based to 1-based
+                    const kstDate = getKSTDate_UTC(targetDate.getTime());
+                    const dateStr = `${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDate).padStart(2, '0')}`;
+                    const seedStr = `${competitor.id}-${dateStr}`;
+                    let seed = 0;
+                    for (let i = 0; i < seedStr.length; i++) {
+                        seed = ((seed << 5) - seed) + seedStr.charCodeAt(i);
+                        seed = seed & seed; // Convert to 32bit integer
+                    }
+                    const randomVal = Math.abs(Math.sin(seed)) * 10000;
+                    const dailyGain = Math.floor((randomVal % 50)) + 1; // 1-50
+                    totalGain += dailyGain;
+                    
+                    // 어제 점수는 오늘 전날의 점수로 설정
+                    if (dayOffset === daysDiff) {
+                        yesterdayScore = currentScore + (totalGain - dailyGain);
+                    }
                 }
-                const randomVal = Math.abs(Math.sin(seed)) * 10000;
-                const dailyGain = Math.floor((randomVal % 50)) + 1; // 1-50
                 
-                const newScore = currentScore + dailyGain;
+                const newScore = currentScore + totalGain;
                 
                 if (!updatedUser.weeklyCompetitorsBotScores) {
                     updatedUser.weeklyCompetitorsBotScores = {};

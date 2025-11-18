@@ -1204,7 +1204,19 @@ const startServer = async () => {
 
     app.post('/api/action', async (req, res) => {
         try {
-            const { userId } = req.body;
+            const { userId, type, payload } = req.body;
+            
+            // PLACE_STONE 액션에 대한 상세 로깅 (특히 triggerAutoScoring 플래그)
+            if (type === 'PLACE_STONE' && payload?.triggerAutoScoring) {
+                console.log(`[/api/action] PLACE_STONE with triggerAutoScoring received:`, {
+                    userId,
+                    gameId: payload?.gameId,
+                    x: payload?.x,
+                    y: payload?.y,
+                    totalTurns: payload?.totalTurns,
+                    triggerAutoScoring: payload?.triggerAutoScoring
+                });
+            }
 
             // Allow registration without auth
             if (req.body.type === 'REGISTER') {

@@ -77,21 +77,45 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         const byoyomiKey = timedOutPlayer === types.Player.Black ? 'blackByoyomiPeriodsLeft' : 'whiteByoyomiPeriodsLeft';
         const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
 
+        // turnDeadline이 지났으므로 실제 남은 시간 계산
+        const timeRemaining = Math.max(0, (game.turnDeadline - now) / 1000);
+        
+        // turnStartTime을 기반으로 실제 경과 시간 계산
+        const elapsedSinceTurnStart = game.turnStartTime ? (now - game.turnStartTime) / 1000 : 0;
+        const initialTimeForThisTurn = game.turnStartTime && game.turnDeadline ? (game.turnDeadline - game.turnStartTime) / 1000 : 0;
+        
+        // 초읽기 상태 확인: 이번 턴의 초기 시간이 byoyomiTime과 같거나 작으면 초읽기 중
+        const wasInByoyomi = initialTimeForThisTurn > 0 && initialTimeForThisTurn <= (game.settings.byoyomiTime || 0) + 0.1; // 0.1초 오차 허용
+        
+        // 또는 game[timeKey]가 0 이하이면 초읽기 중
+        const isInByoyomiByTimeKey = (game[timeKey] || 0) <= 0;
+
         if (isFischer) {
             // Fischer timeout is an immediate loss.
-        } else if (game[timeKey] > 0) { // Main time expired -> enter byoyomi without consuming a period
+        } else if (!wasInByoyomi && !isInByoyomiByTimeKey && timeRemaining <= 0) {
+            // Main time expired -> enter byoyomi without consuming a period
             game[timeKey] = 0;
             if (game.settings.byoyomiCount > 0) {
+                // 초읽기 기간 초기화
+                if (game[byoyomiKey] === undefined || game[byoyomiKey] === null) {
+                    game[byoyomiKey] = game.settings.byoyomiCount;
+                }
                 // Do not decrement period on entering byoyomi
                 game.turnDeadline = now + game.settings.byoyomiTime * 1000;
                 game.turnStartTime = now;
+                console.log(`[Strategic] Player ${timedOutPlayer} entered byoyomi. Periods left: ${game[byoyomiKey]}`);
                 return;
             }
-        } else { // Byoyomi expired
+        } else if ((wasInByoyomi || isInByoyomiByTimeKey) && timeRemaining <= 0) {
+            // Byoyomi expired
+            if (game[byoyomiKey] === undefined || game[byoyomiKey] === null) {
+                game[byoyomiKey] = game.settings.byoyomiCount;
+            }
             if (game[byoyomiKey] > 0) {
                 game[byoyomiKey]--;
                 game.turnDeadline = now + game.settings.byoyomiTime * 1000;
                 game.turnStartTime = now;
+                console.log(`[Strategic] Player ${timedOutPlayer} byoyomi period consumed. Periods left: ${game[byoyomiKey]}`);
                 return;
             }
         }
@@ -101,6 +125,7 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         game.lastTimeoutPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
         game.lastTimeoutPlayerIdClearTime = now + 5000;
         
+        console.log(`[Strategic] Player ${timedOutPlayer} timed out. Winner: ${winner}, wasInByoyomi: ${wasInByoyomi}, isInByoyomiByTimeKey: ${isInByoyomiByTimeKey}, byoyomiPeriods: ${game[byoyomiKey]}`);
         summaryService.endGame(game, winner, 'timeout');
     }
 
@@ -134,14 +159,38 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         }
     }
 
-    // 도전의 탑 또는 싱글플레이: 흑돌 턴 제한 체크
+    // scoring 상태인 게임은 업데이트하지 않음 (계가 진행 중)
+    if (game.gameStatus === 'scoring' || (game as any).isScoringProtected) {
+        return;
+    }
+    
+    // 도전의 탑 또는 싱글플레이: 흑돌 턴 제한 체크 및 자동 계가 트리거
     const isTower = game.gameCategory === 'tower';
-    if ((game.isSinglePlayer || isTower) && game.gameStatus === 'playing' && game.stageId) {
+    const isSinglePlayer = game.isSinglePlayer && !isTower; // 도전의 탑과 싱글플레이 명확히 분리
+    if ((isSinglePlayer || isTower) && game.gameStatus === 'playing' && game.stageId) {
         const { TOWER_STAGES } = await import('../../constants/towerConstants.js');
         const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
         const stage = isTower 
             ? TOWER_STAGES.find(s => s.id === game.stageId)
             : SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+        
+        // 자동 계가 트리거 체크 (싱글플레이어만)
+        if (isSinglePlayer && stage?.autoScoringTurns) {
+            const validMoves = game.moveHistory.filter(m => m.x !== -1 && m.y !== -1);
+            const totalTurns = game.totalTurns ?? validMoves.length;
+            
+            if (totalTurns >= stage.autoScoringTurns) {
+                console.log(`[Strategic] Auto-scoring triggered in update loop at ${totalTurns} turns (stage: ${game.stageId})`);
+                // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
+                game.gameStatus = 'scoring';
+                await db.saveGame(game);
+                const { broadcast } = await import('../socket.js');
+                broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+                const { getGameResult } = await import('../gameModes.js');
+                await getGameResult(game);
+                return;
+            }
+        }
         
         if (stage?.blackTurnLimit) {
             const blackMovesCount = game.moveHistory.filter(m => m.player === types.Player.Black && m.x !== -1).length;
@@ -212,6 +261,21 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
         case 'PLACE_STONE': {
             if (!isMyTurn || (game.gameStatus !== 'playing' && game.gameStatus !== 'hidden_placing')) {
                 return { error: '내 차례가 아닙니다.' };
+            }
+
+            // 살리기 바둑 모드: 흑이 수를 두기 전에 백의 남은 턴 체크
+            const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
+            const isSinglePlayer = game.isSinglePlayer && !isTower;
+            if (isSurvivalMode && (game.mode === types.GameMode.Capture && isSinglePlayer) && myPlayerEnum === types.Player.Black) {
+                const whiteTurnsPlayed = (game as any).whiteTurnsPlayed || 0;
+                const survivalTurns = (game.settings as any)?.survivalTurns || 0;
+                const remainingTurns = survivalTurns - whiteTurnsPlayed;
+                
+                if (remainingTurns <= 0 && survivalTurns > 0 && game.gameStatus === 'playing') {
+                    console.log(`[Survival Go] White ran out of turns before Black move (${whiteTurnsPlayed}/${survivalTurns}), Black wins immediately`);
+                    await summaryService.endGame(game, types.Player.Black, 'capture_limit');
+                    return {};
+                }
             }
 
             const { x, y, isHidden } = payload;
@@ -423,6 +487,57 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             }
             prunePatternStones();
 
+            // 도전의 탑 또는 싱글플레이: 승리 조건 및 턴 제한 체크 (수를 둔 직후, 턴 변경 전)
+            const isTower = game.gameCategory === 'tower';
+            const isSinglePlayer = game.isSinglePlayer && !isTower; // 도전의 탑과 싱글플레이 명확히 분리
+            
+            // 1. 승리 조건 체크 (목표 점수 달성)
+            // 도전의 탑은 클라이언트 사이드에서 승리 조건을 체크하므로 서버에서는 체크하지 않음
+            // 싱글플레이만 서버에서 승리 조건을 체크
+            if (game.mode === types.GameMode.Capture && isSinglePlayer) {
+                const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
+                
+                if (!isSurvivalMode) {
+                    // 일반 따내기 바둑 모드 (싱글플레이만)
+                    const target = getCaptureTarget(game, myPlayerEnum);
+                    const currentCaptures = game.captures[myPlayerEnum];
+                    console.log(`[Capture] Single player - Player ${myPlayerEnum} - target: ${target}, currentCaptures: ${currentCaptures}, effectiveTargets: ${JSON.stringify(game.effectiveCaptureTargets)}`);
+                    
+                    if (target !== undefined && target !== NO_CAPTURE_TARGET && currentCaptures >= target) {
+                        console.log(`[Capture] Single player - Player ${myPlayerEnum} reached target score (${currentCaptures} >= ${target}), ending game`);
+                        await summaryService.endGame(game, myPlayerEnum, 'capture_limit');
+                        return {};
+                    }
+                }
+            }
+            
+            // 2. 도전의 탑 또는 싱글플레이: 흑돌 턴 제한 체크
+            if ((isSinglePlayer || isTower) && game.gameStatus === 'playing' && game.stageId && myPlayerEnum === types.Player.Black) {
+                const { TOWER_STAGES } = await import('../../constants/towerConstants.js');
+                const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
+                const stage = isTower 
+                    ? TOWER_STAGES.find(s => s.id === game.stageId)
+                    : SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+                
+                if (stage?.blackTurnLimit) {
+                    const blackMovesCount = game.moveHistory.filter(m => m.player === types.Player.Black && m.x !== -1).length;
+                    const blackTurnLimitBonus = (game as any).blackTurnLimitBonus || 0;
+                    const effectiveBlackTurnLimit = stage.blackTurnLimit + blackTurnLimitBonus;
+                    const remainingTurns = effectiveBlackTurnLimit - blackMovesCount;
+                    
+                    console.log(`[Tower/SinglePlayer] After Black move - moves: ${blackMovesCount}/${effectiveBlackTurnLimit}, remaining: ${remainingTurns}`);
+                    
+                    if (remainingTurns <= 0 && effectiveBlackTurnLimit > 0) {
+                        console.log(`[Tower/SinglePlayer] Black ran out of turns after move (${blackMovesCount}/${effectiveBlackTurnLimit}), White wins. Game status: ${game.gameStatus}`);
+                        if (game.gameStatus === 'playing') {
+                            await summaryService.endGame(game, types.Player.White, 'timeout');
+                            console.log(`[Tower/SinglePlayer] endGame called after Black move. Game status after: ${game.gameStatus}`);
+                            return {};
+                        }
+                    }
+                }
+            }
+
             const playerWhoMoved = myPlayerEnum;
             if (game.settings.timeLimit > 0) {
                 const timeKey = playerWhoMoved === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
@@ -463,57 +578,33 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                  game.turnStartTime = undefined;
             }
 
-            // After move logic
-            if (game.mode === types.GameMode.Capture || game.isSinglePlayer) {
-                const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
-                
-                if (isSurvivalMode) {
-                    // 살리기 바둑 모드
-                    // 백(봇)이 목표점수를 달성하면 백 승리 (유저 패배)
-                    if (myPlayerEnum === types.Player.White) {
-                        const target = getCaptureTarget(game, types.Player.White);
-                        if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[types.Player.White] >= target) {
-                            await summaryService.endGame(game, types.Player.White, 'capture_limit');
-                            return {};
-                        }
+            // 살리기 바둑 모드 승리 조건 체크 (턴 변경 후)
+            // 도전의 탑은 클라이언트에서 승리 조건을 체크하므로 서버에서는 체크하지 않음
+            const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
+            const isSinglePlayer = game.isSinglePlayer && !isTower; // 도전의 탑과 싱글플레이 명확히 분리
+            if (isSurvivalMode && (game.mode === types.GameMode.Capture && isSinglePlayer)) {
+                // 살리기 바둑 모드: 백의 남은 턴 체크는 백이 수를 둔 직후 goAiBot.ts에서 처리됨
+                // 여기서는 흑이 수를 둔 후 백의 상태를 체크
+                if (myPlayerEnum === types.Player.Black) {
+                    const whiteTurnsPlayed = (game as any).whiteTurnsPlayed || 0;
+                    const survivalTurns = (game.settings as any)?.survivalTurns || 0;
+                    
+                    // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
+                    const target = getCaptureTarget(game, types.Player.White);
+                    if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[types.Player.White] >= target) {
+                        console.log(`[Survival Go] White reached target score after Black move (${target}), White wins`);
+                        await summaryService.endGame(game, types.Player.White, 'capture_limit');
+                        return {};
                     }
                     
-                    // 흑(유저)이 수를 둔 후 백의 남은 턴 체크
-                    if (myPlayerEnum === types.Player.Black) {
-                        const whiteTurnsPlayed = (game as any).whiteTurnsPlayed || 0;
-                        const survivalTurns = (game.settings as any)?.survivalTurns || 0;
-                        
-                        console.log(`[Survival Go] After Black move - White turns played: ${whiteTurnsPlayed}/${survivalTurns}`);
-                        
-                        // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
-                        const target = getCaptureTarget(game, types.Player.White);
-                        if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[types.Player.White] >= target) {
-                            console.log(`[Survival Go] White reached target score after Black move (${target}), White wins`);
-                            await summaryService.endGame(game, types.Player.White, 'capture_limit');
+                    // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
+                    const remainingTurns = survivalTurns - whiteTurnsPlayed;
+                    if (remainingTurns <= 0 && survivalTurns > 0) {
+                        console.log(`[Survival Go] White ran out of turns after Black move (${whiteTurnsPlayed}/${survivalTurns}), Black wins`);
+                        if (game.gameStatus === 'playing') {
+                            await summaryService.endGame(game, types.Player.Black, 'capture_limit');
                             return {};
                         }
-                        
-                        // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
-                        // 백의 남은 턴 = survivalTurns - whiteTurnsPlayed
-                        // 백의 남은 턴이 0이 되었다는 것은 whiteTurnsPlayed >= survivalTurns
-                        const remainingTurns = survivalTurns - whiteTurnsPlayed;
-                        if (remainingTurns <= 0 && survivalTurns > 0) {
-                            console.log(`[Survival Go] White ran out of turns after Black move (${whiteTurnsPlayed}/${survivalTurns}, remaining: ${remainingTurns}), Black wins. Game status before endGame: ${game.gameStatus}`);
-                            if (game.gameStatus === 'playing') {
-                        await summaryService.endGame(game, types.Player.Black, 'capture_limit');
-                                console.log(`[Survival Go] endGame called after Black move. Game status after: ${game.gameStatus}`);
-                            } else {
-                                console.log(`[Survival Go] Game already ended after Black move (status: ${game.gameStatus}), skipping endGame`);
-                            }
-                            return {};
-                        }
-                    }
-                    // 백의 남은 턴 체크는 백이 수를 둔 직후 goAiBot.ts에서도 처리됨
-                } else {
-                    // 일반 따내기 바둑 모드
-                    const target = getCaptureTarget(game, myPlayerEnum);
-                    if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[myPlayerEnum] >= target) {
-                        await summaryService.endGame(game, myPlayerEnum, 'capture_limit');
                     }
                 }
             }

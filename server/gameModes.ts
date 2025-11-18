@@ -15,7 +15,7 @@ import * as db from './db.js';
 import * as effectService from './effectService.js';
 import { endGame } from './summaryService.js';
 
-export const finalizeAnalysisResult = (baseAnalysis: types.AnalysisResult, session: types.LiveGameSession): types.AnalysisResult => {
+export const finalizeAnalysisResult = (baseAnalysis: types.AnalysisResult, session: types.LiveGameSession, preservedTimeInfo?: { blackTimeLeft?: number, whiteTimeLeft?: number }): types.AnalysisResult => {
     const finalAnalysis = JSON.parse(JSON.stringify(baseAnalysis)); // Deep copy
 
     // Base stone bonus
@@ -26,10 +26,13 @@ export const finalizeAnalysisResult = (baseAnalysis: types.AnalysisResult, sessi
     finalAnalysis.scoreDetails.black.hiddenStoneBonus = 0;
     finalAnalysis.scoreDetails.white.hiddenStoneBonus = 0;
     
-    // Time bonus
+    // Time bonus: 보존된 시간 정보를 우선 사용 (게임이 재시작되어 시간이 초기화된 경우 대비)
     if (session.mode === types.GameMode.Speed || (session.mode === types.GameMode.Mix && session.settings.mixedModes?.includes(types.GameMode.Speed))) {
-        finalAnalysis.scoreDetails.black.timeBonus = Math.floor((session.blackTimeLeft || 0) / TIME_BONUS_SECONDS_PER_POINT);
-        finalAnalysis.scoreDetails.white.timeBonus = Math.floor((session.whiteTimeLeft || 0) / TIME_BONUS_SECONDS_PER_POINT);
+        const blackTime = preservedTimeInfo?.blackTimeLeft ?? session.blackTimeLeft ?? 0;
+        const whiteTime = preservedTimeInfo?.whiteTimeLeft ?? session.whiteTimeLeft ?? 0;
+        finalAnalysis.scoreDetails.black.timeBonus = Math.floor(blackTime / TIME_BONUS_SECONDS_PER_POINT);
+        finalAnalysis.scoreDetails.white.timeBonus = Math.floor(whiteTime / TIME_BONUS_SECONDS_PER_POINT);
+        console.log(`[finalizeAnalysisResult] Time bonus calculation: blackTime=${blackTime}, whiteTime=${whiteTime}, blackBonus=${finalAnalysis.scoreDetails.black.timeBonus}, whiteBonus=${finalAnalysis.scoreDetails.white.timeBonus}, preservedTimeInfo=${preservedTimeInfo ? 'yes' : 'no'}`);
     } else {
         finalAnalysis.scoreDetails.black.timeBonus = 0;
         finalAnalysis.scoreDetails.white.timeBonus = 0;
@@ -69,7 +72,14 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
     const p2ScansUsed = (game.settings.scanCount ?? 0) - (game.scans_p2 ?? game.settings.scanCount ?? 0);
     const hasUsedScan = isHiddenMode && (p1ScansUsed > 0 || p2ScansUsed > 0);
 
-    if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) && game.moveHistory.length < NO_CONTEST_MOVE_THRESHOLD && !hasUsedMissile && !hasUsedScan) {
+    // 싱글플레이어 게임에서는 NO_CONTEST 체크를 건너뜀 (자동 계가 등으로 인해 moveHistory가 초기화될 수 있음)
+    const isSinglePlayer = game.isSinglePlayer && !game.gameCategory; // 도전의 탑은 제외
+    
+    if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) && 
+        !isSinglePlayer && // 싱글플레이어 게임 제외
+        game.moveHistory.length < NO_CONTEST_MOVE_THRESHOLD && 
+        !hasUsedMissile && 
+        !hasUsedScan) {
         game.gameStatus = 'no_contest';
         if (!game.noContestInitiatorIds) game.noContestInitiatorIds = [];
         if (!game.noContestInitiatorIds.includes(game.player1.id)) game.noContestInitiatorIds.push(game.player1.id);
@@ -126,21 +136,63 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
     game.winReason = 'score';
     game.isAnalyzing = true;
     
+    // 시간 정보 보존 (게임이 재시작되어 시간이 초기화되는 것을 방지)
+    const preservedTimeInfo = {
+        blackTimeLeft: game.blackTimeLeft,
+        whiteTimeLeft: game.whiteTimeLeft
+    };
+    console.log(`[getGameResult] Preserving time info for scoring: blackTimeLeft=${preservedTimeInfo.blackTimeLeft}, whiteTimeLeft=${preservedTimeInfo.whiteTimeLeft}`);
+    
     // 계가 시작 상태를 즉시 저장하고 브로드캐스트하여 클라이언트에 계가 화면 표시
     await db.saveGame(game);
     const { broadcast } = await import('./socket.js');
     broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
-    console.log(`[getGameResult] Game ${game.id} set to scoring state and broadcasted`);
+    console.log(`[getGameResult] Game ${game.id} set to scoring state and broadcasted (isSinglePlayer: ${game.isSinglePlayer}, stageId: ${game.stageId}, moveHistoryLength: ${game.moveHistory.length})`);
     
+    // 카타고 분석 시작
+    console.log(`[getGameResult] Starting KataGo analysis for game ${game.id}...`);
+    console.log(`[getGameResult] Game details: isSinglePlayer=${game.isSinglePlayer}, stageId=${game.stageId}, moveHistoryLength=${game.moveHistory.length}, boardSize=${game.settings.boardSize}`);
     analyzeGame(game)
         .then(async (baseAnalysis) => {
+            console.log(`[getGameResult] KataGo analysis completed for game ${game.id}, getting fresh game state...`);
             const freshGame = await db.getLiveGame(game.id);
-            if (!freshGame || freshGame.gameStatus !== 'scoring') {
-                console.log(`[getGameResult] Game ${game.id} no longer in scoring state, skipping analysis result`);
+            if (!freshGame) {
+                console.error(`[getGameResult] Game ${game.id} not found in database after analysis`);
+                return;
+            }
+            
+            // 게임 상태가 playing으로 변경되었으면 다시 scoring으로 변경 (게임 루프가 재시작한 경우)
+            if (freshGame.gameStatus === 'playing' && freshGame.isSinglePlayer && freshGame.stageId) {
+                console.log(`[getGameResult] Game ${game.id} was reset to playing during analysis, restoring scoring state`);
+                console.log(`[getGameResult] Restoring game state: moveHistoryLength=${game.moveHistory.length}, boardStateSize=${game.boardState.length}`);
+                
+                // 원본 게임 상태 복원 (바둑판과 moveHistory)
+                if (game.moveHistory && game.moveHistory.length > 0) {
+                    freshGame.moveHistory = game.moveHistory;
+                    console.log(`[getGameResult] Restored moveHistory (length: ${freshGame.moveHistory.length})`);
+                }
+                if (game.boardState && game.boardState.length > 0) {
+                    freshGame.boardState = game.boardState;
+                    console.log(`[getGameResult] Restored boardState (size: ${freshGame.boardState.length}x${freshGame.boardState[0]?.length || 0})`);
+                }
+                
+                freshGame.gameStatus = 'scoring';
+                freshGame.isAnalyzing = true;
+                (freshGame as any).isScoringProtected = true;
+                (freshGame as any).preserveGameState = true;
+                await db.saveGame(freshGame);
+                const { broadcast } = await import('./socket.js');
+                broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
+            }
+            
+            if (freshGame.gameStatus !== 'scoring') {
+                console.log(`[getGameResult] Game ${game.id} no longer in scoring state (status: ${freshGame.gameStatus}), skipping analysis result`);
                 return;
             }
 
-            const finalAnalysis = finalizeAnalysisResult(baseAnalysis, freshGame);
+            console.log(`[getGameResult] Finalizing analysis result for game ${game.id}...`);
+            // 보존된 시간 정보를 사용하여 시간 보너스 계산 (게임이 재시작되어 시간이 초기화된 경우 대비)
+            const finalAnalysis = finalizeAnalysisResult(baseAnalysis, freshGame, preservedTimeInfo);
 
             if (!freshGame.analysisResult) freshGame.analysisResult = {};
             freshGame.analysisResult['system'] = finalAnalysis;
@@ -167,16 +219,22 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
             await endGame(freshGame, winner, 'score');
         })
         .catch(async (error) => {
-            console.error(`[AI Analysis] scoring failed for game ${game.id}.`, error);
+            console.error(`[getGameResult] KataGo analysis failed for game ${game.id}:`, error);
+            console.error(`[getGameResult] Error stack:`, error instanceof Error ? error.stack : 'No stack trace');
             const failedGame = await db.getLiveGame(game.id);
             if (failedGame && failedGame.gameStatus === 'scoring') {
+                console.log(`[getGameResult] Game ${failedGame.id} still in scoring state, setting isAnalyzing to false and ending game with fallback winner`);
                 failedGame.isAnalyzing = false;
                 await db.saveGame(failedGame);
+                const { broadcast } = await import('./socket.js');
                 broadcast({ type: 'GAME_UPDATE', payload: { [failedGame.id]: failedGame } });
                 // Decide a winner randomly as a fallback
                 const winner = Math.random() < 0.5 ? types.Player.Black : types.Player.White;
+                console.log(`[getGameResult] Ending game ${failedGame.id} with fallback winner: ${winner === types.Player.Black ? 'Black' : 'White'}`);
                 // End the game properly to process summaries and rewards
                 await endGame(failedGame, winner, 'score'); // Re-use 'score' reason, as it's a scoring failure
+            } else {
+                console.error(`[getGameResult] Game ${game.id} not found or not in scoring state after analysis failure`);
             }
         });
     return game;

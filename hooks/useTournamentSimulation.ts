@@ -273,38 +273,81 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
             
             // 디버깅: 서버에서 받은 컨디션 값 확인
             if (import.meta.env.DEV) {
-                console.log(`[useTournamentSimulation] Player conditions before setting: p1=${p1.condition}, p2=${p2.condition}`);
+                console.log(`[useTournamentSimulation] Player conditions from server: p1=${p1.condition}, p2=${p2.condition}, currentUser=${currentUser?.id}`);
             }
             
             // RNG 초기화 (컨디션 설정 전에 먼저 초기화)
             rngRef.current = new SeededRandom(localTournament.simulationSeed!);
             
-            // 컨디션 설정 (시드 기반)
-            // 단, 이미 유효한 컨디션이 있으면(40-100 사이 값) 유지 (회복제로 회복한 컨디션 보존)
-            // undefined, null, 1000일 때만 새로 설정
-            // 중요: 서버에서 받은 컨디션 값(p1.condition, p2.condition)을 우선 사용
-            if (player1Ref.current.condition === undefined || player1Ref.current.condition === null || player1Ref.current.condition === 1000) {
-                // 서버에서 받은 컨디션이 없거나 초기값이면 시드 기반으로 생성
-                player1Ref.current.condition = rngRef.current.randomInt(40, 100);
-                if (import.meta.env.DEV) {
-                    console.log(`[useTournamentSimulation] Generated new condition for p1: ${player1Ref.current.condition}`);
+            // 컨디션 설정: 서버에서 받은 컨디션 값을 우선 사용
+            // 유저의 경우: 서버에서 받은 컨디션 값을 절대 변경하지 않음 (회복제로 변경된 컨디션 유지)
+            // 상대방의 경우: 서버에서 받은 컨디션이 유효하지 않을 때만 시드 기반으로 생성
+            const isP1User = p1.id === currentUser?.id;
+            const isP2User = p2.id === currentUser?.id;
+            
+            // p1 컨디션 설정
+            if (isP1User) {
+                // 유저의 경우: 서버에서 받은 컨디션 값을 절대 변경하지 않음
+                // 유효한 컨디션(40-100 사이)이 있으면 그대로 사용
+                if (p1.condition !== undefined && p1.condition !== null && p1.condition !== 1000 && 
+                    p1.condition >= 40 && p1.condition <= 100) {
+                    player1Ref.current.condition = p1.condition;
+                    if (import.meta.env.DEV) {
+                        console.log(`[useTournamentSimulation] Preserving user (p1) condition from server: ${p1.condition}`);
+                    }
+                } else {
+                    // 유저의 컨디션이 유효하지 않은 경우에만 시드 기반으로 생성 (하위 호환성)
+                    player1Ref.current.condition = rngRef.current.randomInt(40, 100);
+                    if (import.meta.env.DEV) {
+                        console.log(`[useTournamentSimulation] Generated new condition for user (p1): ${player1Ref.current.condition}`);
+                    }
                 }
             } else {
-                // 서버에서 받은 컨디션 값 유지
-                if (import.meta.env.DEV) {
-                    console.log(`[useTournamentSimulation] Preserving p1 condition from server: ${player1Ref.current.condition}`);
+                // 상대방의 경우: 서버에서 받은 컨디션이 유효하지 않을 때만 시드 기반으로 생성
+                if (p1.condition === undefined || p1.condition === null || p1.condition === 1000 || 
+                    p1.condition < 40 || p1.condition > 100) {
+                    player1Ref.current.condition = rngRef.current.randomInt(40, 100);
+                    if (import.meta.env.DEV) {
+                        console.log(`[useTournamentSimulation] Generated new condition for p1: ${player1Ref.current.condition}`);
+                    }
+                } else {
+                    player1Ref.current.condition = p1.condition;
+                    if (import.meta.env.DEV) {
+                        console.log(`[useTournamentSimulation] Preserving p1 condition from server: ${p1.condition}`);
+                    }
                 }
             }
-            if (player2Ref.current.condition === undefined || player2Ref.current.condition === null || player2Ref.current.condition === 1000) {
-                // 서버에서 받은 컨디션이 없거나 초기값이면 시드 기반으로 생성
-                player2Ref.current.condition = rngRef.current.randomInt(40, 100);
-                if (import.meta.env.DEV) {
-                    console.log(`[useTournamentSimulation] Generated new condition for p2: ${player2Ref.current.condition}`);
+            
+            // p2 컨디션 설정
+            if (isP2User) {
+                // 유저의 경우: 서버에서 받은 컨디션 값을 절대 변경하지 않음
+                // 유효한 컨디션(40-100 사이)이 있으면 그대로 사용
+                if (p2.condition !== undefined && p2.condition !== null && p2.condition !== 1000 && 
+                    p2.condition >= 40 && p2.condition <= 100) {
+                    player2Ref.current.condition = p2.condition;
+                    if (import.meta.env.DEV) {
+                        console.log(`[useTournamentSimulation] Preserving user (p2) condition from server: ${p2.condition}`);
+                    }
+                } else {
+                    // 유저의 컨디션이 유효하지 않은 경우에만 시드 기반으로 생성 (하위 호환성)
+                    player2Ref.current.condition = rngRef.current.randomInt(40, 100);
+                    if (import.meta.env.DEV) {
+                        console.log(`[useTournamentSimulation] Generated new condition for user (p2): ${player2Ref.current.condition}`);
+                    }
                 }
             } else {
-                // 서버에서 받은 컨디션 값 유지
-                if (import.meta.env.DEV) {
-                    console.log(`[useTournamentSimulation] Preserving p2 condition from server: ${player2Ref.current.condition}`);
+                // 상대방의 경우: 서버에서 받은 컨디션이 유효하지 않을 때만 시드 기반으로 생성
+                if (p2.condition === undefined || p2.condition === null || p2.condition === 1000 || 
+                    p2.condition < 40 || p2.condition > 100) {
+                    player2Ref.current.condition = rngRef.current.randomInt(40, 100);
+                    if (import.meta.env.DEV) {
+                        console.log(`[useTournamentSimulation] Generated new condition for p2: ${player2Ref.current.condition}`);
+                    }
+                } else {
+                    player2Ref.current.condition = p2.condition;
+                    if (import.meta.env.DEV) {
+                        console.log(`[useTournamentSimulation] Preserving p2 condition from server: ${p2.condition}`);
+                    }
                 }
             }
             

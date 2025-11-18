@@ -735,10 +735,10 @@ const Profile: React.FC<ProfileProps> = () => {
                         <div className="col-span-3 bg-panel border border-color text-on-panel rounded-lg min-h-0 flex flex-col">
                             <ChatWindow messages={globalChat} mode="global" onAction={handlers.handleAction} onViewUser={handlers.openViewingUser} locationPrefix="[홈]" />
                         </div>
-                        <div className="col-span-2 bg-panel border border-color text-on-panel rounded-lg min-h-0 flex flex-col">
+                        <div className="col-span-3 bg-panel border border-color text-on-panel rounded-lg min-h-0 flex flex-col">
                             <HomeBoardPanel posts={homeBoardPosts || []} isAdmin={currentUserWithStatus.isAdmin} onAction={handlers.handleAction} />
                         </div>
-                        <div className="col-span-7 min-h-0 flex flex-col justify-end">
+                        <div className="col-span-6 min-h-0 flex flex-col justify-end">
                             {LobbyCards}
                         </div>
                     </div>

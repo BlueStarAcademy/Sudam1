@@ -191,113 +191,88 @@ export const saveGame = async (game: LiveGameSession): Promise<void> => {
     }
 };
 export const createHomeBoardPost = async (data: { title: string; content: string; authorId: string; isPinned: boolean }): Promise<HomeBoardPost> => {
-    const { PrismaClient } = await import('../generated/prisma/client.js');
-    const prisma = new PrismaClient();
-    try {
-        const post = await prisma.homeBoardPost.create({
-            data: {
-                title: data.title,
-                content: data.content,
-                authorId: data.authorId,
-                isPinned: data.isPinned
-            }
-        });
-        return {
-            id: post.id,
-            title: post.title,
-            content: post.content,
-            authorId: post.authorId,
-            isPinned: post.isPinned,
-            createdAt: post.createdAt.getTime(),
-            updatedAt: post.updatedAt.getTime()
-        };
-    } finally {
-        await prisma.$disconnect();
-    }
+    const prisma = (await import('./prismaClient.js')).default;
+    const post = await prisma.homeBoardPost.create({
+        data: {
+            title: data.title,
+            content: data.content,
+            authorId: data.authorId,
+            isPinned: data.isPinned
+        }
+    });
+    return {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        authorId: post.authorId,
+        isPinned: post.isPinned,
+        createdAt: post.createdAt.getTime(),
+        updatedAt: post.updatedAt.getTime()
+    };
 };
 
 export const getAllHomeBoardPosts = async (): Promise<HomeBoardPost[]> => {
-    const { PrismaClient } = await import('../generated/prisma/client.js');
-    const prisma = new PrismaClient();
-    try {
-        const posts = await prisma.homeBoardPost.findMany({
-            orderBy: [
-                { isPinned: 'desc' },
-                { createdAt: 'desc' }
-            ]
-        });
-        return posts.map(post => ({
-            id: post.id,
-            title: post.title,
-            content: post.content,
-            authorId: post.authorId,
-            isPinned: post.isPinned,
-            createdAt: post.createdAt.getTime(),
-            updatedAt: post.updatedAt.getTime()
-        }));
-    } finally {
-        await prisma.$disconnect();
-    }
+    const prisma = (await import('./prismaClient.js')).default;
+    const posts = await prisma.homeBoardPost.findMany({
+        orderBy: [
+            { isPinned: 'desc' },
+            { createdAt: 'desc' }
+        ]
+    });
+    return posts.map(post => ({
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        authorId: post.authorId,
+        isPinned: post.isPinned,
+        createdAt: post.createdAt.getTime(),
+        updatedAt: post.updatedAt.getTime()
+    }));
 };
 
 export const getHomeBoardPost = async (id: string): Promise<HomeBoardPost | null> => {
-    const { PrismaClient } = await import('../generated/prisma/client.js');
-    const prisma = new PrismaClient();
-    try {
-        const post = await prisma.homeBoardPost.findUnique({
-            where: { id }
-        });
-        if (!post) return null;
-        return {
-            id: post.id,
-            title: post.title,
-            content: post.content,
-            authorId: post.authorId,
-            isPinned: post.isPinned,
-            createdAt: post.createdAt.getTime(),
-            updatedAt: post.updatedAt.getTime()
-        };
-    } finally {
-        await prisma.$disconnect();
-    }
+    const prisma = (await import('./prismaClient.js')).default;
+    const post = await prisma.homeBoardPost.findUnique({
+        where: { id }
+    });
+    if (!post) return null;
+    return {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        authorId: post.authorId,
+        isPinned: post.isPinned,
+        createdAt: post.createdAt.getTime(),
+        updatedAt: post.updatedAt.getTime()
+    };
 };
 
 export const updateHomeBoardPost = async (id: string, data: { title: string; content: string; isPinned: boolean }): Promise<HomeBoardPost> => {
-    const { PrismaClient } = await import('../generated/prisma/client.js');
-    const prisma = new PrismaClient();
-    try {
-        const post = await prisma.homeBoardPost.update({
-            where: { id },
-            data: {
-                title: data.title,
-                content: data.content,
-                isPinned: data.isPinned
-            }
-        });
-        return {
-            id: post.id,
-            title: post.title,
-            content: post.content,
-            authorId: post.authorId,
-            isPinned: post.isPinned,
-            createdAt: post.createdAt.getTime(),
-            updatedAt: post.updatedAt.getTime()
-        };
-    } finally {
-        await prisma.$disconnect();
-    }
+    const prisma = (await import('./prismaClient.js')).default;
+    const post = await prisma.homeBoardPost.update({
+        where: { id },
+        data: {
+            title: data.title,
+            content: data.content,
+            isPinned: data.isPinned
+        }
+    });
+    return {
+        id: post.id,
+        title: post.title,
+        content: post.content,
+        authorId: post.authorId,
+        isPinned: post.isPinned,
+        createdAt: post.createdAt.getTime(),
+        updatedAt: post.updatedAt.getTime()
+    };
 };
 
 export const deleteHomeBoardPost = async (id: string): Promise<void> => {
-    const { PrismaClient } = await import('../generated/prisma/client.js');
-    const prisma = new PrismaClient();
-    try {
-        await prisma.homeBoardPost.delete({
-            where: { id }
-        });
-    } finally {
-        await prisma.$disconnect();
-    }
+    const prisma = (await import('./prismaClient.js')).default;
+    await prisma.homeBoardPost.delete({
+        where: { id }
+    });
 };
 
 export const deleteGame = async (id: string): Promise<void> => {

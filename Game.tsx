@@ -598,8 +598,9 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                     isSinglePlayer: session.isSinglePlayer
                 });
             }
-            if (currentPlayer === Player.Black && session.blackPlayerId !== AI_USER_ID && session.isSinglePlayer) {
-                console.error(`[Game] MISMATCH: Single player - Current player is Black but blackPlayerId is not user!`, {
+            // 싱글플레이에서는 blackPlayerId가 유저 ID여야 하고, whitePlayerId가 AI_USER_ID여야 함
+            if (currentPlayer === Player.Black && session.blackPlayerId !== currentUser.id && session.isSinglePlayer) {
+                console.error(`[Game] MISMATCH: Single player - Current player is Black but blackPlayerId is not current user!`, {
                     blackPlayerId: session.blackPlayerId,
                     whitePlayerId: session.whitePlayerId,
                     AI_USER_ID,
@@ -609,6 +610,15 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         }
 
         if (isAiTurn) {
+            // 게임이 이미 종료되었는지 확인
+            if (gameStatus === 'ended' || gameStatus === 'no_contest' || gameStatus === 'scoring') {
+                console.log(`[Game] ${isTower ? 'Tower' : 'Single player'} game already ended, skipping AI move:`, {
+                    gameId: session.id,
+                    gameStatus
+                });
+                return;
+            }
+            
             console.log('[Game] Entering AI move calculation block:', {
                 gameId: session.id,
                 gameCategory: session.gameCategory,
@@ -620,12 +630,24 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
             
             // 이미 같은 게임, 같은 moveHistory 길이, 같은 플레이어에 대해 AI 수를 보냈는지 확인
             // (중복 전송 방지)
+            // 단, AI 수 계산 중이거나 전송 대기 중인 경우(타임스탬프가 2초 이내)는 제외
             if (lastAiMoveRef.current &&
                 lastAiMoveRef.current.gameId === session.id &&
                 lastAiMoveRef.current.moveHistoryLength === moveHistoryLength &&
                 lastAiMoveRef.current.player === currentPlayer) {
-                // 타임스탬프 확인: 3초 이상 지났으면 초기화하고 재시도
                 const timeSinceLastMove = Date.now() - lastAiMoveRef.current.timestamp;
+                // 2초 이내면 아직 전송 대기 중이거나 계산 중일 수 있으므로 무시
+                if (timeSinceLastMove < 2000) {
+                    console.log('[Game] AI move calculation/transmission in progress, skipping:', {
+                        gameId: session.id,
+                        lastMove: lastAiMoveRef.current,
+                        currentMoveHistoryLength: moveHistoryLength,
+                        currentPlayer,
+                        timeSinceLastMove
+                    });
+                    return;
+                }
+                // 3초 이상 지났으면 초기화하고 재시도
                 if (timeSinceLastMove > 3000) {
                     console.log('[Game] lastAiMoveRef timeout, resetting and retrying:', {
                         gameId: session.id,
@@ -671,14 +693,6 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
             );
 
             if (aiMove) {
-                // AI 수를 보냈다는 것을 기록 (중복 전송 방지)
-                lastAiMoveRef.current = {
-                    gameId: currentGameId,
-                    moveHistoryLength: moveHistoryLengthAtCalculation,
-                    player: currentPlayerAtCalculation,
-                    timestamp: Date.now()
-                };
-                
                 console.log('[Game] AI move calculated:', {
                     gameId: currentGameId,
                     gameCategory: session.gameCategory,
@@ -723,6 +737,14 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                                 lastAiMoveRef.current = null;
                                 return;
                             }
+                            
+                            // AI 수를 실제로 전송한 후에만 lastAiMoveRef 설정 (중복 전송 방지)
+                            lastAiMoveRef.current = {
+                                gameId: currentGameId,
+                                moveHistoryLength: moveHistoryLengthAtCalculation,
+                                player: currentPlayerAtCalculation,
+                                timestamp: Date.now()
+                            };
                             
                             // 게임 상태 업데이트 (handlers를 통해)
                             handlers.handleAction({

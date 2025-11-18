@@ -741,17 +741,19 @@ export async function makeGoAiBotMove(
     }
 
     // 7. 살리기 바둑 모드에서 승리 조건 확인
-    if (isSurvivalMode) {
+    if (isSurvivalMode && aiPlayerEnum === Player.White) {
         // 백(AI)의 턴 수 증가 (백이 한 수를 둘 때마다)
-        if (aiPlayerEnum === Player.White) {
-            const whiteTurnsPlayed = ((game as any).whiteTurnsPlayed || 0) + 1;
-            (game as any).whiteTurnsPlayed = whiteTurnsPlayed;
-            const survivalTurns = (game.settings as any)?.survivalTurns || 0;
-            
-            // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
+        const whiteTurnsPlayed = ((game as any).whiteTurnsPlayed || 0) + 1;
+        (game as any).whiteTurnsPlayed = whiteTurnsPlayed;
+        const survivalTurns = (game.settings as any)?.survivalTurns || 0;
+        
+        console.log(`[Survival Go] White move completed - turns: ${whiteTurnsPlayed}/${survivalTurns}, gameStatus: ${game.gameStatus}, isSurvivalMode: ${isSurvivalMode}`);
+        
+        if (survivalTurns > 0 && game.gameStatus === 'playing') {
             // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
             const target = getCaptureTarget(game, Player.White);
             if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[Player.White] >= target) {
+                console.log(`[Survival Go] White reached target score after AI move (${target}), White wins`);
                 await summaryService.endGame(game, Player.White, 'capture_limit');
                 return;
             }
@@ -760,11 +762,10 @@ export async function makeGoAiBotMove(
             // 백의 남은 턴 = survivalTurns - whiteTurnsPlayed
             // 백의 남은 턴이 0이 되었다는 것은 whiteTurnsPlayed >= survivalTurns
             const remainingTurns = survivalTurns - whiteTurnsPlayed;
-            if (remainingTurns <= 0 && survivalTurns > 0) {
-                if (game.gameStatus === 'playing') {
-                    await summaryService.endGame(game, Player.Black, 'capture_limit');
-                    return;
-                }
+            console.log(`[Survival Go] After White move - turns: ${whiteTurnsPlayed}/${survivalTurns}, remaining: ${remainingTurns}, gameStatus: ${game.gameStatus}`);
+            if (remainingTurns <= 0) {
+                console.log(`[Survival Go] White ran out of turns after AI move (${whiteTurnsPlayed}/${survivalTurns}), Black wins - ENDING GAME NOW`);
+                await summaryService.endGame(game, Player.Black, 'capture_limit');
                 return;
             }
         }
@@ -808,6 +809,21 @@ export async function makeGoAiBotMove(
     if (!isAiReTurnAfterReveal) {
         // 일반적인 경우: 턴 넘기기
         game.currentPlayer = opponentPlayerEnum;
+        
+        // 살리기 바둑 모드: 백이 수를 둔 후 턴을 넘긴 직후 승리 조건 체크
+        const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
+        if (isSurvivalMode && aiPlayerEnum === Player.White && game.gameStatus === 'playing') {
+            const whiteTurnsPlayed = (game as any).whiteTurnsPlayed || 0;
+            const survivalTurns = (game.settings as any)?.survivalTurns || 0;
+            const remainingTurns = survivalTurns - whiteTurnsPlayed;
+            
+            if (remainingTurns <= 0 && survivalTurns > 0) {
+                console.log(`[Survival Go] White ran out of turns after turn change (${whiteTurnsPlayed}/${survivalTurns}), Black wins`);
+                await summaryService.endGame(game, Player.Black, 'capture_limit');
+                return;
+            }
+        }
+        
         if (game.settings.timeLimit > 0) {
             const timeKey = game.currentPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
             const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));

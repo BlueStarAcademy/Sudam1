@@ -55,6 +55,9 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
             return '히든 바둑';
         } else if (stage.missileCount !== undefined) {
             return '미사일 바둑';
+        } else if (stage.autoScoringTurns !== undefined) {
+            // 자동 계가 턴 수가 있으면 스피드 바둑 (초급반 등)
+            return '스피드 바둑';
         } else if (stage.blackTurnLimit !== undefined) {
             return '따내기 바둑';
         } else if (stage.survivalTurns !== undefined) {

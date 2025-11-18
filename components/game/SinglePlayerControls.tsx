@@ -3,7 +3,9 @@ import { GameProps, Player } from '../../types.js';
 import Button from '../Button.js';
 import { SINGLE_PLAYER_STAGES } from '../../constants';
 
-interface SinglePlayerControlsProps extends Pick<GameProps, 'session' | 'onAction' | 'currentUser'> {}
+interface SinglePlayerControlsProps extends Pick<GameProps, 'session' | 'onAction' | 'currentUser'> {
+    setShowResultModal?: (show: boolean) => void;
+}
 
 interface ImageButtonProps {
     src: string;
@@ -66,7 +68,7 @@ const ItemImageButton: React.FC<ItemImageButtonProps> = ({ src, alt, onClick, di
     );
 };
 
-const SinglePlayerControls: React.FC<SinglePlayerControlsProps> = ({ session, onAction, currentUser }) => {
+const SinglePlayerControls: React.FC<SinglePlayerControlsProps> = ({ session, onAction, currentUser, setShowResultModal }) => {
     
     if (session.gameStatus === 'ended' || session.gameStatus === 'no_contest') {
         const isWinner = session.winner === Player.Black;
@@ -133,23 +135,36 @@ const SinglePlayerControls: React.FC<SinglePlayerControlsProps> = ({ session, on
             }
         };
 
+        const handleShowResults = () => {
+            if (setShowResultModal) {
+                setShowResultModal(true);
+            }
+        };
+
         return (
-             <div className="bg-stone-800/60 backdrop-blur-sm rounded-lg p-2 flex items-center justify-center gap-2 w-full border border-stone-700/50">
-                <Button onClick={handleExitToLobby} colorScheme="gray" className="flex-1 !text-sm">로비로</Button>
-                <Button onClick={handleRetry} colorScheme="yellow" className="flex-1 !text-sm">
-                    재도전{retryActionPointCost > 0 && ` (⚡${retryActionPointCost})`}
-                </Button>
-                <Button onClick={handleNextStage} colorScheme="accent" disabled={!canTryNext} className="flex-1 !text-sm">
-                    다음 단계{nextStage ? `: ${nextStage.name.replace('스테이지 ', '')}` : ''}{nextStageActionPointCost > 0 && ` (⚡${nextStageActionPointCost})`}
-                </Button>
-            </div>
+            <footer className="responsive-controls flex-shrink-0 bg-gray-800 rounded-lg p-2 flex flex-col items-stretch justify-center gap-2 w-full h-[148px]">
+                <div className="bg-gray-900/70 border border-stone-700 rounded-xl px-4 py-3 flex flex-wrap items-center justify-center gap-3">
+                    <Button onClick={handleShowResults} colorScheme="none" className="justify-center !py-1.5 !px-4 !text-sm rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400 whitespace-nowrap">
+                        결과 확인
+                    </Button>
+                    <Button onClick={handleNextStage} colorScheme="none" className="justify-center !py-1.5 !px-4 !text-sm rounded-xl border border-cyan-400/50 bg-gradient-to-r from-cyan-500/90 via-sky-500/90 to-blue-500/90 text-white shadow-[0_12px_32px_-18px_rgba(56,189,248,0.85)] hover:from-cyan-300 hover:to-blue-500 whitespace-nowrap" disabled={!canTryNext}>
+                        다음 단계{canTryNext && nextStage ? `: ${nextStage.name.replace('스테이지 ', '')}` : ''}{nextStageActionPointCost > 0 && ` (⚡${nextStageActionPointCost})`}
+                    </Button>
+                    <Button onClick={handleRetry} colorScheme="none" className="justify-center !py-1.5 !px-4 !text-sm rounded-xl border border-amber-400/50 bg-gradient-to-r from-amber-500/90 via-amber-300/90 to-amber-500/90 text-slate-900 shadow-[0_12px_32px_-18px_rgba(251,191,36,0.85)] hover:from-amber-300 hover:to-amber-500 whitespace-nowrap">
+                        재도전 {retryActionPointCost > 0 && `(⚡${retryActionPointCost})`}
+                    </Button>
+                    <Button onClick={handleExitToLobby} colorScheme="none" className="justify-center !py-1.5 !px-4 !text-sm rounded-xl border border-slate-400/50 bg-gradient-to-r from-slate-800/90 via-slate-900/90 to-black/90 text-slate-100 shadow-[0_12px_32px_-18px_rgba(148,163,184,0.85)] hover:from-slate-700 hover:to-slate-900 whitespace-nowrap">
+                        나가기
+                    </Button>
+                </div>
+            </footer>
         );
     }
     
     const refreshesUsed = session.singlePlayerPlacementRefreshesUsed || 0;
     const remainingRefreshes = Math.max(0, 5 - refreshesUsed);
     const canRefresh = session.moveHistory.length === 0 && refreshesUsed < 5;
-    const costs = [0, 50, 100, 200, 300];
+    const costs = [0, 50, 75, 100, 200]; // 서버와 일치
     const nextCost = costs[refreshesUsed] || 0;
     const canAfford = currentUser.gold >= nextCost;
     const refreshDisabled = !canRefresh || !canAfford;
@@ -254,6 +269,12 @@ const SinglePlayerControls: React.FC<SinglePlayerControlsProps> = ({ session, on
                     <span className={`text-[11px] font-semibold ${refreshDisabled ? 'text-gray-500' : 'text-amber-100'}`}>
                         배치변경
                     </span>
+                    {nextCost > 0 && (
+                        <span className={`text-[10px] flex items-center gap-0.5 ${refreshDisabled ? 'text-gray-500' : 'text-yellow-300'}`}>
+                            <img src="/images/icon/Gold.png" alt="골드" className="w-3 h-3" />
+                            {nextCost.toLocaleString()}
+                        </span>
+                    )}
                 </div>
             </div>
 

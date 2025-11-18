@@ -152,11 +152,34 @@ const simulateAndFinishMatch = (match: Match, players: PlayerForTournament[], us
         p2.stats = JSON.parse(JSON.stringify(p2.originalStats));
     }
 
-    if (p1.condition === undefined || p1.condition === null || p1.condition === 1000) {
-        p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-    }
-    if (p2.condition === undefined || p2.condition === null || p2.condition === 1000) {
-        p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+    // 유저가 참가하는 경기인 경우, 유저의 컨디션은 절대 변경하지 않음
+    // 유저가 참가하지 않는 경기인 경우에만 컨디션 부여
+    if (match.isUserMatch && userId) {
+        // 유저 경기인 경우: 유저의 컨디션은 절대 변경하지 않음
+        // 상대방의 컨디션만 확인 및 부여
+        if (p1.id === userId) {
+            // p1이 유저인 경우: p1의 컨디션은 변경하지 않음, p2의 컨디션만 확인
+            if (p2.condition === undefined || p2.condition === null || p2.condition === 1000 || 
+                p2.condition < 40 || p2.condition > 100) {
+                p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            }
+        } else if (p2.id === userId) {
+            // p2가 유저인 경우: p2의 컨디션은 변경하지 않음, p1의 컨디션만 확인
+            if (p1.condition === undefined || p1.condition === null || p1.condition === 1000 || 
+                p1.condition < 40 || p1.condition > 100) {
+                p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            }
+        }
+    } else {
+        // 유저가 참가하지 않는 경기인 경우: 두 플레이어 모두 컨디션 확인 및 부여
+        if (p1.condition === undefined || p1.condition === null || p1.condition === 1000 || 
+            p1.condition < 40 || p1.condition > 100) {
+            p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+        }
+        if (p2.condition === undefined || p2.condition === null || p2.condition === 1000 || 
+            p2.condition < 40 || p2.condition > 100) {
+            p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+        }
     }
 
     let p1CumulativeScore = 0;
@@ -876,13 +899,18 @@ export const startNextRound = (state: TournamentState, user: User) => {
         // 경기 시작은 START_TOURNAMENT_ROUND 액션으로 처리됨
         state.status = 'bracket_ready';
         
-        // bracket_ready 상태로 변경할 때 항상 컨디션을 확인하고 부여
+        // bracket_ready 상태로 변경할 때 컨디션이 유효하지 않은 경우에만 부여
         // (이전 경기에서 컨디션이 1000으로 초기화되었을 수 있음)
-        // 모든 플레이어의 컨디션이 유효한지 확인하고, 유효하지 않으면 부여
+        // 이미 유효한 컨디션이 있으면(40-100 사이) 다시 부여하지 않음 (회복제로 변경된 컨디션 유지)
         state.players.forEach(p => {
             // 컨디션이 undefined, null, 1000이거나 유효 범위(40-100)를 벗어나면 새로 부여
-            if (p.condition === undefined || p.condition === null || p.condition === 1000 || 
-                p.condition < 40 || p.condition > 100) {
+            // 이미 유효한 컨디션이 있으면 다시 부여하지 않음
+            const hasValidCondition = p.condition !== undefined && 
+                                     p.condition !== null && 
+                                     p.condition !== 1000 && 
+                                     p.condition >= 40 && 
+                                     p.condition <= 100;
+            if (!hasValidCondition) {
                 p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
             }
         });
@@ -1077,14 +1105,36 @@ export const advanceSimulation = (state: TournamentState, user: User): boolean =
         // 유효한 컨디션(40-100 사이)이 이미 부여되어 있으면 절대 변경하지 않음
         if (state.status === 'round_in_progress') {
             // p1 컨디션 확인 및 부여 (유효한 컨디션이 없을 때만)
-            if (p1.condition === undefined || p1.condition === null || p1.condition === 1000 || 
-                p1.condition < 40 || p1.condition > 100) {
-                p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            // 유저의 경우 컨디션을 절대 변경하지 않음 (회복제로 변경된 컨디션 유지)
+            if (p1.id === user.id) {
+                // 유저의 컨디션은 절대 변경하지 않음
+                if (p1.condition === undefined || p1.condition === null || p1.condition === 1000 || 
+                    p1.condition < 40 || p1.condition > 100) {
+                    // 유저의 컨디션이 유효하지 않은 경우에만 부여 (하위 호환성)
+                    p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+                }
+            } else {
+                // 상대방의 경우에만 컨디션 확인 및 부여 (유효한 컨디션이 없을 때만)
+                if (p1.condition === undefined || p1.condition === null || p1.condition === 1000 || 
+                    p1.condition < 40 || p1.condition > 100) {
+                    p1.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+                }
             }
             // p2 컨디션 확인 및 부여 (유효한 컨디션이 없을 때만)
-            if (p2.condition === undefined || p2.condition === null || p2.condition === 1000 || 
-                p2.condition < 40 || p2.condition > 100) {
-                p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+            // 유저의 경우 컨디션을 절대 변경하지 않음 (회복제로 변경된 컨디션 유지)
+            if (p2.id === user.id) {
+                // 유저의 컨디션은 절대 변경하지 않음
+                if (p2.condition === undefined || p2.condition === null || p2.condition === 1000 || 
+                    p2.condition < 40 || p2.condition > 100) {
+                    // 유저의 컨디션이 유효하지 않은 경우에만 부여 (하위 호환성)
+                    p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+                }
+            } else {
+                // 상대방의 경우에만 컨디션 확인 및 부여 (유효한 컨디션이 없을 때만)
+                if (p2.condition === undefined || p2.condition === null || p2.condition === 1000 || 
+                    p2.condition < 40 || p2.condition > 100) {
+                    p2.condition = Math.floor(Math.random() * 61) + 40; // 40-100
+                }
             }
         }
     }

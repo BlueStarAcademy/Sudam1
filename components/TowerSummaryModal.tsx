@@ -126,13 +126,16 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
     const isScoring = session.gameStatus === 'scoring';
     const isEnded = session.gameStatus === 'ended';
     const analysisResult = session.analysisResult?.['system'];
+    const summary = session.summary?.[currentUser.id];
+    
     // 계가 결과가 있으면 점수를 기반으로 승리/실패 판단, 없으면 session.winner 사용
     // 계가 중일 때는 승리/실패를 판단하지 않음 (잘못된 실패 표시 방지)
-    const isWinner = analysisResult 
-        ? (analysisResult.scoreDetails?.black?.total ?? 0) > (analysisResult.scoreDetails?.white?.total ?? 0)
-        : (session.winner === Player.Black); // Human is always Black
-    const summary = session.summary?.[currentUser.id];
-
+    // 도전의 탑에서는 session.winner를 우선 사용 (클라이언트에서 정확히 판정함)
+    const isWinner = (isEnded && session.winner !== null)
+        ? (session.winner === Player.Black)
+        : (analysisResult 
+            ? (analysisResult.scoreDetails?.black?.total ?? 0) > (analysisResult.scoreDetails?.white?.total ?? 0)
+            : (session.winner === Player.Black)); // Human is always Black
     const currentFloor = session.towerFloor ?? 1;
     const currentStage = TOWER_STAGES.find((s: any) => {
         const stageFloor = parseInt(s.id.replace('tower-', ''));
@@ -145,9 +148,9 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
     }) : null;
     
     // 다음 층으로 갈 수 있는지 확인: 승리했고 다음 층이 있으며 현재 층을 클리어한 경우
-    // 계가 결과가 있을 때만 다음 단계 가능 여부 판단 (잘못된 판단 방지)
+    // 도전의 탑에서는 session.winner가 설정되어 있으면 다음 층으로 갈 수 있음
     const userTowerFloor = (currentUser as any).towerFloor ?? 0;
-    const canTryNext = analysisResult && isWinner && !!nextStage && userTowerFloor >= currentFloor;
+    const canTryNext = isWinner && !!nextStage && userTowerFloor >= currentFloor;
     
     const retryActionPointCost = currentStage?.actionPointCost ?? 0;
     const nextFloorActionPointCost = nextStage?.actionPointCost ?? 0;

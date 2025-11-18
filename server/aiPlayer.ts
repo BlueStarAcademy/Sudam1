@@ -439,7 +439,7 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
     game.boardState = result.newBoardState;
     game.lastMove = { x: move!.x, y: move!.y };
     game.moveHistory.push({ player: aiPlayerEnum, x: move!.x, y: move!.y });
-    game.totalTurns = game.moveHistory.length;
+    // totalTurns는 아래에서 validMoves로 다시 계산됨
     game.koInfo = result.newKoInfo;
     
     // 히든 수인 경우 hiddenMoves에 기록
@@ -481,19 +481,43 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
     }
 
     const aiPlayerTimeKey = aiPlayerEnum === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
+    const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
+    const fischerIncrement = isFischer ? (game.settings.timeIncrement || 0) : 0;
+    
     if (game.turnDeadline) {
         const timeRemaining = Math.max(0, (game.turnDeadline - now) / 1000);
-        game[aiPlayerTimeKey] = timeRemaining;
+        game[aiPlayerTimeKey] = timeRemaining + fischerIncrement;
+    } else {
+        // turnDeadline이 없으면 현재 시간에 increment 추가
+        game[aiPlayerTimeKey] = (game[aiPlayerTimeKey] || 0) + fischerIncrement;
     }
     
     // 싱글플레이 자동 계가 트리거 체크
-    if (game.isSinglePlayer) {
+    if (game.isSinglePlayer && game.stageId) {
         const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+        // 흑/백 모두 카운팅: moveHistory에 추가된 수를 카운팅 (x !== -1인 수만)
+        const validMoves = game.moveHistory.filter(m => m.x !== -1 && m.y !== -1);
+        const newTotalTurns = validMoves.length;
+        game.totalTurns = newTotalTurns;
+        
+        // 디버깅: totalTurns 업데이트 로그
+        if (stage?.autoScoringTurns) {
+            console.log(`[AI Player] totalTurns updated: ${newTotalTurns}/${stage.autoScoringTurns} (stage: ${game.stageId}, player: ${aiPlayerEnum === Player.Black ? 'Black' : 'White'})`);
+        }
+        
         if (stage?.autoScoringTurns && game.totalTurns >= stage.autoScoringTurns) {
-            const { getGameResult } = await import('./gameModes.js');
-            await getGameResult(game);
-            await db.saveGame(game);
-            return;
+            // 게임 상태를 먼저 확인하여 중복 트리거 방지
+            if (game.gameStatus === 'playing') {
+                console.log(`[AI Player] Auto-scoring triggered at ${game.totalTurns} turns (stage: ${game.stageId})`);
+                // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
+                game.gameStatus = 'scoring';
+                await db.saveGame(game);
+                const { broadcast } = await import('./socket.js');
+                broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+                const { getGameResult } = await import('./gameModes.js');
+                await getGameResult(game);
+                return;
+            }
         }
     }
     

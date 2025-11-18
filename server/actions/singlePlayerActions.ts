@@ -110,6 +110,9 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 gameMode = GameMode.Hidden;
             } else if (stage.missileCount !== undefined) {
                 gameMode = GameMode.Missile;
+            } else if (stage.autoScoringTurns !== undefined) {
+                // 자동 계가 턴 수가 있으면 스피드 바둑 (초급반 등)
+                gameMode = GameMode.Speed;
             } else if (stage.blackTurnLimit !== undefined || stage.targetScore) {
                 // 따내기 바둑: blackTurnLimit이 있거나 targetScore가 있는 경우
                 gameMode = GameMode.Capture;
@@ -140,7 +143,8 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             // 살리기 바둑 모드 확인 (survivalTurns > 0일 때만 살리기 바둑 모드)
             const isSurvivalMode = stage.survivalTurns !== undefined && stage.survivalTurns > 0;
 
-            // 시간룰 설정: 스피드바둑은 피셔, 나머지는 5분+초읽기30초 3회
+            // 시간룰 설정: 스피드바둑은 피셔, 나머지는 5분+초읽기30초 3회로 고정
+            // 싱글플레이 비스피드 모드는 항상 5분 + 30초 초읽기 3회로 고정
             const enforcedMainTimeMinutes = isSpeedMode ? (stage.timeControl.mainTime ?? 5) : 5;
             const enforcedByoyomiTimeSeconds = isSpeedMode ? (stage.timeControl.byoyomiTime ?? 0) : 30;
             const enforcedByoyomiCount = isSpeedMode ? 0 : 3;
@@ -148,8 +152,10 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
 
 
             const gameId = `sp-game-${randomUUID()}`;
-            const baseCaptureTargetBlack = stage.targetScore.black > 0 ? stage.targetScore.black : 999;
-            const baseCaptureTargetWhite = stage.targetScore.white > 0 ? stage.targetScore.white : 999;
+            // autoScoringTurns가 있으면 따내기 바둑이 아니므로 captureTarget 설정하지 않음
+            const hasAutoScoring = stage.autoScoringTurns !== undefined;
+            const baseCaptureTargetBlack = hasAutoScoring ? 999 : (stage.targetScore.black > 0 ? stage.targetScore.black : 999);
+            const baseCaptureTargetWhite = hasAutoScoring ? 999 : (stage.targetScore.white > 0 ? stage.targetScore.white : 999);
 
             const game: LiveGameSession = {
                 id: gameId,
@@ -165,13 +171,14 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                     byoyomiTime: enforcedByoyomiTimeSeconds,
                     byoyomiCount: enforcedByoyomiCount,
                     timeIncrement: enforcedIncrement,
-                    captureTarget: stage.targetScore.black, // Default for display, effective targets used in logic
+                    captureTarget: hasAutoScoring ? undefined : stage.targetScore.black, // autoScoringTurns가 있으면 captureTarget 설정하지 않음
                     aiDifficulty: aiLevel, // 스테이지별 AI 레벨 (1~10단계)
                     survivalTurns: stage.survivalTurns, // 살리기 바둑 모드: AI가 살아남아야 하는 턴 수
                     isSurvivalMode: isSurvivalMode, // 살리기 바둑 모드 플래그
                     hiddenStoneCount: stage.hiddenCount, // 히든바둑: 히든 아이템 개수
                     scanCount: stage.scanCount, // 히든바둑: 스캔 아이템 개수
                     missileCount: stage.missileCount, // 미사일바둑: 미사일 아이템 개수
+                    autoScoringTurns: stage.autoScoringTurns, // 자동 계가 턴 수
                 } as any,
                 player1: user,
                 player2: aiUser,
@@ -206,10 +213,12 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
                 turnDeadline: undefined,
                 effectiveCaptureTargets: {
                     [Player.None]: 0,
+                    // autoScoringTurns가 있으면 따내기 바둑이 아니므로 목표점수 없음
                     // 살리기 바둑: 백(봇)이 목표점수를 달성해야 함, 흑(유저)은 목표점수 없음
-                    [Player.Black]: isSurvivalMode ? 999 : baseCaptureTargetBlack,
+                    [Player.Black]: hasAutoScoring ? 999 : (isSurvivalMode ? 999 : baseCaptureTargetBlack),
+                    // autoScoringTurns가 있으면 따내기 바둑이 아니므로 목표점수 없음
                     // 살리기 바둑: 백(봇)이 목표점수를 달성해야 함 (백의 목표점수는 black 값 사용)
-                    [Player.White]: isSurvivalMode ? stage.targetScore.black : baseCaptureTargetWhite,
+                    [Player.White]: hasAutoScoring ? 999 : (isSurvivalMode ? stage.targetScore.black : baseCaptureTargetWhite),
                 },
                 // 살리기 바둑: 백의 턴 수 추적
                 whiteTurnsPlayed: isSurvivalMode ? 0 : undefined,
@@ -259,36 +268,48 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             game.gameStatus = 'playing';
             game.turnStartTime = now;
             const isSpeedMode = game.mode === GameMode.Speed;
+            
+            // 싱글플레이 시간 설정: 비스피드 모드는 항상 5분 + 30초 초읽기 3회로 고정
             const enforcedMainTimeMinutes = isSpeedMode ? (game.settings.timeLimit || 5) : 5;
             const enforcedByoyomiCount = isSpeedMode ? 0 : 3;
             const enforcedByoyomiTimeSeconds = isSpeedMode ? (game.settings.byoyomiTime ?? 0) : 30;
+            
+            // 스테이지 정보 가져오기 (timeIncrement 설정용)
+            const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
+            const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
+            const enforcedIncrement = isSpeedMode && stage ? (stage.timeControl?.increment ?? game.settings.timeIncrement ?? 0) : 0;
 
             // 비스피드 모드는 고정된 시간 제어를 강제 적용
             if (!isSpeedMode) {
-                game.settings.timeLimit = enforcedMainTimeMinutes;
-                game.settings.byoyomiCount = enforcedByoyomiCount;
-                game.settings.byoyomiTime = enforcedByoyomiTimeSeconds;
+                game.settings.timeLimit = 5; // 항상 5분
+                game.settings.byoyomiCount = 3; // 항상 3회
+                game.settings.byoyomiTime = 30; // 항상 30초
                 game.settings.timeIncrement = 0;
+            } else {
+                // 스피드 모드는 timeIncrement를 스테이지 설정에서 가져옴
+                game.settings.timeIncrement = enforcedIncrement;
             }
 
             game.turnDeadline = now + (enforcedMainTimeMinutes * 60 * 1000);
             
             // 시간 관련 필드 초기화 (pending 상태에서는 시간이 흐르지 않았으므로 처음부터 시작)
+            // 비스피드 모드는 항상 5분(300초)으로 초기화
             game.blackTimeLeft = enforcedMainTimeMinutes * 60;
             game.whiteTimeLeft = enforcedMainTimeMinutes * 60;
-            const byoyomiCount = game.settings.byoyomiCount ?? enforcedByoyomiCount;
-            game.blackByoyomiPeriodsLeft = byoyomiCount;
-            game.whiteByoyomiPeriodsLeft = byoyomiCount;
-            // 스피드가 아닌 경우 초읽기 시간도 보정
+            
+            // 초읽기 기간 초기화: 비스피드 모드는 항상 3회
             if (!isSpeedMode) {
-                game.blackByoyomiPeriodsLeft = enforcedByoyomiCount;
-                game.whiteByoyomiPeriodsLeft = enforcedByoyomiCount;
+                game.blackByoyomiPeriodsLeft = 3;
+                game.whiteByoyomiPeriodsLeft = 3;
+            } else {
+                game.blackByoyomiPeriodsLeft = game.settings.byoyomiCount ?? 0;
+                game.whiteByoyomiPeriodsLeft = game.settings.byoyomiCount ?? 0;
             }
 
             await db.saveGame(game);
             broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
 
-            return { clientResponse: { success: true } };
+            return { clientResponse: { success: true, gameId: game.id, game } };
         }
         case 'SINGLE_PLAYER_REFRESH_PLACEMENT': {
             const { gameId } = payload;

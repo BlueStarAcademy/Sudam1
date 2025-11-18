@@ -111,38 +111,42 @@ const processSinglePlayerGameSummary = async (game: LiveGameSession) => {
             user.singlePlayerProgress = currentProgress + 1;
         }
 
+        // 골드와 경험치는 항상 지급 (아이템과 독립적)
+        const initialXp = user.strategyXp;
+        user.gold += rewards.gold;
+        user.strategyXp += rewards.exp;
+        
+        summary.gold = rewards.gold;
+        summary.xp = { initial: initialXp, change: rewards.exp, final: user.strategyXp };
+        
+        // 아이템 보상 처리
         const itemsToCreate = rewards.items ? createItemInstancesFromReward(rewards.items) : [];
         const { success, updatedInventory } = addItemsToInventory([...user.inventory], user.inventorySlots, itemsToCreate);
         
         if (!success) {
             console.error(`[SP Summary] Insufficient inventory space for user ${user.id} on stage ${stage.id}. Items not granted.`);
+            summary.items = []; // 아이템은 지급하지 않음
             // Optionally, send items via mail here in the future
         } else {
-            user.gold += rewards.gold;
-            const initialXp = user.strategyXp;
-            user.strategyXp += rewards.exp;
-
             // Update inventory with the returned updatedInventory
             user.inventory = updatedInventory;
-            
-            summary.gold = rewards.gold;
-            summary.xp = { initial: initialXp, change: rewards.exp, final: user.strategyXp };
             summary.items = itemsToCreate;
+        }
 
-            if (rewards.bonus && rewards.bonus.startsWith('스탯')) {
-                const points = parseInt(rewards.bonus.replace('스탯', ''), 10);
-                if (!isNaN(points)) {
-                    user.bonusStatPoints = (user.bonusStatPoints || 0) + points;
-                    if (!summary.items) summary.items = [];
-                    summary.items.push({
-                        id: `stat-points-${Date.now()}`,
-                        name: `보너스 스탯`,
-                        image: '/images/icons/stat_point.png',
-                        type: 'consumable',
-                        grade: 'rare',
-                        quantity: points
-                    } as any);
-                }
+        // 보너스 스탯 처리
+        if (rewards.bonus && rewards.bonus.startsWith('스탯')) {
+            const points = parseInt(rewards.bonus.replace('스탯', ''), 10);
+            if (!isNaN(points)) {
+                user.bonusStatPoints = (user.bonusStatPoints || 0) + points;
+                if (!summary.items) summary.items = [];
+                summary.items.push({
+                    id: `stat-points-${Date.now()}`,
+                    name: `보너스 스탯`,
+                    image: '/images/icons/stat_point.png',
+                    type: 'consumable',
+                    grade: 'rare',
+                    quantity: points
+                } as any);
             }
         }
     } else {

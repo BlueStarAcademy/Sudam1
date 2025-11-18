@@ -485,140 +485,180 @@ export const useApp = () => {
     // --- Action Handler ---
     const handleAction = useCallback(async (action: ServerAction): Promise<{ gameId?: string } | void> => {
         // 타워 게임과 싱글플레이 게임의 클라이언트 측 move 처리 (서버로 전송하지 않음)
+        // 클라이언트 측 이동 처리 (도전의 탑, 싱글플레이 공통 로직)
         if ((action as any).type === 'TOWER_CLIENT_MOVE' || (action as any).type === 'SINGLE_PLAYER_CLIENT_MOVE') {
+            const { updateGameStateAfterMove, checkVictoryCondition } = await import('./useClientGameState.js');
             const isTower = (action as any).type === 'TOWER_CLIENT_MOVE';
             const actionTypeName = isTower ? 'TOWER_CLIENT_MOVE' : 'SINGLE_PLAYER_CLIENT_MOVE';
-            const { gameId, x, y, newBoardState, capturedStones, newKoInfo } = (action as any).payload;
+            const payload = (action as any).payload;
+            const { gameId, x, y, newBoardState, capturedStones, newKoInfo } = payload;
             console.log(`[handleAction] ${actionTypeName} - processing client-side:`, { gameId, x, y });
             
             // 타워 게임과 싱글플레이 게임을 각각의 상태로 관리
             const updateGameState = isTower ? setTowerGames : setSinglePlayerGames;
-            
-            // 체크를 위한 정보 저장 (콜백 밖에서 접근 가능하도록)
-            let checkInfo: { towerFloor: number; stageId: string; newCaptures: { [key in Player]?: number } } | null = null;
+            const gameType: 'tower' | 'singleplayer' = isTower ? 'tower' : 'singleplayer';
             
             // 게임 상태 업데이트 및 체크 정보 준비
+            let victoryCheckResult: { winner: Player; winReason: string } | null = null;
+            let shouldEndGameSurvival = false;
+            let endGameWinnerSurvival: Player | null = null;
+            let finalUpdatedGame: LiveGameSession | null = null;
+            
             updateGameState((currentGames) => {
                 const game = currentGames[gameId];
                 if (!game) {
-                    console.warn(`[handleAction] ${actionTypeName} - Game not found:`, gameId);
+                    // 게임이 아직 로드되지 않았을 수 있으므로 조용히 반환 (WebSocket 업데이트를 기다림)
+                    console.debug(`[handleAction] ${actionTypeName} - Game not found in state (may be loading):`, gameId);
                     return currentGames;
                 }
                 
-                // 이동한 플레이어의 포획 수 업데이트
-                const movePlayer = game.currentPlayer;
-                const newCaptures = {
-                    ...game.captures,
-                    [movePlayer]: (game.captures[movePlayer] || 0) + capturedStones.length
-                };
-                
-                // 타워 게임: 1~20층 사이에서 목표 달성 체크 준비 (클로저를 통해 checkInfo 설정)
-                if (isTower && game.towerFloor !== undefined && game.towerFloor >= 1 && game.towerFloor <= 20 && game.stageId) {
-                    checkInfo = {
-                        towerFloor: game.towerFloor,
-                        stageId: game.stageId,
-                        newCaptures: newCaptures
-                    };
+                // 게임이 이미 종료되었는지 확인
+                if (game.gameStatus === 'ended' || game.gameStatus === 'no_contest' || game.gameStatus === 'scoring') {
+                    console.log(`[handleAction] ${actionTypeName} - Game already ended, ignoring move:`, {
+                        gameId,
+                        gameStatus: game.gameStatus
+                    });
+                    return currentGames;
                 }
                 
-                // 게임 상태 업데이트
-                const updatedGame = {
-                    ...game,
-                    boardState: newBoardState,
-                    koInfo: newKoInfo,
-                    lastMove: { x, y },
-                    moveHistory: [...(game.moveHistory || []), { x, y, player: movePlayer }],
-                    captures: newCaptures,
-                    currentPlayer: game.currentPlayer === Player.Black ? Player.White : Player.Black,
-                    serverRevision: (game.serverRevision || 0) + 1,
-                };
+                // 공통 유틸리티 함수를 사용하여 게임 상태 업데이트
+                const updateResult = updateGameStateAfterMove(game, payload, gameType);
+                finalUpdatedGame = updateResult.updatedGame;
                 
                 console.log(`[handleAction] ${actionTypeName} - Updated game state:`, {
                     gameId,
-                    moveHistoryLength: updatedGame.moveHistory.length,
-                    currentPlayer: updatedGame.currentPlayer,
-                    captures: updatedGame.captures,
-                    checkInfo: checkInfo ? { floor: checkInfo.towerFloor, stageId: checkInfo.stageId } : null
+                    moveHistoryLength: updateResult.updatedGame.moveHistory.length,
+                    currentPlayer: updateResult.updatedGame.currentPlayer,
+                    captures: updateResult.updatedGame.captures,
+                    shouldCheckVictory: updateResult.shouldCheckVictory,
+                    whiteTurnsPlayed: (updateResult.updatedGame as any).whiteTurnsPlayed,
+                    totalTurns: (updateResult.updatedGame as any).totalTurns
                 });
                 
-                return { ...currentGames, [gameId]: updatedGame };
+                // 싱글플레이 자동 계가 트리거 체크 (비동기로 처리)
+                if (gameType === 'singleplayer' && game.stageId && updateResult.updatedGame.totalTurns !== undefined) {
+                    import('../constants/singlePlayerConstants.js').then(({ SINGLE_PLAYER_STAGES }) => {
+                        const stage = SINGLE_PLAYER_STAGES.find((s: any) => s.id === game.stageId);
+                        if (stage?.autoScoringTurns && updateResult.updatedGame.totalTurns >= stage.autoScoringTurns) {
+                            if (updateResult.updatedGame.gameStatus === 'playing') {
+                                console.log(`[handleAction] ${actionTypeName} - Auto-scoring triggered at ${updateResult.updatedGame.totalTurns} turns (stage: ${game.stageId})`);
+                                // 게임 상태를 scoring으로 변경
+                                updateGameState((currentGames) => {
+                                    const currentGame = currentGames[gameId];
+                                    if (currentGame && currentGame.gameStatus === 'playing') {
+                                        return { 
+                                            ...currentGames, 
+                                            [gameId]: { 
+                                                ...currentGame, 
+                                                gameStatus: 'scoring' as const 
+                                            } 
+                                        };
+                                    }
+                                    return currentGames;
+                                });
+                                
+                                // 서버에 자동 계가 트리거 요청
+                                // 클라이언트에서 자동 계가를 트리거했으므로 서버에 알림
+                                // 서버에서 totalTurns를 확인하여 자동 계가를 처리하도록 함
+                                const totalTurns = updateResult.updatedGame.totalTurns ?? updateResult.updatedGame.moveHistory.filter((m: any) => m.x !== -1 && m.y !== -1).length;
+                                const moveHistory = updateResult.updatedGame.moveHistory || [];
+                                const boardState = updateResult.updatedGame.boardState || [];
+                                console.log(`[handleAction] Auto-scoring triggered on client, sending to server: totalTurns=${totalTurns}, moveHistoryLength=${moveHistory.length}, boardStateSize=${boardState.length}, stage=${game.stageId}`);
+                                // 서버에 자동 계가 트리거 요청 전송 (수 좌표 없이 플래그만 전송)
+                                // 서버에서 totalTurns, moveHistory, boardState를 확인하고 자동 계가를 처리
+                                const autoScoringAction = {
+                                    type: 'PLACE_STONE',
+                                    payload: {
+                                        gameId,
+                                        x: -1, // 패스 좌표 (실제 수를 두는 것이 아님)
+                                        y: -1, // 패스 좌표 (실제 수를 두는 것이 아님)
+                                        totalTurns: totalTurns, // 서버에 totalTurns 정보 전달
+                                        moveHistory: moveHistory, // 서버에 moveHistory 정보 전달 (KataGo 분석용)
+                                        boardState: boardState, // 서버에 boardState 정보 전달 (KataGo 분석용)
+                                        triggerAutoScoring: true // 자동 계가 트리거 플래그
+                                    }
+                                } as any;
+                                console.log(`[handleAction] Sending PLACE_STONE action to server for auto-scoring:`, { ...autoScoringAction, payload: { ...autoScoringAction.payload, moveHistory: `[${moveHistory.length} moves]` } });
+                                handleAction(autoScoringAction).then(result => {
+                                    console.log(`[handleAction] Auto-scoring action sent successfully:`, result);
+                                }).catch(err => {
+                                    console.error(`[handleAction] Failed to trigger auto-scoring on server:`, err);
+                                });
+                            }
+                        }
+                    }).catch(err => {
+                        console.error(`[handleAction] Failed to check auto-scoring:`, err);
+                    });
+                }
+                
+                // 살리기 바둑 모드: 백이 수를 둔 경우 백의 남은 턴 체크
+                const movePlayer = game.currentPlayer; // 수를 둔 플레이어
+                
+                if (gameType === 'singleplayer' && movePlayer === Player.White) {
+                    // game.settings에서 survivalTurns를 직접 확인 (동기적으로 접근 가능)
+                    const survivalTurns = (game.settings as any)?.survivalTurns;
+                    if (survivalTurns) {
+                        const whiteTurnsPlayed = (updateResult.updatedGame as any).whiteTurnsPlayed || 0;
+                        const remainingTurns = survivalTurns - whiteTurnsPlayed;
+                        
+                        console.log(`[handleAction] ${actionTypeName} - Survival Go check: whiteTurnsPlayed=${whiteTurnsPlayed}, survivalTurns=${survivalTurns}, remaining=${remainingTurns}`);
+                        
+                        if (remainingTurns <= 0 && game.gameStatus === 'playing') {
+                            console.log(`[handleAction] ${actionTypeName} - White ran out of turns (${whiteTurnsPlayed}/${survivalTurns}), Black wins - ENDING GAME`);
+                            shouldEndGameSurvival = true;
+                            endGameWinnerSurvival = Player.Black;
+                            // 게임 상태를 즉시 ended로 업데이트
+                            return { ...currentGames, [gameId]: { ...updateResult.updatedGame, gameStatus: 'ended' as const, winner: Player.Black, winReason: 'capture_limit' } };
+                        }
+                    }
+                }
+                
+                // 승리 조건 체크 (도전의 탑 및 싱글플레이)
+                if (updateResult.shouldCheckVictory && updateResult.checkInfo) {
+                    checkVictoryCondition(updateResult.checkInfo, gameId, game.effectiveCaptureTargets).then(result => {
+                        if (result) {
+                            victoryCheckResult = result;
+                            // 게임 상태를 즉시 ended로 업데이트하고 winner도 설정
+                            updateGameState((currentGames) => {
+                                const game = currentGames[gameId];
+                                if (game && game.gameStatus !== 'ended') {
+                                    console.log(`[handleAction] ${actionTypeName} - Setting game status to ended and winner to ${result.winner === Player.Black ? 'Black' : 'White'} immediately:`, gameId);
+                                    return { ...currentGames, [gameId]: { ...game, gameStatus: 'ended' as const, winner: result.winner, winReason: result.winReason } };
+                                }
+                                return currentGames;
+                            });
+                            // 게임 종료 액션 호출
+                            const endGameActionType = isTower ? 'END_TOWER_GAME' : 'END_SINGLE_PLAYER_GAME';
+                            handleAction({
+                                type: endGameActionType,
+                                payload: {
+                                    gameId,
+                                    winner: result.winner,
+                                    winReason: result.winReason
+                                }
+                            } as any).catch(err => {
+                                console.error(`[handleAction] Failed to end ${gameType} game:`, err);
+                            });
+                        }
+                    });
+                }
+                
+                return { ...currentGames, [gameId]: updateResult.updatedGame };
             });
             
-            // 타워 게임: 1~20층 사이에서 목표 달성 체크 (비동기 import 사용)
-            // 주의: updateGameState는 비동기적으로 실행될 수 있으므로, 
-            // checkInfo가 설정되었는지 확인하고 체크를 수행
-            if (checkInfo) {
-                console.log('[handleAction] Tower game - checkInfo set, proceeding with target score check:', checkInfo);
-                // TOWER_STAGES를 비동기적으로 import
-                import('../constants/towerConstants.js').then(({ TOWER_STAGES }) => {
-                    const stage = TOWER_STAGES.find((s: any) => s.id === checkInfo!.stageId);
-                    if (stage && stage.targetScore) {
-                        const blackCaptures = checkInfo.newCaptures[Player.Black] || 0;
-                        const whiteCaptures = checkInfo.newCaptures[Player.White] || 0;
-                        
-                        console.log('[handleAction] Tower game - Checking target score:', {
-                            floor: checkInfo.towerFloor,
-                            blackCaptures,
-                            whiteCaptures,
-                            targetBlack: stage.targetScore.black,
-                            targetWhite: stage.targetScore.white,
-                            blackReached: blackCaptures >= stage.targetScore.black,
-                            whiteReached: whiteCaptures >= stage.targetScore.white
-                        });
-                        
-                        // 흑(유저)이 목표 따낸 돌의 수를 달성하면 승리
-                        if (blackCaptures >= stage.targetScore.black) {
-                            console.log('[handleAction] Tower game - Black (user) reached target score, ending game:', {
-                                blackCaptures,
-                                target: stage.targetScore.black,
-                                floor: checkInfo.towerFloor
-                            });
-                            // 즉시 END_TOWER_GAME 액션 호출
-                            handleAction({
-                                type: 'END_TOWER_GAME',
-                                payload: {
-                                    gameId,
-                                    winner: Player.Black,
-                                    winReason: 'capture_limit'
-                                }
-                            } as any).catch(err => {
-                                console.error('[handleAction] Failed to end tower game (user win):', err);
-                            });
-                            return;
-                        }
-                        
-                        // 백(AI)이 목표 점수를 달성하면 패배
-                        if (whiteCaptures >= stage.targetScore.white) {
-                            console.log('[handleAction] Tower game - White (AI) reached target score, ending game:', {
-                                whiteCaptures,
-                                target: stage.targetScore.white,
-                                floor: checkInfo.towerFloor
-                            });
-                            // 즉시 END_TOWER_GAME 액션 호출
-                            handleAction({
-                                type: 'END_TOWER_GAME',
-                                payload: {
-                                    gameId,
-                                    winner: Player.White,
-                                    winReason: 'capture_limit'
-                                }
-                            } as any).catch(err => {
-                                console.error('[handleAction] Failed to end tower game (user loss):', err);
-                            });
-                            return;
-                        }
-                    } else {
-                        console.warn('[handleAction] Tower game - Stage not found or no targetScore:', {
-                            stageId: checkInfo.stageId,
-                            stage: stage,
-                            floor: checkInfo.towerFloor
-                        });
+            // 살리기 바둑에서 게임 종료가 필요한 경우
+            if (shouldEndGameSurvival && endGameWinnerSurvival !== null && finalUpdatedGame) {
+                // 게임 종료 액션 호출
+                handleAction({
+                    type: 'END_SINGLE_PLAYER_GAME',
+                    payload: {
+                        gameId,
+                        winner: endGameWinnerSurvival,
+                        winReason: 'capture_limit'
                     }
-                }).catch(err => {
-                    console.error('[handleAction] Failed to import TOWER_STAGES:', err);
+                } as any).catch(err => {
+                    console.error(`[handleAction] Failed to end single player game:`, err);
                 });
-            } else {
-                console.log('[handleAction] Tower game - checkInfo not set, skipping target score check');
             }
             
             return { gameId };
@@ -1023,6 +1063,37 @@ export const useApp = () => {
                     console.log(`[handleAction] ${action.type} - gameId not in response, using payload gameId:`, effectiveGameId);
                 }
                 
+                // END_TOWER_GAME 또는 END_SINGLE_PLAYER_GAME 액션 처리
+                if (action.type === 'END_TOWER_GAME' || action.type === 'END_SINGLE_PLAYER_GAME') {
+                    const endGameId = (action.payload as any)?.gameId || gameId;
+                    const endGame = game || (result.clientResponse?.game);
+                    
+                    if (endGameId && endGame) {
+                        console.log(`[handleAction] ${action.type} - Updating game with winner:`, { gameId: endGameId, winner: endGame.winner, gameStatus: endGame.gameStatus });
+                        
+                        if (endGame.gameCategory === 'tower') {
+                            setTowerGames(currentGames => {
+                                const existingGame = currentGames[endGameId];
+                                // winner가 설정된 경우 항상 업데이트 (서버에서 설정한 정확한 winner 정보 사용)
+                                if (endGame.winner !== null && endGame.winner !== undefined) {
+                                    console.log(`[handleAction] ${action.type} - Updating tower game winner:`, { gameId: endGameId, winner: endGame.winner, existingWinner: existingGame?.winner });
+                                    return { ...currentGames, [endGameId]: { ...existingGame, ...endGame } };
+                                }
+                                return currentGames;
+                            });
+                        } else if (endGame.isSinglePlayer) {
+                            setSinglePlayerGames(currentGames => {
+                                const existingGame = currentGames[endGameId];
+                                if (endGame.winner !== null && endGame.winner !== undefined) {
+                                    console.log(`[handleAction] ${action.type} - Updating single player game winner:`, { gameId: endGameId, winner: endGame.winner, existingWinner: existingGame?.winner });
+                                    return { ...currentGames, [endGameId]: { ...existingGame, ...endGame } };
+                                }
+                                return currentGames;
+                            });
+                        }
+                    }
+                }
+                
                 if (effectiveGameId && (action.type === 'ACCEPT_NEGOTIATION' || action.type === 'START_AI_GAME' || action.type === 'START_SINGLE_PLAYER_GAME' || action.type === 'START_TOWER_GAME' || action.type === 'CONFIRM_TOWER_GAME_START' || action.type === 'CONFIRM_SINGLE_PLAYER_GAME_START')) {
                     console.log(`[handleAction] ${action.type} - gameId received:`, effectiveGameId, 'hasGame:', !!game, 'result keys:', Object.keys(result), 'clientResponse keys:', result.clientResponse ? Object.keys(result.clientResponse) : []);
                     
@@ -1036,8 +1107,8 @@ export const useApp = () => {
                         if (game.isSinglePlayer) {
                             setSinglePlayerGames(currentGames => {
                                 // CONFIRM 액션의 경우 게임 상태가 업데이트되었으므로 항상 업데이트
-                                if (action.type === 'CONFIRM_SINGLE_PLAYER_GAME_START' || !currentGames[gameId]) {
-                                    return { ...currentGames, [gameId]: game };
+                                if (action.type === 'CONFIRM_SINGLE_PLAYER_GAME_START' || !currentGames[effectiveGameId]) {
+                                    return { ...currentGames, [effectiveGameId]: game };
                                 }
                                 return currentGames;
                             });
