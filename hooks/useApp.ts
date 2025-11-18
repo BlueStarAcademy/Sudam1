@@ -542,15 +542,30 @@ export const useApp = () => {
                         if (stage?.autoScoringTurns && updateResult.updatedGame.totalTurns >= stage.autoScoringTurns) {
                             if (updateResult.updatedGame.gameStatus === 'playing') {
                                 console.log(`[handleAction] ${actionTypeName} - Auto-scoring triggered at ${updateResult.updatedGame.totalTurns} turns (stage: ${game.stageId})`);
-                                // 게임 상태를 scoring으로 변경
+                                // 게임 상태를 scoring으로 변경 (기존 게임 상태 보존)
                                 updateGameState((currentGames) => {
                                     const currentGame = currentGames[gameId];
                                     if (currentGame && currentGame.gameStatus === 'playing') {
+                                        // 기존 게임의 모든 상태를 보존하면서 gameStatus만 변경
+                                        // updateResult.updatedGame의 boardState를 우선 사용 (최신 상태)
+                                        const preservedBoardState = updateResult.updatedGame.boardState && updateResult.updatedGame.boardState.length > 0
+                                            ? updateResult.updatedGame.boardState
+                                            : (currentGame.boardState || updateResult.updatedGame.boardState);
+                                        const preservedMoveHistory = updateResult.updatedGame.moveHistory && updateResult.updatedGame.moveHistory.length > 0
+                                            ? updateResult.updatedGame.moveHistory
+                                            : (currentGame.moveHistory || updateResult.updatedGame.moveHistory);
+                                        
+                                        console.log(`[handleAction] Preserving game state for scoring: boardStateSize=${preservedBoardState?.length || 0}, moveHistoryLength=${preservedMoveHistory?.length || 0}`);
+                                        
                                         return { 
                                             ...currentGames, 
                                             [gameId]: { 
-                                                ...currentGame, 
-                                                gameStatus: 'scoring' as const 
+                                                ...currentGame,
+                                                ...updateResult.updatedGame, // 최신 업데이트 결과 포함
+                                                gameStatus: 'scoring' as const,
+                                                // boardState와 moveHistory는 반드시 보존
+                                                boardState: preservedBoardState,
+                                                moveHistory: preservedMoveHistory,
                                             } 
                                         };
                                     }
@@ -1833,7 +1848,61 @@ export const useApp = () => {
                                         }
                                         singlePlayerGameSignaturesRef.current[gameId] = signature;
                                         const updatedGames = { ...currentGames };
-                                        updatedGames[gameId] = game;
+                                        
+                                        // scoring 상태인 경우 기존 게임의 boardState와 moveHistory 무조건 보존
+                                        const existingGame = currentGames[gameId];
+                                        if (game.gameStatus === 'scoring') {
+                                            if (existingGame) {
+                                                // scoring 상태에서는 기존 게임의 boardState와 moveHistory를 절대 덮어쓰지 않음
+                                                // 기존 게임의 boardState와 moveHistory가 유효한지 확인
+                                                const existingBoardStateValid = existingGame.boardState && 
+                                                    Array.isArray(existingGame.boardState) && 
+                                                    existingGame.boardState.length > 0 && 
+                                                    existingGame.boardState[0] && 
+                                                    Array.isArray(existingGame.boardState[0]) && 
+                                                    existingGame.boardState[0].length > 0;
+                                                
+                                                const existingMoveHistoryValid = existingGame.moveHistory && 
+                                                    Array.isArray(existingGame.moveHistory) && 
+                                                    existingGame.moveHistory.length > 0;
+                                                
+                                                // 기존 boardState에 실제 돌이 있는지 확인
+                                                const existingBoardStateHasStones = existingBoardStateValid && existingGame.boardState.some((row: any[]) => 
+                                                    row && Array.isArray(row) && row.some((cell: any) => cell !== 0 && cell !== null && cell !== undefined)
+                                                );
+                                                
+                                                // scoring 상태에서는 기존 boardState를 절대 덮어쓰지 않음 (돌이 있으면 무조건 유지)
+                                                const finalBoardState = (existingBoardStateValid && existingBoardStateHasStones)
+                                                    ? existingGame.boardState 
+                                                    : (existingBoardStateValid ? existingGame.boardState : game.boardState);
+                                                
+                                                // 기존 moveHistory도 우선 유지
+                                                const finalMoveHistory = existingMoveHistoryValid 
+                                                    ? existingGame.moveHistory 
+                                                    : (game.moveHistory && Array.isArray(game.moveHistory) && game.moveHistory.length > 0 ? game.moveHistory : existingGame.moveHistory);
+                                                
+                                                console.log(`[WebSocket][SinglePlayer] Scoring state: preserving existing boardState (hasStones=${existingBoardStateHasStones}, size=${finalBoardState?.length || 0}), moveHistory (length=${finalMoveHistory?.length || 0})`);
+                                                
+                                                const preservedGame = {
+                                                    ...game,
+                                                    // boardState와 moveHistory는 기존 것을 우선 사용
+                                                    boardState: finalBoardState,
+                                                    moveHistory: finalMoveHistory,
+                                                    // 시간 정보도 기존 것을 우선 사용 (서버에서 온 값이 유효하지 않을 수 있음)
+                                                    blackTimeLeft: (game.blackTimeLeft !== undefined && game.blackTimeLeft !== null && game.blackTimeLeft > 0) 
+                                                        ? game.blackTimeLeft 
+                                                        : (existingGame.blackTimeLeft !== undefined && existingGame.blackTimeLeft !== null ? existingGame.blackTimeLeft : game.blackTimeLeft),
+                                                    whiteTimeLeft: (game.whiteTimeLeft !== undefined && game.whiteTimeLeft !== null && game.whiteTimeLeft > 0) 
+                                                        ? game.whiteTimeLeft 
+                                                        : (existingGame.whiteTimeLeft !== undefined && existingGame.whiteTimeLeft !== null ? existingGame.whiteTimeLeft : game.whiteTimeLeft),
+                                                };
+                                                updatedGames[gameId] = preservedGame;
+                                            } else {
+                                                updatedGames[gameId] = game;
+                                            }
+                                        } else {
+                                            updatedGames[gameId] = game;
+                                        }
                                 const lastMoves = Array.isArray(game.moveHistory)
                                     ? game.moveHistory.slice(Math.max(0, game.moveHistory.length - 4)).map((m: any) => ({
                                         x: m?.x,

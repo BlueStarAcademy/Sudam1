@@ -317,6 +317,10 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             if (!game || !game.isSinglePlayer || !game.stageId) {
                 return { error: 'Invalid single player game.' };
             }
+            // 계가 중일 때는 게임 상태를 초기화하지 않음
+            if (game.gameStatus === 'scoring' || (game as any).isScoringProtected) {
+                return { error: '계가 진행 중입니다. 게임 상태를 변경할 수 없습니다.' };
+            }
             // pending 상태에서는 배치 새로고침 불가 (게임이 시작되지 않음)
             if (game.gameStatus === 'pending') {
                 return { error: '게임이 시작되지 않았습니다.' };

@@ -5,6 +5,7 @@ import { getGoLogic, processMove } from '../goLogic.js';
 import { getGameResult } from '../gameModes.js';
 import { analyzeGame } from '../kataGoService.js';
 import { initializeNigiri, updateNigiriState, handleNigiriAction } from './nigiri.js';
+import { updateSharedGameState } from './shared.js';
 import { initializeBase, updateBaseState, handleBaseAction } from './base.js';
 import { initializeCapture, updateCaptureState, handleCaptureAction } from './capture.js';
 import { initializeHidden, updateHiddenState, handleHiddenAction } from './hidden.js';
@@ -181,11 +182,90 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
             
             if (totalTurns >= stage.autoScoringTurns) {
                 console.log(`[Strategic] Auto-scoring triggered in update loop at ${totalTurns} turns (stage: ${game.stageId})`);
+                // 먼저 보호 플래그를 설정하여 다른 로직이 게임을 초기화하지 않도록 함
+                (game as any).isScoringProtected = true;
+                
+                // 게임 상태 보존 (계가 전에 게임이 초기화되는 것을 방지)
+                const preservedGameState = {
+                    boardState: game.boardState ? JSON.parse(JSON.stringify(game.boardState)) : null,
+                    moveHistory: game.moveHistory ? JSON.parse(JSON.stringify(game.moveHistory)) : null,
+                    blackTimeLeft: game.blackTimeLeft,
+                    whiteTimeLeft: game.whiteTimeLeft,
+                    blackPatternStones: game.blackPatternStones ? JSON.parse(JSON.stringify(game.blackPatternStones)) : null,
+                    whitePatternStones: game.whitePatternStones ? JSON.parse(JSON.stringify(game.whitePatternStones)) : null,
+                    captures: game.captures ? JSON.parse(JSON.stringify(game.captures)) : null,
+                    baseStoneCaptures: game.baseStoneCaptures ? JSON.parse(JSON.stringify(game.baseStoneCaptures)) : null,
+                    hiddenStoneCaptures: game.hiddenStoneCaptures ? JSON.parse(JSON.stringify(game.hiddenStoneCaptures)) : null,
+                };
+                (game as any).preservedGameState = preservedGameState;
+                
+                // 시간 정보 보존
+                const preservedTimeInfo = {
+                    blackTimeLeft: game.blackTimeLeft,
+                    whiteTimeLeft: game.whiteTimeLeft
+                };
+                (game as any).preservedTimeInfo = preservedTimeInfo;
+                
+                console.log(`[Strategic] Preserved game state before scoring: boardStateSize=${game.boardState?.length || 0}, moveHistoryLength=${game.moveHistory?.length || 0}, blackTimeLeft=${preservedGameState.blackTimeLeft}, whiteTimeLeft=${preservedGameState.whiteTimeLeft}`);
+                
                 // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
                 game.gameStatus = 'scoring';
+                
+                // boardState와 moveHistory가 반드시 포함되도록 보장 (게임 객체 자체에도 적용)
+                // preservedGameState가 있으면 무조건 사용 (초기화 방지)
+                if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
+                    game.boardState = preservedGameState.boardState;
+                    console.log(`[Strategic] Restored boardState from preservedGameState: size=${game.boardState.length}x${game.boardState[0]?.length || 0}`);
+                } else {
+                    console.warn(`[Strategic] preservedGameState.boardState is invalid, using game.boardState: size=${game.boardState?.length || 0}`);
+                }
+                if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
+                    game.moveHistory = preservedGameState.moveHistory;
+                    console.log(`[Strategic] Restored moveHistory from preservedGameState: length=${game.moveHistory.length}`);
+                } else {
+                    console.warn(`[Strategic] preservedGameState.moveHistory is invalid, using game.moveHistory: length=${game.moveHistory?.length || 0}`);
+                }
+                if (preservedGameState.blackTimeLeft !== undefined) {
+                    game.blackTimeLeft = preservedGameState.blackTimeLeft;
+                }
+                if (preservedGameState.whiteTimeLeft !== undefined) {
+                    game.whiteTimeLeft = preservedGameState.whiteTimeLeft;
+                }
+                
+                // 최종 확인: boardState가 유효한지 확인
+                const boardStateValid = game.boardState && Array.isArray(game.boardState) && game.boardState.length > 0 && 
+                                        game.boardState[0] && Array.isArray(game.boardState[0]) && game.boardState[0].length > 0;
+                if (!boardStateValid) {
+                    console.error(`[Strategic] ERROR: boardState is invalid after restoration! boardState=${JSON.stringify(game.boardState?.slice(0, 2))}`);
+                }
+                
+                console.log(`[Strategic] Game state before save: boardStateSize=${game.boardState?.length || 0}, boardStateValid=${boardStateValid}, moveHistoryLength=${game.moveHistory?.length || 0}, blackTimeLeft=${game.blackTimeLeft}, whiteTimeLeft=${game.whiteTimeLeft}`);
+                
+                // 브로드캐스트 전에 boardState와 moveHistory가 반드시 포함되도록 다시 확인
+                if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
+                    game.boardState = preservedGameState.boardState;
+                }
+                if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
+                    game.moveHistory = preservedGameState.moveHistory;
+                }
+                if (preservedTimeInfo.blackTimeLeft !== undefined) {
+                    game.blackTimeLeft = preservedTimeInfo.blackTimeLeft;
+                }
+                if (preservedTimeInfo.whiteTimeLeft !== undefined) {
+                    game.whiteTimeLeft = preservedTimeInfo.whiteTimeLeft;
+                }
+                
                 await db.saveGame(game);
                 const { broadcast } = await import('../socket.js');
-                broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+                // 브로드캐스트 시 boardState와 moveHistory를 명시적으로 포함
+                const gameToBroadcast = {
+                    ...game,
+                    boardState: game.boardState,
+                    moveHistory: game.moveHistory,
+                    blackTimeLeft: game.blackTimeLeft,
+                    whiteTimeLeft: game.whiteTimeLeft,
+                };
+                broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: gameToBroadcast } });
                 const { getGameResult } = await import('../gameModes.js');
                 await getGameResult(game);
                 return;
@@ -211,6 +291,11 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         }
     }
 
+    // Delegate to shared game state updates first (handles RPS, turn preferences, etc.)
+    if (updateSharedGameState(game, now)) {
+        return; // Game state was updated, skip other updates
+    }
+    
     // Delegate to mode-specific update logic
     updateNigiriState(game, now);
     updateCaptureState(game, now);

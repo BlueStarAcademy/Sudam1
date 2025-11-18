@@ -9,7 +9,7 @@ import { initializeBase, updateBaseState, handleBaseAction } from './base.js';
 import { initializeCapture, updateCaptureState, handleCaptureAction } from './capture.js';
 import { initializeHidden, updateHiddenState, handleHiddenAction } from './hidden.js';
 import { initializeMissile, updateMissileState, handleMissileAction } from './missile.js';
-import { transitionToPlaying, handleSharedAction } from './shared.js';
+import { transitionToPlaying, handleSharedAction, updateSharedGameState } from './shared.js';
 import { UserStatus } from '../../types.js';
 import { getCaptureTarget, NO_CAPTURE_TARGET } from '../utils/captureTargets.ts';
 import { aiUserId } from '../aiPlayer.js';
@@ -101,6 +101,11 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         summaryService.endGame(game, winner, 'timeout');
     }
 
+    // Delegate to shared game state updates first (handles RPS, turn preferences, etc.)
+    if (updateSharedGameState(game, now)) {
+        return; // Game state was updated, skip other updates
+    }
+    
     // Delegate to mode-specific update logic
     updateNigiriState(game, now);
     updateCaptureState(game, now);
@@ -227,19 +232,39 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                                     console.warn(`[SinglePlayer] WARNING: Server moveHistory is empty but totalTurns=${totalTurns}. KataGo analysis may fail.`);
                                 }
                                 
+                                // 게임 상태 보존 (계가 전에 게임이 초기화되는 것을 방지)
+                                (freshGame as any).isScoringProtected = true;
+                                const preservedGameState = {
+                                    boardState: freshGame.boardState ? JSON.parse(JSON.stringify(freshGame.boardState)) : null,
+                                    moveHistory: freshGame.moveHistory ? JSON.parse(JSON.stringify(freshGame.moveHistory)) : null,
+                                    blackTimeLeft: freshGame.blackTimeLeft,
+                                    whiteTimeLeft: freshGame.whiteTimeLeft,
+                                    blackPatternStones: freshGame.blackPatternStones ? JSON.parse(JSON.stringify(freshGame.blackPatternStones)) : null,
+                                    whitePatternStones: freshGame.whitePatternStones ? JSON.parse(JSON.stringify(freshGame.whitePatternStones)) : null,
+                                    captures: freshGame.captures ? JSON.parse(JSON.stringify(freshGame.captures)) : null,
+                                    baseStoneCaptures: freshGame.baseStoneCaptures ? JSON.parse(JSON.stringify(freshGame.baseStoneCaptures)) : null,
+                                    hiddenStoneCaptures: freshGame.hiddenStoneCaptures ? JSON.parse(JSON.stringify(freshGame.hiddenStoneCaptures)) : null,
+                                };
+                                (freshGame as any).preservedGameState = preservedGameState;
+                                (freshGame as any).preservedTimeInfo = {
+                                    blackTimeLeft: freshGame.blackTimeLeft,
+                                    whiteTimeLeft: freshGame.whiteTimeLeft
+                                };
+                                
                                 // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
                                 freshGame.gameStatus = 'scoring';
                                 freshGame.isAnalyzing = true; // 분석 시작 플래그 설정
                                 freshGame.totalTurns = totalTurns; // totalTurns 저장
                                 
-                                // scoring 상태 보호: 다른 로직이 게임을 재시작하지 않도록 플래그 설정
-                                (freshGame as any).isScoringProtected = true;
+                                // boardState와 moveHistory가 반드시 포함되도록 보장
+                                if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
+                                    freshGame.boardState = preservedGameState.boardState;
+                                }
+                                if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
+                                    freshGame.moveHistory = preservedGameState.moveHistory;
+                                }
                                 
-                                // 게임 상태 보존: 바둑판과 moveHistory가 초기화되지 않도록 보존
-                                // (이미 클라이언트에서 전달받은 moveHistory와 boardState가 설정되어 있음)
-                                // 추가로 보존 플래그 설정
-                                (freshGame as any).preserveGameState = true;
-                                
+                                console.log(`[SinglePlayer] Game state before save: boardStateSize=${freshGame.boardState?.length || 0}, moveHistoryLength=${freshGame.moveHistory?.length || 0}`);
                                 await db.saveGame(freshGame);
                                 const { broadcast } = await import('../socket.js');
                                 broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
@@ -284,8 +309,38 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                             if (totalTurns >= stage.autoScoringTurns && (existingMove || boardHasStone)) {
                                 // 이미 처리된 수이므로 자동 계가만 처리
                                 console.log(`[SinglePlayer] Auto-scoring triggered from client (duplicate move ignored) at ${totalTurns} turns (stage: ${game.stageId}, moveHistoryLength: ${validMoves.length})`);
+                                
+                                // 게임 상태 보존 (계가 전에 게임이 초기화되는 것을 방지)
+                                (game as any).isScoringProtected = true;
+                                const preservedGameState = {
+                                    boardState: game.boardState ? JSON.parse(JSON.stringify(game.boardState)) : null,
+                                    moveHistory: game.moveHistory ? JSON.parse(JSON.stringify(game.moveHistory)) : null,
+                                    blackTimeLeft: game.blackTimeLeft,
+                                    whiteTimeLeft: game.whiteTimeLeft,
+                                    blackPatternStones: game.blackPatternStones ? JSON.parse(JSON.stringify(game.blackPatternStones)) : null,
+                                    whitePatternStones: game.whitePatternStones ? JSON.parse(JSON.stringify(game.whitePatternStones)) : null,
+                                    captures: game.captures ? JSON.parse(JSON.stringify(game.captures)) : null,
+                                    baseStoneCaptures: game.baseStoneCaptures ? JSON.parse(JSON.stringify(game.baseStoneCaptures)) : null,
+                                    hiddenStoneCaptures: game.hiddenStoneCaptures ? JSON.parse(JSON.stringify(game.hiddenStoneCaptures)) : null,
+                                };
+                                (game as any).preservedGameState = preservedGameState;
+                                (game as any).preservedTimeInfo = {
+                                    blackTimeLeft: game.blackTimeLeft,
+                                    whiteTimeLeft: game.whiteTimeLeft
+                                };
+                                
                                 // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
                                 game.gameStatus = 'scoring';
+                                
+                                // boardState와 moveHistory가 반드시 포함되도록 보장
+                                if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
+                                    game.boardState = preservedGameState.boardState;
+                                }
+                                if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
+                                    game.moveHistory = preservedGameState.moveHistory;
+                                }
+                                
+                                console.log(`[SinglePlayer] Game state before save: boardStateSize=${game.boardState?.length || 0}, moveHistoryLength=${game.moveHistory?.length || 0}`);
                                 await db.saveGame(game);
                                 const { broadcast } = await import('../socket.js');
                                 broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
@@ -299,8 +354,38 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                             if (totalTurns >= stage.autoScoringTurns && !existingMove && !boardHasStone) {
                                 // 이 경우는 실제로 새로운 수를 두려는 것이므로, 자동 계가를 먼저 처리
                                 console.log(`[SinglePlayer] Auto-scoring triggered from client (new move at limit) at ${totalTurns} turns (stage: ${game.stageId}, moveHistoryLength: ${validMoves.length})`);
+                                
+                                // 게임 상태 보존 (계가 전에 게임이 초기화되는 것을 방지)
+                                (game as any).isScoringProtected = true;
+                                const preservedGameState = {
+                                    boardState: game.boardState ? JSON.parse(JSON.stringify(game.boardState)) : null,
+                                    moveHistory: game.moveHistory ? JSON.parse(JSON.stringify(game.moveHistory)) : null,
+                                    blackTimeLeft: game.blackTimeLeft,
+                                    whiteTimeLeft: game.whiteTimeLeft,
+                                    blackPatternStones: game.blackPatternStones ? JSON.parse(JSON.stringify(game.blackPatternStones)) : null,
+                                    whitePatternStones: game.whitePatternStones ? JSON.parse(JSON.stringify(game.whitePatternStones)) : null,
+                                    captures: game.captures ? JSON.parse(JSON.stringify(game.captures)) : null,
+                                    baseStoneCaptures: game.baseStoneCaptures ? JSON.parse(JSON.stringify(game.baseStoneCaptures)) : null,
+                                    hiddenStoneCaptures: game.hiddenStoneCaptures ? JSON.parse(JSON.stringify(game.hiddenStoneCaptures)) : null,
+                                };
+                                (game as any).preservedGameState = preservedGameState;
+                                (game as any).preservedTimeInfo = {
+                                    blackTimeLeft: game.blackTimeLeft,
+                                    whiteTimeLeft: game.whiteTimeLeft
+                                };
+                                
                                 // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
                                 game.gameStatus = 'scoring';
+                                
+                                // boardState와 moveHistory가 반드시 포함되도록 보장
+                                if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
+                                    game.boardState = preservedGameState.boardState;
+                                }
+                                if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
+                                    game.moveHistory = preservedGameState.moveHistory;
+                                }
+                                
+                                console.log(`[SinglePlayer] Game state before save: boardStateSize=${game.boardState?.length || 0}, moveHistoryLength=${game.moveHistory?.length || 0}`);
                                 await db.saveGame(game);
                                 const { broadcast } = await import('../socket.js');
                                 broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });

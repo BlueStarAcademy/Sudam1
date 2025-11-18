@@ -132,26 +132,105 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
         }
     }
     
-    game.gameStatus = 'scoring';
-    game.winReason = 'score';
-    game.isAnalyzing = true;
+    // 게임 상태 보존 (계가 전에 게임이 초기화되는 것을 방지)
+    // 먼저 보호 플래그를 설정하여 다른 로직이 게임을 초기화하지 않도록 함
+    (game as any).isScoringProtected = true;
+    
+    const preservedGameState = {
+        boardState: game.boardState ? JSON.parse(JSON.stringify(game.boardState)) : null,
+        moveHistory: game.moveHistory ? JSON.parse(JSON.stringify(game.moveHistory)) : null,
+        blackTimeLeft: game.blackTimeLeft,
+        whiteTimeLeft: game.whiteTimeLeft,
+        blackPatternStones: game.blackPatternStones ? JSON.parse(JSON.stringify(game.blackPatternStones)) : null,
+        whitePatternStones: game.whitePatternStones ? JSON.parse(JSON.stringify(game.whitePatternStones)) : null,
+        captures: game.captures ? JSON.parse(JSON.stringify(game.captures)) : null,
+        baseStoneCaptures: game.baseStoneCaptures ? JSON.parse(JSON.stringify(game.baseStoneCaptures)) : null,
+        hiddenStoneCaptures: game.hiddenStoneCaptures ? JSON.parse(JSON.stringify(game.hiddenStoneCaptures)) : null,
+    };
+    (game as any).preservedGameState = preservedGameState;
     
     // 시간 정보 보존 (게임이 재시작되어 시간이 초기화되는 것을 방지)
     const preservedTimeInfo = {
         blackTimeLeft: game.blackTimeLeft,
         whiteTimeLeft: game.whiteTimeLeft
     };
-    console.log(`[getGameResult] Preserving time info for scoring: blackTimeLeft=${preservedTimeInfo.blackTimeLeft}, whiteTimeLeft=${preservedTimeInfo.whiteTimeLeft}`);
+    (game as any).preservedTimeInfo = preservedTimeInfo;
+    
+    console.log(`[getGameResult] Preserving game state for scoring: boardStateSize=${game.boardState?.length || 0}, moveHistoryLength=${game.moveHistory?.length || 0}, blackTimeLeft=${preservedGameState.blackTimeLeft}, whiteTimeLeft=${preservedGameState.whiteTimeLeft}`);
+    
+    // 게임 상태를 scoring으로 변경
+    game.gameStatus = 'scoring';
+    game.winReason = 'score';
+    game.isAnalyzing = true;
+    
+    // boardState와 moveHistory가 반드시 포함되도록 보장 (게임 객체 자체에도 적용)
+    // preservedGameState가 있으면 무조건 사용 (초기화 방지)
+    if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
+        game.boardState = preservedGameState.boardState;
+        console.log(`[getGameResult] Restored boardState from preservedGameState: size=${game.boardState.length}x${game.boardState[0]?.length || 0}`);
+    } else {
+        console.warn(`[getGameResult] preservedGameState.boardState is invalid, using game.boardState: size=${game.boardState?.length || 0}`);
+    }
+    if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
+        game.moveHistory = preservedGameState.moveHistory;
+        console.log(`[getGameResult] Restored moveHistory from preservedGameState: length=${game.moveHistory.length}`);
+    } else {
+        console.warn(`[getGameResult] preservedGameState.moveHistory is invalid, using game.moveHistory: length=${game.moveHistory?.length || 0}`);
+    }
+    if (preservedGameState.blackTimeLeft !== undefined) {
+        game.blackTimeLeft = preservedGameState.blackTimeLeft;
+    }
+    if (preservedGameState.whiteTimeLeft !== undefined) {
+        game.whiteTimeLeft = preservedGameState.whiteTimeLeft;
+    }
+    
+    // 최종 확인: boardState가 유효한지 확인
+    const boardStateValid = game.boardState && Array.isArray(game.boardState) && game.boardState.length > 0 && 
+                            game.boardState[0] && Array.isArray(game.boardState[0]) && game.boardState[0].length > 0;
+    if (!boardStateValid) {
+        console.error(`[getGameResult] ERROR: boardState is invalid after restoration! boardState=${JSON.stringify(game.boardState?.slice(0, 2))}`);
+    }
+    
+    console.log(`[getGameResult] Game state before save: boardStateSize=${game.boardState?.length || 0}, boardStateValid=${boardStateValid}, moveHistoryLength=${game.moveHistory?.length || 0}, blackTimeLeft=${game.blackTimeLeft}, whiteTimeLeft=${game.whiteTimeLeft}`);
     
     // 계가 시작 상태를 즉시 저장하고 브로드캐스트하여 클라이언트에 계가 화면 표시
+    // 브로드캐스트 전에 boardState와 moveHistory가 반드시 포함되도록 다시 확인
+    if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
+        game.boardState = preservedGameState.boardState;
+    }
+    if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
+        game.moveHistory = preservedGameState.moveHistory;
+    }
+    if (preservedTimeInfo.blackTimeLeft !== undefined) {
+        game.blackTimeLeft = preservedTimeInfo.blackTimeLeft;
+    }
+    if (preservedTimeInfo.whiteTimeLeft !== undefined) {
+        game.whiteTimeLeft = preservedTimeInfo.whiteTimeLeft;
+    }
+    
+    console.log(`[getGameResult] Final game state before broadcast: boardStateSize=${game.boardState?.length || 0}, moveHistoryLength=${game.moveHistory?.length || 0}, blackTimeLeft=${game.blackTimeLeft}, whiteTimeLeft=${game.whiteTimeLeft}`);
+    
     await db.saveGame(game);
     const { broadcast } = await import('./socket.js');
-    broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+    // 브로드캐스트 시 boardState와 moveHistory를 명시적으로 포함
+    const gameToBroadcast = {
+        ...game,
+        boardState: game.boardState,
+        moveHistory: game.moveHistory,
+        blackTimeLeft: game.blackTimeLeft,
+        whiteTimeLeft: game.whiteTimeLeft,
+    };
+    broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: gameToBroadcast } });
     console.log(`[getGameResult] Game ${game.id} set to scoring state and broadcasted (isSinglePlayer: ${game.isSinglePlayer}, stageId: ${game.stageId}, moveHistoryLength: ${game.moveHistory.length})`);
     
     // 카타고 분석 시작
     console.log(`[getGameResult] Starting KataGo analysis for game ${game.id}...`);
     console.log(`[getGameResult] Game details: isSinglePlayer=${game.isSinglePlayer}, stageId=${game.stageId}, moveHistoryLength=${game.moveHistory.length}, boardSize=${game.settings.boardSize}`);
+    
+    // 보존된 게임 상태를 클로저에 저장하여 분석 완료 후에도 사용 가능하도록 함
+    const savedPreservedGameState = preservedGameState;
+    const savedPreservedTimeInfo = preservedTimeInfo;
+    
     analyzeGame(game)
         .then(async (baseAnalysis) => {
             console.log(`[getGameResult] KataGo analysis completed for game ${game.id}, getting fresh game state...`);
@@ -164,22 +243,57 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
             // 게임 상태가 playing으로 변경되었으면 다시 scoring으로 변경 (게임 루프가 재시작한 경우)
             if (freshGame.gameStatus === 'playing' && freshGame.isSinglePlayer && freshGame.stageId) {
                 console.log(`[getGameResult] Game ${game.id} was reset to playing during analysis, restoring scoring state`);
-                console.log(`[getGameResult] Restoring game state: moveHistoryLength=${game.moveHistory.length}, boardStateSize=${game.boardState.length}`);
                 
-                // 원본 게임 상태 복원 (바둑판과 moveHistory)
-                if (game.moveHistory && game.moveHistory.length > 0) {
-                    freshGame.moveHistory = game.moveHistory;
-                    console.log(`[getGameResult] Restored moveHistory (length: ${freshGame.moveHistory.length})`);
-                }
-                if (game.boardState && game.boardState.length > 0) {
-                    freshGame.boardState = game.boardState;
-                    console.log(`[getGameResult] Restored boardState (size: ${freshGame.boardState.length}x${freshGame.boardState[0]?.length || 0})`);
+                // 보존된 게임 상태 복원
+                const preservedState = (freshGame as any).preservedGameState || (game as any).preservedGameState || savedPreservedGameState;
+                if (preservedState) {
+                    if (preservedState.moveHistory && preservedState.moveHistory.length > 0) {
+                        freshGame.moveHistory = preservedState.moveHistory;
+                        console.log(`[getGameResult] Restored moveHistory (length: ${freshGame.moveHistory.length})`);
+                    }
+                    if (preservedState.boardState && preservedState.boardState.length > 0) {
+                        freshGame.boardState = preservedState.boardState;
+                        console.log(`[getGameResult] Restored boardState (size: ${freshGame.boardState.length}x${freshGame.boardState[0]?.length || 0})`);
+                    }
+                    if (preservedState.blackPatternStones) {
+                        freshGame.blackPatternStones = preservedState.blackPatternStones;
+                    }
+                    if (preservedState.whitePatternStones) {
+                        freshGame.whitePatternStones = preservedState.whitePatternStones;
+                    }
+                    if (preservedState.captures) {
+                        freshGame.captures = preservedState.captures;
+                    }
+                    if (preservedState.baseStoneCaptures) {
+                        freshGame.baseStoneCaptures = preservedState.baseStoneCaptures;
+                    }
+                    if (preservedState.hiddenStoneCaptures) {
+                        freshGame.hiddenStoneCaptures = preservedState.hiddenStoneCaptures;
+                    }
+                    // 시간 정보도 복원
+                    if (preservedState.blackTimeLeft !== undefined) {
+                        freshGame.blackTimeLeft = preservedState.blackTimeLeft;
+                    }
+                    if (preservedState.whiteTimeLeft !== undefined) {
+                        freshGame.whiteTimeLeft = preservedState.whiteTimeLeft;
+                    }
+                    console.log(`[getGameResult] Restored time info: blackTimeLeft=${freshGame.blackTimeLeft}, whiteTimeLeft=${freshGame.whiteTimeLeft}`);
+                } else {
+                    // 보존된 상태가 없으면 원본 게임 상태 사용
+                    if (game.moveHistory && game.moveHistory.length > 0) {
+                        freshGame.moveHistory = game.moveHistory;
+                        console.log(`[getGameResult] Restored moveHistory from game (length: ${freshGame.moveHistory.length})`);
+                    }
+                    if (game.boardState && game.boardState.length > 0) {
+                        freshGame.boardState = game.boardState;
+                        console.log(`[getGameResult] Restored boardState from game (size: ${freshGame.boardState.length}x${freshGame.boardState[0]?.length || 0})`);
+                    }
                 }
                 
                 freshGame.gameStatus = 'scoring';
                 freshGame.isAnalyzing = true;
                 (freshGame as any).isScoringProtected = true;
-                (freshGame as any).preserveGameState = true;
+                (freshGame as any).preservedGameState = preservedState || (game as any).preservedGameState;
                 await db.saveGame(freshGame);
                 const { broadcast } = await import('./socket.js');
                 broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
@@ -192,7 +306,9 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
 
             console.log(`[getGameResult] Finalizing analysis result for game ${game.id}...`);
             // 보존된 시간 정보를 사용하여 시간 보너스 계산 (게임이 재시작되어 시간이 초기화된 경우 대비)
-            const finalAnalysis = finalizeAnalysisResult(baseAnalysis, freshGame, preservedTimeInfo);
+            const timeInfoToUse = (freshGame as any).preservedTimeInfo || savedPreservedTimeInfo || preservedTimeInfo;
+            console.log(`[getGameResult] Using time info for bonus: blackTimeLeft=${timeInfoToUse.blackTimeLeft}, whiteTimeLeft=${timeInfoToUse.whiteTimeLeft}`);
+            const finalAnalysis = finalizeAnalysisResult(baseAnalysis, freshGame, timeInfoToUse);
 
             if (!freshGame.analysisResult) freshGame.analysisResult = {};
             freshGame.analysisResult['system'] = finalAnalysis;
@@ -437,6 +553,11 @@ export const updateGameStates = async (games: LiveGameSession[], now: number): P
 const processGame = async (game: LiveGameSession, now: number): Promise<LiveGameSession> => {
         // pending 상태의 게임은 아직 시작되지 않았으므로 게임 루프에서 처리하지 않음
         if (game.gameStatus === 'pending') {
+            return game;
+        }
+
+        // scoring 상태인 게임은 업데이트하지 않음 (계가 진행 중) - 가장 먼저 체크
+        if (game.gameStatus === 'scoring' || (game as any).isScoringProtected) {
             return game;
         }
 
