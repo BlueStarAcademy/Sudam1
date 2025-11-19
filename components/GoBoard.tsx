@@ -83,7 +83,7 @@ const AnimatedMissileStone: React.FC<{
     stone_radius: number;
     toSvgCoords: (p: Point) => { cx: number; cy: number };
 }> = ({ animation, stone_radius, toSvgCoords }) => {
-    const { from, to, player } = animation;
+    const { from, to, player, duration } = animation;
     const fromCoords = toSvgCoords(from);
     const toCoords = toSvgCoords(to);
 
@@ -92,19 +92,25 @@ const AnimatedMissileStone: React.FC<{
       '--from-y': string;
       '--to-x': string;
       '--to-y': string;
+      '--animation-duration': string;
     } = {
         '--from-x': `${fromCoords.cx}px`,
         '--from-y': `${fromCoords.cy}px`,
         '--to-x': `${toCoords.cx}px`,
         '--to-y': `${toCoords.cy}px`,
+        '--animation-duration': `${duration}ms`,
+        animationFillMode: 'forwards',
     };
 
     const angle = Math.atan2(toCoords.cy - fromCoords.cy, toCoords.cx - fromCoords.cx) * 180 / Math.PI;
+    // 불꽃은 이동 방향의 반대 방향으로 나와야 함
+    // 돌의 뒤쪽(이동 방향 반대)에 위치시킴
+    const fireAngle = angle + 180;
 
     return (
         <g style={style} className="missile-flight-group">
             <g transform={`translate(0, 0)`}>
-                {/* Fire Trail */}
+                {/* Fire Trail - 이동 방향의 반대 방향으로 */}
                 <ellipse
                     cx={0}
                     cy={0}
@@ -112,7 +118,7 @@ const AnimatedMissileStone: React.FC<{
                     ry={stone_radius * 0.7}
                     fill="url(#missile_fire)"
                     className="missile-fire-trail"
-                    transform={`rotate(${angle}) translate(${-stone_radius}, 0)`}
+                    transform={`rotate(${fireAngle}) translate(${-stone_radius}, 0)`}
                 />
                 {/* Stone */}
                 <circle
@@ -141,18 +147,22 @@ const AnimatedHiddenMissile: React.FC<{
       '--from-y': string;
       '--to-x': string;
       '--to-y': string;
+      '--animation-duration': string;
     } = {
         '--from-x': `${fromCoords.cx}px`,
         '--from-y': `${fromCoords.cy}px`,
         '--to-x': `${toCoords.cx}px`,
         '--to-y': `${toCoords.cy}px`,
-        animationDuration: `${duration}ms`,
+        '--animation-duration': `${duration}ms`,
         animationFillMode: 'forwards',
     };
 
     const specialImageSize = stone_radius * 2 * 0.7;
     const specialImageOffset = specialImageSize / 2;
     const angle = Math.atan2(toCoords.cy - fromCoords.cy, toCoords.cx - fromCoords.cx) * 180 / Math.PI;
+    // 불꽃은 이동 방향의 반대 방향으로 나와야 함
+    // 돌의 뒤쪽(이동 방향 반대)에 위치시킴
+    const fireAngle = angle + 180;
 
     const flightEffect = (
         <g style={flightStyle} className="hidden-missile-flight-group">
@@ -164,7 +174,7 @@ const AnimatedHiddenMissile: React.FC<{
                     ry={stone_radius * 0.7}
                     fill="url(#missile_fire)"
                     className="missile-fire-trail"
-                    transform={`rotate(${angle}) translate(${-stone_radius}, 0)`}
+                    transform={`rotate(${fireAngle}) translate(${-stone_radius}, 0)`}
                 />
                 <circle cx={0} cy={0} r={stone_radius} fill={player === Player.Black ? "#111827" : "#f5f2e8"} />
                 <circle cx={0} cy={0} r={stone_radius} fill={player === Player.Black ? 'url(#slate_highlight)' : 'url(#clamshell_highlight)'} />
@@ -371,7 +381,64 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
     const [isMobile, setIsMobile] = useState(window.innerWidth < 1024);
     const dragStartBoardPoint = useRef<Point | null>(null);
     const svgRef = useRef<SVGSVGElement>(null);
+    const preservedBoardStateRef = useRef<BoardState | null>(null);
+    const missileAnimationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const boardSizePx = 840;
+    
+    // scoring 상태일 때 boardState를 보존하여 초기화 방지
+    // 유효한 boardState가 있으면 보존
+    useEffect(() => {
+        const isBoardStateValid = boardState && 
+            Array.isArray(boardState) && 
+            boardState.length > 0 && 
+            boardState[0] && 
+            Array.isArray(boardState[0]) && 
+            boardState[0].length > 0 &&
+            boardState.some((row: Player[]) => 
+                row && Array.isArray(row) && row.some((cell: Player) => cell !== Player.None && cell !== null && cell !== undefined)
+            );
+        
+        if (isBoardStateValid) {
+            preservedBoardStateRef.current = boardState;
+        }
+    }, [boardState]);
+    
+    // scoring 상태일 때는 보존된 boardState 사용, 아니면 현재 boardState 사용
+    const displayBoardState = useMemo(() => {
+        const isBoardStateValid = boardState && 
+            Array.isArray(boardState) && 
+            boardState.length > 0 && 
+            boardState[0] && 
+            Array.isArray(boardState[0]) && 
+            boardState[0].length > 0 &&
+            boardState.some((row: Player[]) => 
+                row && Array.isArray(row) && row.some((cell: Player) => cell !== Player.None && cell !== null && cell !== undefined)
+            );
+        
+        // scoring 상태일 때는 보존된 boardState를 우선 사용
+        if (gameStatus === 'scoring') {
+            if (preservedBoardStateRef.current) {
+                return preservedBoardStateRef.current;
+            }
+            // 보존된 boardState가 없으면 현재 boardState 사용 (빈 보드 생성 안 함)
+            if (isBoardStateValid) {
+                return boardState;
+            }
+            // scoring 상태에서는 빈 보드 상태를 생성하지 않고 보존된 것을 우선 사용
+            // 만약 아무것도 없으면 기존 boardState를 그대로 사용
+            return boardState || [];
+        }
+        
+        const result = isBoardStateValid ? boardState : (preservedBoardStateRef.current || boardState);
+        
+        // scoring이 아닌 경우에만 결과가 유효한 배열이 아니면 빈 보드 상태를 생성
+        if (!result || !Array.isArray(result) || result.length === 0) {
+            const safeSize = boardSize > 0 ? boardSize : 19;
+            return Array(safeSize).fill(null).map(() => Array(safeSize).fill(Player.None));
+        }
+        
+        return result;
+    }, [boardState, gameStatus, boardSize]);
 
     const safeBoardSize = boardSize > 0 ? boardSize : 19;
     const cell_size = boardSizePx / safeBoardSize;
@@ -383,6 +450,45 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
         window.addEventListener('resize', checkIsMobile);
         return () => window.removeEventListener('resize', checkIsMobile);
     }, []);
+
+    // 미사일 애니메이션 완료 감지 및 처리
+    useEffect(() => {
+        // 이전 타임아웃 정리
+        if (missileAnimationTimeoutRef.current) {
+            clearTimeout(missileAnimationTimeoutRef.current);
+            missileAnimationTimeoutRef.current = null;
+        }
+
+        // 미사일 애니메이션이 있고 게임 상태가 missile_animating이면 애니메이션 완료 감지
+        if (animation && (animation.type === 'missile' || animation.type === 'hidden_missile') && gameStatus === 'missile_animating') {
+            const now = Date.now();
+            const elapsed = now - animation.startTime;
+            const remaining = Math.max(0, animation.duration - elapsed);
+            const maxDuration = 5000; // 최대 5초
+            const timeout = Math.min(remaining + 200, maxDuration); // 약간의 여유 시간 추가 (200ms)
+
+            console.log(`[GoBoard] Missile animation detected: type=${animation.type}, startTime=${animation.startTime}, now=${now}, elapsed=${elapsed}ms, duration=${animation.duration}ms, remaining=${remaining}ms, timeout=${timeout}ms`);
+
+            // 이미 애니메이션이 완료되었으면 타임아웃을 설정하지 않음
+            if (remaining <= 0) {
+                console.log(`[GoBoard] Missile animation already completed (elapsed=${elapsed}ms >= duration=${animation.duration}ms)`);
+                return;
+            }
+
+            missileAnimationTimeoutRef.current = setTimeout(() => {
+                console.log(`[GoBoard] Missile animation timeout - animation should be complete. Expected end time: ${animation.startTime + animation.duration}, current time: ${Date.now()}`);
+                missileAnimationTimeoutRef.current = null;
+                // 서버에서 게임 루프를 통해 자동으로 처리될 것이지만, 추가 확인을 위해 로그를 남김
+            }, timeout);
+        }
+
+        return () => {
+            if (missileAnimationTimeoutRef.current) {
+                clearTimeout(missileAnimationTimeoutRef.current);
+                missileAnimationTimeoutRef.current = null;
+            }
+        };
+    }, [animation, gameStatus, onAction]);
 
     const isLastMoveMarkerEnabled = useMemo(() => {
         const strategicModes = SPECIAL_GAME_MODES.map(m => m.mode);
@@ -447,9 +553,9 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
         setHoverPos(boardPos);
     
         if (gameStatus === 'missile_selecting' && !isBoardDisabled) {
-            if (boardState[boardPos.y][boardPos.x] === myPlayerEnum) {
+            if (displayBoardState[boardPos.y][boardPos.x] === myPlayerEnum) {
                 const neighbors = getNeighbors(boardPos);
-                const hasLiberty = neighbors.some(n => boardState[n.y][n.x] === Player.None);
+                const hasLiberty = neighbors.some(n => displayBoardState[n.y][n.x] === Player.None);
                 if (hasLiberty) {
                     setSelectedMissileStone(boardPos);
                     setIsDraggingMissile(true);
@@ -527,7 +633,7 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
     const isGameFinished = gameStatus === 'ended' || gameStatus === 'no_contest';
 
     const showHoverPreview = hoverPos && !isBoardDisabled && gameStatus !== 'scanning' && gameStatus !== 'missile_selecting' && (
-        boardState[hoverPos.y][hoverPos.x] === Player.None || 
+        displayBoardState[hoverPos.y][hoverPos.x] === Player.None || 
         isOpponentHiddenStoneAtPos(hoverPos)
     );
     
@@ -539,7 +645,7 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
                 {analysisResult.deadStones.map((p, i) => {
                     const { cx, cy } = toSvgCoords(p);
                     // 사석의 색상 확인 (잡은 쪽의 색상)
-                    const deadStonePlayer = boardState[p.y][p.x];
+                    const deadStonePlayer = displayBoardState[p.y][p.x];
                     const capturingPlayer = deadStonePlayer === Player.Black ? Player.White : Player.Black;
                     
                     // 영토 표시 사각형 (잡은 쪽의 색상)
@@ -621,7 +727,7 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
         }
 
         // Existing click-based arrow logic
-        const neighbors = getNeighbors(selectedMissileStone).filter(n => boardState[n.y][n.x] === Player.None);
+        const neighbors = getNeighbors(selectedMissileStone).filter(n => displayBoardState[n.y][n.x] === Player.None);
         if (neighbors.length === 0) return null;
 
         const arrowSize = cell_size * 0.4;
@@ -638,13 +744,26 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
                     const isValidTarget = neighbors.some(n => n.x === point.x && n.y === point.y);
                     if (!isValidTarget) return null;
                     const { cx, cy } = toSvgCoords(point);
+                    
+                    // 각 방향에 맞는 화살표 경로
+                    let arrowPath = '';
+                    if (dir === 'up') {
+                        arrowPath = `M ${cx} ${cy - arrowSize} L ${cx - arrowSize * 0.6} ${cy + arrowSize * 0.3} L ${cx - arrowSize * 0.3} ${cy} L ${cx + arrowSize * 0.3} ${cy} L ${cx + arrowSize * 0.6} ${cy + arrowSize * 0.3} Z`;
+                    } else if (dir === 'down') {
+                        arrowPath = `M ${cx} ${cy + arrowSize} L ${cx - arrowSize * 0.6} ${cy - arrowSize * 0.3} L ${cx - arrowSize * 0.3} ${cy} L ${cx + arrowSize * 0.3} ${cy} L ${cx + arrowSize * 0.6} ${cy - arrowSize * 0.3} Z`;
+                    } else if (dir === 'left') {
+                        arrowPath = `M ${cx - arrowSize} ${cy} L ${cx + arrowSize * 0.3} ${cy - arrowSize * 0.6} L ${cx} ${cy - arrowSize * 0.3} L ${cx} ${cy + arrowSize * 0.3} L ${cx + arrowSize * 0.3} ${cy + arrowSize * 0.6} Z`;
+                    } else { // right
+                        arrowPath = `M ${cx + arrowSize} ${cy} L ${cx - arrowSize * 0.3} ${cy - arrowSize * 0.6} L ${cx} ${cy - arrowSize * 0.3} L ${cx} ${cy + arrowSize * 0.3} L ${cx - arrowSize * 0.3} ${cy + arrowSize * 0.6} Z`;
+                    }
+                    
                     return (
-                        <polygon
+                        <path
                             key={dir}
-                            points={`${cx},${cy - arrowSize} ${cx + arrowSize},${cy} ${cx},${cy + arrowSize} ${cx - arrowSize},${cy}`}
+                            d={arrowPath}
                             fill="rgba(239, 68, 68, 0.8)"
                             stroke="white"
-                            strokeWidth="1"
+                            strokeWidth="1.5"
                             className="cursor-pointer hover:opacity-100 opacity-80"
                             onClick={() => onMissileLaunch(selectedMissileStone, dir as any)}
                         />
@@ -713,7 +832,7 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
                      <OwnershipOverlay ownershipMap={analysisResult.ownershipMap} toSvgCoords={toSvgCoords} cellSize={cell_size} />
                 )}
 
-                {boardState.map((row, y) => row.map((player, x) => {
+                {displayBoardState.map((row, y) => row.map((player, x) => {
                     if (player === Player.None) return null;
                     const { cx, cy } = toSvgCoords({ x, y });
                     
@@ -810,8 +929,22 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
                 {renderMissileLaunchPreview()}
                 {animation && (
                     <>
-                        {animation.type === 'missile' && <AnimatedMissileStone animation={animation} stone_radius={stone_radius} toSvgCoords={toSvgCoords} />}
-                        {animation.type === 'hidden_missile' && animation.player === myPlayerEnum && !isSpectator && <AnimatedHiddenMissile animation={animation} stone_radius={stone_radius} toSvgCoords={toSvgCoords} />}
+                        {animation.type === 'missile' && (
+                            <AnimatedMissileStone 
+                                key={`missile-${animation.from.x}-${animation.from.y}-${animation.to.x}-${animation.to.y}-${animation.startTime}`}
+                                animation={animation} 
+                                stone_radius={stone_radius} 
+                                toSvgCoords={toSvgCoords} 
+                            />
+                        )}
+                        {animation.type === 'hidden_missile' && (
+                            <AnimatedHiddenMissile 
+                                key={`hidden-missile-${animation.from.x}-${animation.from.y}-${animation.to.x}-${animation.to.y}-${animation.startTime}`}
+                                animation={animation} 
+                                stone_radius={stone_radius} 
+                                toSvgCoords={toSvgCoords} 
+                            />
+                        )}
                         {animation.type === 'scan' && !isSpectator && animation.playerId === currentUser.id && <AnimatedScanMarker animation={animation} toSvgCoords={toSvgCoords} stone_radius={stone_radius} />}
                         {animation.type === 'hidden_reveal' && animation.stones.map((s, i) => ( <Stone key={`reveal-${i}`} player={s.player} cx={toSvgCoords(s.point).cx} cy={toSvgCoords(s.point).cy} isKnownHidden animationClass="sparkle-animation" radius={stone_radius} /> ))}
                         {animation.type === 'bonus_text' && <AnimatedBonusText animation={animation} toSvgCoords={toSvgCoords} cellSize={cell_size} />}

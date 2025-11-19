@@ -6,7 +6,7 @@ import { initializeCurling, updateCurlingState, handleCurlingAction } from './cu
 import { initializeDiceGo, updateDiceGoState, handleDiceGoAction } from './diceGo.js';
 import { initializeOmok, updateOmokState, handleOmokAction } from './omok.js';
 import { initializeThief, updateThiefState, handleThiefAction } from './thief.js';
-import { ALKKAGI_TURN_TIME_LIMIT, ALKKAGI_PLACEMENT_TIME_LIMIT, CURLING_TURN_TIME_LIMIT, DICE_GO_MAIN_ROLL_TIME } from '../../constants';
+import { ALKKAGI_TURN_TIME_LIMIT, ALKKAGI_PLACEMENT_TIME_LIMIT, CURLING_TURN_TIME_LIMIT, DICE_GO_MAIN_ROLL_TIME } from '../../constants.js';
 import * as effectService from '../effectService.js';
 import { aiUserId, getAiUser } from '../aiPlayer.js';
 import { randomUUID } from 'crypto';

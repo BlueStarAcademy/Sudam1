@@ -57,7 +57,8 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
             const activeGameId = userStatus?.gameId;
             if (userStatus?.status === 'in-game' && activeGameId) {
                 const game = await db.getLiveGame(activeGameId);
-                if (game && game.gameStatus !== 'ended' && game.gameStatus !== 'no_contest') {
+                // scoring 상태의 게임은 연결 끊김으로 처리하지 않음 (자동계가 진행 중)
+                if (game && game.gameStatus !== 'ended' && game.gameStatus !== 'no_contest' && game.gameStatus !== 'scoring') {
                     // 도전의 탑, 싱글플레이, AI 게임에서는 접속 끊김 패널티 없음
                     const isNoPenaltyGame = game.isSinglePlayer || game.gameCategory === 'tower' || game.isAiGame;
                     if (!game.disconnectionState) {
@@ -82,6 +83,9 @@ export const handleSocialAction = async (volatileState: VolatileState, action: S
                             await summaryService.endGame(game, winner, 'disconnect');
                         }
                     }
+                } else if (game && game.gameStatus === 'scoring') {
+                    // scoring 상태의 게임은 연결 끊김으로 처리하지 않고 조용히 무시
+                    console.log(`[SocialAction] Ignoring disconnect for scoring game: ${activeGameId}`);
                 }
             }
             

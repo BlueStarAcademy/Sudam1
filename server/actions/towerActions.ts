@@ -227,11 +227,12 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
             
             await db.updateUser(user);
             
-            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (클라이언트가 게임 데이터를 먼저 받을 수 있도록)
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (게임 참가자에게만 전송)
+            const { broadcastToGameParticipants, broadcastUserUpdate } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
             // 그 다음 사용자 상태 브로드캐스트
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
+            broadcastUserUpdate(user);
 
             return {
                 clientResponse: {
@@ -290,8 +291,9 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
             // 사용자 상태 업데이트
             volatileState.userStatuses[game.player1.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id, gameCategory: 'tower' as GameCategory };
             
-            // 게임 업데이트 먼저 브로드캐스트
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 게임 업데이트 먼저 브로드캐스트 (게임 참가자에게만 전송)
+            const { broadcastToGameParticipants } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
             // 그 다음 사용자 상태 브로드캐스트
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             
@@ -350,8 +352,9 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
 
             await db.saveGame(game);
             await db.updateUser(user);
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
+            const { broadcastToGameParticipants, broadcastUserUpdate } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
+            broadcastUserUpdate(user);
             
             return { clientResponse: { updatedUser: user } };
         }
@@ -412,8 +415,9 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
 
             await db.saveGame(game);
             await db.updateUser(user);
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
+            const { broadcastToGameParticipants, broadcastUserUpdate } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
+            broadcastUserUpdate(user);
             
             return { clientResponse: { updatedUser: user, game } };
         }
@@ -458,7 +462,8 @@ export const handleTowerAction = async (volatileState: VolatileState, action: Se
             await endGame(game, winner, winReason);
             
             await db.saveGame(game);
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            const { broadcastToGameParticipants } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
             
             return { clientResponse: { gameId: game.id, game } };
         }

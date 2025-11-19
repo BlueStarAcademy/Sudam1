@@ -39,6 +39,20 @@ const ItemDisplay: React.FC<{ item: InventoryItem }> = ({ item }) => {
                 <div className="absolute bottom-0 left-0 right-0 text-center text-xs font-bold bg-black/50 py-0.5">
                     <span className={starInfo.colorClass}>★{item.stars}</span>
                 </div>
+                {item.isDivineMythic && (
+                    <div 
+                        className="absolute bottom-0 left-0 flex items-center justify-center bg-black/60 rounded-tr-md z-10" 
+                        style={{ 
+                            textShadow: '1px 1px 2px black',
+                            padding: '2px 4px',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            color: '#FFD700'
+                        }}
+                    >
+                        D
+                    </div>
+                )}
             </div>
             <p className={`font-bold text-sm ${gradeStyles[item.grade].color}`}>{item.name}</p>
         </div>

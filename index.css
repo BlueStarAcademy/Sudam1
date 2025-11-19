@@ -478,7 +478,7 @@ input, textarea {
 }
 
 .missile-flight-group {
-  animation: missile-flight-animation 2s ease-in forwards;
+  animation: missile-flight-animation var(--animation-duration, 2s) ease-in forwards;
   pointer-events: none;
 }
 
@@ -628,8 +628,8 @@ input, textarea {
 }
 
 .hidden-missile-flight-group {
-    animation: hidden-missile-flight-animation; /* duration and delay set via inline style */
-    pointer-events: none;
+  animation: missile-flight-animation var(--animation-duration, 3s) ease-in forwards;
+  pointer-events: none;
 }
 
 @keyframes item-enhanced-pulse {

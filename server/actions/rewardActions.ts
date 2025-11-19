@@ -66,9 +66,9 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
             const updatedUser = JSON.parse(JSON.stringify(user));
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser, ['inventory', 'equipment', 'quests', 'gold', 'diamonds', 'actionPoints']);
             
             return {
                 clientResponse: {
@@ -117,9 +117,9 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
             const updatedUser = JSON.parse(JSON.stringify(user));
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser, ['inventory', 'equipment', 'quests', 'gold', 'diamonds', 'actionPoints']);
             
             const reward: QuestReward = {
                 gold: totalGold,
@@ -201,9 +201,9 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
             const updatedUser = JSON.parse(JSON.stringify(user));
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser, ['inventory', 'equipment', 'quests', 'gold', 'diamonds', 'actionPoints']);
             
             return { 
                 clientResponse: { 
@@ -267,9 +267,9 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             // 깊은 복사로 updatedUser 생성하여 React가 변경을 확실히 감지하도록 함
             const updatedUser = JSON.parse(JSON.stringify(user));
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser, ['inventory', 'equipment', 'quests', 'gold', 'diamonds', 'actionPoints']);
             
             return { 
                 clientResponse: { 
@@ -298,9 +298,9 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             // 깊은 복사로 updatedUser 생성
             const updatedUser = JSON.parse(JSON.stringify(user));
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser, ['inventory', 'equipment', 'quests', 'gold', 'diamonds', 'actionPoints']);
             
             // HTTP 응답에도 updatedUser 포함 (즉시 클라이언트 상태 업데이트)
             return { clientResponse: { updatedUser } };
@@ -324,9 +324,9 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             // 깊은 복사로 updatedUser 생성
             const updatedUser = JSON.parse(JSON.stringify(user));
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
-            const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser, ['inventory', 'equipment', 'quests', 'gold', 'diamonds', 'actionPoints']);
             
             return { 
                 clientResponse: { 
@@ -356,10 +356,10 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
             mail.isRead = true;
             await db.updateUser(user);
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
             const updatedUserCopy = JSON.parse(JSON.stringify(user));
-            const { broadcast } = await import('../socket.js');
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUserCopy } });
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUserCopy, ['mail']);
             
             return { clientResponse: { updatedUser: updatedUserCopy } };
         }
@@ -540,10 +540,10 @@ export const handleRewardAction = async (volatileState: VolatileState, action: S
                 // 선택적 필드만 반환 (메시지 크기 최적화)
                 const updatedUser = getSelectiveUserUpdate(freshUser, 'CLAIM_TOURNAMENT_REWARD', { includeAll: true });
                 
-                // WebSocket으로 사용자 업데이트 브로드캐스트 (전체 객체는 WebSocket에서만)
+                // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
                 const fullUserForBroadcast = JSON.parse(JSON.stringify(freshUser));
-                const { broadcast } = await import('../socket.js');
-                broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: fullUserForBroadcast } });
+                const { broadcastUserUpdate } = await import('../socket.js');
+                broadcastUserUpdate(fullUserForBroadcast, ['inventory', 'equipment', 'quests', 'gold', 'diamonds', 'actionPoints', 'mail']);
                 
                 // DB 저장은 비동기로 처리하여 응답 지연 최소화
                 db.updateUser(freshUser).catch((error: any) => {

@@ -61,7 +61,8 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                 const userStatus = volatileState.userStatuses[targetUserId];
                 if (userStatus?.gameId) {
                     const activeGame = await db.getLiveGame(userStatus.gameId);
-                    if (activeGame && activeGame.gameStatus !== 'ended' && activeGame.gameStatus !== 'no_contest') {
+                    // scoring 상태의 게임은 연결 끊김으로 처리하지 않음 (자동계가 진행 중)
+                    if (activeGame && activeGame.gameStatus !== 'ended' && activeGame.gameStatus !== 'no_contest' && activeGame.gameStatus !== 'scoring') {
                         // 상대방이 승리하도록 게임 종료
                         const opponentId = activeGame.player1.id === targetUserId ? activeGame.player2.id : activeGame.player1.id;
                         const winner = activeGame.blackPlayerId === opponentId ? types.Player.Black : types.Player.White;
@@ -78,7 +79,8 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                             delete volatileState.userStatuses[opponentId].gameId;
                         }
                         
-                        broadcast({ type: 'GAME_UPDATE', payload: { [activeGame.id]: activeGame } });
+                        const { broadcastToGameParticipants } = await import('../socket.js');
+                        broadcastToGameParticipants(activeGame.id, { type: 'GAME_UPDATE', payload: { [activeGame.id]: activeGame } }, activeGame);
                     }
                 }
                 
@@ -93,9 +95,10 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             await db.updateUser(targetUser);
             await createAdminLog(user, 'apply_sanction', targetUser, { sanctionType, durationMinutes });
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
             const updatedUser = JSON.parse(JSON.stringify(targetUser));
-            broadcast({ type: 'USER_UPDATE', payload: { [targetUser.id]: updatedUser } });
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser);
             
             return {};
         }
@@ -114,9 +117,10 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             await db.updateUser(targetUser);
             await createAdminLog(user, 'lift_sanction', targetUser, { sanctionType });
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
             const updatedUser = JSON.parse(JSON.stringify(targetUser));
-            broadcast({ type: 'USER_UPDATE', payload: { [targetUser.id]: updatedUser } });
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser);
             
             return {};
         }
@@ -139,9 +143,10 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             await db.updateUser(targetUser);
             await createAdminLog(user, resetType === 'full' ? 'reset_full' : 'reset_stats', targetUser, backupData);
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
             const updatedUser = JSON.parse(JSON.stringify(targetUser));
-            broadcast({ type: 'USER_UPDATE', payload: { [targetUser.id]: updatedUser } });
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser);
             
             return {};
         }
@@ -320,9 +325,10 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                 target.mail.unshift(newMail);
                 await db.updateUser(target);
                 
-                // WebSocket으로 사용자 업데이트 브로드캐스트
+                // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
                 const updatedUser = JSON.parse(JSON.stringify(target));
-                broadcast({ type: 'USER_UPDATE', payload: { [target.id]: updatedUser } });
+                const { broadcastUserUpdate } = await import('../socket.js');
+                broadcastUserUpdate(updatedUser, ['mail']);
             }
              await createAdminLog(user, 'send_mail', { id: targetSpecifier, nickname: targetSpecifier }, { mailTitle: title });
             return {};
@@ -371,8 +377,9 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             game.description = description;
             await db.saveGame(game);
             
-            // 게임 업데이트 브로드캐스트
-            broadcast({ type: 'GAME_UPDATE', payload: { [gameId]: game } });
+            // 게임 업데이트 브로드캐스트 (게임 참가자에게만 전송)
+            const { broadcastToGameParticipants } = await import('../socket.js');
+            broadcastToGameParticipants(gameId, { type: 'GAME_UPDATE', payload: { [gameId]: game } }, game);
             
             await createAdminLog(user, 'set_game_description', game.player1, { mailTitle: `Game ${game.id}`});
             return {};
@@ -537,9 +544,10 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             await db.updateUser(targetUser);
             await createAdminLog(user, 'update_user_details', targetUser, backupData);
             
-            // WebSocket으로 사용자 업데이트 브로드캐스트
+            // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
             const updatedUser = JSON.parse(JSON.stringify(targetUser));
-            broadcast({ type: 'USER_UPDATE', payload: { [targetUser.id]: updatedUser } });
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser);
             
             // HTTP 응답에도 업데이트된 사용자 데이터 포함 (관리자 패널에서 즉시 반영을 위해)
             return {
@@ -709,10 +717,10 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             // 최신 사용자 데이터를 다시 가져와서 브로드캐스트 (토너먼트 상태가 반영된 최신 데이터)
             const latestUser = await db.getUser(targetUserId);
             if (latestUser) {
-                // WebSocket으로 사용자 업데이트 브로드캐스트 (토너먼트 상태 포함)
-                // 전체 사용자 객체를 보내므로 토너먼트 상태 필드도 포함됨
+                // WebSocket으로 사용자 업데이트 브로드캐스트 (최적화: 변경된 필드만 전송)
                 const updatedUserCopy = JSON.parse(JSON.stringify(latestUser));
-                broadcast({ type: 'USER_UPDATE', payload: { [latestUser.id]: updatedUserCopy } });
+                const { broadcastUserUpdate } = await import('../socket.js');
+                broadcastUserUpdate(updatedUserCopy, ['lastNeighborhoodTournament', 'lastNationalTournament', 'lastWorldTournament']);
                 
                 // HTTP 응답에도 업데이트된 사용자 데이터 포함 (즉시 반영을 위해)
                 return { 
@@ -723,9 +731,10 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
                     } 
                 };
             } else {
-                // 사용자를 찾을 수 없는 경우에도 기본 브로드캐스트
+                // 사용자를 찾을 수 없는 경우에도 기본 브로드캐스트 (최적화: 변경된 필드만 전송)
                 const updatedUserCopy = JSON.parse(JSON.stringify(freshUser));
-                broadcast({ type: 'USER_UPDATE', payload: { [freshUser.id]: updatedUserCopy } });
+                const { broadcastUserUpdate } = await import('../socket.js');
+                broadcastUserUpdate(updatedUserCopy, ['lastNeighborhoodTournament', 'lastNationalTournament', 'lastWorldTournament']);
                 
                 return { 
                     clientResponse: { 

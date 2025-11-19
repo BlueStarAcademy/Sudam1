@@ -158,6 +158,20 @@ const EquipmentSlotDisplay: React.FC<{
                     />
                 )}
                 {renderStarDisplay(item.stars)}
+                {isDivineMythic && (
+                    <div 
+                        className="absolute bottom-0 left-0 flex items-center justify-center bg-black/60 rounded-tr-md z-10" 
+                        style={{ 
+                            textShadow: '1px 1px 2px black',
+                            padding: `${Math.max(2, Math.round(3 * scaleFactor))}px ${Math.max(4, Math.round(5 * scaleFactor))}px`,
+                            fontSize: `${Math.max(10, Math.round(12 * scaleFactor))}px`,
+                            fontWeight: 'bold',
+                            color: '#FFD700'
+                        }}
+                    >
+                        D
+                    </div>
+                )}
             </div>
         );
     } else {
@@ -350,6 +364,20 @@ const LocalItemDetailDisplay: React.FC<{
                     <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
                     {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain" style={{ padding: `${Math.max(2, Math.round(4 * scaleFactor))}px` }} />}
                     {renderStarDisplay(item.stars)}
+                    {item.isDivineMythic && (
+                        <div 
+                            className="absolute bottom-0 left-0 flex items-center justify-center bg-black/60 rounded-tr-md z-10" 
+                            style={{ 
+                                textShadow: '1px 1px 2px black',
+                                padding: `${Math.max(2, Math.round(3 * scaleFactor))}px ${Math.max(4, Math.round(5 * scaleFactor))}px`,
+                                fontSize: `${Math.max(10, Math.round(12 * scaleFactor))}px`,
+                                fontWeight: 'bold',
+                                color: '#FFD700'
+                            }}
+                        >
+                            D
+                        </div>
+                    )}
                 </div>
                 {/* Right: Name & Main Option */}
                 <div className="flex-grow text-right ml-2">

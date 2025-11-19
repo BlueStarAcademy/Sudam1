@@ -33,6 +33,7 @@ export type ChatMessage = {
 export type HandleActionResult = { 
     clientResponse?: any;
     error?: string;
+    claimAllTrainingQuestRewards?: any;
 };
 
 export interface AppState {

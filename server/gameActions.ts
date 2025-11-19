@@ -198,8 +198,9 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
             db.saveGame(game).catch(err => {
                 console.error(`[GameActions] Failed to save game ${game.id}:`, err);
             });
-            // 게임 상태 변경 후 실시간 브로드캐스트
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 게임 상태 변경 후 실시간 브로드캐스트 (게임 참가자에게만 전송)
+            const { broadcastToGameParticipants } = await import('./socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
             return result;
         }
     }

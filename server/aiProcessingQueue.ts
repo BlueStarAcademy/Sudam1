@@ -172,8 +172,9 @@ class AiProcessingQueue {
                 console.error(`[AI Queue] Failed to save game ${gameId}:`, err);
             });
 
-            // 브로드캐스트
-            broadcast({ type: 'GAME_UPDATE', payload: { [gameId]: game } });
+            // 브로드캐스트 (게임 참가자에게만 전송)
+            const { broadcastToGameParticipants } = await import('./socket.js');
+            broadcastToGameParticipants(gameId, { type: 'GAME_UPDATE', payload: { [gameId]: game } }, game);
         } catch (error) {
             console.error(`[AI Queue] Error processing AI move for game ${gameId}:`, error);
         }

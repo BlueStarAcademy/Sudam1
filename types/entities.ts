@@ -586,9 +586,9 @@ export type LiveGameSession = {
   moveHistory: Move[];
   serverRevision?: number;
   lastSyncedAt?: number;
-  captures: { [key in Player]: number; [Player.None]: number; };
-  baseStoneCaptures: { [key in Player]: number; [Player.None]: number; };
-  hiddenStoneCaptures: { [key in Player]: number; [Player.None]: number; };
+  captures: { [key in Player]: number };
+  baseStoneCaptures: { [key in Player]: number };
+  hiddenStoneCaptures: { [key in Player]: number };
   winner: Player | null;
   winReason: WinReason | null;
   finalScores?: { black: number, white: number };
@@ -653,7 +653,7 @@ export type LiveGameSession = {
   justCaptured?: { point: Point; player: Player; wasHidden: boolean }[];
   hidden_stones_used_p1?: number;
   hidden_stones_used_p2?: number;
-  pendingCapture?: { stones: Point[]; move: Move; hiddenContributors: Point[] } | null;
+  pendingCapture?: { stones: Point[]; move: Move; hiddenContributors: Point[]; capturedHiddenStones?: Point[] } | null;
   permanentlyRevealedStones?: Point[];
   processingMove?: { playerId: string; x: number; y: number; timestamp: number } | null; // 동시성 제어를 위한 처리 중인 수
   missiles_p1?: number;

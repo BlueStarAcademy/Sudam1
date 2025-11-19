@@ -39,6 +39,20 @@ const ItemDisplay: React.FC<{ item: InventoryItem }> = ({ item }) => {
                     <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg" />
                     {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1"/>}
                     {renderStarDisplay(item.stars)}
+                    {item.isDivineMythic && (
+                        <div 
+                            className="absolute bottom-0 left-0 flex items-center justify-center bg-black/60 rounded-tr-md z-10" 
+                            style={{ 
+                                textShadow: '1px 1px 2px black',
+                                padding: '2px 4px',
+                                fontSize: '10px',
+                                fontWeight: 'bold',
+                                color: '#FFD700'
+                            }}
+                        >
+                            D
+                        </div>
+                    )}
                 </div>
                 <div className="flex-grow pt-2 min-w-0">
                     <h3 className={`text-base font-bold whitespace-nowrap overflow-hidden text-ellipsis ${styles.color}`} title={item.name}>{item.name}</h3>

@@ -8,7 +8,7 @@ export const getKV = async <T>(key: string): Promise<T | null> => {
 
 export const setKV = async <T>(key: string, value: T): Promise<void> => {
     // Convert value to Prisma-compatible JSON type
-    const jsonValue = JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
+    const jsonValue = JSON.parse(JSON.stringify(value)) as Prisma.JsonValue;
     await prisma.keyValue.upsert({
         where: { key },
         update: { value: jsonValue },

@@ -123,6 +123,20 @@ const ItemObtainedModal: React.FC<ItemObtainedModalProps> = ({ item, onClose, is
                                     </span>
                                 </div>
                             )}
+                            {item.isDivineMythic && (
+                                <div 
+                                    className="absolute bottom-0 left-0 flex items-center justify-center bg-black/60 rounded-tr-md z-10" 
+                                    style={{ 
+                                        textShadow: '1px 1px 2px black',
+                                        padding: '4px 6px',
+                                        fontSize: '14px',
+                                        fontWeight: 'bold',
+                                        color: '#FFD700'
+                                    }}
+                                >
+                                    D
+                                </div>
+                            )}
                         </div>
                     </div>
                     <p className={`font-bold text-lg ${styles.text} ${textGlowClass}`}>[{styles.name}]</p>

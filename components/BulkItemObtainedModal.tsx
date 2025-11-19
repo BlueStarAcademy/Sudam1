@@ -116,6 +116,20 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
                                             <span className="absolute bottom-0 right-0 text-xs font-bold text-white bg-black/60 px-1 rounded-tl-md">{item.quantity}</span>
                                         )
                                     )}
+                                    {item.isDivineMythic && (
+                                        <div 
+                                            className="absolute bottom-0 left-0 flex items-center justify-center bg-black/60 rounded-tr-md z-10" 
+                                            style={{ 
+                                                textShadow: '1px 1px 2px black',
+                                                padding: '2px 3px',
+                                                fontSize: '8px',
+                                                fontWeight: 'bold',
+                                                color: '#FFD700'
+                                            }}
+                                        >
+                                            D
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );

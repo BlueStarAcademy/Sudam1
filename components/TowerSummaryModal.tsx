@@ -3,7 +3,9 @@ import { LiveGameSession, UserWithStatus, ServerAction, Player, AnalysisResult, 
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import Avatar from './Avatar.js';
-import { TOWER_STAGES, AVATAR_POOL, BORDER_POOL } from '../constants/towerConstants.js';
+import { TOWER_STAGES } from '../constants/towerConstants.js';
+import { AVATAR_POOL, BORDER_POOL } from '../constants/ui.js';
+import { AvatarInfo, BorderInfo } from '../types.js';
 
 interface TowerSummaryModalProps {
     session: LiveGameSession;
@@ -304,8 +306,8 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
         }
     };
 
-    const avatarUrl = useMemo(() => AVATAR_POOL.find(a => a.id === currentUser.avatarId)?.url, [currentUser.avatarId]);
-    const borderUrl = useMemo(() => BORDER_POOL.find(b => b.id === currentUser.borderId)?.url, [currentUser.borderId]);
+    const avatarUrl = useMemo(() => AVATAR_POOL.find((a: AvatarInfo) => a.id === currentUser.avatarId)?.url, [currentUser.avatarId]);
+    const borderUrl = useMemo(() => BORDER_POOL.find((b: BorderInfo) => b.id === currentUser.borderId)?.url, [currentUser.borderId]);
     const xpRequirement = getXpRequirementForLevel(Math.max(1, currentUser.strategyLevel));
     const clampedXp = Math.min(currentUser.strategyXp, xpRequirement);
     const xpChange = summary?.xp?.change ?? 0;

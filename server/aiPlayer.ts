@@ -492,31 +492,64 @@ const makeStrategicAiMove = async (game: types.LiveGameSession) => {
         game[aiPlayerTimeKey] = (game[aiPlayerTimeKey] || 0) + fischerIncrement;
     }
     
-    // 싱글플레이 자동 계가 트리거 체크
-    if (game.isSinglePlayer && game.stageId) {
-        const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
-        // 흑/백 모두 카운팅: moveHistory에 추가된 수를 카운팅 (x !== -1인 수만)
-        const validMoves = game.moveHistory.filter(m => m.x !== -1 && m.y !== -1);
-        const newTotalTurns = validMoves.length;
-        game.totalTurns = newTotalTurns;
+    // 싱글플레이/AI봇 대결 자동 계가 트리거 체크
+    // hidden_placing, scanning 등 아이템 모드에서는 자동계가 체크를 하지 않음
+    const isItemMode = ['hidden_placing', 'scanning', 'missile_selecting', 'missile_animating', 'scanning_animating'].includes(game.gameStatus);
+    
+    if (!isItemMode) {
+        const autoScoringTurns = game.isSinglePlayer && game.stageId
+            ? SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId)?.autoScoringTurns
+            : (game.settings as any)?.autoScoringTurns;
         
-        // 디버깅: totalTurns 업데이트 로그
-        if (stage?.autoScoringTurns) {
-            console.log(`[AI Player] totalTurns updated: ${newTotalTurns}/${stage.autoScoringTurns} (stage: ${game.stageId}, player: ${aiPlayerEnum === Player.Black ? 'Black' : 'White'})`);
-        }
-        
-        if (stage?.autoScoringTurns && game.totalTurns >= stage.autoScoringTurns) {
-            // 게임 상태를 먼저 확인하여 중복 트리거 방지
-            if (game.gameStatus === 'playing') {
-                console.log(`[AI Player] Auto-scoring triggered at ${game.totalTurns} turns (stage: ${game.stageId})`);
-                // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
-                game.gameStatus = 'scoring';
-                await db.saveGame(game);
-                const { broadcast } = await import('./socket.js');
-                broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
-                const { getGameResult } = await import('./gameModes.js');
-                await getGameResult(game);
-                return;
+        if (autoScoringTurns !== undefined || (game.isSinglePlayer && game.stageId)) {
+            // 흑/백 모두 카운팅: moveHistory에 추가된 수를 카운팅 (x !== -1인 수만)
+            const validMoves = game.moveHistory.filter(m => m.x !== -1 && m.y !== -1);
+            const newTotalTurns = validMoves.length;
+            game.totalTurns = newTotalTurns;
+            
+            // 디버깅: totalTurns 업데이트 로그
+            if (autoScoringTurns) {
+                const gameType = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+                console.log(`[AI Player][${gameType}] totalTurns updated: ${newTotalTurns}/${autoScoringTurns} (stageId: ${game.stageId || 'N/A'}, player: ${aiPlayerEnum === Player.Black ? 'Black' : 'White'})`);
+            }
+            
+            if (autoScoringTurns) {
+                const gameType = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+                console.log(`[AI Player][${gameType}] Auto-scoring check: totalTurns=${game.totalTurns}, autoScoringTurns=${autoScoringTurns}, gameStatus=${game.gameStatus}, validMovesLength=${validMoves.length}`);
+                if (game.totalTurns >= autoScoringTurns) {
+                    // 게임 상태를 먼저 확인하여 중복 트리거 방지
+                    if (game.gameStatus === 'playing' || game.gameStatus === 'hidden_placing') {
+                        const gameType = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+                        console.log(`[AI Player][${gameType}] Auto-scoring triggered at ${game.totalTurns} turns (stageId: ${game.stageId || 'N/A'}, gameStatus: ${game.gameStatus})`);
+                        // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
+                        game.gameStatus = 'scoring';
+                        await db.saveGame(game);
+                        const { broadcastToGameParticipants } = await import('./socket.js');
+                        // boardState 제외하여 대역폭 절약
+                        const gameToBroadcast = { ...game };
+                        delete (gameToBroadcast as any).boardState;
+                        broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: gameToBroadcast } }, game);
+                        const { getGameResult } = await import('./gameModes.js');
+                        await getGameResult(game);
+                        return;
+                    } else {
+                        const gameType = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+                        console.warn(`[AI Player][${gameType}] Auto-scoring condition met but gameStatus is not 'playing' or 'hidden_placing': ${game.gameStatus} (totalTurns=${game.totalTurns}, autoScoringTurns=${autoScoringTurns}) - FORCING TRIGGER`);
+                        // 조건이 만족되었는데 gameStatus가 다른 경우 강제로 트리거
+                        game.gameStatus = 'scoring';
+                        await db.saveGame(game);
+                        const { broadcastToGameParticipants } = await import('./socket.js');
+                        const gameToBroadcast = { ...game };
+                        delete (gameToBroadcast as any).boardState;
+                        broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: gameToBroadcast } }, game);
+                        const { getGameResult } = await import('./gameModes.js');
+                        await getGameResult(game);
+                        return;
+                    }
+                } else {
+                    const gameType = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+                    console.log(`[AI Player][${gameType}] Auto-scoring condition not met: totalTurns=${game.totalTurns} < autoScoringTurns=${autoScoringTurns}`);
+                }
             }
         }
     }

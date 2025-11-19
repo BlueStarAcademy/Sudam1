@@ -118,20 +118,16 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
             prevGameStatus !== 'no_contest' &&
             prevGameStatus !== 'rematch_pending';
 
-        // 싱글플레이: 게임이 종료되고 계가 결과가 확정되었을 때, 또는 계가가 완료되었을 때 모달 표시
-        // 일반 게임: 게임이 종료되었거나 계가 중일 때 모달 표시
+        // 분석 결과가 도착했을 때만 모달 표시 (바둑판 초기화 방지)
+        // scoring 상태일 때는 분석 결과가 준비될 때까지 게임 화면을 유지
         const currentAnalysisResult = session.analysisResult?.['system'];
-        const isScoringComplete = gameStatus === 'scoring' && currentAnalysisResult;
-        const analysisResultJustArrived = (isSinglePlayer || isTower) && 
-            gameStatus === 'scoring' && 
-            currentAnalysisResult && 
-            !prevAnalysisResult;
-        
+        const analysisResultJustArrived = currentAnalysisResult && !prevAnalysisResult;
         const shouldShowModal = gameHasJustEnded || 
             ((isSinglePlayer || isTower)
                 ? ((gameStatus === 'ended' && currentAnalysisResult && prevGameStatus !== 'ended') ||
                    (gameStatus === 'scoring' && currentAnalysisResult && analysisResultJustArrived))
-                : (gameStatus === 'scoring' && prevGameStatus !== 'scoring' && prevGameStatus !== 'ended'));
+                : ((gameStatus === 'ended' && currentAnalysisResult && prevGameStatus !== 'ended') ||
+                   (gameStatus === 'scoring' && currentAnalysisResult && analysisResultJustArrived)));
 
         if (shouldShowModal) {
             setShowResultModal(true);

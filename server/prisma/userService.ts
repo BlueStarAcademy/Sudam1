@@ -12,7 +12,7 @@ const toBigInt = (value: number | undefined): bigint => {
 const buildPersistentFields = (user: User) => {
   const status = serializeUser(user);
   // Convert status to Prisma-compatible JSON type
-  const statusJson = JSON.parse(JSON.stringify(status)) as Prisma.InputJsonValue;
+  const statusJson = JSON.parse(JSON.stringify(status)) as Prisma.JsonValue;
 
   return {
     nickname: user.nickname,

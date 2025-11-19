@@ -42,13 +42,15 @@ const GameModals: React.FC<GameModalsProps> = (props) => {
             return <NegotiationModal negotiation={activeNegotiation} currentUser={currentUser} onAction={onAction} onlineUsers={onlineUsers} />;
         }
 
-        // 싱글플레이: scoring 상태이거나 ended 상태일 때 SinglePlayerSummaryModal 표시
-        if (session.isSinglePlayer && (showResultModal || gameStatus === 'scoring')) {
+        // 싱글플레이: showResultModal이 true이거나 ended 상태일 때만 SinglePlayerSummaryModal 표시
+        // scoring 상태일 때는 분석 결과가 준비될 때까지 게임 화면을 유지 (바둑판 초기화 방지)
+        if (session.isSinglePlayer && (showResultModal || gameStatus === 'ended')) {
             return <SinglePlayerSummaryModal session={session} currentUser={currentUser} onAction={onAction} onClose={onCloseResults} />;
         }
 
-        // 도전의 탑: scoring 상태이거나 ended 상태일 때 TowerSummaryModal 표시
-        if (session.gameCategory === 'tower' && (showResultModal || gameStatus === 'scoring' || gameStatus === 'ended')) {
+        // 도전의 탑: showResultModal이 true이거나 ended 상태일 때만 TowerSummaryModal 표시
+        // scoring 상태일 때는 분석 결과가 준비될 때까지 게임 화면을 유지 (바둑판 초기화 방지)
+        if (session.gameCategory === 'tower' && (showResultModal || gameStatus === 'ended')) {
             return <TowerSummaryModal session={session} currentUser={currentUser} onAction={onAction} onClose={onCloseResults} />;
         }
         
@@ -91,14 +93,11 @@ const GameModals: React.FC<GameModalsProps> = (props) => {
         if (gameStatus === 'dice_round_end') return <DiceRoundSummary session={session} currentUser={currentUser} onAction={onAction} />;
         if (gameStatus === 'alkkagi_simultaneous_placement') return <AlkkagiPlacementModal session={session} currentUser={currentUser} />;
         
-        // 계가 중이거나 게임이 종료되었을 때 결과 모달 표시
-        if (showResultModal || gameStatus === 'scoring') {
+        // 게임이 종료되었을 때만 결과 모달 표시
+        // scoring 상태일 때는 분석 결과가 준비될 때까지 게임 화면을 유지 (바둑판 초기화 방지)
+        if (showResultModal || gameStatus === 'ended' || gameStatus === 'no_contest') {
             if (gameStatus === 'ended') return <GameSummaryModal session={session} currentUser={currentUser} onConfirm={onCloseResults} />;
             if (gameStatus === 'no_contest') return <NoContestModal session={session} currentUser={currentUser} onConfirm={onCloseResults} />;
-            if (gameStatus === 'scoring') {
-                // 계가 중일 때는 분석 결과가 있으면 표시, 없으면 로딩 표시 (GameSummaryModal 내부에서 처리됨)
-                return <GameSummaryModal session={session} currentUser={currentUser} onConfirm={onCloseResults} />;
-            }
         }
         return null;
     };

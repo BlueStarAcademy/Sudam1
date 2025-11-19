@@ -56,7 +56,8 @@ export const handleSocialAction = async (volatileState: types.VolatileState, act
             const activeGameId = userStatus?.gameId;
             if (userStatus?.status === types.UserStatus.InGame && activeGameId) {
                 const game = await db.getLiveGame(activeGameId);
-                if (game && game.gameStatus !== 'ended' && game.gameStatus !== 'no_contest') {
+                // scoring 상태의 게임은 연결 끊김으로 처리하지 않음 (자동계가 진행 중)
+                if (game && game.gameStatus !== 'ended' && game.gameStatus !== 'no_contest' && game.gameStatus !== 'scoring') {
                     if (!game.disconnectionState) {
                         game.disconnectionCounts[user.id] = (game.disconnectionCounts[user.id] || 0) + 1;
                         if (game.disconnectionCounts[user.id] >= 3) {

@@ -4,6 +4,8 @@ import { getAllData } from './db.js';
 import { volatileState } from './state.js';
 
 let wss: WebSocketServer;
+// WebSocket 연결과 userId 매핑 (대역폭 최적화를 위해 게임 참가자에게만 전송)
+const wsUserIdMap = new Map<WebSocket, string>();
 
 export const createWebSocketServer = (server: Server) => {
     // 기존 WebSocketServer가 있으면 먼저 닫기
@@ -51,7 +53,24 @@ export const createWebSocketServer = (server: Server) => {
         ws.on('close', (code, reason) => {
             // 정상적인 연결 종료는 로깅하지 않음 (코드 1001: Going Away)
             // 비정상적인 종료만 로깅하려면: if (code !== 1001) console.log('[WebSocket] Client disconnected:', { code, reason: reason.toString() });
+            // userId 매핑 제거
+            const userId = wsUserIdMap.get(ws);
+            if (userId) {
+                wsUserIdMap.delete(ws);
+            }
             isClosed = true;
+        });
+        
+        // 클라이언트로부터 메시지 수신 (userId 설정용)
+        ws.on('message', (data: Buffer) => {
+            try {
+                const message = JSON.parse(data.toString());
+                if (message.type === 'AUTH' && message.userId) {
+                    wsUserIdMap.set(ws, message.userId);
+                }
+            } catch (e) {
+                // 무시 (다른 메시지 타입)
+            }
         });
 
         // 연결 직후 빈 핑 메시지를 보내서 연결이 활성화되었는지 확인
@@ -101,8 +120,34 @@ export const createWebSocketServer = (server: Server) => {
                     return;
                 }
                 
+                // INITIAL_STATE 최적화: 게임 데이터에서 boardState 제외하여 대역폭 절약
+                const optimizedLiveGames: Record<string, any> = {};
+                for (const [gameId, game] of Object.entries(allData.liveGames || {})) {
+                    const optimizedGame = { ...game };
+                    // boardState는 클라이언트에서 필요할 때만 요청하도록 제외
+                    delete (optimizedGame as any).boardState;
+                    optimizedLiveGames[gameId] = optimizedGame;
+                }
+                
+                const optimizedSinglePlayerGames: Record<string, any> = {};
+                for (const [gameId, game] of Object.entries(allData.singlePlayerGames || {})) {
+                    const optimizedGame = { ...game };
+                    delete (optimizedGame as any).boardState;
+                    optimizedSinglePlayerGames[gameId] = optimizedGame;
+                }
+                
+                const optimizedTowerGames: Record<string, any> = {};
+                for (const [gameId, game] of Object.entries(allData.towerGames || {})) {
+                    const optimizedGame = { ...game };
+                    delete (optimizedGame as any).boardState;
+                    optimizedTowerGames[gameId] = optimizedGame;
+                }
+                
                 const payload = { 
-                    ...allData, 
+                    ...allData,
+                    liveGames: optimizedLiveGames,
+                    singlePlayerGames: optimizedSinglePlayerGames,
+                    towerGames: optimizedTowerGames,
                     onlineUsers,
                     negotiations: volatileState.negotiations,
                     waitingRoomChats: volatileState.waitingRoomChats,
@@ -139,6 +184,38 @@ export const createWebSocketServer = (server: Server) => {
     console.log('[WebSocket] Server created');
 };
 
+// 게임 참가자에게만 GAME_UPDATE 전송 (대역폭 최적화)
+export const broadcastToGameParticipants = (gameId: string, message: any, game: any) => {
+    if (!wss || !game) return;
+    const participantIds = new Set<string>();
+    if (game.player1?.id) participantIds.add(game.player1.id);
+    if (game.player2?.id) participantIds.add(game.player2.id);
+    if (game.blackPlayerId) participantIds.add(game.blackPlayerId);
+    if (game.whitePlayerId) participantIds.add(game.whitePlayerId);
+    
+    // 관전자도 포함 (userStatuses에서 spectating 상태인 사용자)
+    Object.entries(volatileState.userStatuses).forEach(([userId, status]) => {
+        if (status.status === 'spectating' && status.spectatingGameId === gameId) {
+            participantIds.add(userId);
+        }
+    });
+    
+    const messageString = JSON.stringify(message);
+    let sentCount = 0;
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            const userId = wsUserIdMap.get(client);
+            if (userId && participantIds.has(userId)) {
+                client.send(messageString);
+                sentCount++;
+            }
+        }
+    });
+    if (sentCount > 0) {
+        console.log(`[WebSocket] Sent GAME_UPDATE to ${sentCount} participants for game ${gameId}`);
+    }
+};
+
 export const broadcast = (message: any) => {
     if (!wss) return;
     const messageString = JSON.stringify(message);
@@ -152,8 +229,54 @@ export const broadcast = (message: any) => {
 // 특정 사용자에게만 메시지를 보내는 함수
 export const sendToUser = (userId: string, message: any) => {
     if (!wss) return;
-    // WebSocket 연결에 userId를 저장하는 방법이 필요합니다
-    // 현재는 broadcast를 사용하되, 클라이언트에서 필터링하도록 구현
-    // 또는 server.ts에서 userId와 ws 매핑을 관리해야 합니다
-    broadcast({ ...message, targetUserId: userId });
+    const messageString = JSON.stringify({ ...message, targetUserId: userId });
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            const clientUserId = wsUserIdMap.get(client);
+            if (clientUserId === userId) {
+                client.send(messageString);
+            }
+        }
+    });
+};
+
+// USER_UPDATE 최적화: 변경된 필드만 전송 (대역폭 절약)
+export const broadcastUserUpdate = (user: any, changedFields?: string[]) => {
+    if (!wss) return;
+    
+    // 변경된 필드만 포함하는 최적화된 사용자 객체 생성
+    const optimizedUser: any = {
+        id: user.id,
+        nickname: user.nickname,
+        avatarId: user.avatarId,
+        borderId: user.borderId,
+        league: user.league,
+        gold: user.gold,
+        diamonds: user.diamonds,
+        actionPoints: user.actionPoints,
+        strategyLevel: user.strategyLevel,
+        playfulLevel: user.playfulLevel,
+        tournamentScore: user.tournamentScore,
+    };
+    
+    // 변경된 필드가 지정된 경우에만 추가 필드 포함
+    if (changedFields) {
+        changedFields.forEach(field => {
+            if (user[field] !== undefined) {
+                optimizedUser[field] = user[field];
+            }
+        });
+    } else {
+        // 기본적으로 필요한 필드만 포함 (inventory, equipment, quests 등은 제외)
+        if (user.stats) optimizedUser.stats = user.stats;
+        if (user.baseStats) optimizedUser.baseStats = user.baseStats;
+    }
+    
+    const message = { type: 'USER_UPDATE', payload: { [user.id]: optimizedUser } };
+    const messageString = JSON.stringify(message);
+    wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+            client.send(messageString);
+        }
+    });
 };

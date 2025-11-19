@@ -243,11 +243,13 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
 
             volatileState.userStatuses[user.id] = { status: UserStatus.InGame, mode: game.mode, gameId: game.id };
 
-            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (클라이언트가 게임 데이터를 먼저 받을 수 있도록)
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (게임 참가자에게만 전송)
+            const { broadcastToGameParticipants } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
             // 그 다음 사용자 상태 브로드캐스트
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: user } });
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(user);
 
             // 클라이언트가 즉시 게임을 로드할 수 있도록 게임 데이터를 응답에 포함
             const gameCopy = JSON.parse(JSON.stringify(game));
@@ -307,7 +309,8 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             }
 
             await db.saveGame(game);
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            const { broadcastToGameParticipants } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
 
             return { clientResponse: { success: true, gameId: game.id, game } };
         }
@@ -359,7 +362,8 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             await db.updateUser(user);
             await db.saveGame(game);
 
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            const { broadcastToGameParticipants } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
 
             return { clientResponse: { updatedUser: user, game } };
         }

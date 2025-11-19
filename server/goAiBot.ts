@@ -787,19 +787,61 @@ export async function makeGoAiBotMove(
         game[aiPlayerTimeKey] = timeRemaining;
     }
 
-    // 싱글플레이 자동 계가 트리거 체크 (AI가 수를 둔 후)
-    if (game.isSinglePlayer && game.stageId) {
-        const { SINGLE_PLAYER_STAGES } = await import('../constants/singlePlayerConstants.js');
-        const stage = SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
-        const totalTurns = game.totalTurns ?? game.moveHistory.length;
-        if (stage?.autoScoringTurns && totalTurns >= stage.autoScoringTurns) {
-            const { getGameResult } = await import('./gameModes.js');
-            await getGameResult(game);
-            await db.saveGame(game);
-            const { broadcast } = await import('./socket.js');
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
-            return;
+    // 싱글플레이/AI봇 대결 자동 계가 트리거 체크 (AI가 수를 둔 후)
+    // hidden_placing, scanning 등 아이템 모드에서는 자동계가 체크를 하지 않음
+    const isItemMode = ['hidden_placing', 'scanning', 'missile_selecting', 'missile_animating', 'scanning_animating'].includes(game.gameStatus);
+    
+    if (!isItemMode) {
+        const autoScoringTurns = game.isSinglePlayer && game.stageId
+            ? (await import('../constants/singlePlayerConstants.js')).SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId)?.autoScoringTurns
+            : (game.settings as any)?.autoScoringTurns;
+        
+        if (autoScoringTurns !== undefined || (game.isSinglePlayer && game.stageId)) {
+        // totalTurns가 없으면 validMoves에서 계산 (패스 제외)
+        const validMoves = game.moveHistory.filter(m => m.x !== -1 && m.y !== -1);
+        const totalTurns = game.totalTurns ?? validMoves.length;
+        // totalTurns 업데이트
+        game.totalTurns = totalTurns;
+        
+        if (autoScoringTurns) {
+            const gameType = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+            console.log(`[GoAiBot][${gameType}] Auto-scoring check: totalTurns=${totalTurns}, autoScoringTurns=${autoScoringTurns}, gameStatus=${game.gameStatus}, validMovesLength=${validMoves.length}`);
+            if (totalTurns >= autoScoringTurns) {
+                // 게임 상태를 먼저 확인하여 중복 트리거 방지
+                if (game.gameStatus === 'playing' || game.gameStatus === 'hidden_placing') {
+                    const gameType = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+                    console.log(`[GoAiBot][${gameType}] Auto-scoring triggered at ${totalTurns} turns (stageId: ${game.stageId || 'N/A'}, validMovesLength: ${validMoves.length}, gameStatus: ${game.gameStatus})`);
+                    // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
+                    game.gameStatus = 'scoring';
+                    await db.saveGame(game);
+                    const { broadcastToGameParticipants } = await import('./socket.js');
+                    // boardState 제외하여 대역폭 절약
+                    const gameToBroadcast = { ...game };
+                    delete (gameToBroadcast as any).boardState;
+                    broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: gameToBroadcast } }, game);
+                    const { getGameResult } = await import('./gameModes.js');
+                    await getGameResult(game);
+                    return;
+                } else {
+                    const gameType = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+                    console.warn(`[GoAiBot][${gameType}] Auto-scoring condition met but gameStatus is not 'playing' or 'hidden_placing': ${game.gameStatus} (totalTurns=${totalTurns}, autoScoringTurns=${autoScoringTurns}) - FORCING TRIGGER`);
+                    // 조건이 만족되었는데 gameStatus가 다른 경우 강제로 트리거
+                    game.gameStatus = 'scoring';
+                    await db.saveGame(game);
+                    const { broadcastToGameParticipants } = await import('./socket.js');
+                    const gameToBroadcast = { ...game };
+                    delete (gameToBroadcast as any).boardState;
+                    broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: gameToBroadcast } }, game);
+                    const { getGameResult } = await import('./gameModes.js');
+                    await getGameResult(game);
+                    return;
+                }
+            } else {
+                const gameType = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+                console.log(`[GoAiBot][${gameType}] Auto-scoring condition not met: totalTurns=${totalTurns} < autoScoringTurns=${autoScoringTurns}`);
+            }
         }
+    }
     }
 
     // 히든 돌 공개 애니메이션 직후에는 턴을 넘기지 않음

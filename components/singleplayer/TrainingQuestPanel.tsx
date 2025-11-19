@@ -240,8 +240,7 @@ const TrainingQuestPanel: React.FC<TrainingQuestPanelProps> = ({ currentUser }) 
     const handleClaimAllRewards = async () => {
         try {
             const result = await handlers.handleAction({
-                type: 'CLAIM_ALL_TRAINING_QUEST_REWARDS',
-                payload: {}
+                type: 'CLAIM_ALL_TRAINING_QUEST_REWARDS'
             }) as any;
             
             // 응답 구조 확인: handleAction에서 반환된 값

@@ -262,8 +262,9 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
 
             delete volatileState.negotiations[negotiationId];
             
-            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (클라이언트가 게임 데이터를 먼저 받을 수 있도록)
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (게임 참가자에게만 전송)
+            const { broadcastToGameParticipants } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
             // 그 다음 사용자 상태 브로드캐스트
             broadcast({ type: 'USER_STATUS_UPDATE', payload: volatileState.userStatuses });
             broadcast({ type: 'NEGOTIATION_UPDATE', payload: { negotiations: volatileState.negotiations, userStatuses: volatileState.userStatuses } });
@@ -370,8 +371,9 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
             // 깊은 복사로 updatedUser 생성
             const updatedUser = JSON.parse(JSON.stringify(user));
             
-            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (클라이언트가 게임 데이터를 먼저 받을 수 있도록)
-            broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+            // 게임 생성 후 게임 정보를 먼저 브로드캐스트 (게임 참가자에게만 전송)
+            const { broadcastToGameParticipants } = await import('../socket.js');
+            broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
             // 그 다음 사용자 업데이트 브로드캐스트 (actionPoints 변경 반영)
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: updatedUser } });
             // 사용자 상태 브로드캐스트

@@ -1,3 +1,4 @@
+// FIX: Correctly import summaryService to resolve module not found error.
 import * as summaryService from '../summaryService.js';
 import * as types from '../../types.js';
 import * as db from '../db.js';
@@ -5,15 +6,11 @@ import { getGoLogic, processMove } from '../goLogic.js';
 import { getGameResult } from '../gameModes.js';
 import { analyzeGame } from '../kataGoService.js';
 import { initializeNigiri, updateNigiriState, handleNigiriAction } from './nigiri.js';
-import { updateSharedGameState } from './shared.js';
 import { initializeBase, updateBaseState, handleBaseAction } from './base.js';
 import { initializeCapture, updateCaptureState, handleCaptureAction } from './capture.js';
 import { initializeHidden, updateHiddenState, handleHiddenAction } from './hidden.js';
 import { initializeMissile, updateMissileState, handleMissileAction } from './missile.js';
-import { transitionToPlaying, handleSharedAction } from './shared.js';
-import { UserStatus } from '../../types.js';
-import { aiUserId } from '../aiPlayer.js';
-import { getCaptureTarget, NO_CAPTURE_TARGET } from '../utils/captureTargets.ts';
+import { handleSharedAction, transitionToPlaying } from './shared.js';
 
 
 export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.Negotiation, now: number) => {
@@ -56,67 +53,28 @@ export const initializeStrategicGame = (game: types.LiveGameSession, neg: types.
 };
 
 export const updateStrategicGameState = async (game: types.LiveGameSession, now: number) => {
-    // pending 상태의 게임은 처리하지 않음 (아직 시작되지 않음)
-    if (game.gameStatus === 'pending') {
-        return;
-    }
-
     // This is the core update logic for all Go-based games.
-    // AI 턴일 때는 타임아웃 체크를 건너뛰기 (AI는 시간 제한이 없음)
-    const isAiTurn = game.isAiGame && game.currentPlayer !== types.Player.None && 
-                    (game.currentPlayer === types.Player.Black ? game.blackPlayerId === aiUserId : game.whitePlayerId === aiUserId);
-    
-    // AI 턴일 때는 시간을 멈춤
-    if (isAiTurn && game.gameStatus === 'playing') {
-        game.turnDeadline = undefined;
-        game.turnStartTime = undefined;
-    }
-    
-    if (game.gameStatus === 'playing' && game.turnDeadline && now > game.turnDeadline && !isAiTurn) {
+    if (game.gameStatus === 'playing' && game.turnDeadline && now > game.turnDeadline) {
         const timedOutPlayer = game.currentPlayer;
         const timeKey = timedOutPlayer === types.Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
         const byoyomiKey = timedOutPlayer === types.Player.Black ? 'blackByoyomiPeriodsLeft' : 'whiteByoyomiPeriodsLeft';
         const isFischer = game.mode === types.GameMode.Speed || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Speed));
 
-        // turnDeadline이 지났으므로 실제 남은 시간 계산
-        const timeRemaining = Math.max(0, (game.turnDeadline - now) / 1000);
-        
-        // turnStartTime을 기반으로 실제 경과 시간 계산
-        const elapsedSinceTurnStart = game.turnStartTime ? (now - game.turnStartTime) / 1000 : 0;
-        const initialTimeForThisTurn = game.turnStartTime && game.turnDeadline ? (game.turnDeadline - game.turnStartTime) / 1000 : 0;
-        
-        // 초읽기 상태 확인: 이번 턴의 초기 시간이 byoyomiTime과 같거나 작으면 초읽기 중
-        const wasInByoyomi = initialTimeForThisTurn > 0 && initialTimeForThisTurn <= (game.settings.byoyomiTime || 0) + 0.1; // 0.1초 오차 허용
-        
-        // 또는 game[timeKey]가 0 이하이면 초읽기 중
-        const isInByoyomiByTimeKey = (game[timeKey] || 0) <= 0;
-
         if (isFischer) {
             // Fischer timeout is an immediate loss.
-        } else if (!wasInByoyomi && !isInByoyomiByTimeKey && timeRemaining <= 0) {
-            // Main time expired -> enter byoyomi without consuming a period
+        } else if (game[timeKey] > 0) { // Main time expired
             game[timeKey] = 0;
-            if (game.settings.byoyomiCount > 0) {
-                // 초읽기 기간 초기화
-                if (game[byoyomiKey] === undefined || game[byoyomiKey] === null) {
-                    game[byoyomiKey] = game.settings.byoyomiCount;
-                }
-                // Do not decrement period on entering byoyomi
+            if (game.settings.byoyomiCount > 0 && game[byoyomiKey] > 0) {
+                game[byoyomiKey]--;
                 game.turnDeadline = now + game.settings.byoyomiTime * 1000;
                 game.turnStartTime = now;
-                console.log(`[Strategic] Player ${timedOutPlayer} entered byoyomi. Periods left: ${game[byoyomiKey]}`);
                 return;
             }
-        } else if ((wasInByoyomi || isInByoyomiByTimeKey) && timeRemaining <= 0) {
-            // Byoyomi expired
-            if (game[byoyomiKey] === undefined || game[byoyomiKey] === null) {
-                game[byoyomiKey] = game.settings.byoyomiCount;
-            }
+        } else { // Byoyomi expired
             if (game[byoyomiKey] > 0) {
                 game[byoyomiKey]--;
                 game.turnDeadline = now + game.settings.byoyomiTime * 1000;
                 game.turnStartTime = now;
-                console.log(`[Strategic] Player ${timedOutPlayer} byoyomi period consumed. Periods left: ${game[byoyomiKey]}`);
                 return;
             }
         }
@@ -126,190 +84,23 @@ export const updateStrategicGameState = async (game: types.LiveGameSession, now:
         game.lastTimeoutPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId! : game.whitePlayerId!;
         game.lastTimeoutPlayerIdClearTime = now + 5000;
         
-        console.log(`[Strategic] Player ${timedOutPlayer} timed out. Winner: ${winner}, wasInByoyomi: ${wasInByoyomi}, isInByoyomiByTimeKey: ${isInByoyomiByTimeKey}, byoyomiPeriods: ${game[byoyomiKey]}`);
         summaryService.endGame(game, winner, 'timeout');
     }
 
-    // 살리기 바둑 모드 승리 조건 체크 (백의 남은 턴이 0인지 확인)
-    const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
-    if (isSurvivalMode && game.gameStatus === 'playing') {
-        const whiteTurnsPlayed = (game as any).whiteTurnsPlayed || 0;
-        const survivalTurns = (game.settings as any)?.survivalTurns || 0;
-        
-        // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
-        const target = getCaptureTarget(game, types.Player.White);
-        if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[types.Player.White] >= target) {
-            console.log(`[Survival Go] White reached target score in update loop (${target}), White wins`);
-            await summaryService.endGame(game, types.Player.White, 'capture_limit');
-            return;
-        }
-        
-        // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
-        // 백의 남은 턴 = survivalTurns - whiteTurnsPlayed
-        // 백의 남은 턴이 0이 되었다는 것은 whiteTurnsPlayed >= survivalTurns
-        const remainingTurns = survivalTurns - whiteTurnsPlayed;
-        if (remainingTurns <= 0 && survivalTurns > 0) {
-            console.log(`[Survival Go] White ran out of turns in update loop (${whiteTurnsPlayed}/${survivalTurns}, remaining: ${remainingTurns}), Black wins. Game status before endGame: ${game.gameStatus}`);
-            if (game.gameStatus === 'playing') {
-                await summaryService.endGame(game, types.Player.Black, 'capture_limit');
-                console.log(`[Survival Go] endGame called in update loop. Game status after: ${game.gameStatus}`);
-            } else {
-                console.log(`[Survival Go] Game already ended in update loop (status: ${game.gameStatus}), skipping endGame`);
-            }
-            return;
-        }
-    }
-
-    // scoring 상태인 게임은 업데이트하지 않음 (계가 진행 중)
-    if (game.gameStatus === 'scoring' || (game as any).isScoringProtected) {
-        return;
-    }
-    
-    // 도전의 탑 또는 싱글플레이: 흑돌 턴 제한 체크 및 자동 계가 트리거
-    const isTower = game.gameCategory === 'tower';
-    const isSinglePlayer = game.isSinglePlayer && !isTower; // 도전의 탑과 싱글플레이 명확히 분리
-    if ((isSinglePlayer || isTower) && game.gameStatus === 'playing' && game.stageId) {
-        const { TOWER_STAGES } = await import('../../constants/towerConstants.js');
-        const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
-        const stage = isTower 
-            ? TOWER_STAGES.find(s => s.id === game.stageId)
-            : SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
-        
-        // 자동 계가 트리거 체크 (싱글플레이어만)
-        if (isSinglePlayer && stage?.autoScoringTurns) {
-            const validMoves = game.moveHistory.filter(m => m.x !== -1 && m.y !== -1);
-            const totalTurns = game.totalTurns ?? validMoves.length;
-            
-            if (totalTurns >= stage.autoScoringTurns) {
-                console.log(`[Strategic] Auto-scoring triggered in update loop at ${totalTurns} turns (stage: ${game.stageId})`);
-                // 먼저 보호 플래그를 설정하여 다른 로직이 게임을 초기화하지 않도록 함
-                (game as any).isScoringProtected = true;
-                
-                // 게임 상태 보존 (계가 전에 게임이 초기화되는 것을 방지)
-                const preservedGameState = {
-                    boardState: game.boardState ? JSON.parse(JSON.stringify(game.boardState)) : null,
-                    moveHistory: game.moveHistory ? JSON.parse(JSON.stringify(game.moveHistory)) : null,
-                    blackTimeLeft: game.blackTimeLeft,
-                    whiteTimeLeft: game.whiteTimeLeft,
-                    blackPatternStones: game.blackPatternStones ? JSON.parse(JSON.stringify(game.blackPatternStones)) : null,
-                    whitePatternStones: game.whitePatternStones ? JSON.parse(JSON.stringify(game.whitePatternStones)) : null,
-                    captures: game.captures ? JSON.parse(JSON.stringify(game.captures)) : null,
-                    baseStoneCaptures: game.baseStoneCaptures ? JSON.parse(JSON.stringify(game.baseStoneCaptures)) : null,
-                    hiddenStoneCaptures: game.hiddenStoneCaptures ? JSON.parse(JSON.stringify(game.hiddenStoneCaptures)) : null,
-                };
-                (game as any).preservedGameState = preservedGameState;
-                
-                // 시간 정보 보존
-                const preservedTimeInfo = {
-                    blackTimeLeft: game.blackTimeLeft,
-                    whiteTimeLeft: game.whiteTimeLeft
-                };
-                (game as any).preservedTimeInfo = preservedTimeInfo;
-                
-                console.log(`[Strategic] Preserved game state before scoring: boardStateSize=${game.boardState?.length || 0}, moveHistoryLength=${game.moveHistory?.length || 0}, blackTimeLeft=${preservedGameState.blackTimeLeft}, whiteTimeLeft=${preservedGameState.whiteTimeLeft}`);
-                
-                // 게임 상태를 먼저 scoring으로 변경하여 다른 로직이 게임을 재시작하지 않도록 함
-                game.gameStatus = 'scoring';
-                
-                // boardState와 moveHistory가 반드시 포함되도록 보장 (게임 객체 자체에도 적용)
-                // preservedGameState가 있으면 무조건 사용 (초기화 방지)
-                if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
-                    game.boardState = preservedGameState.boardState;
-                    console.log(`[Strategic] Restored boardState from preservedGameState: size=${game.boardState.length}x${game.boardState[0]?.length || 0}`);
-                } else {
-                    console.warn(`[Strategic] preservedGameState.boardState is invalid, using game.boardState: size=${game.boardState?.length || 0}`);
-                }
-                if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
-                    game.moveHistory = preservedGameState.moveHistory;
-                    console.log(`[Strategic] Restored moveHistory from preservedGameState: length=${game.moveHistory.length}`);
-                } else {
-                    console.warn(`[Strategic] preservedGameState.moveHistory is invalid, using game.moveHistory: length=${game.moveHistory?.length || 0}`);
-                }
-                if (preservedGameState.blackTimeLeft !== undefined) {
-                    game.blackTimeLeft = preservedGameState.blackTimeLeft;
-                }
-                if (preservedGameState.whiteTimeLeft !== undefined) {
-                    game.whiteTimeLeft = preservedGameState.whiteTimeLeft;
-                }
-                
-                // 최종 확인: boardState가 유효한지 확인
-                const boardStateValid = game.boardState && Array.isArray(game.boardState) && game.boardState.length > 0 && 
-                                        game.boardState[0] && Array.isArray(game.boardState[0]) && game.boardState[0].length > 0;
-                if (!boardStateValid) {
-                    console.error(`[Strategic] ERROR: boardState is invalid after restoration! boardState=${JSON.stringify(game.boardState?.slice(0, 2))}`);
-                }
-                
-                console.log(`[Strategic] Game state before save: boardStateSize=${game.boardState?.length || 0}, boardStateValid=${boardStateValid}, moveHistoryLength=${game.moveHistory?.length || 0}, blackTimeLeft=${game.blackTimeLeft}, whiteTimeLeft=${game.whiteTimeLeft}`);
-                
-                // 브로드캐스트 전에 boardState와 moveHistory가 반드시 포함되도록 다시 확인
-                if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
-                    game.boardState = preservedGameState.boardState;
-                }
-                if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
-                    game.moveHistory = preservedGameState.moveHistory;
-                }
-                if (preservedTimeInfo.blackTimeLeft !== undefined) {
-                    game.blackTimeLeft = preservedTimeInfo.blackTimeLeft;
-                }
-                if (preservedTimeInfo.whiteTimeLeft !== undefined) {
-                    game.whiteTimeLeft = preservedTimeInfo.whiteTimeLeft;
-                }
-                
-                await db.saveGame(game);
-                const { broadcast } = await import('../socket.js');
-                // 브로드캐스트 시 boardState와 moveHistory를 명시적으로 포함
-                const gameToBroadcast = {
-                    ...game,
-                    boardState: game.boardState,
-                    moveHistory: game.moveHistory,
-                    blackTimeLeft: game.blackTimeLeft,
-                    whiteTimeLeft: game.whiteTimeLeft,
-                };
-                broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: gameToBroadcast } });
-                const { getGameResult } = await import('../gameModes.js');
-                await getGameResult(game);
-                return;
-            }
-        }
-        
-        if (stage?.blackTurnLimit) {
-            const blackMovesCount = game.moveHistory.filter(m => m.player === types.Player.Black && m.x !== -1).length;
-            const blackTurnLimitBonus = (game as any).blackTurnLimitBonus || 0;
-            const effectiveBlackTurnLimit = stage.blackTurnLimit + blackTurnLimitBonus;
-            const remainingTurns = effectiveBlackTurnLimit - blackMovesCount;
-            
-            if (remainingTurns <= 0 && effectiveBlackTurnLimit > 0) {
-                console.log(`[Tower/SinglePlayer] Black ran out of turns in update loop (${blackMovesCount}/${effectiveBlackTurnLimit}), White wins. Game status before endGame: ${game.gameStatus}`);
-                if (game.gameStatus === 'playing') {
-                    await summaryService.endGame(game, types.Player.White, 'timeout');
-                    console.log(`[Tower/SinglePlayer] endGame called in update loop. Game status after: ${game.gameStatus}`);
-                } else {
-                    console.log(`[Tower/SinglePlayer] Game already ended in update loop (status: ${game.gameStatus}), skipping endGame`);
-                }
-                return;
-            }
-        }
-    }
-
-    // Delegate to shared game state updates first (handles RPS, turn preferences, etc.)
-    if (updateSharedGameState(game, now)) {
-        return; // Game state was updated, skip other updates
-    }
-    
     // Delegate to mode-specific update logic
     updateNigiriState(game, now);
     updateCaptureState(game, now);
     updateBaseState(game, now);
-    await updateHiddenState(game, now);
+    updateHiddenState(game, now);
     updateMissileState(game, now);
 };
 
 export const handleStrategicGameAction = async (volatileState: types.VolatileState, game: types.LiveGameSession, action: types.ServerAction & { userId: string }, user: types.User): Promise<types.HandleActionResult | undefined> => {
-    // Try shared actions first (e.g., USE_ACTION_BUTTON)
+    // Try shared actions first
     const sharedResult = await handleSharedAction(volatileState, game, action, user);
     if (sharedResult) return sharedResult;
-    
-    // Try each specific handler. If one returns a result, we're done.
+
+    // Then try each specific handler.
     let result: types.HandleActionResult | null = null;
     
     result = handleNigiriAction(game, action, user);
@@ -344,23 +135,47 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
     switch (type) {
         case 'PLACE_STONE': {
-            if (!isMyTurn || (game.gameStatus !== 'playing' && game.gameStatus !== 'hidden_placing')) {
-                return { error: '내 차례가 아닙니다.' };
+            // triggerAutoScoring 플래그가 있으면 계가를 트리거
+            if (payload.triggerAutoScoring) {
+                console.log(`[handleStrategicGameAction] triggerAutoScoring received for game ${game.id}, updating game state...`);
+                
+                // 클라이언트에서 전송한 게임 상태를 반영
+                if (payload.totalTurns !== undefined) {
+                    game.totalTurns = payload.totalTurns;
+                }
+                if (payload.moveHistory) {
+                    game.moveHistory = payload.moveHistory;
+                }
+                if (payload.boardState) {
+                    game.boardState = payload.boardState;
+                }
+                if (payload.blackTimeLeft !== undefined) {
+                    game.blackTimeLeft = payload.blackTimeLeft;
+                }
+                if (payload.whiteTimeLeft !== undefined) {
+                    game.whiteTimeLeft = payload.whiteTimeLeft;
+                }
+                
+                console.log(`[handleStrategicGameAction] Game state updated: totalTurns=${game.totalTurns}, moveHistoryLength=${game.moveHistory?.length || 0}, boardStateSize=${game.boardState?.length || 0}`);
+                
+                // 게임 상태를 scoring으로 변경하고 계가 처리
+                game.gameStatus = 'scoring';
+                await db.saveGame(game);
+                console.log(`[handleStrategicGameAction] Game ${game.id} set to scoring state, calling getGameResult...`);
+                
+                // 계가 시작 (getGameResult가 KataGo 분석을 시작하고 게임을 종료함)
+                try {
+                    await getGameResult(game);
+                    console.log(`[handleStrategicGameAction] getGameResult completed for game ${game.id}`);
+                } catch (error) {
+                    console.error(`[handleStrategicGameAction] Error in getGameResult for game ${game.id}:`, error);
+                    throw error;
+                }
+                return {};
             }
 
-            // 살리기 바둑 모드: 흑이 수를 두기 전에 백의 남은 턴 체크
-            const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
-            const isSinglePlayer = game.isSinglePlayer && !isTower;
-            if (isSurvivalMode && (game.mode === types.GameMode.Capture && isSinglePlayer) && myPlayerEnum === types.Player.Black) {
-                const whiteTurnsPlayed = (game as any).whiteTurnsPlayed || 0;
-                const survivalTurns = (game.settings as any)?.survivalTurns || 0;
-                const remainingTurns = survivalTurns - whiteTurnsPlayed;
-                
-                if (remainingTurns <= 0 && survivalTurns > 0 && game.gameStatus === 'playing') {
-                    console.log(`[Survival Go] White ran out of turns before Black move (${whiteTurnsPlayed}/${survivalTurns}), Black wins immediately`);
-                    await summaryService.endGame(game, types.Player.Black, 'capture_limit');
-                    return {};
-                }
+            if (!isMyTurn || (game.gameStatus !== 'playing' && game.gameStatus !== 'hidden_placing')) {
+                return { error: '내 차례가 아닙니다.' };
             }
 
             const { x, y, isHidden } = payload;
@@ -415,25 +230,6 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             if (!result.isValid) {
                 return { error: `Invalid move: ${result.reason}` };
             }
-
-            const prunePatternStones = () => {
-                if (game.blackPatternStones) {
-                    game.blackPatternStones = game.blackPatternStones.filter(point => {
-                        const occupant = game.boardState?.[point.y]?.[point.x];
-                        // 히든 돌이 공개된 경우에도 문양 유지 (permanentlyRevealedStones에 있으면 유지)
-                        const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
-                        return occupant === types.Player.Black || isPermanentlyRevealed;
-                    });
-                }
-                if (game.whitePatternStones) {
-                    game.whitePatternStones = game.whitePatternStones.filter(point => {
-                        const occupant = game.boardState?.[point.y]?.[point.x];
-                        // 히든 돌이 공개된 경우에도 문양 유지 (permanentlyRevealedStones에 있으면 유지)
-                        const isPermanentlyRevealed = game.permanentlyRevealedStones?.some(p => p.x === point.x && p.y === point.y);
-                        return occupant === types.Player.White || isPermanentlyRevealed;
-                    });
-                }
-            };
             
             const contributingHiddenStones: { point: types.Point, player: types.Player }[] = [];
             if (result.capturedStones.length > 0) {
@@ -509,7 +305,6 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         game.permanentlyRevealedStones!.push(s.point);
                     }
                 });
-                prunePatternStones();
             
                 if (game.turnDeadline) {
                     game.pausedTurnTimeLeft = (game.turnDeadline - now) / 1000;
@@ -546,7 +341,8 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                             const patternIndex = patternStones.findIndex(p => p.x === stone.x && p.y === stone.y);
                             if (patternIndex !== -1) {
                                 points = 2; // Pattern stones are worth 2 points
-                                patternStones.splice(patternIndex, 1); // consume the pattern
+                                // Remove the pattern from the list so it's a one-time bonus
+                                patternStones.splice(patternIndex, 1);
                             }
                         }
                     } else { // PvP logic
@@ -568,58 +364,6 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
 
                     game.captures[myPlayerEnum] += points;
                     game.justCaptured.push({ point: stone, player: capturedPlayerEnum, wasHidden: wasHiddenForJustCaptured });
-                }
-            }
-            prunePatternStones();
-
-            // 도전의 탑 또는 싱글플레이: 승리 조건 및 턴 제한 체크 (수를 둔 직후, 턴 변경 전)
-            const isTower = game.gameCategory === 'tower';
-            const isSinglePlayer = game.isSinglePlayer && !isTower; // 도전의 탑과 싱글플레이 명확히 분리
-            
-            // 1. 승리 조건 체크 (목표 점수 달성)
-            // 도전의 탑은 클라이언트 사이드에서 승리 조건을 체크하므로 서버에서는 체크하지 않음
-            // 싱글플레이만 서버에서 승리 조건을 체크
-            if (game.mode === types.GameMode.Capture && isSinglePlayer) {
-                const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
-                
-                if (!isSurvivalMode) {
-                    // 일반 따내기 바둑 모드 (싱글플레이만)
-                    const target = getCaptureTarget(game, myPlayerEnum);
-                    const currentCaptures = game.captures[myPlayerEnum];
-                    console.log(`[Capture] Single player - Player ${myPlayerEnum} - target: ${target}, currentCaptures: ${currentCaptures}, effectiveTargets: ${JSON.stringify(game.effectiveCaptureTargets)}`);
-                    
-                    if (target !== undefined && target !== NO_CAPTURE_TARGET && currentCaptures >= target) {
-                        console.log(`[Capture] Single player - Player ${myPlayerEnum} reached target score (${currentCaptures} >= ${target}), ending game`);
-                        await summaryService.endGame(game, myPlayerEnum, 'capture_limit');
-                        return {};
-                    }
-                }
-            }
-            
-            // 2. 도전의 탑 또는 싱글플레이: 흑돌 턴 제한 체크
-            if ((isSinglePlayer || isTower) && game.gameStatus === 'playing' && game.stageId && myPlayerEnum === types.Player.Black) {
-                const { TOWER_STAGES } = await import('../../constants/towerConstants.js');
-                const { SINGLE_PLAYER_STAGES } = await import('../../constants/singlePlayerConstants.js');
-                const stage = isTower 
-                    ? TOWER_STAGES.find(s => s.id === game.stageId)
-                    : SINGLE_PLAYER_STAGES.find(s => s.id === game.stageId);
-                
-                if (stage?.blackTurnLimit) {
-                    const blackMovesCount = game.moveHistory.filter(m => m.player === types.Player.Black && m.x !== -1).length;
-                    const blackTurnLimitBonus = (game as any).blackTurnLimitBonus || 0;
-                    const effectiveBlackTurnLimit = stage.blackTurnLimit + blackTurnLimitBonus;
-                    const remainingTurns = effectiveBlackTurnLimit - blackMovesCount;
-                    
-                    console.log(`[Tower/SinglePlayer] After Black move - moves: ${blackMovesCount}/${effectiveBlackTurnLimit}, remaining: ${remainingTurns}`);
-                    
-                    if (remainingTurns <= 0 && effectiveBlackTurnLimit > 0) {
-                        console.log(`[Tower/SinglePlayer] Black ran out of turns after move (${blackMovesCount}/${effectiveBlackTurnLimit}), White wins. Game status: ${game.gameStatus}`);
-                        if (game.gameStatus === 'playing') {
-                            await summaryService.endGame(game, types.Player.White, 'timeout');
-                            console.log(`[Tower/SinglePlayer] endGame called after Black move. Game status after: ${game.gameStatus}`);
-                            return {};
-                        }
-                    }
                 }
             }
 
@@ -663,34 +407,11 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                  game.turnStartTime = undefined;
             }
 
-            // 살리기 바둑 모드 승리 조건 체크 (턴 변경 후)
-            // 도전의 탑은 클라이언트에서 승리 조건을 체크하므로 서버에서는 체크하지 않음
-            const isSurvivalMode = (game.settings as any)?.isSurvivalMode === true;
-            const isSinglePlayer = game.isSinglePlayer && !isTower; // 도전의 탑과 싱글플레이 명확히 분리
-            if (isSurvivalMode && (game.mode === types.GameMode.Capture && isSinglePlayer)) {
-                // 살리기 바둑 모드: 백의 남은 턴 체크는 백이 수를 둔 직후 goAiBot.ts에서 처리됨
-                // 여기서는 흑이 수를 둔 후 백의 상태를 체크
-                if (myPlayerEnum === types.Player.Black) {
-                    const whiteTurnsPlayed = (game as any).whiteTurnsPlayed || 0;
-                    const survivalTurns = (game.settings as any)?.survivalTurns || 0;
-                    
-                    // 백이 목표점수를 달성했는지 먼저 체크 (목표 달성 시 백 승리)
-                    const target = getCaptureTarget(game, types.Player.White);
-                    if (target !== undefined && target !== NO_CAPTURE_TARGET && game.captures[types.Player.White] >= target) {
-                        console.log(`[Survival Go] White reached target score after Black move (${target}), White wins`);
-                        await summaryService.endGame(game, types.Player.White, 'capture_limit');
-                        return {};
-                    }
-                    
-                    // 백의 남은 턴이 0이 되면 흑 승리 (백이 목표점수를 달성하지 못함)
-                    const remainingTurns = survivalTurns - whiteTurnsPlayed;
-                    if (remainingTurns <= 0 && survivalTurns > 0) {
-                        console.log(`[Survival Go] White ran out of turns after Black move (${whiteTurnsPlayed}/${survivalTurns}), Black wins`);
-                        if (game.gameStatus === 'playing') {
-                            await summaryService.endGame(game, types.Player.Black, 'capture_limit');
-                            return {};
-                        }
-                    }
+            // After move logic
+            if (game.mode === types.GameMode.Capture || game.isSinglePlayer) {
+                const target = game.effectiveCaptureTargets![myPlayerEnum];
+                if (game.captures[myPlayerEnum] >= target) {
+                    await summaryService.endGame(game, myPlayerEnum, 'capture_limit');
                 }
             }
             
@@ -735,10 +456,10 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
                         if (!game.permanentlyRevealedStones) game.permanentlyRevealedStones = [];
                         game.permanentlyRevealedStones.push(...unrevealedStones.map(s => s.point));
                     } else {
-                        await getGameResult(game);
+                        getGameResult(game);
                     }
                 } else {
-                    await getGameResult(game);
+                    getGameResult(game);
                 }
             } else {
                 const playerWhoMoved = myPlayerEnum;
@@ -779,7 +500,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             await summaryService.processGameSummary(game);
 
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
+                volatileState.userStatuses[user.id] = { status: 'waiting', mode: game.mode };
             }
 
             return {};

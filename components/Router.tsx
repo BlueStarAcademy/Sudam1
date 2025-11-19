@@ -18,7 +18,7 @@ import TowerLobby from './TowerLobby.js';
 
 // 게임 라우트 로더 컴포넌트 (게임이 로드될 때까지 대기)
 const GameRouteLoader: React.FC<{ gameId: string }> = ({ gameId }) => {
-    const { activeGame } = useAppContext();
+    const { activeGame, singlePlayerGames, towerGames, liveGames } = useAppContext();
     const [hasTimedOut, setHasTimedOut] = useState(false);
     const maxWaitTime = 2000; // 최대 2초 대기 (handleAction에서 즉시 추가하므로 짧게 설정)
     
@@ -27,10 +27,23 @@ const GameRouteLoader: React.FC<{ gameId: string }> = ({ gameId }) => {
         return <Game session={activeGame} />;
     }
     
-    // 타임아웃 처리
+    // 타임아웃 처리 (scoring 상태의 게임은 제외)
     useEffect(() => {
         const timeout = setTimeout(() => {
             if (!activeGame || activeGame.id !== gameId) {
+                // scoring 상태의 게임은 리다이렉트하지 않음 (계가 진행 중)
+                // activeGame이 없어도 게임이 scoring 상태일 수 있으므로 확인
+                const allGames = { 
+                    ...(liveGames || {}), 
+                    ...(singlePlayerGames || {}), 
+                    ...(towerGames || {}) 
+                };
+                const currentGame = allGames[gameId];
+                if (currentGame && currentGame.gameStatus === 'scoring') {
+                    console.log(`[Router] Game ${gameId} is in scoring state, keeping user on game page`);
+                    return;
+                }
+                
                 console.warn(`[Router] Game ${gameId} not found after ${maxWaitTime}ms, redirecting to profile.`);
                 setHasTimedOut(true);
                 setTimeout(() => {
@@ -42,7 +55,7 @@ const GameRouteLoader: React.FC<{ gameId: string }> = ({ gameId }) => {
         }, maxWaitTime);
         
         return () => clearTimeout(timeout);
-    }, [gameId, activeGame, maxWaitTime]);
+    }, [gameId, activeGame, maxWaitTime, singlePlayerGames, towerGames, liveGames]);
     
     // 타임아웃이 발생했으면 에러 메시지 표시
     if (hasTimedOut) {
@@ -54,7 +67,7 @@ const GameRouteLoader: React.FC<{ gameId: string }> = ({ gameId }) => {
 };
 
 const Router: React.FC = () => {
-    const { currentRoute, currentUser, activeGame } = useAppContext();
+    const { currentRoute, currentUser, activeGame, singlePlayerGames, towerGames, liveGames } = useAppContext();
 
     if (!currentUser) {
         if (currentRoute.view === 'register') {
@@ -66,9 +79,28 @@ const Router: React.FC = () => {
     // If user is logged in, but their game is still active, force them into the game view
     // 단, 라우트가 이미 게임 페이지(#/game/${gameId})로 설정되어 있으면 "재접속 중..."을 표시하지 않음
     // (새 게임을 시작한 직후 activeGame이 아직 업데이트되지 않았을 수 있음)
+    // scoring 상태의 게임도 포함 (계가 진행 중)
     if (activeGame && currentRoute.view !== 'game' && !currentRoute.params?.id) {
         // The logic in useApp hook will handle the redirect, we can show a loading state here
         return <div className="flex items-center justify-center h-full">재접속 중...</div>;
+    }
+    
+    // scoring 상태의 게임이 있으면 게임 페이지로 유지 (activeGame이 null이어도)
+    if (currentRoute.view === 'game' && currentRoute.params?.id) {
+        const gameId = currentRoute.params.id;
+        const allGames = { 
+            ...(liveGames || {}), 
+            ...(singlePlayerGames || {}), 
+            ...(towerGames || {}) 
+        };
+        const currentGame = allGames[gameId];
+        if (currentGame && currentGame.gameStatus === 'scoring') {
+            // scoring 상태이면 게임 화면 유지 (activeGame이 null이어도)
+            if (!activeGame || activeGame.id !== gameId) {
+                // activeGame이 없어도 scoring 상태이면 게임 화면 표시
+                return <Game session={currentGame} />;
+            }
+        }
     }
 
     switch (currentRoute.view) {

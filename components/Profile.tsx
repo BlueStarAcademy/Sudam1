@@ -120,6 +120,20 @@ const EquipmentSlotDisplay: React.FC<{ slot: EquipmentSlot; item?: InventoryItem
                     </div>
                 )}
                 {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1.5"/>}
+                {isDivineMythic && (
+                    <div 
+                        className="absolute bottom-0 left-0 flex items-center justify-center bg-black/60 rounded-tr-md z-10" 
+                        style={{ 
+                            textShadow: '1px 1px 2px black',
+                            padding: '2px 4px',
+                            fontSize: '10px',
+                            fontWeight: 'bold',
+                            color: '#FFD700'
+                        }}
+                    >
+                        D
+                    </div>
+                )}
             </div>
         );
     } else {

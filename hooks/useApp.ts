@@ -11,6 +11,7 @@ import {
 } from '../constants.js';
 import { defaultSettings, SETTINGS_STORAGE_KEY } from './useAppSettings.js';
 import { getPanelEdgeImages } from '../constants/panelEdges.js';
+import { SINGLE_PLAYER_STAGES } from '../constants/singlePlayerConstants.js';
 
 export const useApp = () => {
     // --- State Management ---
@@ -379,12 +380,19 @@ export const useApp = () => {
         if (gameId) {
             // status가 'in-game'이거나 'spectating'이면 게임으로 라우팅
             // 'negotiating' 상태는 제거 (대국 신청 중에는 게임이 아님)
+            // scoring 상태의 게임도 포함 (계가 진행 중)
             if (currentUserWithStatus.status === 'in-game' || currentUserWithStatus.status === 'spectating') {
                 // 모든 게임 카테고리에서 찾기
                 const game = liveGames[gameId] || singlePlayerGames[gameId] || towerGames[gameId];
                 if (game) {
                     return game;
                 }
+            }
+            // scoring 상태의 게임은 사용자 상태와 관계없이 activeGame으로 인식
+            // (계가 진행 중에는 사용자 상태가 변경될 수 있음)
+            const game = liveGames[gameId] || singlePlayerGames[gameId] || towerGames[gameId];
+            if (game && game.gameStatus === 'scoring') {
+                return game;
             }
         }
         return null;
@@ -483,7 +491,7 @@ export const useApp = () => {
     }, [currentUser]);
 
     // --- Action Handler ---
-    const handleAction = useCallback(async (action: ServerAction): Promise<{ gameId?: string } | void> => {
+    const handleAction = useCallback(async (action: ServerAction): Promise<{ gameId?: string; claimAllTrainingQuestRewards?: any } | void> => {
         // 타워 게임과 싱글플레이 게임의 클라이언트 측 move 처리 (서버로 전송하지 않음)
         // 클라이언트 측 이동 처리 (도전의 탑, 싱글플레이 공통 로직)
         if ((action as any).type === 'TOWER_CLIENT_MOVE' || (action as any).type === 'SINGLE_PLAYER_CLIENT_MOVE') {
@@ -535,74 +543,122 @@ export const useApp = () => {
                     totalTurns: (updateResult.updatedGame as any).totalTurns
                 });
                 
-                // 싱글플레이 자동 계가 트리거 체크 (비동기로 처리)
-                if (gameType === 'singleplayer' && game.stageId && updateResult.updatedGame.totalTurns !== undefined) {
-                    import('../constants/singlePlayerConstants.js').then(({ SINGLE_PLAYER_STAGES }) => {
-                        const stage = SINGLE_PLAYER_STAGES.find((s: any) => s.id === game.stageId);
-                        if (stage?.autoScoringTurns && updateResult.updatedGame.totalTurns >= stage.autoScoringTurns) {
-                            if (updateResult.updatedGame.gameStatus === 'playing') {
-                                console.log(`[handleAction] ${actionTypeName} - Auto-scoring triggered at ${updateResult.updatedGame.totalTurns} turns (stage: ${game.stageId})`);
-                                // 게임 상태를 scoring으로 변경 (기존 게임 상태 보존)
-                                updateGameState((currentGames) => {
-                                    const currentGame = currentGames[gameId];
-                                    if (currentGame && currentGame.gameStatus === 'playing') {
-                                        // 기존 게임의 모든 상태를 보존하면서 gameStatus만 변경
-                                        // updateResult.updatedGame의 boardState를 우선 사용 (최신 상태)
-                                        const preservedBoardState = updateResult.updatedGame.boardState && updateResult.updatedGame.boardState.length > 0
-                                            ? updateResult.updatedGame.boardState
-                                            : (currentGame.boardState || updateResult.updatedGame.boardState);
-                                        const preservedMoveHistory = updateResult.updatedGame.moveHistory && updateResult.updatedGame.moveHistory.length > 0
-                                            ? updateResult.updatedGame.moveHistory
-                                            : (currentGame.moveHistory || updateResult.updatedGame.moveHistory);
-                                        
-                                        console.log(`[handleAction] Preserving game state for scoring: boardStateSize=${preservedBoardState?.length || 0}, moveHistoryLength=${preservedMoveHistory?.length || 0}`);
-                                        
-                                        return { 
-                                            ...currentGames, 
-                                            [gameId]: { 
-                                                ...currentGame,
-                                                ...updateResult.updatedGame, // 최신 업데이트 결과 포함
-                                                gameStatus: 'scoring' as const,
-                                                // boardState와 moveHistory는 반드시 보존
-                                                boardState: preservedBoardState,
-                                                moveHistory: preservedMoveHistory,
-                                            } 
-                                        };
-                                    }
-                                    return currentGames;
-                                });
-                                
-                                // 서버에 자동 계가 트리거 요청
-                                // 클라이언트에서 자동 계가를 트리거했으므로 서버에 알림
-                                // 서버에서 totalTurns를 확인하여 자동 계가를 처리하도록 함
-                                const totalTurns = updateResult.updatedGame.totalTurns ?? updateResult.updatedGame.moveHistory.filter((m: any) => m.x !== -1 && m.y !== -1).length;
-                                const moveHistory = updateResult.updatedGame.moveHistory || [];
-                                const boardState = updateResult.updatedGame.boardState || [];
-                                console.log(`[handleAction] Auto-scoring triggered on client, sending to server: totalTurns=${totalTurns}, moveHistoryLength=${moveHistory.length}, boardStateSize=${boardState.length}, stage=${game.stageId}`);
-                                // 서버에 자동 계가 트리거 요청 전송 (수 좌표 없이 플래그만 전송)
-                                // 서버에서 totalTurns, moveHistory, boardState를 확인하고 자동 계가를 처리
-                                const autoScoringAction = {
-                                    type: 'PLACE_STONE',
-                                    payload: {
-                                        gameId,
-                                        x: -1, // 패스 좌표 (실제 수를 두는 것이 아님)
-                                        y: -1, // 패스 좌표 (실제 수를 두는 것이 아님)
-                                        totalTurns: totalTurns, // 서버에 totalTurns 정보 전달
-                                        moveHistory: moveHistory, // 서버에 moveHistory 정보 전달 (KataGo 분석용)
-                                        boardState: boardState, // 서버에 boardState 정보 전달 (KataGo 분석용)
-                                        triggerAutoScoring: true // 자동 계가 트리거 플래그
-                                    }
-                                } as any;
-                                console.log(`[handleAction] Sending PLACE_STONE action to server for auto-scoring:`, { ...autoScoringAction, payload: { ...autoScoringAction.payload, moveHistory: `[${moveHistory.length} moves]` } });
-                                handleAction(autoScoringAction).then(result => {
-                                    console.log(`[handleAction] Auto-scoring action sent successfully:`, result);
-                                }).catch(err => {
-                                    console.error(`[handleAction] Failed to trigger auto-scoring on server:`, err);
-                                });
+                // 싱글플레이 자동 계가 트리거 체크 (즉시 동기적으로 처리하여 게임 초기화 방지)
+                let shouldTriggerAutoScoring = false;
+                let autoScoringPreservedState: any = null;
+                
+                // 싱글플레이 또는 AI봇 대결에서 자동계가 체크
+                // hidden_placing, scanning 등 아이템 모드에서는 자동계가 체크를 하지 않음
+                const isItemMode = ['hidden_placing', 'scanning', 'missile_selecting', 'missile_animating', 'scanning_animating'].includes(updateResult.updatedGame.gameStatus);
+                
+                if (!isItemMode) {
+                    const autoScoringTurns = gameType === 'singleplayer' && game.stageId
+                        ? SINGLE_PLAYER_STAGES.find((s: any) => s.id === game.stageId)?.autoScoringTurns
+                        : (updateResult.updatedGame.settings as any)?.autoScoringTurns;
+                    
+                    if (autoScoringTurns !== undefined || (gameType === 'singleplayer' && game.stageId)) {
+                    // totalTurns가 없으면 moveHistory에서 계산
+                    let totalTurns = updateResult.updatedGame.totalTurns;
+                    if (totalTurns === undefined || totalTurns === null) {
+                        const validMoves = (updateResult.updatedGame.moveHistory || []).filter((m: any) => m.x !== -1 && m.y !== -1);
+                        totalTurns = validMoves.length;
+                    }
+                    
+                    if (totalTurns !== undefined && totalTurns !== null && autoScoringTurns) {
+                        try {
+                            if (totalTurns >= autoScoringTurns) {
+                                // totalTurns를 업데이트
+                                updateResult.updatedGame.totalTurns = totalTurns;
+                                if (updateResult.updatedGame.gameStatus === 'playing') {
+                                    shouldTriggerAutoScoring = true;
+                                    const gameTypeLabel = gameType === 'singleplayer' ? 'SinglePlayer' : 'AiGame';
+                                    console.log(`[handleAction] ${actionTypeName} - Auto-scoring triggered at ${updateResult.updatedGame.totalTurns} turns (${gameTypeLabel}, stageId: ${game.stageId || 'N/A'}) - IMMEDIATELY FREEZING GAME`);
+                                    
+                                    // 즉시 게임 상태를 보존하여 게임 초기화 방지 (동기적으로 처리)
+                                    const preservedBoardState = updateResult.updatedGame.boardState && updateResult.updatedGame.boardState.length > 0
+                                        ? updateResult.updatedGame.boardState
+                                        : (game.boardState || updateResult.updatedGame.boardState);
+                                    const preservedMoveHistory = updateResult.updatedGame.moveHistory && updateResult.updatedGame.moveHistory.length > 0
+                                        ? updateResult.updatedGame.moveHistory
+                                        : (game.moveHistory || updateResult.updatedGame.moveHistory);
+                                    const preservedTotalTurns = updateResult.updatedGame.totalTurns ?? game.totalTurns;
+                                    const preservedBlackTimeLeft = updateResult.updatedGame.blackTimeLeft ?? game.blackTimeLeft;
+                                    const preservedWhiteTimeLeft = updateResult.updatedGame.whiteTimeLeft ?? game.whiteTimeLeft;
+                                    
+                                    autoScoringPreservedState = {
+                                        boardState: preservedBoardState,
+                                        moveHistory: preservedMoveHistory,
+                                        totalTurns: preservedTotalTurns,
+                                        blackTimeLeft: preservedBlackTimeLeft,
+                                        whiteTimeLeft: preservedWhiteTimeLeft,
+                                    };
+                                    
+                                    console.log(`[handleAction] IMMEDIATELY preserving game state for scoring: boardStateSize=${preservedBoardState?.length || 0}, moveHistoryLength=${preservedMoveHistory?.length || 0}, totalTurns=${preservedTotalTurns}, blackTimeLeft=${preservedBlackTimeLeft}, whiteTimeLeft=${preservedWhiteTimeLeft}`);
+                                    
+                                    // 게임 상태를 즉시 scoring으로 변경하여 반환값에 반영 (게임 초기화 방지)
+                                    updateResult.updatedGame.gameStatus = 'scoring' as const;
+                                    updateResult.updatedGame.boardState = preservedBoardState;
+                                    updateResult.updatedGame.moveHistory = preservedMoveHistory;
+                                    updateResult.updatedGame.totalTurns = preservedTotalTurns;
+                                    updateResult.updatedGame.blackTimeLeft = preservedBlackTimeLeft;
+                                    updateResult.updatedGame.whiteTimeLeft = preservedWhiteTimeLeft;
+                                    
+                                    // 게임 상태를 즉시 scoring으로 변경 (게임 초기화 방지)
+                                    updateGameState((currentGames) => {
+                                        const currentGame = currentGames[gameId];
+                                        if (currentGame && currentGame.gameStatus === 'playing') {
+                                            return { 
+                                                ...currentGames, 
+                                                [gameId]: { 
+                                                    ...currentGame,
+                                                    ...updateResult.updatedGame, // 최신 업데이트 결과 포함 (gameStatus: 'scoring')
+                                                    // boardState, moveHistory, totalTurns, 시간 정보는 반드시 보존
+                                                    boardState: preservedBoardState,
+                                                    moveHistory: preservedMoveHistory,
+                                                    totalTurns: preservedTotalTurns,
+                                                    blackTimeLeft: preservedBlackTimeLeft,
+                                                    whiteTimeLeft: preservedWhiteTimeLeft,
+                                                } 
+                                            };
+                                        }
+                                        return currentGames;
+                                    });
+                                }
                             }
+                        } catch (err) {
+                            console.error(`[handleAction] Failed to check auto-scoring:`, err);
                         }
+                    }
+                }
+                }
+                
+                // 자동 계가 트리거가 필요한 경우 서버에 요청 (비동기로 처리)
+                if (shouldTriggerAutoScoring && autoScoringPreservedState) {
+                    const { totalTurns, moveHistory, boardState, blackTimeLeft, whiteTimeLeft } = autoScoringPreservedState;
+                    
+                    console.log(`[handleAction] Auto-scoring triggered on client, sending to server: totalTurns=${totalTurns}, moveHistoryLength=${moveHistory.length}, boardStateSize=${boardState.length}, blackTimeLeft=${blackTimeLeft}, whiteTimeLeft=${whiteTimeLeft}, stage=${game.stageId}`);
+                    
+                    // 서버에 자동 계가 트리거 요청 전송 (수 좌표 없이 플래그만 전송)
+                    const autoScoringAction = {
+                        type: 'PLACE_STONE',
+                        payload: {
+                            gameId,
+                            x: -1, // 패스 좌표 (실제 수를 두는 것이 아님)
+                            y: -1, // 패스 좌표 (실제 수를 두는 것이 아님)
+                            totalTurns: totalTurns, // 서버에 totalTurns 정보 전달
+                            moveHistory: moveHistory, // 서버에 moveHistory 정보 전달 (KataGo 분석용)
+                            boardState: boardState, // 서버에 boardState 정보 전달 (KataGo 분석용)
+                            blackTimeLeft: blackTimeLeft, // 서버에 시간 정보 전달
+                            whiteTimeLeft: whiteTimeLeft, // 서버에 시간 정보 전달
+                            triggerAutoScoring: true // 자동 계가 트리거 플래그
+                        }
+                    } as any;
+                    
+                    console.log(`[handleAction] Sending PLACE_STONE action to server for auto-scoring:`, { ...autoScoringAction, payload: { ...autoScoringAction.payload, moveHistory: `[${moveHistory.length} moves]` } });
+                    handleAction(autoScoringAction).then(result => {
+                        console.log(`[handleAction] Auto-scoring action sent successfully:`, result);
                     }).catch(err => {
-                        console.error(`[handleAction] Failed to check auto-scoring:`, err);
+                        console.error(`[handleAction] Failed to trigger auto-scoring on server:`, err);
                     });
                 }
                 
@@ -1078,8 +1134,8 @@ export const useApp = () => {
                     console.log(`[handleAction] ${action.type} - gameId not in response, using payload gameId:`, effectiveGameId);
                 }
                 
-                // END_TOWER_GAME 또는 END_SINGLE_PLAYER_GAME 액션 처리
-                if (action.type === 'END_TOWER_GAME' || action.type === 'END_SINGLE_PLAYER_GAME') {
+                // END_TOWER_GAME 액션 처리
+                if (action.type === 'END_TOWER_GAME') {
                     const endGameId = (action.payload as any)?.gameId || gameId;
                     const endGame = game || (result.clientResponse?.game);
                     
@@ -1168,7 +1224,7 @@ export const useApp = () => {
                                 } else {
                                     // 사용자가 onlineUsers에 없으면 추가
                                     const newUser: UserWithStatus = {
-                                        id: currentUser.id,
+                                        ...currentUser,
                                         status: UserStatus.InGame,
                                         gameId: effectiveGameId,
                                         mode: game.mode
@@ -1365,6 +1421,7 @@ export const useApp = () => {
             globalOverrideAnnouncement?: any;
             gameModeAvailability?: Record<string, boolean>;
             announcementInterval?: number;
+            homeBoardPosts?: any[];
         }) => {
                 const userEntries = Object.entries(users || {});
                 // nickname이 없거나 비어 있는 경우 제외
@@ -1514,6 +1571,14 @@ export const useApp = () => {
                     if (connectionTimeout) {
                         clearTimeout(connectionTimeout);
                         connectionTimeout = null;
+                    }
+                    // 서버에 userId 전송 (대역폭 최적화를 위해 게임 참가자에게만 메시지 전송)
+                    if (currentUser?.id && ws && ws.readyState === WebSocket.OPEN) {
+                        try {
+                            ws.send(JSON.stringify({ type: 'AUTH', userId: currentUser.id }));
+                        } catch (e) {
+                            console.error('[WebSocket] Failed to send AUTH message:', e);
+                        }
                     }
                 };
 
@@ -1787,6 +1852,16 @@ export const useApp = () => {
                                             const currentHash = window.location.hash;
                                             const isGamePage = currentHash.startsWith('#/game/');
                                             if (isGamePage) {
+                                                // 게임 페이지에 있을 때, 현재 게임이 scoring 상태인지 확인
+                                                const gameIdFromHash = currentHash.replace('#/game/', '');
+                                                const currentGame = liveGames[gameIdFromHash] || singlePlayerGames[gameIdFromHash] || towerGames[gameIdFromHash];
+                                                
+                                                // scoring 상태의 게임은 리다이렉트하지 않음 (계가 진행 중)
+                                                if (currentGame && currentGame.gameStatus === 'scoring') {
+                                                    console.log('[WebSocket] Game is in scoring state, keeping user on game page:', gameIdFromHash);
+                                                    return updatedUsersMap;
+                                                }
+                                                
                                                 const postGameRedirect = sessionStorage.getItem('postGameRedirect');
                                                 if (postGameRedirect) {
                                                     console.log('[WebSocket] Current user status updated to waiting, routing to postGameRedirect:', postGameRedirect);
@@ -1872,23 +1947,50 @@ export const useApp = () => {
                                                 );
                                                 
                                                 // scoring 상태에서는 기존 boardState를 절대 덮어쓰지 않음 (돌이 있으면 무조건 유지)
-                                                const finalBoardState = (existingBoardStateValid && existingBoardStateHasStones)
-                                                    ? existingGame.boardState 
-                                                    : (existingBoardStateValid ? existingGame.boardState : game.boardState);
+                                                // 서버에서 보낸 boardState가 유효하면 사용, 아니면 기존 것 사용
+                                                const serverBoardStateValid = game.boardState && 
+                                                    Array.isArray(game.boardState) && 
+                                                    game.boardState.length > 0 && 
+                                                    game.boardState[0] && 
+                                                    Array.isArray(game.boardState[0]) && 
+                                                    game.boardState[0].length > 0 &&
+                                                    game.boardState.some((row: any[]) => 
+                                                        row && Array.isArray(row) && row.some((cell: any) => cell !== 0 && cell !== null && cell !== undefined)
+                                                    );
                                                 
-                                                // 기존 moveHistory도 우선 유지
-                                                const finalMoveHistory = existingMoveHistoryValid 
-                                                    ? existingGame.moveHistory 
-                                                    : (game.moveHistory && Array.isArray(game.moveHistory) && game.moveHistory.length > 0 ? game.moveHistory : existingGame.moveHistory);
+                                                // scoring 상태에서는 기존 boardState를 절대 덮어쓰지 않음
+                                                // 서버에서 보낸 boardState가 유효하고 돌이 있으면 사용, 아니면 기존 것 사용
+                                                const finalBoardState = (serverBoardStateValid && existingBoardStateHasStones)
+                                                    ? game.boardState
+                                                    : ((existingBoardStateValid && existingBoardStateHasStones)
+                                                        ? existingGame.boardState 
+                                                        : (existingBoardStateValid ? existingGame.boardState : (serverBoardStateValid ? game.boardState : existingGame.boardState)));
                                                 
-                                                console.log(`[WebSocket][SinglePlayer] Scoring state: preserving existing boardState (hasStones=${existingBoardStateHasStones}, size=${finalBoardState?.length || 0}), moveHistory (length=${finalMoveHistory?.length || 0})`);
+                                                // 서버에서 보낸 moveHistory가 유효하면 사용, 아니면 기존 것 사용
+                                                const serverMoveHistoryValid = game.moveHistory && 
+                                                    Array.isArray(game.moveHistory) && 
+                                                    game.moveHistory.length > 0;
+                                                
+                                                const finalMoveHistory = serverMoveHistoryValid
+                                                    ? game.moveHistory
+                                                    : (existingMoveHistoryValid 
+                                                        ? existingGame.moveHistory 
+                                                        : (game.moveHistory && Array.isArray(game.moveHistory) && game.moveHistory.length > 0 ? game.moveHistory : existingGame.moveHistory));
+                                                
+                                                // totalTurns도 보존
+                                                const finalTotalTurns = (game.totalTurns !== undefined && game.totalTurns !== null)
+                                                    ? game.totalTurns
+                                                    : (existingGame.totalTurns !== undefined && existingGame.totalTurns !== null ? existingGame.totalTurns : game.totalTurns);
+                                                
+                                                console.log(`[WebSocket][SinglePlayer] Scoring state: preserving state - boardState (serverValid=${serverBoardStateValid}, existingValid=${existingBoardStateValid}, hasStones=${existingBoardStateHasStones}, size=${finalBoardState?.length || 0}), moveHistory (serverValid=${serverMoveHistoryValid}, existingValid=${existingMoveHistoryValid}, length=${finalMoveHistory?.length || 0}), totalTurns=${finalTotalTurns}`);
                                                 
                                                 const preservedGame = {
                                                     ...game,
-                                                    // boardState와 moveHistory는 기존 것을 우선 사용
+                                                    // boardState, moveHistory, totalTurns는 서버에서 온 값이 유효하면 사용, 아니면 기존 것 사용
                                                     boardState: finalBoardState,
                                                     moveHistory: finalMoveHistory,
-                                                    // 시간 정보도 기존 것을 우선 사용 (서버에서 온 값이 유효하지 않을 수 있음)
+                                                    totalTurns: finalTotalTurns,
+                                                    // 시간 정보도 서버에서 온 값이 유효하면 사용, 아니면 기존 것 사용
                                                     blackTimeLeft: (game.blackTimeLeft !== undefined && game.blackTimeLeft !== null && game.blackTimeLeft > 0) 
                                                         ? game.blackTimeLeft 
                                                         : (existingGame.blackTimeLeft !== undefined && existingGame.blackTimeLeft !== null ? existingGame.blackTimeLeft : game.blackTimeLeft),
@@ -1901,7 +2003,133 @@ export const useApp = () => {
                                                 updatedGames[gameId] = game;
                                             }
                                         } else {
-                                            updatedGames[gameId] = game;
+                                            // hidden_placing, scanning 등 아이템 모드에서는 boardState를 보존해야 함
+                                            const isItemMode = ['hidden_placing', 'scanning', 'missile_selecting', 'missile_animating', 'scanning_animating'].includes(game.gameStatus);
+                                            
+                                            if (isItemMode) {
+                                                // 아이템 모드에서는 기존 boardState를 보존
+                                                const existingBoardStateValid = existingGame?.boardState && 
+                                                    Array.isArray(existingGame.boardState) && 
+                                                    existingGame.boardState.length > 0 && 
+                                                    existingGame.boardState[0] && 
+                                                    Array.isArray(existingGame.boardState[0]) && 
+                                                    existingGame.boardState[0].length > 0;
+                                                
+                                                const serverBoardStateValid = game.boardState && 
+                                                    Array.isArray(game.boardState) && 
+                                                    game.boardState.length > 0 && 
+                                                    game.boardState[0] && 
+                                                    Array.isArray(game.boardState[0]) && 
+                                                    game.boardState[0].length > 0;
+                                                
+                                                // 기존 boardState가 유효하면 보존, 아니면 서버에서 온 것 사용
+                                                const finalBoardState = existingBoardStateValid
+                                                    ? existingGame.boardState
+                                                    : (serverBoardStateValid ? game.boardState : existingGame?.boardState);
+                                                
+                                                // moveHistory도 보존
+                                                const existingMoveHistoryValid = existingGame?.moveHistory && 
+                                                    Array.isArray(existingGame.moveHistory) && 
+                                                    existingGame.moveHistory.length > 0;
+                                                
+                                                const serverMoveHistoryValid = game.moveHistory && 
+                                                    Array.isArray(game.moveHistory) && 
+                                                    game.moveHistory.length > 0;
+                                                
+                                                const finalMoveHistory = existingMoveHistoryValid
+                                                    ? existingGame.moveHistory
+                                                    : (serverMoveHistoryValid ? game.moveHistory : existingGame?.moveHistory);
+                                                
+                                                updatedGames[gameId] = {
+                                                    ...game,
+                                                    boardState: finalBoardState,
+                                                    moveHistory: finalMoveHistory,
+                                                    // 시간 정보도 보존
+                                                    blackTimeLeft: (game.blackTimeLeft !== undefined && game.blackTimeLeft !== null && game.blackTimeLeft > 0) 
+                                                        ? game.blackTimeLeft 
+                                                        : (existingGame?.blackTimeLeft !== undefined && existingGame?.blackTimeLeft !== null ? existingGame.blackTimeLeft : game.blackTimeLeft),
+                                                    whiteTimeLeft: (game.whiteTimeLeft !== undefined && game.whiteTimeLeft !== null && game.whiteTimeLeft > 0) 
+                                                        ? game.whiteTimeLeft 
+                                                        : (existingGame?.whiteTimeLeft !== undefined && existingGame?.whiteTimeLeft !== null ? existingGame.whiteTimeLeft : game.whiteTimeLeft),
+                                                };
+                                            } else if (game.gameStatus === 'playing' && (game.stageId || (game.settings as any)?.autoScoringTurns)) {
+                                                // GAME_UPDATE를 받았을 때 자동계가 체크 (AI 수를 둔 경우 등)
+                                                try {
+                                                    const autoScoringTurns = game.isSinglePlayer && game.stageId
+                                                        ? SINGLE_PLAYER_STAGES.find((s: any) => s.id === game.stageId)?.autoScoringTurns
+                                                        : (game.settings as any)?.autoScoringTurns;
+                                                    
+                                                    if (autoScoringTurns) {
+                                                        // totalTurns가 없으면 moveHistory에서 계산 (항상 최신 상태로 업데이트)
+                                                        const validMoves = (game.moveHistory || []).filter((m: any) => m.x !== -1 && m.y !== -1);
+                                                        let totalTurns = game.totalTurns;
+                                                        if (totalTurns === undefined || totalTurns === null || totalTurns < validMoves.length) {
+                                                            // totalTurns가 없거나 moveHistory보다 작으면 moveHistory에서 계산
+                                                            totalTurns = validMoves.length;
+                                                        }
+                                                        
+                                                        // totalTurns를 게임 상태에 반영
+                                                        if (totalTurns !== undefined && totalTurns !== null) {
+                                                            game.totalTurns = totalTurns;
+                                                        }
+                                                        
+                                                        if (totalTurns !== undefined && totalTurns >= autoScoringTurns) {
+                                                        const gameTypeLabel = game.isSinglePlayer ? 'SinglePlayer' : 'AiGame';
+                                                        console.log(`[WebSocket][${gameTypeLabel}] Auto-scoring triggered from GAME_UPDATE at ${totalTurns} turns (stageId: ${game.stageId || 'N/A'}) - IMMEDIATELY FREEZING GAME`);
+                                                        
+                                                        // 즉시 게임 상태를 scoring으로 변경하여 게임 초기화 방지
+                                                        const preservedBoardState = game.boardState && game.boardState.length > 0
+                                                            ? game.boardState
+                                                            : (existingGame?.boardState || game.boardState);
+                                                        const preservedMoveHistory = game.moveHistory && game.moveHistory.length > 0
+                                                            ? game.moveHistory
+                                                            : (existingGame?.moveHistory || game.moveHistory);
+                                                        const preservedTotalTurns = totalTurns;
+                                                        const preservedBlackTimeLeft = game.blackTimeLeft ?? existingGame?.blackTimeLeft;
+                                                        const preservedWhiteTimeLeft = game.whiteTimeLeft ?? existingGame?.whiteTimeLeft;
+                                                        
+                                                        // 게임 상태를 즉시 scoring으로 변경
+                                                        updatedGames[gameId] = {
+                                                            ...game,
+                                                            gameStatus: 'scoring' as const,
+                                                            boardState: preservedBoardState,
+                                                            moveHistory: preservedMoveHistory,
+                                                            totalTurns: preservedTotalTurns,
+                                                            blackTimeLeft: preservedBlackTimeLeft,
+                                                            whiteTimeLeft: preservedWhiteTimeLeft,
+                                                        };
+                                                        
+                                                        // 서버에 자동 계가 트리거 요청 전송
+                                                        const autoScoringAction = {
+                                                            type: 'PLACE_STONE',
+                                                            payload: {
+                                                                gameId,
+                                                                x: -1,
+                                                                y: -1,
+                                                                totalTurns: preservedTotalTurns,
+                                                                moveHistory: preservedMoveHistory,
+                                                                boardState: preservedBoardState,
+                                                                blackTimeLeft: preservedBlackTimeLeft,
+                                                                whiteTimeLeft: preservedWhiteTimeLeft,
+                                                                triggerAutoScoring: true
+                                                            }
+                                                        } as any;
+                                                        
+                                                        console.log(`[WebSocket][SinglePlayer] Sending auto-scoring action to server: totalTurns=${preservedTotalTurns}, moveHistoryLength=${preservedMoveHistory?.length || 0}`);
+                                                        handleAction(autoScoringAction).then(result => {
+                                                            console.log(`[WebSocket][SinglePlayer] Auto-scoring action sent successfully:`, result);
+                                                        }).catch(err => {
+                                                            console.error(`[WebSocket][SinglePlayer] Failed to trigger auto-scoring on server:`, err);
+                                                        });
+                                                        }
+                                                    }
+                                                } catch (err) {
+                                                    console.error(`[WebSocket][SinglePlayer] Failed to check auto-scoring from GAME_UPDATE:`, err);
+                                                }
+                                            } else {
+                                                // 일반 상태에서는 서버에서 온 게임 상태 사용
+                                                updatedGames[gameId] = game;
+                                            }
                                         }
                                 const lastMoves = Array.isArray(game.moveHistory)
                                     ? game.moveHistory.slice(Math.max(0, game.moveHistory.length - 4)).map((m: any) => ({
@@ -2565,6 +2793,8 @@ export const useApp = () => {
         allUsers,
         onlineUsers,
         liveGames,
+        singlePlayerGames,
+        towerGames,
         negotiations,
         waitingRoomChats,
         gameChats,

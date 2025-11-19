@@ -62,6 +62,7 @@ export const finalizeAnalysisResult = (baseAnalysis: types.AnalysisResult, sessi
 
 
 export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSession> => {
+    console.log(`[getGameResult] Called for game ${game.id}, gameStatus=${game.gameStatus}, isSinglePlayer=${game.isSinglePlayer}, stageId=${game.stageId}`);
     const isMissileMode = game.mode === types.GameMode.Missile || (game.mode === types.GameMode.Mix && game.settings.mixedModes?.includes(types.GameMode.Missile));
     const p1MissilesUsed = (game.settings.missileCount ?? 0) - (game.missiles_p1 ?? game.settings.missileCount ?? 0);
     const p2MissilesUsed = (game.settings.missileCount ?? 0) - (game.missiles_p2 ?? game.settings.missileCount ?? 0);
@@ -146,6 +147,7 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
         captures: game.captures ? JSON.parse(JSON.stringify(game.captures)) : null,
         baseStoneCaptures: game.baseStoneCaptures ? JSON.parse(JSON.stringify(game.baseStoneCaptures)) : null,
         hiddenStoneCaptures: game.hiddenStoneCaptures ? JSON.parse(JSON.stringify(game.hiddenStoneCaptures)) : null,
+        totalTurns: game.totalTurns,
     };
     (game as any).preservedGameState = preservedGameState;
     
@@ -193,34 +195,28 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
     
     console.log(`[getGameResult] Game state before save: boardStateSize=${game.boardState?.length || 0}, boardStateValid=${boardStateValid}, moveHistoryLength=${game.moveHistory?.length || 0}, blackTimeLeft=${game.blackTimeLeft}, whiteTimeLeft=${game.whiteTimeLeft}`);
     
-    // 계가 시작 상태를 즉시 저장하고 브로드캐스트하여 클라이언트에 계가 화면 표시
-    // 브로드캐스트 전에 boardState와 moveHistory가 반드시 포함되도록 다시 확인
-    if (preservedGameState.boardState && Array.isArray(preservedGameState.boardState) && preservedGameState.boardState.length > 0) {
-        game.boardState = preservedGameState.boardState;
-    }
-    if (preservedGameState.moveHistory && Array.isArray(preservedGameState.moveHistory) && preservedGameState.moveHistory.length > 0) {
-        game.moveHistory = preservedGameState.moveHistory;
-    }
-    if (preservedTimeInfo.blackTimeLeft !== undefined) {
-        game.blackTimeLeft = preservedTimeInfo.blackTimeLeft;
-    }
-    if (preservedTimeInfo.whiteTimeLeft !== undefined) {
-        game.whiteTimeLeft = preservedTimeInfo.whiteTimeLeft;
-    }
-    
-    console.log(`[getGameResult] Final game state before broadcast: boardStateSize=${game.boardState?.length || 0}, moveHistoryLength=${game.moveHistory?.length || 0}, blackTimeLeft=${game.blackTimeLeft}, whiteTimeLeft=${game.whiteTimeLeft}`);
-    
     await db.saveGame(game);
     const { broadcast } = await import('./socket.js');
-    // 브로드캐스트 시 boardState와 moveHistory를 명시적으로 포함
+    // 브로드캐스트 시 moveHistory, totalTurns, 시간 정보를 명시적으로 포함하되, boardState는 제외하여 대역폭 절약
+    // scoring 상태로 변경될 때는 클라이언트에서 이미 boardState를 보존하고 있으므로 전송 불필요
     const gameToBroadcast = {
         ...game,
-        boardState: game.boardState,
-        moveHistory: game.moveHistory,
-        blackTimeLeft: game.blackTimeLeft,
-        whiteTimeLeft: game.whiteTimeLeft,
+        // boardState는 제외 (클라이언트에서 보존)
+        moveHistory: preservedGameState.moveHistory || game.moveHistory,
+        totalTurns: preservedGameState.totalTurns ?? game.totalTurns,
+        blackTimeLeft: preservedTimeInfo.blackTimeLeft ?? game.blackTimeLeft,
+        whiteTimeLeft: preservedTimeInfo.whiteTimeLeft ?? game.whiteTimeLeft,
+        blackPatternStones: preservedGameState.blackPatternStones || game.blackPatternStones,
+        whitePatternStones: preservedGameState.whitePatternStones || game.whitePatternStones,
+        captures: preservedGameState.captures || game.captures,
+        baseStoneCaptures: preservedGameState.baseStoneCaptures || game.baseStoneCaptures,
+        hiddenStoneCaptures: preservedGameState.hiddenStoneCaptures || game.hiddenStoneCaptures,
     };
-    broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: gameToBroadcast } });
+    // boardState 제거하여 대역폭 절약
+    delete (gameToBroadcast as any).boardState;
+    const { broadcastToGameParticipants } = await import('./socket.js');
+    broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: gameToBroadcast } }, game);
+    console.log(`[getGameResult] Broadcasted game with preserved state (boardState excluded for bandwidth): moveHistoryLength=${gameToBroadcast.moveHistory?.length || 0}, totalTurns=${gameToBroadcast.totalTurns}`);
     console.log(`[getGameResult] Game ${game.id} set to scoring state and broadcasted (isSinglePlayer: ${game.isSinglePlayer}, stageId: ${game.stageId}, moveHistoryLength: ${game.moveHistory.length})`);
     
     // 카타고 분석 시작
@@ -277,7 +273,11 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
                     if (preservedState.whiteTimeLeft !== undefined) {
                         freshGame.whiteTimeLeft = preservedState.whiteTimeLeft;
                     }
-                    console.log(`[getGameResult] Restored time info: blackTimeLeft=${freshGame.blackTimeLeft}, whiteTimeLeft=${freshGame.whiteTimeLeft}`);
+                    // totalTurns도 복원
+                    if (preservedState.totalTurns !== undefined) {
+                        freshGame.totalTurns = preservedState.totalTurns;
+                    }
+                    console.log(`[getGameResult] Restored time info: blackTimeLeft=${freshGame.blackTimeLeft}, whiteTimeLeft=${freshGame.whiteTimeLeft}, totalTurns=${freshGame.totalTurns}`);
                 } else {
                     // 보존된 상태가 없으면 원본 게임 상태 사용
                     if (game.moveHistory && game.moveHistory.length > 0) {
@@ -294,9 +294,28 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
                 freshGame.isAnalyzing = true;
                 (freshGame as any).isScoringProtected = true;
                 (freshGame as any).preservedGameState = preservedState || (game as any).preservedGameState;
+                (freshGame as any).preservedTimeInfo = (game as any).preservedTimeInfo || savedPreservedTimeInfo || preservedTimeInfo;
                 await db.saveGame(freshGame);
                 const { broadcast } = await import('./socket.js');
-                broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
+                // 브로드캐스트 시 preservedGameState를 명시적으로 포함하되, boardState는 제외하여 대역폭 절약
+                // 클라이언트에서 이미 boardState를 보존하고 있으므로 전송 불필요
+                const gameToBroadcast = {
+                    ...freshGame,
+                    // boardState는 제외 (클라이언트에서 보존)
+                    moveHistory: preservedState?.moveHistory || freshGame.moveHistory,
+                    totalTurns: preservedState?.totalTurns ?? freshGame.totalTurns,
+                    blackTimeLeft: (freshGame as any).preservedTimeInfo?.blackTimeLeft ?? freshGame.blackTimeLeft,
+                    whiteTimeLeft: (freshGame as any).preservedTimeInfo?.whiteTimeLeft ?? freshGame.whiteTimeLeft,
+                    blackPatternStones: preservedState?.blackPatternStones || freshGame.blackPatternStones,
+                    whitePatternStones: preservedState?.whitePatternStones || freshGame.whitePatternStones,
+                    captures: preservedState?.captures || freshGame.captures,
+                    baseStoneCaptures: preservedState?.baseStoneCaptures || freshGame.baseStoneCaptures,
+                    hiddenStoneCaptures: preservedState?.hiddenStoneCaptures || freshGame.hiddenStoneCaptures,
+                };
+                // boardState 제거하여 대역폭 절약
+                delete (gameToBroadcast as any).boardState;
+                const { broadcastToGameParticipants } = await import('./socket.js');
+                broadcastToGameParticipants(freshGame.id, { type: 'GAME_UPDATE', payload: { [freshGame.id]: gameToBroadcast } }, freshGame);
             }
             
             if (freshGame.gameStatus !== 'scoring') {
@@ -319,8 +338,28 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
             freshGame.isAnalyzing = false;
             
             // 분석 결과 저장 및 브로드캐스트 (계가 화면에 표시되도록)
+            // 보존된 게임 상태를 사용하여 브로드캐스트하되, boardState는 제외하여 대역폭 절약
+            const preservedStateForBroadcast = (freshGame as any).preservedGameState || savedPreservedGameState;
+            const timeInfoForBroadcast = (freshGame as any).preservedTimeInfo || savedPreservedTimeInfo || preservedTimeInfo;
+            const gameToBroadcast = {
+                ...freshGame,
+                // boardState는 제외 (클라이언트에서 보존)
+                moveHistory: preservedStateForBroadcast?.moveHistory || freshGame.moveHistory,
+                totalTurns: preservedStateForBroadcast?.totalTurns ?? freshGame.totalTurns,
+                blackTimeLeft: timeInfoForBroadcast?.blackTimeLeft ?? freshGame.blackTimeLeft,
+                whiteTimeLeft: timeInfoForBroadcast?.whiteTimeLeft ?? freshGame.whiteTimeLeft,
+                blackPatternStones: preservedStateForBroadcast?.blackPatternStones || freshGame.blackPatternStones,
+                whitePatternStones: preservedStateForBroadcast?.whitePatternStones || freshGame.whitePatternStones,
+                captures: preservedStateForBroadcast?.captures || freshGame.captures,
+                baseStoneCaptures: preservedStateForBroadcast?.baseStoneCaptures || freshGame.baseStoneCaptures,
+                hiddenStoneCaptures: preservedStateForBroadcast?.hiddenStoneCaptures || freshGame.hiddenStoneCaptures,
+            };
+            // boardState 제거하여 대역폭 절약
+            delete (gameToBroadcast as any).boardState;
             await db.saveGame(freshGame);
-            broadcast({ type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } });
+            const { broadcastToGameParticipants } = await import('./socket.js');
+            broadcastToGameParticipants(freshGame.id, { type: 'GAME_UPDATE', payload: { [freshGame.id]: gameToBroadcast } }, freshGame);
+            console.log(`[getGameResult] Broadcasted final result with preserved state: boardStateSize=${gameToBroadcast.boardState?.length || 0}, moveHistoryLength=${gameToBroadcast.moveHistory?.length || 0}, totalTurns=${gameToBroadcast.totalTurns}`);
             console.log(`[getGameResult] Analysis complete for game ${freshGame.id}, scores: Black ${finalAnalysis.scoreDetails.black.total}, White ${finalAnalysis.scoreDetails.white.total}`);
             
             // 승자 판정: 흑의 점수가 백의 점수보다 크면 흑 승리, 같거나 작으면 백 승리 (덤 때문에)
@@ -342,8 +381,8 @@ export const getGameResult = async (game: LiveGameSession): Promise<LiveGameSess
                 console.log(`[getGameResult] Game ${failedGame.id} still in scoring state, setting isAnalyzing to false and ending game with fallback winner`);
                 failedGame.isAnalyzing = false;
                 await db.saveGame(failedGame);
-                const { broadcast } = await import('./socket.js');
-                broadcast({ type: 'GAME_UPDATE', payload: { [failedGame.id]: failedGame } });
+                const { broadcastToGameParticipants } = await import('./socket.js');
+                broadcastToGameParticipants(failedGame.id, { type: 'GAME_UPDATE', payload: { [failedGame.id]: failedGame } }, failedGame);
                 // Decide a winner randomly as a fallback
                 const winner = Math.random() < 0.5 ? types.Player.Black : types.Player.White;
                 console.log(`[getGameResult] Ending game ${failedGame.id} with fallback winner: ${winner === types.Player.Black ? 'Black' : 'White'}`);

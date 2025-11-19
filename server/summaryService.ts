@@ -370,6 +370,14 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
 
     game.statsUpdated = true;
     await db.saveGame(game);
+    
+    // summary가 설정된 후 최신 게임 상태를 다시 가져와서 브로드캐스트
+    const freshGame = await db.getLiveGame(game.id);
+    if (!freshGame) {
+        console.error(`[endGame] Could not retrieve fresh game ${game.id} after summary processing`);
+        return;
+    }
+    
     clearAiSession(game.id);
     
     // AI 처리 큐에서도 제거
@@ -382,15 +390,16 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
     // 도전의 탑, 싱글플레이, AI 게임에서는 패널티 없음
     const isNoPenaltyGame = game.isSinglePlayer || game.gameCategory === 'tower' || game.isAiGame;
     if (isEarlyTermination && !isNoPenaltyGame) {
-        await refundActionPointsForEarlyTermination(game, badMannerPlayerId);
+        await refundActionPointsForEarlyTermination(freshGame, badMannerPlayerId);
         if (badMannerPlayerId) {
-            await sendBadMannerPenaltyMail(game, badMannerPlayerId);
+            await sendBadMannerPenaltyMail(freshGame, badMannerPlayerId);
         }
     }
     
-    // 게임 종료 및 분석 결과 브로드캐스트
-    const { broadcast } = await import('./socket.js');
-    broadcast({ type: 'GAME_UPDATE', payload: { [game.id]: game } });
+    // 게임 종료 및 분석 결과 브로드캐스트 (게임 참가자에게만 전송, summary 포함)
+    const { broadcastToGameParticipants } = await import('./socket.js');
+    console.log(`[endGame] Broadcasting game ${freshGame.id} with summary: ${JSON.stringify(freshGame.summary)}`);
+    broadcastToGameParticipants(freshGame.id, { type: 'GAME_UPDATE', payload: { [freshGame.id]: freshGame } }, freshGame);
 };
 
 // 행동력 환불 함수
