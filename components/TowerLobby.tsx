@@ -192,7 +192,7 @@ const TowerLobby: React.FC = () => {
 
             {/* 보상정보 모달 */}
             {isRewardModalOpen && (
-                <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm">
+                <div className="absolute inset-0 z-50 flex items-center justify-center">
                     <div className="bg-gradient-to-br from-gray-900/95 via-amber-950/90 to-gray-800/95 border-2 border-amber-600/50 rounded-xl p-4 sm:p-6 max-w-md max-h-[80vh] overflow-y-auto shadow-2xl shadow-amber-900/50 backdrop-blur-md">
                         <div className="flex justify-between items-center mb-4">
                             <h2 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-amber-300 to-yellow-300">보상정보</h2>
@@ -213,7 +213,7 @@ const TowerLobby: React.FC = () => {
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" />50,000</span>
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아몬드" className="w-4 h-4" />300</span>
-                                                <span className="inline-flex items-center gap-1"><img src="/images/icon/item_box.png" alt="장비상자 VI" className="w-4 h-4" />장비상자6 ×3</span>
+                                                <span className="inline-flex items-center gap-1"><img src="/images/Box/EquipmentBox6.png" alt="장비상자 VI" className="w-4 h-4" />장비상자6 ×3</span>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-2">
@@ -221,7 +221,7 @@ const TowerLobby: React.FC = () => {
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" />30,000</span>
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아몬드" className="w-4 h-4" />200</span>
-                                                <span className="inline-flex items-center gap-1"><img src="/images/icon/item_box.png" alt="장비상자 VI" className="w-4 h-4" />장비상자6 ×2</span>
+                                                <span className="inline-flex items-center gap-1"><img src="/images/Box/EquipmentBox6.png" alt="장비상자 VI" className="w-4 h-4" />장비상자6 ×2</span>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-2">
@@ -229,7 +229,7 @@ const TowerLobby: React.FC = () => {
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" />20,000</span>
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아몬드" className="w-4 h-4" />150</span>
-                                                <span className="inline-flex items-center gap-1"><img src="/images/icon/item_box.png" alt="장비상자 VI" className="w-4 h-4" />장비상자6 ×1</span>
+                                                <span className="inline-flex items-center gap-1"><img src="/images/Box/EquipmentBox6.png" alt="장비상자 VI" className="w-4 h-4" />장비상자6 ×1</span>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-2">
@@ -237,7 +237,7 @@ const TowerLobby: React.FC = () => {
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" />10,000</span>
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아몬드" className="w-4 h-4" />100</span>
-                                                <span className="inline-flex items-center gap-1"><img src="/images/icon/item_box.png" alt="장비상자 V" className="w-4 h-4" />장비상자5 ×1</span>
+                                                <span className="inline-flex items-center gap-1"><img src="/images/Box/EquipmentBox5.png" alt="장비상자 V" className="w-4 h-4" />장비상자5 ×1</span>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-2">
@@ -245,7 +245,7 @@ const TowerLobby: React.FC = () => {
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" />7,500</span>
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아몬드" className="w-4 h-4" />75</span>
-                                                <span className="inline-flex items-center gap-1"><img src="/images/icon/item_box.png" alt="장비상자 IV" className="w-4 h-4" />장비상자4 ×2</span>
+                                                <span className="inline-flex items-center gap-1"><img src="/images/Box/EquipmentBox4.png" alt="장비상자 IV" className="w-4 h-4" />장비상자4 ×2</span>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-2">
@@ -253,7 +253,7 @@ const TowerLobby: React.FC = () => {
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" />5,000</span>
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아몬드" className="w-4 h-4" />50</span>
-                                                <span className="inline-flex items-center gap-1"><img src="/images/icon/item_box.png" alt="장비상자 IV" className="w-4 h-4" />장비상자4 ×1</span>
+                                                <span className="inline-flex items-center gap-1"><img src="/images/Box/EquipmentBox4.png" alt="장비상자 IV" className="w-4 h-4" />장비상자4 ×1</span>
                                             </div>
                                         </div>
                                         <div className="flex items-start gap-2">
@@ -261,7 +261,7 @@ const TowerLobby: React.FC = () => {
                                             <div className="flex items-center gap-3 flex-wrap">
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Gold.png" alt="골드" className="w-4 h-4" />1,000</span>
                                                 <span className="inline-flex items-center gap-1"><img src="/images/icon/Zem.png" alt="다이아몬드" className="w-4 h-4" />25</span>
-                                                <span className="inline-flex items-center gap-1"><img src="/images/icon/item_box.png" alt="장비상자 III" className="w-4 h-4" />장비상자3 ×1</span>
+                                                <span className="inline-flex items-center gap-1"><img src="/images/Box/EquipmentBox3.png" alt="장비상자 III" className="w-4 h-4" />장비상자3 ×1</span>
                                             </div>
                                         </div>
                                         <p className="text-amber-200/80 mt-2 text-[10px]">* 순위권 밖: 1층 이상 클리어한 사용자</p>

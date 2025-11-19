@@ -354,16 +354,12 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
                 
                 <div className={`flex flex-row gap-1.5 sm:gap-2 overflow-hidden flex-1 min-h-0`}>
                     {/* Left Panel: 경기 결과 */}
-                    <div className={`w-1/2 bg-gray-900/50 ${isMobile ? 'p-1.5' : 'p-2'} rounded-lg overflow-y-auto flex flex-col`}>
+                    <div className={`w-1/2 bg-gray-900/50 ${isMobile ? 'p-1.5' : 'p-2'} rounded-lg overflow-y-auto flex flex-col sp-summary-left-panel`}>
                         <h2 className={`${isMobile ? 'text-xs' : 'text-base'} font-bold text-center text-gray-200 mb-1 sm:mb-2 border-b border-gray-700 pb-0.5 sm:pb-1 flex-shrink-0`} style={{ fontSize: isMobile ? `${11 * mobileTextScale}px` : '15px' }}>경기 결과</h2>
                         <div className="flex-1 min-h-0 flex flex-col gap-1.5">
                             {/* 경기 정보 */}
                             {(analysisResult || (isEnded && session.winner !== null)) && (
                                 <div className={`${isMobile ? 'p-1' : 'p-1.5'} bg-gray-800/50 rounded-lg space-y-0.5 flex-shrink-0`}>
-                                    <div className="flex justify-between items-center" style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>
-                                        <span className="text-gray-400">층:</span>
-                                        <span className="text-gray-200 font-semibold">{currentFloor}층</span>
-                                    </div>
                                     <div className="flex justify-between items-center" style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>
                                         <span className="text-gray-400">총 걸린 시간:</span>
                                         <span className="text-gray-200 font-semibold">{gameDuration}</span>
@@ -453,47 +449,63 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
                             )}
                             
                             {/* 보상 박스들 */}
-                            {summary && (
-                                <div className="flex gap-1.5 justify-center items-stretch flex-wrap">
-                                    {/* Gold Reward */}
-                                    {summary.gold && summary.gold > 0 && (
-                                        <div className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-2 border-yellow-500/50 rounded-lg flex flex-col items-center justify-center ${isMobile ? 'p-1' : 'p-2'} shadow-lg`}>
-                                            <img src="/images/icon/Gold.png" alt="골드" className={`${isMobile ? 'w-6 h-6' : 'w-10 h-10'} mb-0.5`} />
-                                            <p className="font-bold text-yellow-300 text-center" style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : '11px' }}>
-                                                {summary.gold.toLocaleString()}
-                                            </p>
-                                        </div>
-                                    )}
-                                    {/* XP Reward */}
-                                    {summary.xp && summary.xp.change > 0 && (
-                                        <div className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} bg-gradient-to-br from-green-600/30 to-green-800/30 border-2 border-green-500/50 rounded-lg flex flex-col items-center justify-center ${isMobile ? 'p-1' : 'p-2'} shadow-lg`}>
-                                            <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-bold text-green-300 mb-0.5`} style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>전략</p>
-                                            <p className="font-bold text-green-300 text-center" style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : '11px' }}>
-                                                +{summary.xp.change} XP
-                                            </p>
-                                        </div>
-                                    )}
-                                    {/* Item Rewards */}
-                                    {summary.items && summary.items.length > 0 && summary.items.slice(0, 2).map((item, idx) => (
-                                        <div key={item.id} className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} bg-gradient-to-br from-purple-600/30 to-purple-800/30 border-2 border-purple-500/50 rounded-lg flex flex-col items-center justify-center ${isMobile ? 'p-1' : 'p-2'} shadow-lg`}>
-                                            {item.image && (
-                                                <img 
-                                                    src={item.image} 
-                                                    alt={item.name} 
-                                                    className={`${isMobile ? 'w-8 h-8' : 'w-12 h-12'} mb-0.5 object-contain`}
-                                                />
+                            {summary ? (
+                                <>
+                                    {(summary.gold > 0 || (summary.xp && summary.xp.change > 0) || (summary.items && summary.items.length > 0)) ? (
+                                        <div className="flex gap-1.5 justify-center items-stretch flex-wrap">
+                                            {/* Gold Reward */}
+                                            {summary.gold > 0 && (
+                                                <div className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-2 border-yellow-500/50 rounded-lg flex flex-col items-center justify-center ${isMobile ? 'p-1' : 'p-2'} shadow-lg`}>
+                                                    <img src="/images/icon/Gold.png" alt="골드" className={`${isMobile ? 'w-6 h-6' : 'w-10 h-10'} mb-0.5`} />
+                                                    <p className="font-bold text-yellow-300 text-center" style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : '11px' }}>
+                                                        {summary.gold.toLocaleString()}
+                                                    </p>
+                                                </div>
                                             )}
-                                            <p className="font-semibold text-purple-300 text-center leading-tight" style={{ fontSize: isMobile ? `${8 * mobileTextScale}px` : '10px' }}>
-                                                {item.name}
+                                            {/* XP Reward (박스 형태) */}
+                                            {summary.xp && summary.xp.change > 0 && (
+                                                <div className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} bg-gradient-to-br from-green-600/30 to-green-800/30 border-2 border-green-500/50 rounded-lg flex flex-col items-center justify-center ${isMobile ? 'p-1' : 'p-2'} shadow-lg`}>
+                                                    <p className={`${isMobile ? 'text-xs' : 'text-sm'} font-bold text-green-300 mb-0.5`} style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>전략</p>
+                                                    <p className="font-bold text-green-300 text-center" style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : '11px' }}>
+                                                        +{summary.xp.change} XP
+                                                    </p>
+                                                </div>
+                                            )}
+                                            {/* Item Rewards */}
+                                            {summary.items && summary.items.length > 0 && summary.items.slice(0, 2).map((item, idx) => (
+                                                <div key={item.id || idx} className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} bg-gradient-to-br from-purple-600/30 to-purple-800/30 border-2 border-purple-500/50 rounded-lg flex flex-col items-center justify-center ${isMobile ? 'p-1' : 'p-2'} shadow-lg`}>
+                                                    {item.image && (
+                                                        <img 
+                                                            src={item.image} 
+                                                            alt={item.name} 
+                                                            className={`${isMobile ? 'w-8 h-8' : 'w-12 h-12'} mb-0.5 object-contain`}
+                                                        />
+                                                    )}
+                                                    <p className="font-semibold text-purple-300 text-center leading-tight" style={{ fontSize: isMobile ? `${8 * mobileTextScale}px` : '10px' }}>
+                                                        {item.name}
+                                                    </p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center justify-center py-4">
+                                            <p className="text-gray-400 text-center" style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>
+                                                보상이 없습니다.
                                             </p>
                                         </div>
-                                    ))}
+                                    )}
+                                    {summary.items && summary.items.length > 2 && (
+                                        <p className="text-center text-gray-400" style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : '11px' }}>
+                                            외 {summary.items.length - 2}개 아이템
+                                        </p>
+                                    )}
+                                </>
+                            ) : (
+                                <div className="flex items-center justify-center py-4">
+                                    <p className="text-gray-400 text-center" style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>
+                                        {isScoring ? '계가 중...' : '보상 정보가 없습니다.'}
+                                    </p>
                                 </div>
-                            )}
-                            {isWinner && summary?.items && summary.items.length > 2 && (
-                                <p className="text-center text-gray-400" style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : '11px' }}>
-                                    외 {summary.items.length - 2}개 아이템
-                                </p>
                             )}
                         </div>
                     </div>
@@ -501,6 +513,16 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
                  
                 {/* Buttons */}
                 <div className={`mt-1.5 sm:mt-2 flex-shrink-0 grid ${isMobile ? 'grid-cols-2 gap-1.5' : 'grid-cols-4 gap-1.5'}`}>
+                    <Button
+                        onClick={() => {
+                            // 확인: 모달 닫기
+                            handleClose(session, onClose);
+                        }}
+                        colorScheme="none"
+                        className={`w-full justify-center ${isMobile ? '!py-1.5 !text-xs' : '!py-2 !text-sm'} rounded-xl border border-blue-400/50 bg-gradient-to-r from-blue-500/90 via-cyan-500/90 to-teal-500/90 text-white shadow-[0_12px_32px_-18px_rgba(59,130,246,0.85)] hover:from-blue-400 hover:to-teal-400`}
+                    >
+                        확인
+                    </Button>
                     <Button
                         onClick={handleNextFloor}
                         colorScheme="none"
@@ -524,13 +546,6 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
                         disabled={isProcessing}
                     >
                         나가기
-                    </Button>
-                    <Button
-                        onClick={() => handleClose(session, onClose)}
-                        colorScheme="none"
-                        className={`w-full justify-center ${isMobile ? '!py-1.5 !text-xs' : '!py-2 !text-sm'} rounded-xl border border-emerald-400/50 bg-gradient-to-r from-emerald-500/90 via-teal-500/90 to-cyan-500/90 text-white shadow-[0_12px_32px_-18px_rgba(16,185,129,0.85)] hover:from-emerald-400 hover:to-cyan-400`}
-                    >
-                        확인
                     </Button>
                 </div>
             </div>

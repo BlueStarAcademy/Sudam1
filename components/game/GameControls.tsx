@@ -393,7 +393,45 @@ const GameControls: React.FC<GameControlsProps> = (props) => {
     const isGameActive = ACTIVE_GAME_STATUSES.includes(gameStatus);
     const isPreGame = !isGameActive && !isGameEnded;
     const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === mode);
-    const handlePass = () => { if (isMyTurn && !isSpectator && gameStatus === 'playing') onAction({ type: 'PASS_TURN', payload: { gameId } }); };
+    const handlePass = () => { 
+        if (isMyTurn && !isSpectator && gameStatus === 'playing') {
+            // PVE 게임은 클라이언트에서 처리, PVP 게임은 서버로 전송
+            const isPVEGame = session.isSinglePlayer || session.gameCategory === 'tower' || session.gameCategory === 'singleplayer' || session.isAiGame;
+            if (isPVEGame) {
+                // PVE 게임: 클라이언트에서 패스 처리 및 계가 요청
+                const currentPassCount = (session.passCount || 0) + 1;
+                if (currentPassCount >= 2) {
+                    // 두 번 연속 패스 시 계가 요청
+                    onAction({ 
+                        type: 'REQUEST_SCORING', 
+                        payload: { 
+                            gameId, 
+                            boardState: session.boardState, 
+                            moveHistory: session.moveHistory || [], 
+                            settings: session.settings 
+                        } 
+                    } as any);
+                } else {
+                    // 첫 번째 패스: 클라이언트에서 처리
+                    onAction({ 
+                        type: session.gameCategory === 'tower' ? 'TOWER_CLIENT_MOVE' : 'SINGLE_PLAYER_CLIENT_MOVE',
+                        payload: {
+                            gameId,
+                            x: -1,
+                            y: -1,
+                            newBoardState: session.boardState,
+                            capturedStones: [],
+                            newKoInfo: session.koInfo,
+                            isPass: true
+                        }
+                    } as any);
+                }
+            } else {
+                // PVP 게임: 서버로 전송
+                onAction({ type: 'PASS_TURN', payload: { gameId } }); 
+            }
+        }
+    };
     const handleResign = () => { if (!isSpectator && !session.isAiGame && isGameActive) setConfirmModalType('resign'); };
     const handleUseItem = (item: 'hidden' | 'scan' | 'missile') => { if(gameStatus !== 'playing') return; const actionType = item === 'hidden' ? 'START_HIDDEN_PLACEMENT' : (item === 'scan' ? 'START_SCANNING' : 'START_MISSILE_SELECTION'); onAction({ type: actionType, payload: { gameId } }); };
 

@@ -22,10 +22,10 @@ const gradeStyles: Record<ItemGrade, { bg: string, text: string, shadow: string,
 };
 
 const gradeBorderStyles: Partial<Record<ItemGrade, string>> = {
-    rare: 'spinning-border-rare',
-    epic: 'spinning-border-epic',
-    legendary: 'spinning-border-legendary',
-    mythic: 'spinning-border-mythic',
+    rare: 'border-pulse-rare',
+    epic: 'border-pulse-epic',
+    legendary: 'border-pulse-legendary',
+    mythic: 'border-pulse-mythic',
 };
 
 
@@ -100,8 +100,7 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
                         
                         return (
                             <div key={index} className="relative aspect-square rounded-md overflow-visible" title={titleText}>
-                                {borderClass && <div className={`absolute -inset-0.5 rounded-md ${borderClass}`}></div>}
-                                <div className={`relative w-full h-full rounded-md flex items-center justify-center border-2 border-black/20 ${styles.bg} ${isHighGrade ? 'item-reveal-animation' : ''} ${glowClass}`}>
+                                <div className={`relative w-full h-full rounded-md flex items-center justify-center ${borderClass || 'border-2 border-black/20'} ${styles.bg} ${isHighGrade ? 'item-reveal-animation' : ''} ${glowClass}`}>
                                     {styles.background && <img src={styles.background} alt={itemGrade} className="absolute inset-0 w-full h-full object-cover rounded-sm" />}
                                     {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-1" />}
                                     

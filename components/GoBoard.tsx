@@ -774,7 +774,13 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
     };
 
     return (
-        <div className={`relative w-full h-full shadow-2xl rounded-lg overflow-hidden p-0 border-4 ${isItemModeActive ? 'prism-border' : 'border-gray-800'}`}>
+        <div 
+            className={`relative w-full h-full shadow-2xl rounded-lg overflow-hidden p-0 border-4 bg-transparent go-board-panel ${isItemModeActive ? 'prism-border' : 'border-gray-800'}`}
+            style={{ 
+                backgroundImage: 'none', 
+                backgroundColor: 'transparent',
+            }}
+        >
             <svg
                 ref={svgRef}
                 viewBox={`0 0 ${boardSizePx} ${boardSizePx}`}

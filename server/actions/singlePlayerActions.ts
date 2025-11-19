@@ -257,13 +257,17 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
         }
         case 'CONFIRM_SINGLE_PLAYER_GAME_START': {
             const { gameId } = payload;
+            console.log(`[handleSinglePlayerAction] CONFIRM_SINGLE_PLAYER_GAME_START received:`, { gameId, userId: user.id });
             const game = await db.getLiveGame(gameId);
             if (!game || !game.isSinglePlayer || !game.stageId) {
+                console.error(`[handleSinglePlayerAction] CONFIRM_SINGLE_PLAYER_GAME_START - Invalid game:`, { gameId, hasGame: !!game, isSinglePlayer: game?.isSinglePlayer, stageId: game?.stageId });
                 return { error: 'Invalid single player game.' };
             }
             if (game.gameStatus !== 'pending') {
+                console.error(`[handleSinglePlayerAction] CONFIRM_SINGLE_PLAYER_GAME_START - Game not pending:`, { gameId, gameStatus: game.gameStatus });
                 return { error: '게임이 이미 시작되었거나 시작할 수 없는 상태입니다.' };
             }
+            console.log(`[handleSinglePlayerAction] CONFIRM_SINGLE_PLAYER_GAME_START - Starting game:`, { gameId, currentStatus: game.gameStatus });
 
             // 게임 상태를 playing으로 변경하고 시간 시작
             const now = Date.now();
@@ -312,7 +316,9 @@ export const handleSinglePlayerAction = async (volatileState: VolatileState, act
             const { broadcastToGameParticipants } = await import('../socket.js');
             broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
 
-            return { clientResponse: { success: true, gameId: game.id, game } };
+            console.log(`[handleSinglePlayerAction] CONFIRM_SINGLE_PLAYER_GAME_START - Game started successfully:`, { gameId: game.id, gameStatus: game.gameStatus });
+            const gameCopy = JSON.parse(JSON.stringify(game));
+            return { clientResponse: { success: true, gameId: game.id, game: gameCopy } };
         }
         case 'SINGLE_PLAYER_REFRESH_PLACEMENT': {
             const { gameId } = payload;

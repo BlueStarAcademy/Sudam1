@@ -618,6 +618,148 @@ export async function updateWeeklyCompetitorsIfNeeded(user: types.User, allUsers
     return updatedUser;
 }
 
+// 1회성: 모든 유저의 경쟁상대 봇에 3일치 점수 부여 (3~150점)
+export async function grantThreeDaysBotScores(): Promise<void> {
+    console.log(`[OneTimeGrant] Granting 3 days of bot scores (3-150 points) to all users...`);
+    const allUsers = await db.getAllUsers();
+    const now = Date.now();
+    let updatedCount = 0;
+    let totalBotsGranted = 0;
+    
+    for (const user of allUsers) {
+        if (!user.weeklyCompetitors || user.weeklyCompetitors.length === 0) {
+            continue;
+        }
+        
+        const updatedUser = JSON.parse(JSON.stringify(user));
+        if (!updatedUser.weeklyCompetitorsBotScores) {
+            updatedUser.weeklyCompetitorsBotScores = {};
+        }
+        
+        let hasChanges = false;
+        const todayStart = getStartOfDayKST(now);
+        
+        // 주간 경쟁상대가 업데이트된 날짜 계산
+        const competitorsUpdateDay = user.lastWeeklyCompetitorsUpdate 
+            ? getStartOfDayKST(user.lastWeeklyCompetitorsUpdate)
+            : todayStart;
+        
+        // 클라이언트에서 생성되는 봇 ID 형식: bot-${currentKstDayStart}-${i}
+        // currentKstDayStart는 현재 날짜의 KST 기준 날짜 시작 타임스탬프
+        // 클라이언트와 동일한 방식으로 계산: new Date(now + KST_OFFSET)의 날짜 시작
+        const KST_OFFSET = 9 * 60 * 60 * 1000;
+        
+        // 모든 가능한 봇 ID에 대해 점수 부여 (최대 16명의 경쟁상대이므로 0~15까지)
+        const NUM_COMPETITORS = 16;
+        const actualUserCount = updatedUser.weeklyCompetitors.filter(c => !c.id.startsWith('bot-')).length;
+        const botsNeeded = Math.max(0, NUM_COMPETITORS - actualUserCount);
+        
+        // 주간 경쟁상대가 업데이트된 주의 모든 날짜에 대해 봇 점수 부여
+        // 주간 경쟁상대는 월요일 0시에 업데이트되므로, 월요일부터 일요일까지의 모든 날짜에 대해 처리
+        const weekStart = competitorsUpdateDay;
+        for (let dayOffset = 0; dayOffset < 7; dayOffset++) {
+            const targetDay = weekStart + (dayOffset * 24 * 60 * 60 * 1000);
+            // 클라이언트와 동일한 방식으로 KST 날짜 시작 타임스탬프 계산
+            // 클라이언트: new Date(now + KST_OFFSET)의 날짜 시작
+            const targetKstNow = new Date(targetDay + KST_OFFSET);
+            const targetDayStartKST = new Date(targetKstNow.getFullYear(), targetKstNow.getMonth(), targetKstNow.getDate()).getTime();
+            
+            // 각 날짜마다 필요한 만큼의 봇 ID 생성 (최대 16명이므로 0~15)
+            for (let i = 0; i < NUM_COMPETITORS; i++) {
+                const botId = `bot-${targetDayStartKST}-${i}`;
+                const botScoreData = user.weeklyCompetitorsBotScores?.[botId];
+                const currentScore = botScoreData?.score || 0;
+                
+                // 이미 점수가 있으면 스킵 (중복 부여 방지)
+                if (currentScore > 0) {
+                    continue;
+                }
+                
+                let totalGain = 0;
+                
+                // 3일치 점수 추가 (경쟁상대 업데이트일 다음날부터 3일)
+                for (let scoreDayOffset = 1; scoreDayOffset <= 3; scoreDayOffset++) {
+                    const targetDate = new Date(competitorsUpdateDay + (scoreDayOffset * 24 * 60 * 60 * 1000));
+                    const kstYear = getKSTFullYear(targetDate.getTime());
+                    const kstMonth = getKSTMonth(targetDate.getTime()) + 1; // 0-based to 1-based
+                    const kstDate = getKSTDate_UTC(targetDate.getTime());
+                    const dateStr = `${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDate).padStart(2, '0')}`;
+                    const seedStr = `${botId}-${dateStr}`;
+                    let seed = 0;
+                    for (let j = 0; j < seedStr.length; j++) {
+                        seed = ((seed << 5) - seed) + seedStr.charCodeAt(j);
+                        seed = seed & seed; // Convert to 32bit integer
+                    }
+                    const randomVal = Math.abs(Math.sin(seed)) * 10000;
+                    const dailyGain = Math.floor((randomVal % 50)) + 1; // 1-50
+                    totalGain += dailyGain;
+                }
+                
+                // 어제 점수는 0으로 설정 (변화 없음으로 표시)
+                updatedUser.weeklyCompetitorsBotScores[botId] = {
+                    score: totalGain, // 3~150점
+                    lastUpdate: now,
+                    yesterdayScore: 0
+                };
+                
+                hasChanges = true;
+                totalBotsGranted++;
+                console.log(`[OneTimeGrant] Granted ${totalGain} points to bot ${botId} for user ${user.nickname}`);
+            }
+        }
+        
+        // weeklyCompetitors에 이미 있는 봇들도 처리 (혹시 모를 경우를 대비)
+        for (const competitor of updatedUser.weeklyCompetitors) {
+            if (competitor.id.startsWith('bot-')) {
+                const botScoreData = user.weeklyCompetitorsBotScores?.[competitor.id];
+                const currentScore = botScoreData?.score || 0;
+                
+                // 이미 점수가 있으면 스킵 (중복 부여 방지)
+                if (currentScore > 0) {
+                    continue;
+                }
+                
+                let totalGain = 0;
+                
+                // 3일치 점수 추가 (각 날짜마다 1~50점)
+                for (let dayOffset = 1; dayOffset <= 3; dayOffset++) {
+                    const targetDate = new Date(competitorsUpdateDay + (dayOffset * 24 * 60 * 60 * 1000));
+                    const kstYear = getKSTFullYear(targetDate.getTime());
+                    const kstMonth = getKSTMonth(targetDate.getTime()) + 1; // 0-based to 1-based
+                    const kstDate = getKSTDate_UTC(targetDate.getTime());
+                    const dateStr = `${kstYear}-${String(kstMonth).padStart(2, '0')}-${String(kstDate).padStart(2, '0')}`;
+                    const seedStr = `${competitor.id}-${dateStr}`;
+                    let seed = 0;
+                    for (let i = 0; i < seedStr.length; i++) {
+                        seed = ((seed << 5) - seed) + seedStr.charCodeAt(i);
+                        seed = seed & seed; // Convert to 32bit integer
+                    }
+                    const randomVal = Math.abs(Math.sin(seed)) * 10000;
+                    const dailyGain = Math.floor((randomVal % 50)) + 1; // 1-50
+                    totalGain += dailyGain;
+                }
+                
+                // 어제 점수는 0으로 설정 (변화 없음으로 표시)
+                updatedUser.weeklyCompetitorsBotScores[competitor.id] = {
+                    score: totalGain, // 3~150점
+                    lastUpdate: now,
+                    yesterdayScore: 0
+                };
+                
+                hasChanges = true;
+            }
+        }
+        
+        if (hasChanges) {
+            await db.updateUser(updatedUser);
+            updatedCount++;
+            console.log(`[OneTimeGrant] Updated user ${user.nickname}: granted scores to ${totalBotsGranted} bots`);
+        }
+    }
+    
+    console.log(`[OneTimeGrant] Granted 3 days of bot scores to ${updatedCount} users. Total bots granted: ${totalBotsGranted}`);
+}
+
 // 봇의 리그 점수를 하루에 한번 증가시키는 함수
 export async function updateBotLeagueScores(user: types.User): Promise<types.User> {
     if (!user.weeklyCompetitors || user.weeklyCompetitors.length === 0) {
@@ -786,7 +928,8 @@ export async function processDailyRankings(): Promise<void> {
     
     const allUsers = await db.getAllUsers();
     
-    // 전략바둑 랭킹 계산 (누적 점수 기준, 10판 이상 PVP 필수)
+    // 전략바둑 랭킹 계산 (1200에서의 차이 기준, 10판 이상 PVP 필수)
+    // cumulativeRankingScore는 이미 1200에서의 차이값으로 저장되어 있음
     const strategicRankings = allUsers
         .filter(user => {
             if (!user || !user.id) return false;
@@ -803,16 +946,17 @@ export async function processDailyRankings(): Promise<void> {
         })
         .map(user => ({
             user,
-            score: user.cumulativeRankingScore?.['standard'] || 0
+            score: user.cumulativeRankingScore?.['standard'] || 0 // 이미 1200에서의 차이값
         }))
-        .sort((a, b) => b.score - a.score)
+        .sort((a, b) => b.score - a.score) // 높은 차이값이 위로 (양수가 위로, 음수가 아래로)
         .map((entry, index) => ({
             userId: entry.user.id,
             rank: index + 1,
             score: entry.score
         }));
     
-    // 놀이바둑 랭킹 계산 (누적 점수 기준, 10판 이상 PVP 필수)
+    // 놀이바둑 랭킹 계산 (1200에서의 차이 기준, 10판 이상 PVP 필수)
+    // cumulativeRankingScore는 이미 1200에서의 차이값으로 저장되어 있음
     const playfulRankings = allUsers
         .filter(user => {
             if (!user || !user.id) return false;
@@ -829,9 +973,9 @@ export async function processDailyRankings(): Promise<void> {
         })
         .map(user => ({
             user,
-            score: user.cumulativeRankingScore?.['playful'] || 0
+            score: user.cumulativeRankingScore?.['playful'] || 0 // 이미 1200에서의 차이값
         }))
-        .sort((a, b) => b.score - a.score)
+        .sort((a, b) => b.score - a.score) // 높은 차이값이 위로 (양수가 위로, 음수가 아래로)
         .map((entry, index) => ({
             userId: entry.user.id,
             rank: index + 1,

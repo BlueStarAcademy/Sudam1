@@ -41,14 +41,14 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ user, current
         setEditedUser(prev => ({ ...prev, [name]: checked }));
     };
 
-    const handleStatChange = (mode: GameMode, value: string) => {
+    const handleCumulativeRankingScoreChange = (key: 'standard' | 'playful', value: string) => {
         setEditedUser(prev => {
-            const newStats = { ...(prev.stats || {}) };
-            if (!newStats[mode]) {
-                newStats[mode] = { wins: 0, losses: 0, rankingScore: 1200 };
+            const newCumulativeRankingScore = { ...(prev.cumulativeRankingScore || {}) };
+            const numValue = value === '' ? 0 : Number(value);
+            if (!isNaN(numValue)) {
+                newCumulativeRankingScore[key] = numValue;
             }
-            newStats[mode]!.rankingScore = Number(value);
-            return { ...prev, stats: newStats };
+            return { ...prev, cumulativeRankingScore: newCumulativeRankingScore };
         });
     };
 
@@ -107,16 +107,6 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ user, current
         }
     };
 
-    const renderStatInputs = (modes: ReadonlyArray<{ mode: GameMode }>) => (
-        <div className="space-y-2">
-            {modes.map(({ mode }) => (
-                <div key={mode} className="grid grid-cols-2 gap-2 items-center">
-                    <label className="text-secondary col-span-1">{mode}</label>
-                    <input type="number" value={editedUser.stats?.[mode]?.rankingScore ?? 1200} onChange={e => handleStatChange(mode, e.target.value)} className="bg-tertiary p-1 rounded col-span-1" />
-                </div>
-            ))}
-        </div>
-    );
     
     type QuestCategoryPanelProps = {
         title: string;
@@ -201,13 +191,37 @@ const UserManagementModal: React.FC<UserManagementModalProps> = ({ user, current
                         </div>
                     )}
                     {activeTab === 'strategic' && (
-                         <div className="grid grid-cols-2 gap-2 items-center font-bold text-sm mb-2 px-1"><span className="col-span-1">게임 모드</span><span>랭킹 점수</span></div>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2 items-center">
+                                <label className="text-secondary">전략바둑 통합 랭킹 점수</label>
+                                <input 
+                                    type="number" 
+                                    value={editedUser.cumulativeRankingScore?.['standard'] ?? 0} 
+                                    onChange={e => handleCumulativeRankingScoreChange('standard', e.target.value)} 
+                                    className="bg-tertiary p-1 rounded" 
+                                />
+                            </div>
+                            <p className="text-xs text-gray-400">
+                                전략바둑의 모든 게임 모드(표준, 베이스, 히든, 스피드, 믹스)가 통합된 랭킹 점수입니다.
+                            </p>
+                        </div>
                     )}
-                    {activeTab === 'strategic' && renderStatInputs(SPECIAL_GAME_MODES)}
                     {activeTab === 'playful' && (
-                         <div className="grid grid-cols-2 gap-2 items-center font-bold text-sm mb-2 px-1"><span className="col-span-1">게임 모드</span><span>랭킹 점수</span></div>
+                        <div className="space-y-3">
+                            <div className="grid grid-cols-2 gap-2 items-center">
+                                <label className="text-secondary">놀이바둑 통합 랭킹 점수</label>
+                                <input 
+                                    type="number" 
+                                    value={editedUser.cumulativeRankingScore?.['playful'] ?? 0} 
+                                    onChange={e => handleCumulativeRankingScoreChange('playful', e.target.value)} 
+                                    className="bg-tertiary p-1 rounded" 
+                                />
+                            </div>
+                            <p className="text-xs text-gray-400">
+                                놀이바둑의 모든 게임 모드(주사위, 도둑, 알까기, 컬링, 오목, 땀옥)가 통합된 랭킹 점수입니다.
+                            </p>
+                        </div>
                     )}
-                    {activeTab === 'playful' && renderStatInputs(PLAYFUL_GAME_MODES)}
                     {activeTab === 'quests' && (
                         <div className="space-y-4">
                            <QuestCategoryPanel title="일일 퀘스트" questType="daily" questData={editedUser.quests?.daily} />

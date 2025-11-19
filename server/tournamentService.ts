@@ -771,10 +771,10 @@ export const startNextRound = (state: TournamentState, user: User) => {
             userPlayer.stats = JSON.parse(JSON.stringify(userPlayer.originalStats));
         }
         
-        // round_complete 상태에서 startNextRound가 호출되면 항상 컨디션을 새롭게 부여
-        // (다음 회차로 넘어가므로 컨디션을 새로 부여해야 함)
+        // round_complete 상태에서 startNextRound가 호출되면: 다음 경기 버튼을 눌렀으므로 모든 플레이어의 컨디션을 랜덤 부여
+        // (회복제로 조절한 컨디션은 다음 경기 버튼을 누르면 초기화되고 새로 부여됨)
         if (isComingFromRoundComplete) {
-            // 모든 플레이어의 컨디션을 새롭게 부여 (40~100 사이 랜덤)
+            // 모든 플레이어의 컨디션을 랜덤 부여 (40-100)
             state.players.forEach(p => {
                 p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
                 // 모든 플레이어의 능력치는 originalStats로 리셋 (토너먼트 생성 시점의 고정 능력치)
@@ -846,15 +846,11 @@ export const startNextRound = (state: TournamentState, user: User) => {
     );
     
     if (isComingFromRoundComplete) {
-        // round_complete에서 다음 라운드로 넘어갈 때: 컨디션은 유지 (회복제로 변경된 컨디션도 유지)
-        // 단, 컨디션이 부여되지 않았거나 1000(초기값)이거나 유효 범위를 벗어난 경우에만 새로 부여
+        // round_complete에서 다음 라운드로 넘어갈 때: 다음 경기 버튼을 눌렀으므로 모든 플레이어의 컨디션을 랜덤 부여
+        // (회복제로 조절한 컨디션은 다음 경기 버튼을 누르면 초기화되고 새로 부여됨)
         state.players.forEach(p => {
-            // 컨디션이 부여되지 않았거나 1000(초기값)이거나 유효 범위(40-100)를 벗어난 경우에만 새로 부여
-            // 1000은 경기 완료 후 초기화된 값이므로 새로 부여해야 함
-            if (p.condition === undefined || p.condition === null || p.condition === 1000 || 
-                p.condition < 40 || p.condition > 100) {
-                p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
-            }
+            // 모든 플레이어의 컨디션을 랜덤 부여 (40-100)
+            p.condition = Math.floor(Math.random() * 61) + 40; // 40-100
             // 모든 플레이어의 능력치는 originalStats로 리셋 (토너먼트 생성 시점의 고정 능력치)
             if (p.originalStats) {
                 p.stats = JSON.parse(JSON.stringify(p.originalStats));
@@ -862,6 +858,7 @@ export const startNextRound = (state: TournamentState, user: User) => {
         });
     } else if (!hasConditionAlreadyAssigned) {
         // bracket_ready 상태에서 컨디션이 부여되지 않은 경우: 컨디션 부여
+        // (뒤로가기 후 다시 들어온 경우 등)
         state.players.forEach(p => {
             if (p.condition === undefined || p.condition === null || p.condition === 1000 || 
                 p.condition < 40 || p.condition > 100) {

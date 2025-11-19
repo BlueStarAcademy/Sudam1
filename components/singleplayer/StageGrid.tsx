@@ -31,10 +31,23 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
     }, [currentUser]);
 
     const handleStageEnter = (stageId: string) => {
-        handlers.handleAction({
-            type: 'START_SINGLE_PLAYER_GAME',
-            payload: { stageId }
-        });
+        console.log('[StageGrid] handleStageEnter called with stageId:', stageId);
+        if (!handlers || !handlers.handleAction) {
+            console.error('[StageGrid] handlers or handleAction is undefined');
+            return;
+        }
+        try {
+            handlers.handleAction({
+                type: 'START_SINGLE_PLAYER_GAME',
+                payload: { stageId }
+            }).then(result => {
+                console.log('[StageGrid] handleAction completed:', result);
+            }).catch(err => {
+                console.error('[StageGrid] handleAction failed:', err);
+            });
+        } catch (err) {
+            console.error('[StageGrid] handleAction exception:', err);
+        }
     };
 
     const isStageCleared = (stageId: string) => {
@@ -42,8 +55,17 @@ const StageGrid: React.FC<StageGridProps> = ({ selectedClass, currentUser }) => 
     };
 
     const isStageLocked = (stageIndex: number) => {
+        // 관리자는 모든 스테이지에 접근 가능
+        if (currentUser.isAdmin) return false;
+        
         // 첫 번째 스테이지는 항상 열려있음
         if (stageIndex === 0) return false;
+        // singlePlayerProgress를 확인하여 순차 진행 여부 확인
+        const singlePlayerProgress = (currentUser as any).singlePlayerProgress ?? 0;
+        if (stageIndex <= singlePlayerProgress) {
+            // singlePlayerProgress가 stageIndex보다 크거나 같으면 열림
+            return false;
+        }
         // 이전 스테이지를 클리어했으면 열림
         const previousStage = stages[stageIndex - 1];
         return previousStage ? !isStageCleared(previousStage.id) : true;

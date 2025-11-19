@@ -659,41 +659,69 @@ input, textarea {
     border-radius: 20px;
 }
 
-/* Spinning Border for Item Obtained Modals */
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+/* Border Color Pulse for Item Obtained Modals */
+@keyframes border-pulse-rare {
+  0%, 100% {
+    border-color: #60a5fa;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.5);
+  }
+  50% {
+    border-color: #2563eb;
+    box-shadow: 0 0 16px rgba(59, 130, 246, 0.8);
+  }
 }
 
-.spinning-border-rare,
-.spinning-border-epic,
-.spinning-border-legendary,
-.spinning-border-mythic {
-  content: '';
-  position: absolute;
-  z-index: 0;
-  border-radius: inherit; /* Inherit border-radius from parent */
-  animation: spin 3s linear infinite;
+@keyframes border-pulse-epic {
+  0%, 100% {
+    border-color: #c084fc;
+    box-shadow: 0 0 8px rgba(168, 85, 247, 0.5);
+  }
+  50% {
+    border-color: #9333ea;
+    box-shadow: 0 0 16px rgba(168, 85, 247, 0.8);
+}
 }
 
-.spinning-border-rare {
-  background: conic-gradient(from 180deg at 50% 50%, #60a5fa, #3b82f6, #2563eb, #60a5fa);
-  filter: drop-shadow(0 0 8px #3b82f6);
+@keyframes border-pulse-legendary {
+  0%, 100% {
+    border-color: #f87171;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.6);
+  }
+  50% {
+    border-color: #dc2626;
+    box-shadow: 0 0 20px rgba(239, 68, 68, 0.9);
+}
 }
 
-.spinning-border-epic {
-  background: conic-gradient(from 180deg at 50% 50%, #c084fc, #a855f7, #9333ea, #c084fc);
-  filter: drop-shadow(0 0 8px #a855f7);
+@keyframes border-pulse-mythic {
+  0%, 100% {
+    border-color: #fb923c;
+    box-shadow: 0 0 12px rgba(249, 115, 22, 0.7);
+  }
+  50% {
+    border-color: #ea580c;
+    box-shadow: 0 0 24px rgba(249, 115, 22, 1);
+  }
 }
 
-.spinning-border-legendary {
-  background: conic-gradient(from 180deg at 50% 50%, #f87171, #ef4444, #dc2626, #f87171);
-  filter: drop-shadow(0 0 8px #ef4444);
+.border-pulse-rare {
+  animation: border-pulse-rare 2s ease-in-out infinite;
+  border-width: 3px;
 }
 
-.spinning-border-mythic {
-  background: conic-gradient(from 180deg at 50% 50%, #fb923c, #f97316, #ea580c, #fb923c);
-  filter: drop-shadow(0 0 8px #f97316);
+.border-pulse-epic {
+  animation: border-pulse-epic 2s ease-in-out infinite;
+  border-width: 3px;
+}
+
+.border-pulse-legendary {
+  animation: border-pulse-legendary 2s ease-in-out infinite;
+  border-width: 3px;
+}
+
+.border-pulse-mythic {
+  animation: border-pulse-mythic 2s ease-in-out infinite;
+  border-width: 3px;
 }
 
 /* Item Obtained Modal Animations */
@@ -900,6 +928,16 @@ input[type="range"]::-moz-range-thumb {
     background-size: cover;
     background-position: center;
     background-color: rgb(var(--bg-tertiary));
+}
+
+/* 바둑판 패널의 배경 이미지 제거 */
+.go-board-panel {
+    background-image: none !important;
+    background-color: transparent !important;
+}
+
+.go-board-panel::before {
+    display: none !important;
 }
 
 .bg-single-player-background {

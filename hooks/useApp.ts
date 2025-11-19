@@ -492,6 +492,8 @@ export const useApp = () => {
 
     // --- Action Handler ---
     const handleAction = useCallback(async (action: ServerAction): Promise<{ gameId?: string; claimAllTrainingQuestRewards?: any } | void> => {
+        console.log(`[handleAction] Action received: ${action.type}`, action);
+        
         // 타워 게임과 싱글플레이 게임의 클라이언트 측 move 처리 (서버로 전송하지 않음)
         // 클라이언트 측 이동 처리 (도전의 탑, 싱글플레이 공통 로직)
         if ((action as any).type === 'TOWER_CLIENT_MOVE' || (action as any).type === 'SINGLE_PLAYER_CLIENT_MOVE') {
@@ -810,6 +812,74 @@ export const useApp = () => {
                     showError(errorMessage);
                     return;
                 }
+                // 계가 요청 응답 처리
+                if (action.type === 'REQUEST_SCORING' && result.clientResponse?.scoringAnalysis) {
+                    const { scoringAnalysis } = result.clientResponse;
+                    const gameId = (action.payload as any).gameId;
+                    // AI 게임도 PVE로 처리하므로 singlePlayerGames에 저장
+                    // 게임을 찾아서 카테고리를 확인
+                    const game = towerGames[gameId] || singlePlayerGames[gameId] || liveGames[gameId];
+                    const isTower = game?.gameCategory === 'tower';
+                    const updateGameState = isTower ? setTowerGames : setSinglePlayerGames;
+                    
+                    // 게임 상태를 scoring으로 변경하고 분석 결과 저장
+                    updateGameState((currentGames) => {
+                        const game = currentGames[gameId];
+                        if (!game) return currentGames;
+                        
+                        return {
+                            ...currentGames,
+                            [gameId]: {
+                                ...game,
+                                gameStatus: 'scoring' as const,
+                                analysisResult: {
+                                    ...game.analysisResult,
+                                    [currentUserRef.current?.id || 'system']: scoringAnalysis
+                                }
+                            }
+                        };
+                    });
+                    
+                    // 계가 결과를 기반으로 게임 종료 처리
+                    const blackTotal = scoringAnalysis.scoreDetails?.black?.total || 0;
+                    const whiteTotal = scoringAnalysis.scoreDetails?.white?.total || 0;
+                    const winner = blackTotal > whiteTotal ? Player.Black : (whiteTotal > blackTotal ? Player.White : Player.None);
+                    
+                    updateGameState((currentGames) => {
+                        const game = currentGames[gameId];
+                        if (!game) return currentGames;
+                        
+                        return {
+                            ...currentGames,
+                            [gameId]: {
+                                ...game,
+                                gameStatus: 'ended' as const,
+                                winner,
+                                winReason: 'score' as const,
+                                finalScores: {
+                                    black: blackTotal,
+                                    white: whiteTotal
+                                }
+                            }
+                        };
+                    });
+                    
+                    // 게임 종료 액션 호출
+                    const endGameActionType = isTower ? 'END_TOWER_GAME' : 'END_SINGLE_PLAYER_GAME';
+                    handleAction({
+                        type: endGameActionType,
+                        payload: {
+                            gameId,
+                            winner,
+                            winReason: 'score'
+                        }
+                    } as any).catch(err => {
+                        console.error(`[handleAction] Failed to end ${isTower ? 'tower' : 'single player'} game:`, err);
+                    });
+                    
+                    return;
+                }
+                
                 console.debug('[handleAction] Action response received', {
                     actionType: action.type,
                     hasUpdatedUser: !!result.updatedUser || !!result.clientResponse?.updatedUser,

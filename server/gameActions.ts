@@ -163,6 +163,9 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     const gameId = payload?.gameId;
     
 
+    // 관리자 액션은 먼저 처리 (gameId가 있어도 관리자 액션은 여기서 처리)
+    if (type.startsWith('ADMIN_')) return handleAdminAction(volatileState, action, user);
+
     // 타워 게임 관련 액션은 먼저 처리 (gameId가 있어도 타워 액션은 여기서 처리)
     if (type === 'START_TOWER_GAME' || type === 'CONFIRM_TOWER_GAME_START' || type === 'TOWER_REFRESH_PLACEMENT' || type === 'TOWER_ADD_TURNS' || type === 'END_TOWER_GAME') {
         const { handleTowerAction } = await import('./actions/towerActions.js');
@@ -177,9 +180,48 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
         const game = await getCachedGame(gameId);
         if (!game) return { error: 'Game not found.' };
         
-        // 타워 게임의 착수 액션은 클라이언트에서만 처리
-        if (game.gameCategory === 'tower') {
-            // 타워 게임 관련 특수 액션만 서버에서 처리 (TOWER_REFRESH_PLACEMENT, TOWER_ADD_TURNS 등은 이미 위에서 처리됨)
+        // PVE 게임 (타워, 싱글플레이어, AI 게임)의 착수 액션은 클라이언트에서만 처리
+        const isPVEGame = game.gameCategory === 'tower' || game.gameCategory === 'singleplayer' || game.isSinglePlayer || game.isAiGame;
+        if (isPVEGame) {
+            // 계가 요청은 서버에서 처리
+            if (type === 'REQUEST_SCORING') {
+                const { boardState, moveHistory, settings } = payload;
+                // KataGo를 사용한 계가 분석
+                const { analyzeGame } = await import('./kataGoService.js');
+                const analysisGame = {
+                    ...game,
+                    boardState,
+                    moveHistory,
+                    settings: { ...game.settings, ...settings }
+                };
+                const analysis = await analyzeGame(analysisGame);
+                return {
+                    clientResponse: {
+                        scoringAnalysis: analysis
+                    }
+                };
+            }
+            // CONFIRM_SINGLE_PLAYER_GAME_START는 서버에서 처리해야 함 (게임 시작 확인)
+            if (type === 'CONFIRM_SINGLE_PLAYER_GAME_START') {
+                const { handleSinglePlayerAction } = await import('./actions/singlePlayerActions.js');
+                return handleSinglePlayerAction(volatileState, action, user);
+            }
+            // 놀이바둑 AI 게임의 PLACE_STONE은 서버에서 AI 처리
+            if (type === 'PLACE_STONE' && game.isAiGame && PLAYFUL_GAME_MODES.some(m => m.mode === game.mode)) {
+                // AI 차례인지 확인
+                const aiPlayerId = game.currentPlayer === types.Player.Black ? game.blackPlayerId : game.whitePlayerId;
+                const { aiUserId } = await import('./aiPlayer.js');
+                if (aiPlayerId === aiUserId) {
+                    // 서버에서 AI 처리
+                    const { makeAiMove } = await import('./aiPlayer.js');
+                    await makeAiMove(game);
+                    await db.saveGame(game);
+                    const { broadcastToGameParticipants } = await import('./socket.js');
+                    broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
+                    return {};
+                }
+            }
+            // PVE 게임 관련 특수 액션만 서버에서 처리 (TOWER_REFRESH_PLACEMENT, TOWER_ADD_TURNS 등은 이미 위에서 처리됨)
             // 착수 액션(PLACE_STONE 등)은 클라이언트에서만 처리하므로 여기서는 조용히 무시
             return {};
         }
@@ -206,7 +248,7 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     }
 
     // Non-Game actions
-    if (type.startsWith('ADMIN_')) return handleAdminAction(volatileState, action, user);
+    // ADMIN_ 액션은 위에서 이미 처리됨
     if (type.includes('NEGOTIATION') || type === 'START_AI_GAME' || type === 'REQUEST_REMATCH' || type === 'CHALLENGE_USER' || type === 'SEND_CHALLENGE') return handleNegotiationAction(volatileState, action, user);
     if (type === 'CLAIM_SINGLE_PLAYER_MISSION_REWARD' || type === 'CLAIM_ALL_TRAINING_QUEST_REWARDS' || type === 'START_SINGLE_PLAYER_MISSION' || type === 'LEVEL_UP_TRAINING_QUEST') {
         return handleSinglePlayerAction(volatileState, action, user);

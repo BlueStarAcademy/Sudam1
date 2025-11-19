@@ -22,10 +22,10 @@ const gradeStyles: Record<ItemGrade, { bg: string, text: string, shadow: string,
 };
 
 const gradeBorderStyles: Partial<Record<ItemGrade, string>> = {
-    rare: 'spinning-border-rare',
-    epic: 'spinning-border-epic',
-    legendary: 'spinning-border-legendary',
-    mythic: 'spinning-border-mythic',
+    rare: 'border-pulse-rare',
+    epic: 'border-pulse-epic',
+    legendary: 'border-pulse-legendary',
+    mythic: 'border-pulse-mythic',
 };
 
 const getStarDisplayInfo = (stars: number) => {
@@ -110,10 +110,7 @@ const ItemObtainedModal: React.FC<ItemObtainedModalProps> = ({ item, onClose, is
             <div className="text-center">
                 <div className="p-6 rounded-lg">
                     <div className="relative w-48 h-48 mx-auto rounded-lg mb-4 overflow-visible">
-                        {borderClass && (
-                            <div className={`absolute -inset-1 rounded-lg ${borderClass}`}></div>
-                        )}
-                        <div className={`relative w-full h-full rounded-lg flex items-center justify-center border-2 border-black/50 overflow-hidden ${isHighGrade ? 'item-reveal-animation' : ''} ${glowClass}`}>
+                        <div className={`relative w-full h-full rounded-lg flex items-center justify-center ${borderClass || 'border-2 border-black/50'} overflow-hidden ${isHighGrade ? 'item-reveal-animation' : ''} ${glowClass}`}>
                             <img src={styles.background} alt={item.grade} className="absolute inset-0 w-full h-full object-cover" />
                             {item.image && <img src={item.image} alt={item.name} className="relative w-full h-full object-contain p-4" />}
                             {isCurrency && (

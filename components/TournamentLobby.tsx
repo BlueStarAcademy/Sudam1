@@ -501,12 +501,38 @@ const StatsDisplayPanel: React.FC<{ currentUser: UserWithStatus; isMobile?: bool
                 // Align with calculateTotalStats: final = floor((base + flat) * (1 + percent/100))
                 const finalValue = Math.floor((baseValue + coreStatBonuses[stat].flat) * (1 + coreStatBonuses[stat].percent / 100));
                 const bonus = finalValue - baseValue;
+                // 숫자 자릿수에 따라 텍스트 크기 조정 (4자리 이상이면 작게)
+                const valueDigits = finalValue.toString().length;
+                const bonusDigits = bonus > 0 ? bonus.toString().length : 0;
+                const totalDigits = valueDigits + (bonus > 0 ? bonusDigits + 4 : 0); // (+N) 포함
+                
+                // 4자리 이상이면 텍스트 크기를 줄임
+                const getValueTextSize = () => {
+                    if (isMobile) {
+                        return valueDigits >= 4 ? 'text-[7px]' : 'text-[8px]';
+                    }
+                    if (valueDigits >= 4) {
+                        return 'text-[9px] sm:text-[10px]';
+                    }
+                    return 'text-[10px] sm:text-xs';
+                };
+                
+                const getBonusTextSize = () => {
+                    if (isMobile) {
+                        return totalDigits >= 7 ? 'text-[6px]' : 'text-[7px]';
+                    }
+                    if (totalDigits >= 7) {
+                        return 'text-[8px] sm:text-[9px]';
+                    }
+                    return 'text-[9px] sm:text-xs';
+                };
+                
                 return (
                     <div key={stat} className={`bg-gray-700/50 ${isMobile ? 'p-1' : 'p-1.5 sm:p-2'} rounded-md flex items-center justify-between ${isMobile ? 'text-[8px]' : 'text-[10px] sm:text-xs'}`}>
-                        <span className="font-semibold text-gray-300">{coreStatAbbreviations[stat]}</span>
-                        <span className="font-mono font-bold" title={`기본: ${baseValue}, 장비: ${bonus}`}>
+                        <span className="font-semibold text-gray-300 whitespace-nowrap">{coreStatAbbreviations[stat]}</span>
+                        <span className={`font-mono font-bold whitespace-nowrap ${getValueTextSize()}`} title={`기본: ${baseValue}, 장비: ${bonus}`}>
                             {finalValue}
-                            {bonus > 0 && <span className={`text-green-400 ${isMobile ? 'text-[7px]' : 'text-[9px] sm:text-xs'} ml-0.5`}>(+{bonus})</span>}
+                            {bonus > 0 && <span className={`text-green-400 ${getBonusTextSize()} ml-0.5`}>(+{bonus})</span>}
                         </span>
                     </div>
                 );

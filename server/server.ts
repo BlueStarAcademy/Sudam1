@@ -171,6 +171,23 @@ const startServer = async () => {
     // --- 1회성: 모든 유저의 리그 점수를 0으로 초기화하여 변화없음으로 표시되도록 함 ---
     await resetAllUsersLeagueScoresForNewWeek();
     // await resetAllChampionshipScoresToZero(); // One-time Champ Score reset (disabled after manual run)
+    
+    // --- 1회성: 모든 유저의 경쟁 상대 봇에 3일치 점수 부여 (3~150점) ---
+    const { grantThreeDaysBotScores } = await import('./scheduledTasks.js');
+    await grantThreeDaysBotScores();
+    
+    // --- 모든 유저의 경쟁 상대 봇 점수 즉시 계산 및 업데이트 ---
+    console.log(`[Server Startup] Updating bot scores for all users...`);
+    const { updateBotLeagueScores } = await import('./scheduledTasks.js');
+    let botScoreUpdateCount = 0;
+    for (const user of allDbUsers) {
+        const updatedUser = await updateBotLeagueScores(user);
+        if (JSON.stringify(user) !== JSON.stringify(updatedUser)) {
+            await db.updateUser(updatedUser);
+            botScoreUpdateCount++;
+        }
+    }
+    console.log(`[Server Startup] Bot scores update complete. ${botScoreUpdateCount} user(s) had their bot scores updated.`);
 
     const app = express();
     console.log(`[Server] process.env.PORT: ${process.env.PORT}`);
@@ -580,32 +597,11 @@ const startServer = async () => {
             for (let i = 0; i < updatedGames.length; i++) {
                 const updatedGame = updatedGames[i];
                 
-                // 싱글플레이 게임은 게임 루프에서 변경사항이 거의 없으므로 저장/브로드캐스트 최소화
-                // (PLACE_STONE 액션에서 이미 저장되고 브로드캐스트됨)
-                if (updatedGame.isSinglePlayer) {
-                    // 게임 상태가 변경된 경우에만 브로드캐스트 (예: 타임아웃, 게임 종료, 애니메이션 종료 등)
-                    const originalGame = activeGames[i];
-                    
-                    // animation 비교: null 체크 포함
-                    const animationChanged = !originalGame || 
-                        (updatedGame.animation === null && originalGame.animation !== null) ||
-                        (updatedGame.animation !== null && originalGame.animation === null) ||
-                        (updatedGame.animation && originalGame.animation && 
-                         JSON.stringify(updatedGame.animation) !== JSON.stringify(originalGame.animation));
-                    
-                    const hasSignificantChange = !originalGame || 
-                                                 updatedGame.gameStatus !== originalGame.gameStatus ||
-                                                 updatedGame.winner !== originalGame.winner ||
-                                                 (updatedGame.disconnectionState !== originalGame.disconnectionState) ||
-                                                 // 애니메이션 상태 변경도 중요 (미사일 애니메이션 종료 등)
-                                                 animationChanged;
-                    if (hasSignificantChange) {
-                        gamesToBroadcast[updatedGame.id] = updatedGame;
-                        // 게임 상태 변경 시 저장
-                        db.saveGame(updatedGame).catch(err => {
-                            console.error(`[Game Loop] Failed to save single player game ${updatedGame.id}:`, err);
-                        });
-                    }
+                // PVE 게임 (싱글플레이어, 도전의 탑, AI 게임)은 클라이언트에서 실행되므로 서버 루프에서 최소 처리
+                const isPVEGame = updatedGame.isSinglePlayer || updatedGame.gameCategory === 'tower' || updatedGame.gameCategory === 'singleplayer' || updatedGame.isAiGame;
+                if (isPVEGame) {
+                    // PVE 게임은 클라이언트에서 실행되므로 서버 루프에서 브로드캐스트하지 않음
+                    // 게임 상태 변경은 클라이언트에서 처리되거나, 액션 처리 시에만 브로드캐스트됨
                     continue;
                 }
 
@@ -635,8 +631,13 @@ const startServer = async () => {
                         if (newerReason) {
                             console.warn(`[Game Loop] Detected newer game state for ${updatedGame.id} (${newerReason}). Refreshing local copy instead of saving.`);
                             syncAiSession(latestGame, aiPlayer.aiUserId);
+                            // 캐시 업데이트하여 다음 루프에서 중복 감지 방지
+                            const { updateGameCache } = await import('./gameCache.js');
+                            updateGameCache(latestGame);
                             gamesToBroadcast[updatedGame.id] = latestGame;
                             updatedGames[i] = latestGame;
+                            // originalGamesJson도 업데이트하여 다음 루프에서 변경으로 감지되지 않도록 함
+                            originalGamesJson[i] = JSON.stringify(latestGame);
                             continue;
                         }
                     }
@@ -663,6 +664,8 @@ const startServer = async () => {
                     const gameIndex = activeGames.findIndex(g => g.id === gameId);
                     if (gameIndex !== -1) {
                         activeGames[gameIndex] = game;
+                        // originalGamesJson도 업데이트하여 다음 루프에서 변경으로 감지되지 않도록 함
+                        originalGamesJson[gameIndex] = JSON.stringify(game);
                     }
                 }
             }

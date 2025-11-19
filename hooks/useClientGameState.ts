@@ -32,10 +32,30 @@ export interface GameStateUpdateResult {
  */
 export function updateGameStateAfterMove(
     game: LiveGameSession,
-    payload: ClientMovePayload,
+    payload: ClientMovePayload & { isPass?: boolean },
     gameType: GameType
 ): GameStateUpdateResult {
-    const { x, y, newBoardState, capturedStones, newKoInfo } = payload;
+    const { x, y, newBoardState, capturedStones, newKoInfo, isPass } = payload;
+    
+    // 패스 처리
+    if (isPass && x === -1 && y === -1) {
+        const movePlayer = game.currentPlayer;
+        const updatedGame = {
+            ...game,
+            passCount: (game.passCount || 0) + 1,
+            lastMove: { x: -1, y: -1 },
+            lastTurnStones: null,
+            moveHistory: [...(game.moveHistory || []), { player: movePlayer, x: -1, y: -1 }],
+            currentPlayer: movePlayer === Player.Black ? Player.White : Player.Black,
+            koInfo: newKoInfo || game.koInfo
+        };
+        
+        return {
+            updatedGame,
+            shouldCheckVictory: false,
+            checkInfo: undefined
+        };
+    }
     
     // 이동한 플레이어의 포획 수 업데이트
     // 문양돌은 2점, 일반 돌은 1점
@@ -120,36 +140,86 @@ export function updateGameStateAfterMove(
     // 피셔 방식 시간 연장: 스피드 바둑 모드에서 착수한 플레이어의 시간에 increment 추가
     let updatedBlackTimeLeft = game.blackTimeLeft;
     let updatedWhiteTimeLeft = game.whiteTimeLeft;
+    let updatedBlackByoyomiPeriodsLeft = game.blackByoyomiPeriodsLeft ?? game.settings?.byoyomiCount ?? 0;
+    let updatedWhiteByoyomiPeriodsLeft = game.whiteByoyomiPeriodsLeft ?? game.settings?.byoyomiCount ?? 0;
     let updatedTurnDeadline = game.turnDeadline;
     let updatedTurnStartTime = game.turnStartTime;
     
     const isFischer = game.mode === GameMode.Speed || (game.mode === GameMode.Mix && game.settings?.mixedModes?.includes(GameMode.Speed));
     const timeIncrement = isFischer ? (game.settings?.timeIncrement || 0) : 0;
+    const byoyomiTime = game.settings?.byoyomiTime ?? 0;
+    const byoyomiCount = game.settings?.byoyomiCount ?? 0;
     
-    // 피셔 방식 시간 연장: 수를 둔 플레이어의 시간에 increment 추가
-    if (timeIncrement > 0) {
-        // 수를 둔 플레이어의 시간에 increment 추가
-        if (movePlayer === Player.Black) {
-            // 현재 시간 계산: turnDeadline이 있으면 남은 시간, 없으면 blackTimeLeft 사용
-            const currentTime = game.turnDeadline 
-                ? Math.max(0, (game.turnDeadline - Date.now()) / 1000)
-                : (game.blackTimeLeft || 0);
-            updatedBlackTimeLeft = currentTime + timeIncrement;
-        } else if (movePlayer === Player.White) {
-            // 현재 시간 계산: turnDeadline이 있으면 남은 시간, 없으면 whiteTimeLeft 사용
-            const currentTime = game.turnDeadline 
-                ? Math.max(0, (game.turnDeadline - Date.now()) / 1000)
-                : (game.whiteTimeLeft || 0);
-            updatedWhiteTimeLeft = currentTime + timeIncrement;
+    // 수를 둔 플레이어의 시간 업데이트
+    if (movePlayer === Player.Black) {
+        // 현재 시간 계산: turnDeadline이 있으면 남은 시간, 없으면 blackTimeLeft 사용
+        let currentTime = game.turnDeadline 
+            ? Math.max(0, (game.turnDeadline - Date.now()) / 1000)
+            : (game.blackTimeLeft || 0);
+        
+        // 피셔 방식이면 increment 추가
+        if (timeIncrement > 0) {
+            currentTime = currentTime + timeIncrement;
+        }
+        
+        // 메인 시간이 0이 되었고 초읽기가 남아있으면 초읽기로 전환
+        if (currentTime <= 0 && updatedBlackByoyomiPeriodsLeft > 0 && byoyomiTime > 0) {
+            // 초읽기 시작: 초읽기 시간으로 설정하고 초읽기 횟수 감소
+            updatedBlackTimeLeft = 0;
+            updatedBlackByoyomiPeriodsLeft = Math.max(0, updatedBlackByoyomiPeriodsLeft - 1);
+        } else {
+            // 메인 시간 업데이트
+            updatedBlackTimeLeft = Math.max(0, currentTime);
+        }
+    } else if (movePlayer === Player.White) {
+        // 현재 시간 계산: turnDeadline이 있으면 남은 시간, 없으면 whiteTimeLeft 사용
+        let currentTime = game.turnDeadline 
+            ? Math.max(0, (game.turnDeadline - Date.now()) / 1000)
+            : (game.whiteTimeLeft || 0);
+        
+        // 피셔 방식이면 increment 추가
+        if (timeIncrement > 0) {
+            currentTime = currentTime + timeIncrement;
+        }
+        
+        // 메인 시간이 0이 되었고 초읽기가 남아있으면 초읽기로 전환
+        if (currentTime <= 0 && updatedWhiteByoyomiPeriodsLeft > 0 && byoyomiTime > 0) {
+            // 초읽기 시작: 초읽기 시간으로 설정하고 초읽기 횟수 감소
+            updatedWhiteTimeLeft = 0;
+            updatedWhiteByoyomiPeriodsLeft = Math.max(0, updatedWhiteByoyomiPeriodsLeft - 1);
+        } else {
+            // 메인 시간 업데이트
+            updatedWhiteTimeLeft = Math.max(0, currentTime);
         }
     }
     
     // 다음 플레이어의 turnDeadline 설정
     const nextPlayer = movePlayer === Player.Black ? Player.White : Player.Black;
     const nextTimeKey = nextPlayer === Player.Black ? 'blackTimeLeft' : 'whiteTimeLeft';
-    // 다음 플레이어의 시간은 원래 시간 사용 (아직 수를 두지 않았으므로)
-    const nextTime = game[nextTimeKey] || (game.settings?.timeLimit ? game.settings.timeLimit * 60 : 0);
-    if (nextTime > 0) {
+    const nextByoyomiKey = nextPlayer === Player.Black ? 'blackByoyomiPeriodsLeft' : 'whiteByoyomiPeriodsLeft';
+    
+    // 다음 플레이어의 시간은 업데이트된 시간 사용
+    let nextTime = nextPlayer === Player.Black ? updatedBlackTimeLeft : updatedWhiteTimeLeft;
+    const nextByoyomiPeriods = nextPlayer === Player.Black ? updatedBlackByoyomiPeriodsLeft : updatedWhiteByoyomiPeriodsLeft;
+    
+    // 시간이 없으면 설정에서 기본값 사용
+    if (nextTime <= 0 && nextByoyomiPeriods <= 0) {
+        nextTime = game.settings?.timeLimit ? game.settings.timeLimit * 60 : 0;
+    }
+    
+    // 메인 시간이 0이고 초읽기가 남아있으면 초읽기로 전환
+    if (nextTime <= 0 && nextByoyomiPeriods > 0 && byoyomiTime > 0) {
+        // 초읽기 시작: 초읽기 시간으로 deadline 설정
+        updatedTurnDeadline = Date.now() + (byoyomiTime * 1000);
+        updatedTurnStartTime = Date.now();
+        // 메인 시간은 0으로 유지
+        if (nextPlayer === Player.Black) {
+            updatedBlackTimeLeft = 0;
+        } else {
+            updatedWhiteTimeLeft = 0;
+        }
+    } else if (nextTime > 0) {
+        // 메인 시간이 남아있으면 메인 시간으로 deadline 설정
         updatedTurnDeadline = Date.now() + (nextTime * 1000);
         updatedTurnStartTime = Date.now();
     }
@@ -168,6 +238,8 @@ export function updateGameStateAfterMove(
         serverRevision: (game.serverRevision || 0) + 1,
         blackTimeLeft: updatedBlackTimeLeft,
         whiteTimeLeft: updatedWhiteTimeLeft,
+        blackByoyomiPeriodsLeft: updatedBlackByoyomiPeriodsLeft,
+        whiteByoyomiPeriodsLeft: updatedWhiteByoyomiPeriodsLeft,
         turnDeadline: updatedTurnDeadline,
         turnStartTime: updatedTurnStartTime,
         ...(updatedWhiteTurnsPlayed !== undefined ? { whiteTurnsPlayed: updatedWhiteTurnsPlayed } as any : {}),

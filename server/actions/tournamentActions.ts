@@ -514,8 +514,13 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             } else if (tournamentState.status === 'bracket_ready') {
                 // bracket_ready 상태이지만 startNextRound를 호출하지 않은 경우 (뒤로가기 후 다시 들어온 경우)
                 // 컨디션이 부여되지 않은 경우에만 컨디션 부여
-                // 이미 컨디션이 부여되어 있으면(40-100 사이의 유효한 값) 다시 부여하지 않음
+                // 유저의 컨디션은 절대 변경하지 않음 (회복제로 변경된 컨디션 유지)
                 tournamentState.players.forEach(p => {
+                    // 유저의 컨디션은 절대 변경하지 않음
+                    if (p.id === freshUser.id) {
+                        return; // 유저의 컨디션은 건드리지 않음
+                    }
+                    
                     // 컨디션이 undefined, null, 1000이거나 유효 범위(40-100)를 벗어나면 새로 부여
                     // 이미 유효한 컨디션이 있으면(40-100 사이) 다시 부여하지 않음
                     const hasValidCondition = p.condition !== undefined && 
@@ -765,7 +770,8 @@ export const handleTournamentAction = async (volatileState: VolatileState, actio
             );
 
             // 경기 시작 전 상태이거나 다음 경기가 있으면 컨디션 회복제 사용 가능
-            if (tournamentState.status !== 'bracket_ready' && !hasUpcomingUserMatch) {
+            // round_complete 상태에서도 다음 경기가 있을 수 있으므로 hasUpcomingUserMatch를 확인
+            if (tournamentState.status !== 'bracket_ready' && tournamentState.status !== 'round_complete' && !hasUpcomingUserMatch) {
                 return { error: '다음 경기가 없습니다.' };
             }
 

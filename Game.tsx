@@ -9,7 +9,7 @@ import TurnDisplay from './components/game/TurnDisplay.js';
 import { audioService } from './services/audioService.js';
 import { TerritoryAnalysisWindow, HintWindow } from './components/game/AnalysisWindows.js';
 import GameControls from './components/game/GameControls.js';
-import { PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES } from './constants.js';
+import { PLAYFUL_GAME_MODES, SPECIAL_GAME_MODES, aiUserId } from './constants.js';
 import { useAppContext } from './hooks/useAppContext.js';
 import DisconnectionModal from './components/DisconnectionModal.js';
 // FIX: Import TimeoutFoulModal component to resolve 'Cannot find name' error.
@@ -25,7 +25,7 @@ import { calculateSimpleAiMove } from './client/goAiBotClient.js';
 import { processMoveClient } from './client/goLogicClient.js';
 
 // AI 유저 ID (싱글플레이에서 AI 차례 판단용)
-const AI_USER_ID = 'ai-player-01';
+const AI_USER_ID = aiUserId;
 
 function usePrevious<T>(value: T): T | undefined {
   const ref = useRef<T | undefined>(undefined);
@@ -542,8 +542,10 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         }
         
         const isTower = session.gameCategory === 'tower';
+        const isPlayfulAiGame = session.isAiGame && PLAYFUL_GAME_MODES.some(m => m.mode === mode);
         // 게임이 종료되었거나 일시정지되었거나 플레이 중이 아니면 AI 수를 보내지 않음
-        if (!(session.isSinglePlayer || isTower) || isPaused || gameStatus !== 'playing') {
+        // 놀이바둑 AI 게임도 클라이언트에서 처리
+        if (!(session.isSinglePlayer || isTower || isPlayfulAiGame) || isPaused || gameStatus !== 'playing') {
             lastAiMoveRef.current = null;
             return;
         }
@@ -560,7 +562,8 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
         if (!session.id || typeof session.id !== 'string') return;
 
         const aiPlayerId = currentPlayer === Player.Black ? session.blackPlayerId : session.whitePlayerId;
-        const isAiTurn = aiPlayerId === AI_USER_ID;
+        // 놀이바둑 AI 게임도 클라이언트에서 처리
+        const isAiTurn = aiPlayerId === AI_USER_ID || (session.isAiGame && aiPlayerId === 'ai-player-01');
 
         // 디버깅: AI 차례 판단 로그 (도전의 탑과 싱글플레이에서 상세하게)
         if ((isTower || session.isSinglePlayer) && (currentPlayer === Player.Black || currentPlayer === Player.White)) {
@@ -665,7 +668,30 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                 }
             }
             
-            // 클라이언트 측에서 AI 수 계산
+            // 놀이바둑 게임은 바둑 AI를 사용할 수 없으므로 서버로 전송
+            const isPlayfulMode = PLAYFUL_GAME_MODES.some(m => m.mode === mode);
+            if (isPlayfulMode) {
+                // 놀이바둑 게임은 서버에서 AI 처리 (DICE, ALKKAGI, CURLING, THIEF 등)
+                // 서버로 액션 전송하여 AI가 처리하도록 함
+                console.log('[Game] Playful AI game - sending action to server for AI processing:', {
+                    gameId: session.id,
+                    mode,
+                    currentPlayer
+                });
+                // 서버에서 AI가 처리하도록 PLACE_STONE 액션 전송 (서버가 AI 차례를 감지하여 처리)
+                handlers.handleAction({
+                    type: 'PLACE_STONE',
+                    payload: {
+                        gameId: session.id,
+                        x: -1, // 서버에서 AI가 처리하도록 표시
+                        y: -1,
+                        isClientAiMove: false,
+                    },
+                } as ServerAction);
+                return;
+            }
+            
+            // 클라이언트 측에서 AI 수 계산 (바둑 모드만)
             const aiLevel = session.settings.aiDifficulty || 1;
             const opponentPlayer = currentPlayer === Player.Black ? Player.White : Player.Black;
             
@@ -711,8 +737,9 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
                         session.id === currentGameId &&
                         session.gameStatus === currentGameStatus &&
                         currentMoveHistoryLength === moveHistoryLengthAtCalculation) {
-                        // 타워 게임과 싱글플레이 게임의 AI move도 클라이언트에서만 처리
-                        if (session.gameCategory === 'tower' || session.isSinglePlayer) {
+                        // 타워 게임, 싱글플레이 게임, 놀이바둑 AI 게임의 AI move도 클라이언트에서만 처리
+                        const isPlayfulAiGame = session.isAiGame && PLAYFUL_GAME_MODES.some(m => m.mode === mode);
+                        if (session.gameCategory === 'tower' || session.isSinglePlayer || isPlayfulAiGame) {
                             console.log(`[Game] ${session.gameCategory === 'tower' ? 'Tower' : 'Single player'} game - processing AI move client-side:`, {
                                 gameId: currentGameId,
                                 x: aiMove.x,
@@ -857,16 +884,22 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
     }, [isSinglePlayer, isTower, gameStatus, showGameDescription, showTowerGameDescription, session.id, session.stageId, session.towerFloor]);
 
     const handleStartGame = useCallback(() => {
+        console.log('[Game] handleStartGame called', { gameId, gameStatus, isSinglePlayer, isTower, sessionId: session.id });
         if (!gameId) {
             console.error('[Game] handleStartGame: gameId is missing', { sessionId: session.id, gameStatus });
             return;
         }
         
         if (isSinglePlayer) {
+            console.log('[Game] handleStartGame: Sending CONFIRM_SINGLE_PLAYER_GAME_START', { gameId, gameStatus });
             handlers.handleAction({ 
                 type: 'CONFIRM_SINGLE_PLAYER_GAME_START', 
                 payload: { gameId } 
-            } as ServerAction);
+            } as ServerAction).then(result => {
+                console.log('[Game] handleStartGame: CONFIRM_SINGLE_PLAYER_GAME_START completed', result);
+            }).catch(err => {
+                console.error('[Game] handleStartGame: CONFIRM_SINGLE_PLAYER_GAME_START failed', err);
+            });
         } else if (isTower) {
             console.log('[Game] handleStartGame: Sending CONFIRM_TOWER_GAME_START', { gameId, gameStatus, isTower });
             handlers.handleAction({ 

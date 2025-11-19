@@ -141,9 +141,10 @@ const SinglePlayerSummaryModal: React.FC<SinglePlayerSummaryModalProps> = ({ ses
             ? (analysisResult.scoreDetails?.black?.total ?? 0) > (analysisResult.scoreDetails?.white?.total ?? 0)
             : (session.winner === Player.Black)); // Human is always Black
     const nextStage = SINGLE_PLAYER_STAGES[currentStageIndex + 1];
-    const highestClearedStageIndex = currentUser.singlePlayerProgress ?? -1;
-    // 계가 결과가 있을 때만 다음 단계 가능 여부 판단 (잘못된 판단 방지)
-    const canTryNext = analysisResult && isWinner && !!nextStage && highestClearedStageIndex >= currentStageIndex;
+    // 클리어했을 때는 계가 결과가 없어도 다음 단계 가능 (클리어 시 다음 단계 버튼 활성화)
+    // 클리어 직후에는 singlePlayerProgress가 아직 업데이트되지 않았을 수 있으므로, 
+    // 클리어했을 때는 isWinner만으로도 다음 단계 버튼 활성화
+    const canTryNext = isWinner && !!nextStage;
     
     const retryActionPointCost = currentStage?.actionPointCost ?? 0;
     const nextStageActionPointCost = nextStage?.actionPointCost ?? 0;

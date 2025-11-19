@@ -563,7 +563,7 @@ export const updateGameStates = async (games: LiveGameSession[], now: number): P
     const multiPlayerGames: LiveGameSession[] = [];
     
     for (const game of games) {
-        if (game.isSinglePlayer || game.gameCategory === 'tower') {
+        if (game.isSinglePlayer || game.gameCategory === 'tower' || game.isAiGame) {
             singlePlayerGames.push(game);
         } else {
             multiPlayerGames.push(game);
@@ -619,11 +619,12 @@ const processGame = async (game: LiveGameSession, now: number): Promise<LiveGame
                 return game;
             }
 
-            // 싱글플레이 게임 및 도전의 탑 최적화: 최소한의 처리만 수행
+            // PVE 게임 (싱글플레이어, 도전의 탑, AI 게임)은 클라이언트에서 실행되므로 서버 루프에서 제외
+            const isPVEGame = game.isSinglePlayer || game.gameCategory === 'tower' || game.gameCategory === 'singleplayer' || game.isAiGame;
             const isTower = game.gameCategory === 'tower';
-            if (game.isSinglePlayer || isTower) {
-                // 싱글플레이/도전의 탑에서는 player1 정보만 필요시 업데이트
-                // player2는 AI이므로 업데이트 불필요
+            if (isPVEGame) {
+                // PVE 게임은 클라이언트에서 실행되므로 서버에서는 최소한의 처리만 수행
+                // player1 정보만 필요시 업데이트 (AI는 업데이트 불필요)
                 const { getCachedUser } = await import('./gameCache.js');
                 const p1 = await getCachedUser(game.player1.id);
                 if (p1) game.player1 = p1;
@@ -660,13 +661,9 @@ const processGame = async (game: LiveGameSession, now: number): Promise<LiveGame
                     }
                 }
 
-                // 싱글플레이/도전의 탑에서는 AI 수 처리를 게임 루프에서 하지 않음
-                // (클라이언트에서 처리됨)
-                // 단, 타임아웃 체크 등 게임 상태 업데이트는 필요
-                if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode) || game.isSinglePlayer || isTower) {
-                    await updateStrategicGameState(game, now);
-                }
-
+                // PVE 게임은 클라이언트에서 실행되므로 서버에서는 상태 업데이트를 하지 않음
+                // (타임아웃 체크, 애니메이션 업데이트 등 모든 로직은 클라이언트에서 처리)
+                // 서버에서는 최소한의 정보만 유지 (게임 종료 시 저장용)
                 return game;
             }
 

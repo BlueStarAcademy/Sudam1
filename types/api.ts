@@ -127,6 +127,8 @@ export type ServerAction =
     | { type: 'SCAN_BOARD', payload: { gameId: string, x: number, y: number } }
     // Missile Go
     | { type: 'START_MISSILE_SELECTION', payload: { gameId: string } }
+    // Scoring (PVE games only)
+    | { type: 'REQUEST_SCORING', payload: { gameId: string; boardState: BoardState; moveHistory: any[]; settings: any } }
     | { type: 'LAUNCH_MISSILE', payload: { gameId: string, from: Point, direction: 'up' | 'down' | 'left' | 'right' } }
     | { type: 'MISSILE_INVALID_SELECTION', payload: { gameId: string } }
     | { type: 'CANCEL_MISSILE_SELECTION', payload: { gameId: string } }

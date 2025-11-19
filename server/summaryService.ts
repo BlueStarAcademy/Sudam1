@@ -363,8 +363,11 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
     } else {
         const isPlayful = PLAYFUL_GAME_MODES.some(m => m.mode === game.mode);
         const isStrategic = SPECIAL_GAME_MODES.some(m => m.mode === game.mode);
-        if ((isPlayful || isStrategic) && !game.statsUpdated) {
-            await processGameSummary(game);
+        // 놀이바둑과 전략바둑은 항상 processGameSummary 호출 (statsUpdated 체크 제거)
+        if (isPlayful || isStrategic) {
+            if (!game.statsUpdated) {
+                await processGameSummary(game);
+            }
         }
     }
 
@@ -831,8 +834,10 @@ const processPlayerSummary = async (
             updatedPlayer.cumulativeRankingScore = {};
         }
         
+        const ELO_BASE_SCORE = 1200; // ELO 기준 점수
+        
         if (isStrategic) {
-            // 전략바둑: 모든 전략바둑 모드의 rankingScore 평균 계산
+            // 전략바둑: 모든 전략바둑 모드의 rankingScore 평균 계산 후 1200에서의 차이를 저장
             let totalScore = 0;
             let modeCount = 0;
             for (const strategicMode of SPECIAL_GAME_MODES) {
@@ -843,10 +848,12 @@ const processPlayerSummary = async (
                 }
             }
             if (modeCount > 0) {
-                updatedPlayer.cumulativeRankingScore['standard'] = Math.round(totalScore / modeCount);
+                const averageScore = Math.round(totalScore / modeCount);
+                // 1200에서의 차이를 저장 (예: 826점이면 -374점)
+                updatedPlayer.cumulativeRankingScore['standard'] = averageScore - ELO_BASE_SCORE;
             }
         } else if (isPlayful) {
-            // 놀이바둑: 모든 놀이바둑 모드의 rankingScore 평균 계산
+            // 놀이바둑: 모든 놀이바둑 모드의 rankingScore 평균 계산 후 1200에서의 차이를 저장
             let totalScore = 0;
             let modeCount = 0;
             for (const playfulMode of PLAYFUL_GAME_MODES) {
@@ -857,7 +864,9 @@ const processPlayerSummary = async (
                 }
             }
             if (modeCount > 0) {
-                updatedPlayer.cumulativeRankingScore['playful'] = Math.round(totalScore / modeCount);
+                const averageScore = Math.round(totalScore / modeCount);
+                // 1200에서의 차이를 저장 (예: 826점이면 -374점)
+                updatedPlayer.cumulativeRankingScore['playful'] = averageScore - ELO_BASE_SCORE;
             }
         }
     }
