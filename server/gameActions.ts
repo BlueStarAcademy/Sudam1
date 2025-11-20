@@ -26,6 +26,7 @@ import { handleTournamentAction } from './actions/tournamentActions.js';
 import { handleUserAction } from './actions/userActions.js';
 import { handleSinglePlayerAction } from './actions/singlePlayerActions.js';
 import { handleTowerAction } from './actions/towerActions.js';
+import { handleGuildAction } from './actions/guildActions.js';
 import { broadcast } from './socket.js';
 
 
@@ -277,6 +278,20 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     if (['UPDATE_AVATAR', 'UPDATE_BORDER', 'CHANGE_NICKNAME', 'RESET_STAT_POINTS', 'CONFIRM_STAT_ALLOCATION', 'UPDATE_MBTI', 'SAVE_PRESET', 'APPLY_PRESET', 'UPDATE_REJECTION_SETTINGS'].includes(type)) return handleUserAction(volatileState, action, user);
     if (type.includes('SINGLE_PLAYER')) return handleSinglePlayerAction(volatileState, action, user);
     if (type === 'MANNER_ACTION') return mannerService.handleMannerAction(volatileState, action, user);
+    // Guild actions
+    if (type.startsWith('CREATE_GUILD') || 
+        type.startsWith('JOIN_GUILD') || 
+        type.startsWith('LEAVE_GUILD') || 
+        type.startsWith('KICK_GUILD') || 
+        type.startsWith('UPDATE_GUILD') || 
+        type.startsWith('SEND_GUILD') || 
+        type.startsWith('GET_GUILD') || 
+        type.startsWith('START_GUILD') || 
+        type.startsWith('DONATE_TO_GUILD') || 
+        type.startsWith('PURCHASE_GUILD') || 
+        type.startsWith('END_GUILD')) {
+        return handleGuildAction(volatileState, action, user);
+    }
     // LEAVE_AI_GAME은 gameId를 가지지만 소셜 액션으로 처리해야 함
     if (type === 'LEAVE_AI_GAME') return handleSocialAction(volatileState, action, user);
     

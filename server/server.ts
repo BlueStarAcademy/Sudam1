@@ -318,6 +318,16 @@ const startServer = async () => {
             hasLoggedMainLoopSkip = false;
             try {
                 const now = Date.now();
+                
+                // 랭킹전 매칭 처리 (1초마다)
+                if (volatileState.rankedMatchingQueue) {
+                    const { tryMatchPlayers } = await import('./actions/socialActions.js');
+                    for (const lobbyType of ['strategic', 'playful'] as const) {
+                        if (volatileState.rankedMatchingQueue[lobbyType] && Object.keys(volatileState.rankedMatchingQueue[lobbyType]).length >= 2) {
+                            await tryMatchPlayers(volatileState, lobbyType);
+                        }
+                    }
+                }
 
             // --- START NEW OFFLINE AP REGEN LOGIC ---
             if (now - lastOfflineRegenAt >= OFFLINE_REGEN_INTERVAL_MS) {

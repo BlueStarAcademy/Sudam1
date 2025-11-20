@@ -27,7 +27,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
 
     switch (type) {
         case 'CHALLENGE_USER': {
-            const { opponentId, mode, settings } = payload;
+            const { opponentId, mode, settings, isRanked } = payload;
             const opponent = opponentId === aiUserId ? getAiUser(mode) : await db.getUser(opponentId);
         
             if (!opponent) return { error: 'Opponent not found.' };
@@ -105,6 +105,7 @@ export const handleNegotiationAction = async (volatileState: VolatileState, acti
                 status: 'draft',
                 turnCount: 0,
                 deadline: now + 60000,
+                isRanked: isRanked ?? false, // 기본값: 친선전
             };
         
             volatileState.negotiations[negotiationId] = newNegotiation;

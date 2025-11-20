@@ -1,16 +1,17 @@
 import React, { useMemo, useEffect, useRef, useState } from 'react';
-import { LiveGameSession, User, Player, WinReason, StatChange, AnalysisResult, GameMode, GameSummary, InventoryItem, AvatarInfo, BorderInfo, AlkkagiStone } from '../types.js';
+import { LiveGameSession, User, Player, WinReason, StatChange, AnalysisResult, GameMode, GameSummary, InventoryItem, AvatarInfo, BorderInfo, AlkkagiStone, ServerAction } from '../types.js';
 import Avatar from './Avatar.js';
 import { audioService } from '../services/audioService.js';
 import Button from './Button.js';
 import DraggableWindow from './DraggableWindow.js';
-import { PLAYFUL_GAME_MODES, AVATAR_POOL, BORDER_POOL, CONSUMABLE_ITEMS } from '../constants';
+import { PLAYFUL_GAME_MODES, AVATAR_POOL, BORDER_POOL, CONSUMABLE_ITEMS, SPECIAL_GAME_MODES } from '../constants';
 import { getMannerRank as getMannerRankShared } from '../services/manner.js';
 
 interface GameSummaryModalProps {
     session: LiveGameSession;
     currentUser: User;
     onConfirm: () => void;
+    onAction?: (action: ServerAction) => void;
 }
 
 const getIsWinner = (session: LiveGameSession, currentUser: User): boolean | null => {
@@ -287,7 +288,7 @@ const CurlingScoreDetailsComponent: React.FC<{ gameSession: LiveGameSession, isM
 };
 
 
-const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ session, currentUser, onConfirm }) => {
+const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ session, currentUser, onConfirm, onAction }) => {
     const { winner, player1, player2, blackPlayerId, whitePlayerId, winReason } = session;
     const soundPlayed = useRef(false);
     const [isMobile, setIsMobile] = useState(false);
@@ -304,6 +305,12 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ session, currentUse
     const isWinner = getIsWinner(session, currentUser);
     const mySummary = session.summary?.[currentUser.id];
     const isPlayful = PLAYFUL_GAME_MODES.some((m: {mode: GameMode}) => m.mode === session.mode);
+    const isStrategic = SPECIAL_GAME_MODES.some((m: {mode: GameMode}) => m.mode === session.mode);
+    const isPVP = !session.isSinglePlayer && !session.isAiGame && !session.gameCategory;
+    const canSaveRecord = isStrategic && isPVP && (session.gameStatus === 'ended' || session.gameStatus === 'scoring');
+    const hasSavedRecord = currentUser.savedGameRecords?.some(r => r.gameId === session.id);
+    const recordCount = currentUser.savedGameRecords?.length ?? 0;
+    const [savingRecord, setSavingRecord] = useState(false);
 
     const avatarUrl = useMemo(() => AVATAR_POOL.find((a: AvatarInfo) => a.id === currentUser.avatarId)?.url, [currentUser.avatarId]);
     const borderUrl = useMemo(() => BORDER_POOL.find((b: BorderInfo) => b.id === currentUser.borderId)?.url, [currentUser.borderId]);
@@ -625,6 +632,30 @@ const GameSummaryModal: React.FC<GameSummaryModalProps> = ({ session, currentUse
                     )}
                 </div>
                  
+                 {canSaveRecord && onAction && (
+                    <Button 
+                        onClick={async () => {
+                            if (savingRecord) return;
+                            if (recordCount >= 30 && !hasSavedRecord) {
+                                alert('기보는 최대 30개까지 저장할 수 있습니다. 기존 기보를 삭제한 후 다시 시도해주세요.');
+                                return;
+                            }
+                            setSavingRecord(true);
+                            try {
+                                onAction({ type: 'SAVE_GAME_RECORD', payload: { gameId: session.id } });
+                            } catch (error) {
+                                console.error('Failed to save game record:', error);
+                            } finally {
+                                setSavingRecord(false);
+                            }
+                        }}
+                        disabled={savingRecord || hasSavedRecord}
+                        className={`w-full ${isMobile ? 'py-1.5 text-xs' : 'py-2'} mt-2 flex-shrink-0 ${hasSavedRecord ? 'opacity-50' : ''}`}
+                        style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : undefined }}
+                    >
+                        {savingRecord ? '저장 중...' : hasSavedRecord ? '이미 저장됨' : '기보 저장'}
+                    </Button>
+                )}
                  <Button onClick={onConfirm} className={`w-full ${isMobile ? 'py-1.5 text-xs' : 'py-3'} mt-2 sm:mt-4 flex-shrink-0`} style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : undefined }}>확인</Button>
             </div>
         </DraggableWindow>

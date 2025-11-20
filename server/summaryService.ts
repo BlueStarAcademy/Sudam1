@@ -390,8 +390,8 @@ export const endGame = async (game: LiveGameSession, winner: Player, winReason: 
     }
     
     // 조기 종료인 경우 행동력 환불 처리 및 패널티 메일 발송
-    // 도전의 탑, 싱글플레이, AI 게임에서는 패널티 없음
-    const isNoPenaltyGame = game.isSinglePlayer || game.gameCategory === 'tower' || game.isAiGame;
+    // 도전의 탑, 싱글플레이, AI 게임, 친선전에서는 패널티 없음
+    const isNoPenaltyGame = game.isSinglePlayer || game.gameCategory === 'tower' || game.isAiGame || !game.isRankedGame;
     if (isEarlyTermination && !isNoPenaltyGame) {
         await refundActionPointsForEarlyTermination(freshGame, badMannerPlayerId);
         if (badMannerPlayerId) {
@@ -488,17 +488,22 @@ const sendBadMannerPenaltyMail = async (
         penaltyReason += ' 접속 끊김';
     }
     
+    const isRanked = game.isRankedGame ?? false;
+    const title = isRanked ? '랭킹전 비매너 행동 패널티 안내' : '비매너 행동 패널티 안내';
+    const penaltyDescription = isRanked 
+        ? `- 랭킹 점수 대폭 하락\n- 매너 점수 감소\n- 행동력 환불 불가 (상대방에게만 환불됨)`
+        : `- 매너 점수 감소\n- 행동력 환불 불가 (상대방에게만 환불됨)`;
+    
     const penaltyMail: Mail = {
         id: `mail-penalty-${randomUUID()}`,
         from: '시스템',
-        title: '비매너 행동 패널티 안내',
+        title: title,
         message: `안녕하세요, ${badMannerPlayer.nickname}님.\n\n` +
                  `대국 중 비매너 행동으로 인해 패널티가 적용되었습니다.\n\n` +
                  `[패널티 사유]\n` +
                  `${penaltyReason}로 인해 게임이 조기 종료되었습니다.\n\n` +
                  `[적용된 패널티]\n` +
-                 `- 매너 점수 감소\n` +
-                 `- 행동력 환불 불가 (상대방에게만 환불됨)\n\n` +
+                 `${penaltyDescription}\n\n` +
                  `정상적인 게임 진행을 위해 협조 부탁드립니다.`,
         receivedAt: Date.now(),
         expiresAt: undefined, // 무제한
@@ -787,9 +792,25 @@ const processPlayerSummary = async (
     const opponentRating = opponent.id === aiUserId ? (initialRating - 50 + Math.random() * 100) : opponentStats.rankingScore;
     
     let ratingChange = 0;
-    if (!isNoContest && !isAiGame) {
-        const result = isWinner ? 'win' : isDraw ? 'draw' : 'loss';
-        ratingChange = calculateEloChange(initialRating, opponentRating, result);
+    // 랭킹전이 아니면 랭킹 점수 변동 없음 (친선전)
+    if (game.isRankedGame && !isNoContest && !isAiGame) {
+        // 랭킹전에서 조기 종료 시 대폭 하락
+        const isRankedEarlyTermination = game.isEarlyTermination && game.badMannerPlayerId === player.id;
+        if (isRankedEarlyTermination) {
+            ratingChange = -100; // 랭킹전 조기 종료 시 -100점 하락
+        } else {
+            const result = isWinner ? 'win' : isDraw ? 'draw' : 'loss';
+            ratingChange = calculateEloChange(initialRating, opponentRating, result);
+            
+            // 클래식바둑 특별 처리: 승리시 2배, 패배시 절반
+            if (mode === GameMode.Standard) {
+                if (isWinner) {
+                    ratingChange = ratingChange * 2;
+                } else if (!isDraw) {
+                    ratingChange = Math.round(ratingChange / 2);
+                }
+            }
+        }
     }
     
     gameStats.rankingScore = Math.max(0, initialRating + ratingChange);
@@ -801,7 +822,11 @@ const processPlayerSummary = async (
     const initialMannerBeforeGame = player.mannerScore - mannerChangeFromActions;
 
     let mannerChangeFromGameEnd = 0;
-    if (isDisconnectLoss) {
+    // 랭킹전에서 조기 종료 시 추가 매너 점수 하락
+    const isRankedEarlyTermination = game.isRankedGame && game.isEarlyTermination && game.badMannerPlayerId === player.id;
+    if (isRankedEarlyTermination) {
+        mannerChangeFromGameEnd = -50; // 랭킹전 조기 종료 시 더 큰 패널티
+    } else if (isDisconnectLoss) {
         mannerChangeFromGameEnd = -20;
     } else if (!isNoContest) {
         // mannerChangeFromGameEnd = 2; // +2 for completing a game (win, loss, or draw)

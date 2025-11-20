@@ -149,6 +149,9 @@ const ChallengeSelectionModal: React.FC<ChallengeSelectionModalProps> = ({ oppon
   const isWaitingForResponse = currentNegotiation?.status === 'pending' && currentNegotiation?.proposerId === opponent.id;
 
   const availableGames = lobbyType === 'strategic' ? SPECIAL_GAME_MODES : PLAYFUL_GAME_MODES;
+  
+  // 친선전 표시 (현재 협상 시스템은 모두 친선전)
+  const isCasual = true;
 
   // 상대방이 대기실에서 나갔는지 확인
   useEffect(() => {

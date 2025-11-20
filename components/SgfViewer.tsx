@@ -5,6 +5,7 @@ interface SgfViewerProps {
     timeElapsed?: number;
     fileIndex?: number | null;
     showLastMoveOnly?: boolean;
+    sgfContent?: string | null;
 }
 
 interface SgfData {
@@ -73,7 +74,7 @@ const findGroup = (startX: number, startY: number, playerColor: Player, board: P
     return { stones, liberties };
 };
 
-const SgfViewer: React.FC<SgfViewerProps> = ({ timeElapsed = 0, fileIndex, showLastMoveOnly }) => {
+const SgfViewer: React.FC<SgfViewerProps> = ({ timeElapsed = 0, fileIndex, showLastMoveOnly, sgfContent }) => {
     const [sgfData, setSgfData] = useState<SgfData | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
@@ -85,6 +86,21 @@ const SgfViewer: React.FC<SgfViewerProps> = ({ timeElapsed = 0, fileIndex, showL
             setLoading(true);
             setError(null);
             
+            // sgfContent가 직접 제공된 경우
+            if (sgfContent !== null && sgfContent !== undefined) {
+                try {
+                    const parsed = parseSgf(sgfContent);
+                    if (!parsed) throw new Error("Failed to parse SGF data.");
+                    setSgfData(parsed);
+                } catch (err: any) {
+                    setError(err.message);
+                } finally {
+                    setLoading(false);
+                }
+                return;
+            }
+            
+            // fileIndex를 사용하는 경우 (기존 로직)
             if (fileIndex === null || fileIndex === undefined) {
                 setSgfData({ boardSize: 19, moves: [] });
                 setLoading(false);
@@ -106,7 +122,7 @@ const SgfViewer: React.FC<SgfViewerProps> = ({ timeElapsed = 0, fileIndex, showL
             }
         };
         fetchSgf();
-    }, [fileIndex]);
+    }, [fileIndex, sgfContent]);
 
     const currentMoveIndex = useMemo(() => {
         if (!sgfData) return 0;

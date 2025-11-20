@@ -37,17 +37,25 @@ const buildPersistentFields = (user: User) => {
 const mapUser = (row: PrismaUserWithStatus): User => deserializeUser(row);
 
 export async function listUsers(): Promise<User[]> {
-  const rows = await prisma.user.findMany();
+  const rows = await prisma.user.findMany({
+    include: { guildMember: true }
+  });
   return rows.map(mapUser);
 }
 
 export async function getUserById(id: string): Promise<User | null> {
-  const row = await prisma.user.findUnique({ where: { id } });
+  const row = await prisma.user.findUnique({ 
+    where: { id },
+    include: { guildMember: true }
+  });
   return row ? mapUser(row) : null;
 }
 
 export async function getUserByNickname(nickname: string): Promise<User | null> {
-  const row = await prisma.user.findUnique({ where: { nickname } });
+  const row = await prisma.user.findUnique({ 
+    where: { nickname },
+    include: { guildMember: true }
+  });
   return row ? mapUser(row) : null;
 }
 

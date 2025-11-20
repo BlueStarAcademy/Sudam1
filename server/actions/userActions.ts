@@ -6,6 +6,8 @@ import { containsProfanity } from '../../profanity.js';
 import { UserStatus } from '../../types/enums.js';
 import { broadcast } from '../socket.js';
 import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
+import { generateSgfFromGame } from '../../utils/sgfGenerator.js';
+import { randomUUID } from 'crypto';
 
 type HandleActionResult = {
     clientResponse?: any;
@@ -260,6 +262,145 @@ export const handleUserAction = async (volatileState: types.VolatileState, actio
             broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
             return { clientResponse: { updatedUser } };
+        }
+        case 'SAVE_GAME_RECORD': {
+            const { gameId } = payload as { gameId: string };
+            
+            // 게임 조회
+            const game = await db.getGame(gameId);
+            if (!game) {
+                return { error: '게임을 찾을 수 없습니다.' };
+            }
+            
+            // 전략바둑 PVP 게임만 저장 가능
+            const isStrategicMode = SPECIAL_GAME_MODES.some(m => m.mode === game.mode);
+            if (!isStrategicMode || game.isSinglePlayer || game.isAiGame || game.gameCategory) {
+                return { error: '전략바둑 PVP 게임만 기보를 저장할 수 있습니다.' };
+            }
+            
+            // 게임이 종료되었는지 확인
+            if (game.gameStatus !== 'ended' && game.gameStatus !== 'scoring') {
+                return { error: '게임이 아직 종료되지 않았습니다.' };
+            }
+            
+            // 사용자가 게임 참가자인지 확인
+            if (game.player1.id !== user.id && game.player2.id !== user.id) {
+                return { error: '게임 참가자만 기보를 저장할 수 있습니다.' };
+            }
+            
+            // 기보 개수 확인 (최대 30개)
+            if (!user.savedGameRecords) {
+                user.savedGameRecords = [];
+            }
+            
+            if (user.savedGameRecords.length >= 30) {
+                return { error: '기보는 최대 30개까지 저장할 수 있습니다. 기존 기보를 삭제한 후 다시 시도해주세요.' };
+            }
+            
+            // 이미 저장된 기보인지 확인
+            const existingRecord = user.savedGameRecords.find(r => r.gameId === gameId);
+            if (existingRecord) {
+                return { error: '이미 저장된 기보입니다.' };
+            }
+            
+            // 상대방 정보 가져오기
+            const opponent = game.player1.id === user.id ? game.player2 : game.player1;
+            const opponentUser = await db.getUser(opponent.id);
+            if (!opponentUser) {
+                return { error: '상대방 정보를 찾을 수 없습니다.' };
+            }
+            
+            // analysisResult 가져오기 (게임 종료 시 저장된 정보 사용)
+            // analysisResult는 { [playerId: string]: AnalysisResult } 형식이므로, 
+            // 'system' 키로 저장된 전체 게임 분석 결과를 사용
+            let analysisResult = null;
+            if (game.analysisResult && game.analysisResult['system']) {
+                analysisResult = game.analysisResult['system'];
+            } else {
+                // analysisResult가 없으면 기본 정보로 생성
+                // finalizeAnalysisResult에서 계산된 보너스 정보는 게임 객체에서 추출
+                analysisResult = {
+                    scoreDetails: {
+                        black: {
+                            territory: 0,
+                            captures: game.captures?.[types.Player.Black] ?? 0,
+                            deadStones: 0,
+                            baseStoneBonus: game.baseStoneCaptures?.[types.Player.Black] ? game.baseStoneCaptures[types.Player.Black] * 5 : 0,
+                            hiddenStoneBonus: game.hiddenStoneCaptures?.[types.Player.Black] ? game.hiddenStoneCaptures[types.Player.Black] * 5 : 0,
+                            timeBonus: 0, // 시간 보너스는 게임 종료 시점에만 계산 가능
+                            itemBonus: 0, // 아이템 보너스는 게임 종료 시점에만 계산 가능
+                            total: game.finalScores?.black ?? 0
+                        },
+                        white: {
+                            territory: 0,
+                            captures: game.captures?.[types.Player.White] ?? 0,
+                            komi: game.finalKomi ?? game.settings.komi ?? 0.5,
+                            deadStones: 0,
+                            baseStoneBonus: game.baseStoneCaptures?.[types.Player.White] ? game.baseStoneCaptures[types.Player.White] * 5 : 0,
+                            hiddenStoneBonus: game.hiddenStoneCaptures?.[types.Player.White] ? game.hiddenStoneCaptures[types.Player.White] * 5 : 0,
+                            timeBonus: 0,
+                            itemBonus: 0,
+                            total: game.finalScores?.white ?? 0
+                        }
+                    }
+                };
+            }
+            
+            // SGF 생성
+            const sgfContent = generateSgfFromGame(game, user, opponentUser, analysisResult);
+            
+            // 게임 결과 판정
+            const playerColor = game.blackPlayerId === user.id ? types.Player.Black : types.Player.White;
+            const gameResult = game.winner === playerColor ? 'win' : (game.winner === null ? 'draw' : 'loss');
+            
+            // 기보 저장
+            const record: types.GameRecord = {
+                id: randomUUID(),
+                gameId: gameId,
+                mode: game.mode,
+                opponent: {
+                    id: opponentUser.id,
+                    nickname: opponentUser.nickname
+                },
+                date: game.createdAt,
+                sgfContent: sgfContent,
+                gameResult: {
+                    winner: game.winner ?? types.Player.None,
+                    blackScore: game.finalScores?.black ?? 0,
+                    whiteScore: game.finalScores?.white ?? 0,
+                    scoreDetails: analysisResult?.scoreDetails
+                }
+            };
+            
+            user.savedGameRecords.push(record);
+            await db.updateUser(user);
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
+            
+            return { clientResponse: { success: true, recordId: record.id } };
+        }
+        case 'DELETE_GAME_RECORD': {
+            const { recordId } = payload as { recordId: string };
+            
+            if (!user.savedGameRecords) {
+                return { error: '저장된 기보가 없습니다.' };
+            }
+            
+            const recordIndex = user.savedGameRecords.findIndex(r => r.id === recordId);
+            if (recordIndex === -1) {
+                return { error: '기보를 찾을 수 없습니다.' };
+            }
+            
+            user.savedGameRecords.splice(recordIndex, 1);
+            await db.updateUser(user);
+            
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
+            
+            return { clientResponse: { success: true } };
         }
         default:
             return { error: 'Unknown user action.' };

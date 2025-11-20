@@ -16,7 +16,8 @@
     "restore-equipment": "npx tsx --tsconfig server/tsconfig.json server/restoreEquipment.ts",
     "force-restore-equipment": "npx tsx --tsconfig server/tsconfig.json server/forceRestoreEquipment.ts",
     "sync-equipment": "npx tsx --tsconfig server/tsconfig.json server/syncEquipmentInventory.ts",
-    "emergency-restore-all": "npx tsx --tsconfig server/tsconfig.json server/emergencyRestoreAll.ts"
+    "emergency-restore-all": "npx tsx --tsconfig server/tsconfig.json server/emergencyRestoreAll.ts",
+    "optimize-db": "npx tsx --tsconfig server/tsconfig.json server/scripts/optimizeDatabase.ts"
   },
   "dependencies": {
     "@google/genai": "^1.28.0",

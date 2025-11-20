@@ -325,6 +325,40 @@ export type User = {
     playful?: { rank: number; score: number; lastUpdated: number };
     championship?: { rank: number; score: number; lastUpdated: number };
   };
+  savedGameRecords?: GameRecord[];
+};
+
+export type GameRecord = {
+  id: string;
+  gameId: string;
+  mode: GameMode;
+  opponent: {
+    id: string;
+    nickname: string;
+  };
+  date: number;
+  sgfContent: string;
+  gameResult: {
+    winner: Player;
+    blackScore: number;
+    whiteScore: number;
+    scoreDetails?: {
+      black: {
+        timeBonus: number;
+        baseStoneBonus: number;
+        hiddenStoneBonus: number;
+        itemBonus: number;
+        komi?: number;
+      };
+      white: {
+        timeBonus: number;
+        baseStoneBonus: number;
+        hiddenStoneBonus: number;
+        itemBonus: number;
+        komi?: number;
+      };
+    };
+  };
 };
 
 export type EnhancementResult = {
@@ -679,6 +713,7 @@ export type LiveGameSession = {
   gameStartTime?: number; // 게임 시작 시간 (초기화 시점)
   isEarlyTermination?: boolean; // 조기 종료 여부
   badMannerPlayerId?: string; // 비매너 행동자 ID
+  isRankedGame?: boolean; // true면 랭킹전, false면 친선전 (기본값: false)
   diceGoItemUses?: { [playerId: string]: { odd: number; even: number } };
   diceGoBonuses?: { [playerId: string]: number };
   diceCapturesThisTurn?: number;
@@ -760,6 +795,7 @@ export type Negotiation = {
   deadline: number;
   rematchOfGameId?: string;
   previousSettings?: GameSettings;
+  isRanked?: boolean; // false면 친선전, true면 랭킹전 (기본값: false)
 };
 
 export type SanctionLogData = {
@@ -802,4 +838,100 @@ export type ActionButton = {
   name: string;
   message: string;
   type: 'manner' | 'unmannerly';
+};
+
+// --- Guild Types ---
+export type Guild = {
+  id: string;
+  name: string;
+  leaderId: string;
+  description?: string;
+  emblem?: string;
+  settings?: any;
+  gold: number;
+  level: number;
+  experience: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type GuildMember = {
+  id: string;
+  guildId: string;
+  userId: string;
+  role: 'leader' | 'officer' | 'member';
+  joinDate: number;
+  contributionTotal: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type GuildMessage = {
+  id: string;
+  guildId: string;
+  authorId: string;
+  content: string;
+  createdAt: number;
+};
+
+export type GuildMission = {
+  id: string;
+  guildId: string;
+  missionType: string;
+  status: 'active' | 'completed' | 'expired';
+  progress?: any;
+  target?: any;
+  resetAt?: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type GuildShop = {
+  id: string;
+  guildId: string;
+  itemTemplateId: string;
+  price: number;
+  stock: number; // -1 means unlimited
+  purchasedBy?: string[];
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type GuildDonation = {
+  id: string;
+  guildId: string;
+  userId: string;
+  amount: number;
+  itemId?: string;
+  createdAt: number;
+};
+
+export type GuildWar = {
+  id: string;
+  guild1Id: string;
+  guild2Id: string;
+  status: 'pending' | 'active' | 'completed' | 'cancelled';
+  startTime?: number;
+  endTime?: number;
+  result?: {
+    winnerId: string;
+    guild1Score: number;
+    guild2Score: number;
+  };
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type GuildWarMatch = {
+  id: string;
+  warId: string;
+  player1Id: string;
+  player2Id: string;
+  result?: {
+    winnerId: string;
+    gameId: string;
+  };
+  gameId?: string;
+  createdAt: number;
+  updatedAt: number;
 };

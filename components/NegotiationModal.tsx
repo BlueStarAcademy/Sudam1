@@ -77,6 +77,8 @@ const NegotiationModal: React.FC<NegotiationModalProps> = (props) => {
   }, [negotiation.challenger, negotiation.opponent, currentUser.id, onlineUsers]);
 
   const isAiGame = opponent.id === aiUserId;
+  const isRanked = negotiation.isRanked ?? false;
+  const isCasual = !isRanked; // 친선전
   
   const onDecline = useCallback(() => {
     onAction({ type: 'DECLINE_NEGOTIATION', payload: { negotiationId: negotiation.id } });
@@ -217,10 +219,12 @@ const NegotiationModal: React.FC<NegotiationModalProps> = (props) => {
   const onStartAiGame = () => saveSettingsAndAct({ type: 'START_AI_GAME', payload: { mode: negotiation.mode, settings } });
   
   const title = useMemo(() => {
-    if (isAiGame) return `${negotiation.mode} AI 대국 설정`;
-    if (negotiation.rematchOfGameId) return `재대결 설정 (${negotiation.mode})`;
-    return `대국 설정 (${negotiation.mode})`;
-  }, [negotiation.mode, negotiation.rematchOfGameId, isAiGame]);
+    const modeName = negotiation.mode;
+    const casualPrefix = isCasual ? '[친선전] ' : '';
+    if (isAiGame) return `${casualPrefix}${modeName} AI 대국 설정`;
+    if (negotiation.rematchOfGameId) return `${casualPrefix}재대결 설정 (${modeName})`;
+    return `${casualPrefix}대국 설정 (${modeName})`;
+  }, [negotiation.mode, negotiation.rematchOfGameId, isAiGame, isCasual]);
 
   const hasEnoughAP = currentUser.actionPoints.current >= actionPointCost;
 
@@ -309,6 +313,12 @@ const NegotiationModal: React.FC<NegotiationModalProps> = (props) => {
   return (
     <DraggableWindow title={title} windowId="negotiation" onClose={onDecline} initialWidth={600} closeOnOutsideClick={false} isTopmost={isTopmost}>
       <div onMouseDown={(e) => e.stopPropagation()} className="text-sm">
+        {isCasual && (
+          <div className="mb-4 p-3 bg-blue-900/30 border border-blue-700/50 rounded-lg">
+            <div className="text-sm font-semibold text-blue-300 mb-1">친선전</div>
+            <div className="text-xs text-blue-200">이 대국은 친선전입니다. 랭킹 점수 변동이 없습니다.</div>
+          </div>
+        )}
         <p className="text-center text-yellow-300 mb-4">{getStatusText()} <CountdownDisplay deadline={negotiation.deadline} /></p>
 
         <div className="flex flex-col gap-6">

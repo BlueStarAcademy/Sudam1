@@ -1,12 +1,8 @@
 import React from 'react';
+import GuildHome from './guild/GuildHome.js';
 
 const Guild: React.FC = () => {
-  return (
-    <div className="p-4">
-      <h1 className="text-2xl font-bold">Guild Page</h1>
-      <p>Welcome to the Guild page. This feature is under construction.</p>
-    </div>
-  );
+  return <GuildHome />;
 };
 
 export default Guild;

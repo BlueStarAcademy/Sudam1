@@ -14,6 +14,8 @@ import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, aiUserId } from '../../constant
 import QuickAccessSidebar from '../QuickAccessSidebar.js';
 import Button from '../Button.js';
 import AiChallengeModal from './AiChallengeModal.js';
+import RankedMatchPanel from './RankedMatchPanel.js';
+import MatchFoundModal from './MatchFoundModal.js';
 
 
 interface WaitingRoomComponentProps {
@@ -127,12 +129,21 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
   const [isTierInfoModalOpen, setIsTierInfoModalOpen] = useState(false);
   const [isHelpModalOpen, setIsHelpModalOpen] = useState(false);
   const [isAiChallengeModalOpen, setIsAiChallengeModalOpen] = useState(false);
+  const [isRankedMatching, setIsRankedMatching] = useState(false);
+  const [rankedMatchingStartTime, setRankedMatchingStartTime] = useState(0);
+  const [matchFoundData, setMatchFoundData] = useState<{ gameId: string; player1: any; player2: any } | null>(null);
   const desktopContainerRef = useRef<HTMLDivElement>(null);
 
   // 전략바둑과 놀이바둑 대기실은 각각의 채널 사용
   const chatChannel = mode === 'strategic' ? 'strategic' : mode === 'playful' ? 'playful' : 'global';
   const chatMessages = waitingRoomChats[chatChannel] || [];
   const prevChatLength = usePrevious(chatMessages.length);
+
+  const isStrategic = useMemo(() => {
+    if (mode === 'strategic') return true;
+    if (mode === 'playful') return false;
+    return SPECIAL_GAME_MODES.some(m => m.mode === mode);
+  }, [mode]);
 
   // 대기실 입장 시 자동으로 ENTER_WAITING_ROOM 액션 전송
   useEffect(() => {
@@ -152,6 +163,47 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
       }
     }
   }, [mode, currentUserWithStatus?.id, currentUserWithStatus?.status, currentUserWithStatus?.mode, handlers]);
+
+  // 랭킹전 매칭 상태 업데이트 (WebSocket 메시지 처리)
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      try {
+        const message = JSON.parse(event.data);
+        if (message.type === 'RANKED_MATCHING_UPDATE') {
+          const queue = message.payload?.queue;
+          if (queue) {
+            // mode를 직접 사용하여 lobbyType 계산
+            const lobbyType = (mode === 'strategic' || (mode !== 'playful' && SPECIAL_GAME_MODES.some(m => m.mode === mode))) ? 'strategic' : 'playful';
+            const userEntry = queue[lobbyType]?.[currentUserWithStatus?.id];
+            if (userEntry) {
+              setIsRankedMatching(true);
+              setRankedMatchingStartTime(userEntry.startTime);
+            } else {
+              setIsRankedMatching(false);
+              setRankedMatchingStartTime(0);
+            }
+          }
+        } else if (message.type === 'RANKED_MATCH_FOUND') {
+          // 매칭 성공 시 VS 화면 표시
+          setIsRankedMatching(false);
+          setRankedMatchingStartTime(0);
+          setMatchFoundData({
+            gameId: message.payload.gameId,
+            player1: message.payload.player1,
+            player2: message.payload.player2,
+          });
+        }
+      } catch (e) {
+        // 무시
+      }
+    };
+
+    const ws = (window as any).ws;
+    if (ws) {
+      ws.addEventListener('message', handleMessage);
+      return () => ws.removeEventListener('message', handleMessage);
+    }
+  }, [mode, currentUserWithStatus?.id]);
 
   useEffect(() => {
     if (!isMobileSidebarOpen && prevChatLength !== undefined && chatMessages.length > prevChatLength) {
@@ -220,11 +272,6 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
         return [me, ...all.filter(u => u.id !== currentUserWithStatus.id)];
   }, [onlineUsers, mode, currentUserWithStatus]);
 
-  const isStrategic = useMemo(() => {
-    if (mode === 'strategic') return true;
-    if (mode === 'playful') return false;
-    return SPECIAL_GAME_MODES.some(m => m.mode === mode);
-  }, [mode]);
   const locationPrefix = mode === 'strategic' ? '[전략바둑]' : mode === 'playful' ? '[놀이바둑]' : `[${mode}]`;
     
   return (
@@ -341,8 +388,28 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
                       <div className="h-[350px] min-h-0">
                           <GameList games={ongoingGames} onAction={handlers.handleAction} currentUser={currentUserWithStatus} />
                       </div>
-                      <div className="flex-1 flex flex-col bg-panel border border-color rounded-lg shadow-lg min-h-0">
-                          <ChatWindow messages={chatMessages} mode={chatChannel} onAction={handlers.handleAction} locationPrefix={locationPrefix} onViewUser={handlers.openViewingUser} />
+                      {/* 채팅창과 랭킹전 패널을 나란히 배치 */}
+                      <div className="flex-1 flex flex-row gap-4 min-h-0">
+                          <div className="flex-1 flex flex-col bg-panel border border-color rounded-lg shadow-lg min-h-0">
+                              <ChatWindow messages={chatMessages} mode={chatChannel} onAction={handlers.handleAction} locationPrefix={locationPrefix} onViewUser={handlers.openViewingUser} />
+                          </div>
+                          <div className="w-80 flex-shrink-0 bg-panel border border-color rounded-lg shadow-lg">
+                              <RankedMatchPanel 
+                                lobbyType={isStrategic ? 'strategic' : 'playful'}
+                                currentUser={currentUserWithStatus}
+                                onAction={handlers.handleAction}
+                                isMatching={isRankedMatching}
+                                matchingStartTime={rankedMatchingStartTime}
+                                onMatchingStateChange={(isMatching, startTime) => {
+                                  setIsRankedMatching(isMatching);
+                                  setRankedMatchingStartTime(startTime);
+                                }}
+                                onCancelMatching={() => {
+                                  setIsRankedMatching(false);
+                                  setRankedMatchingStartTime(0);
+                                }}
+                              />
+                          </div>
                       </div>
                   </div>
               
@@ -371,6 +438,19 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
           lobbyType={isStrategic ? 'strategic' : 'playful'} 
           onClose={() => setIsAiChallengeModalOpen(false)} 
           onAction={handlers.handleAction}
+        />
+      )}
+      {matchFoundData && (
+        <MatchFoundModal
+          gameId={matchFoundData.gameId}
+          player1={matchFoundData.player1}
+          player2={matchFoundData.player2}
+          currentUserId={currentUserWithStatus.id}
+          onClose={() => setMatchFoundData(null)}
+          onEnterGame={(gameId) => {
+            setMatchFoundData(null);
+            window.location.hash = `#/game/${gameId}`;
+          }}
         />
       )}
     </div>

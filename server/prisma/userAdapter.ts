@@ -198,7 +198,7 @@ const ensureEquipment = (value: unknown): Equipment =>
 const ensureMail = (value: unknown): Mail[] =>
   parseJson<Mail[]>(value, []);
 
-export type PrismaUserWithStatus = Prisma.UserGetPayload<{ include: { status: true } }>;
+export type PrismaUserWithStatus = Prisma.UserGetPayload<{ include: { status: true; guildMember: true } }>;
 
 const applyDefaults = (
   user: Partial<User>,
@@ -524,7 +524,8 @@ export function deserializeUser(prismaUser: PrismaUserWithStatus): User {
     towerFloor: safeNumber(prismaUser.towerFloor, safeNumber(legacy.towerFloor, 0)),
     lastTowerClearTime: prismaUser.lastTowerClearTime != null 
       ? Number(prismaUser.lastTowerClearTime) 
-      : safeNumber(legacy.lastTowerClearTime, undefined)
+      : safeNumber(legacy.lastTowerClearTime, undefined),
+    guildId: user.guildId ?? (prismaUser.guildMember?.guildId ?? undefined)
   };
 
   const applied = applyDefaults(partial, prismaUser, status);

@@ -56,6 +56,14 @@ export interface AppState {
     homeBoardPosts: HomeBoardPost[];
 }
 
+export interface RankedMatchingEntry {
+    userId: string;
+    lobbyType: 'strategic' | 'playful';
+    selectedModes: GameMode[];
+    startTime: number;
+    rating: number;
+}
+
 export interface VolatileState {
     userConnections: Record<string, number>;
     userStatuses: Record<string, UserStatusInfo>;
@@ -70,6 +78,10 @@ export interface VolatileState {
     gameCache?: Map<string, { game: LiveGameSession; lastUpdated: number }>;
     // 사용자 정보 캐시 (DB 조회 최소화)
     userCache?: Map<string, { user: User; lastUpdated: number }>;
+    // 랭킹전 매칭 큐
+    rankedMatchingQueue?: {
+        [lobbyType: 'strategic' | 'playful']: Record<string, RankedMatchingEntry>;
+    };
 }
 
 export interface UserStatusInfo {
@@ -96,13 +108,16 @@ export type ServerAction =
     // FIX: The payload for LEAVE_SPECTATING is made optional to accommodate different call signatures in the codebase.
     | { type: 'LEAVE_SPECTATING', payload?: { gameId?: string } }
     // Negotiation
-    | { type: 'CHALLENGE_USER', payload: { opponentId: string; mode: GameMode; settings?: GameSettings } }
+    | { type: 'CHALLENGE_USER', payload: { opponentId: string; mode: GameMode; settings?: GameSettings; isRanked?: boolean } }
     | { type: 'SEND_CHALLENGE', payload: { negotiationId: string; settings: any } }
     | { type: 'UPDATE_NEGOTIATION', payload: { negotiationId: string; settings: any } }
     | { type: 'ACCEPT_NEGOTIATION', payload: { negotiationId: string; settings: any } }
     | { type: 'DECLINE_NEGOTIATION', payload: { negotiationId: string } }
     | { type: 'START_AI_GAME', payload: { mode: GameMode, settings: any } }
     | { type: 'REQUEST_REMATCH', payload: { opponentId: string, originalGameId: string } }
+    // Ranked Matching
+    | { type: 'START_RANKED_MATCHING', payload: { lobbyType: 'strategic' | 'playful'; selectedModes: GameMode[] } }
+    | { type: 'CANCEL_RANKED_MATCHING', payload?: never }
     // Game
     | { type: 'PLACE_STONE', payload: { gameId: string; x: number; y: number, isHidden?: boolean, isClientAiMove?: boolean } }
     | { type: 'PASS_TURN', payload: { gameId: string } }
@@ -143,11 +158,14 @@ export type ServerAction =
     | { type: 'DICE_CONFIRM_START', payload: { gameId: string } }
     | { type: 'DICE_ROLL', payload: { gameId: string; itemType?: 'odd' | 'even' } }
     | { type: 'DICE_PLACE_STONE', payload: { gameId: string, x: number, y: number } }
-   // Thief Go
+    // Thief Go
     | { type: 'THIEF_UPDATE_ROLE_CHOICE', payload: { gameId: string; choice: 'thief' | 'police' } }
     | { type: 'CONFIRM_THIEF_ROLE', payload: { gameId: string } }
     | { type: 'THIEF_ROLL_DICE', payload: { gameId: string } }
     | { type: 'THIEF_PLACE_STONE', payload: { gameId: string; x: number; y: number } }
+    // Game Records
+    | { type: 'SAVE_GAME_RECORD', payload: { gameId: string } }
+    | { type: 'DELETE_GAME_RECORD', payload: { recordId: string } }
     // Alkkagi
     | { type: 'CONFIRM_ALKKAGI_START', payload: { gameId: string } }
     | { type: 'ALKKAGI_PLACE_STONE', payload: { gameId: string, point: Point } }
@@ -249,6 +267,22 @@ export type ServerAction =
     | { type: 'CLAIM_ALL_TRAINING_QUEST_REWARDS', payload?: never }
     | { type: 'LEVEL_UP_TRAINING_QUEST', payload: { missionId: string } }
     | { type: 'MANNER_ACTION', payload: { targetUserId: string, actionType: 'up' | 'down' } }
+    // Guild
+    | { type: 'CREATE_GUILD', payload: { name: string; description?: string; emblem?: string } }
+    | { type: 'JOIN_GUILD', payload: { guildId: string } }
+    | { type: 'LEAVE_GUILD', payload?: never }
+    | { type: 'KICK_GUILD_MEMBER', payload: { memberId: string } }
+    | { type: 'UPDATE_GUILD_MEMBER_ROLE', payload: { memberId: string; role: 'leader' | 'officer' | 'member' } }
+    | { type: 'UPDATE_GUILD_SETTINGS', payload: { settings: any } }
+    | { type: 'SEND_GUILD_MESSAGE', payload: { content: string } }
+    | { type: 'GET_GUILD_MESSAGES', payload?: { limit?: number; before?: number } }
+    | { type: 'START_GUILD_MISSION', payload: { missionType: string; target: any } }
+    | { type: 'UPDATE_GUILD_MISSION_PROGRESS', payload: { missionId: string; progress: any } }
+    | { type: 'DONATE_TO_GUILD', payload: { amount?: number; itemId?: string } }
+    | { type: 'PURCHASE_GUILD_SHOP_ITEM', payload: { shopItemId: string } }
+    | { type: 'START_GUILD_WAR', payload: { targetGuildId: string } }
+    | { type: 'END_GUILD_WAR', payload: { warId: string } }
+    | { type: 'GET_GUILD_INFO', payload?: never }
     ;
 
 export interface GameProps {

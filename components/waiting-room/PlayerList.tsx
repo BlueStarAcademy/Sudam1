@@ -166,10 +166,10 @@ const PlayerList: React.FC<PlayerListProps> = ({ users, onAction, currentUser, m
                     onChallenge={async (gameMode, settings) => {
                         // 모달을 닫지 않고 유지하여 응답을 기다림
                         
-                        // CHALLENGE_USER로 draft negotiation 생성
+                        // CHALLENGE_USER로 draft negotiation 생성 (친선전)
                         const createChallengeAction = { 
                             type: 'CHALLENGE_USER', 
-                            payload: { opponentId: challengeTargetUser.id, mode: gameMode, settings } 
+                            payload: { opponentId: challengeTargetUser.id, mode: gameMode, settings, isRanked: false } 
                         };
                         
                         // handleAction을 직접 호출하여 응답을 받음

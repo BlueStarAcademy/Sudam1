@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 // FIX: The main types barrel file now exports settings types. Use it for consistency.
-import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, UserStatusInfo, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset, Player, HomeBoardPost } from '../types.js';
+import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, UserStatusInfo, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset, Player, HomeBoardPost, GameRecord } from '../types.js';
 import { audioService } from '../services/audioService.js';
 import { stableStringify, parseHash } from '../utils/appUtils.js';
 import { 
@@ -266,6 +266,8 @@ export const useApp = () => {
     const [isMbtiInfoModalOpen, setIsMbtiInfoModalOpen] = useState(false);
     const [isEquipmentEffectsModalOpen, setIsEquipmentEffectsModalOpen] = useState(false);
     const [isBlacksmithModalOpen, setIsBlacksmithModalOpen] = useState(false);
+    const [isGameRecordListOpen, setIsGameRecordListOpen] = useState(false);
+    const [viewingGameRecord, setViewingGameRecord] = useState<types.GameRecord | null>(null);
     const [blacksmithSelectedItemForEnhancement, setBlacksmithSelectedItemForEnhancement] = useState<InventoryItem | null>(null);
     const [blacksmithActiveTab, setBlacksmithActiveTab] = useState<'enhance' | 'combine' | 'disassemble' | 'convert'>('enhance');
     const [combinationResult, setCombinationResult] = useState<{ item: InventoryItem; xpGained: number; isGreatSuccess: boolean; } | null>(null);
@@ -1140,6 +1142,16 @@ export const useApp = () => {
                         audioService.combinationSuccess(); // Assuming this sound exists
                     }
                 }
+                // 랭킹전 매칭 시작 응답 처리
+                if (action.type === 'START_RANKED_MATCHING' && result.clientResponse?.success) {
+                    const matchingInfo = result.clientResponse.matchingInfo;
+                    if (matchingInfo) {
+                        console.log('[handleAction] START_RANKED_MATCHING - Matching started:', matchingInfo);
+                        // 매칭 정보를 반환하여 컴포넌트에서 즉시 상태 업데이트 가능하도록 함
+                        return { matchingInfo };
+                    }
+                }
+                
                 const enhancementOutcome = result.clientResponse?.enhancementOutcome || result.enhancementOutcome;
                 if (enhancementOutcome) {
                     const { message, success, itemBefore, itemAfter } = enhancementOutcome;
@@ -2441,6 +2453,26 @@ export const useApp = () => {
                             }
                             return;
                         }
+                        case 'GUILD_UPDATE': {
+                            // Guild update is handled by components that listen to it
+                            // Components can reload guild info when this message is received
+                            return;
+                        }
+                        case 'GUILD_MESSAGE': {
+                            // Guild message is sent to specific users via sendToUser
+                            // Components should handle this in their own message handlers
+                            return;
+                        }
+                        case 'GUILD_MISSION_UPDATE': {
+                            // Guild mission update is sent to specific users via sendToUser
+                            // Components should handle this in their own message handlers
+                            return;
+                        }
+                        case 'GUILD_WAR_UPDATE': {
+                            // Guild war update is sent to specific users via sendToUser
+                            // Components should handle this in their own message handlers
+                            return;
+                        }
                         case 'ERROR': {
                             console.error('[WebSocket] Error message:', message.payload?.message || 'Unknown error');
                             return;
@@ -2896,6 +2928,7 @@ export const useApp = () => {
         modals: {
             isSettingsModalOpen, isInventoryOpen, isMailboxOpen, isQuestsOpen, isShopOpen, shopInitialTab, lastUsedItemResult,
             disassemblyResult, craftResult, rewardSummary, viewingUser, isInfoModalOpen, isEncyclopediaOpen, isStatAllocationModalOpen, enhancementAnimationTarget,
+            isGameRecordListOpen, viewingGameRecord,
             pastRankingsInfo, viewingItem, isProfileEditModalOpen, moderatingUser,
             isClaimAllSummaryOpen,
             claimAllSummary,
@@ -2972,6 +3005,10 @@ export const useApp = () => {
             },
             openBlacksmithHelp: () => setIsBlacksmithHelpOpen(true),
             closeBlacksmithHelp: () => setIsBlacksmithHelpOpen(false),
+            openGameRecordList: () => setIsGameRecordListOpen(true),
+            closeGameRecordList: () => setIsGameRecordListOpen(false),
+            openGameRecordViewer: (record: GameRecord) => setViewingGameRecord(record),
+            closeGameRecordViewer: () => setViewingGameRecord(null),
             setBlacksmithActiveTab,
             closeEnhancementModal,
         },

@@ -92,7 +92,7 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
                             rank: user.dailyRankings[mode].rank
                         };
                     } else {
-                        // 없으면 cumulativeRankingScore 사용 (없으면 0)
+                        // 없으면 cumulativeRankingScore 사용 (차이값 그대로 표시)
                         return {
                             user,
                             value: user.cumulativeRankingScore?.[scoreMode] ?? 0
@@ -164,6 +164,7 @@ const BadukRankingBoard: React.FC<BadukRankingBoardProps> = ({ isTopmost }) => {
             if (dailyRanking) {
                 return { user: currentUserWithStatus, value: dailyRanking.score, rank: dailyRanking.rank };
             }
+            // cumulativeRankingScore는 차이값 그대로 표시
             return { user: currentUserWithStatus, value: currentUserWithStatus.cumulativeRankingScore?.[scoreMode] || 0, rank: 'N/A' };
         }
     }, [currentUserWithStatus, activeTab, rankings, allUsers]);

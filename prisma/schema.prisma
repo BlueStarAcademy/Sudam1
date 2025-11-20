@@ -44,6 +44,8 @@ model User {
   missions         UserMission[]
   inventoryHistory InventoryHistory[]
   credential       UserCredential?
+  guild            Guild?            @relation("GuildLeader")
+  guildMember      GuildMember?
 
   @@index([league])
   @@index([tournamentScore])
@@ -187,4 +189,144 @@ model HomeBoardPost {
 
   @@index([createdAt])
   @@index([isPinned, createdAt])
+}
+
+model Guild {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  leaderId    String   @unique
+  description String?
+  emblem      String?
+  settings    Json?
+  gold        BigInt   @default(0)
+  level       Int      @default(1)
+  experience  BigInt   @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  leader      User     @relation("GuildLeader", fields: [leaderId], references: [id], onDelete: Cascade)
+  members     GuildMember[]
+  messages    GuildMessage[]
+  missions    GuildMission[]
+  shopItems   GuildShop[]
+  donations   GuildDonation[]
+  wars        GuildWar[] @relation("Guild1")
+  warsAsGuild2 GuildWar[] @relation("Guild2")
+
+  @@index([leaderId])
+  @@index([name])
+}
+
+model GuildMember {
+  id                String   @id @default(uuid())
+  guildId           String
+  userId            String   @unique
+  role              String   @default("member") // leader, officer, member
+  joinDate          DateTime @default(now())
+  contributionTotal BigInt   @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  guild             Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([guildId, userId])
+  @@index([guildId])
+  @@index([userId])
+}
+
+model GuildMessage {
+  id        String   @id @default(uuid())
+  guildId   String
+  authorId  String
+  content   String
+  createdAt DateTime @default(now())
+
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+  @@index([authorId])
+}
+
+model GuildMission {
+  id          String   @id @default(uuid())
+  guildId     String
+  missionType String
+  status      String   @default("active") // active, completed, expired
+  progress    Json?
+  target      Json?
+  resetAt     DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  guild       Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, status])
+  @@index([resetAt])
+}
+
+model GuildShop {
+  id             String   @id @default(uuid())
+  guildId        String
+  itemTemplateId String
+  price          BigInt
+  stock          Int      @default(-1) // -1 means unlimited
+  purchasedBy    Json?    // Array of userIds who purchased
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  guild          Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId])
+}
+
+model GuildDonation {
+  id        String   @id @default(uuid())
+  guildId   String
+  userId    String
+  amount    BigInt   @default(0)
+  itemId    String?
+  createdAt DateTime @default(now())
+
+  guild     Guild    @relation(fields: [guildId], references: [id], onDelete: Cascade)
+
+  @@index([guildId, createdAt])
+  @@index([userId])
+}
+
+model GuildWar {
+  id        String   @id @default(uuid())
+  guild1Id  String
+  guild2Id  String
+  status    String   @default("pending") // pending, active, completed, cancelled
+  startTime DateTime?
+  endTime   DateTime?
+  result    Json?    // { winnerId: string, guild1Score: number, guild2Score: number }
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  guild1    Guild    @relation("Guild1", fields: [guild1Id], references: [id], onDelete: Cascade)
+  guild2    Guild    @relation("Guild2", fields: [guild2Id], references: [id], onDelete: Cascade)
+  matches   GuildWarMatch[]
+
+  @@index([guild1Id, status])
+  @@index([guild2Id, status])
+  @@index([status])
+}
+
+model GuildWarMatch {
+  id        String   @id @default(uuid())
+  warId     String
+  player1Id String
+  player2Id String
+  result    Json?    // { winnerId: string, gameId: string }
+  gameId    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  war       GuildWar @relation(fields: [warId], references: [id], onDelete: Cascade)
+
+  @@index([warId])
+  @@index([player1Id])
+  @@index([player2Id])
 }

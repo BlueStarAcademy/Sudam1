@@ -34,6 +34,8 @@ import EnhancementModal from './components/EnhancementModal';
 import EquipmentEffectsModal from './components/EquipmentEffectsModal';
 import EnhancementResultModal from './components/modals/EnhancementResultModal.js';
 import InstallPrompt from './components/InstallPrompt.js';
+import GameRecordListModal from './components/GameRecordListModal.js';
+import GameRecordViewerModal from './components/GameRecordViewerModal.js';
 
 function usePrevious<T>(value: T): T | undefined {
     const ref = useRef<T | undefined>(undefined);
@@ -141,6 +143,8 @@ const AppContent: React.FC = () => {
         if (modals.enhancingItem) ids.push('enhancingItem');
         if (modals.isBlacksmithModalOpen) ids.push('blacksmith');
         if (modals.isBlacksmithHelpOpen) ids.push('blacksmithHelp');
+        if (modals.isGameRecordListOpen) ids.push('gameRecordList');
+        if (modals.viewingGameRecord) ids.push('gameRecordViewer');
         // 결과 모달들은 대장간보다 뒤에 추가하여 항상 위에 표시
         if (modals.combinationResult) ids.push('combinationResult');
         if (modals.disassemblyResult) ids.push('disassemblyResult');
@@ -328,6 +332,18 @@ const AppContent: React.FC = () => {
                     {modals.isClaimAllSummaryOpen && modals.claimAllSummary && <ClaimAllSummaryModal summary={modals.claimAllSummary} onClose={handlers.closeClaimAllSummary} isTopmost={topmostModalId === 'claimAllSummary'} />}
                     {modals.isMbtiInfoModalOpen && <MbtiInfoModal onClose={handlers.closeMbtiInfoModal} isTopmost={topmostModalId === 'mbtiInfo'} />}
                     {modals.isEquipmentEffectsModalOpen && <EquipmentEffectsModal onClose={handlers.closeEquipmentEffectsModal} isTopmost={topmostModalId === 'equipmentEffects'} mainOptionBonuses={mainOptionBonuses} combatSubOptionBonuses={combatSubOptionBonuses} specialStatBonuses={specialStatBonuses} aggregatedMythicStats={aggregatedMythicStats} />}
+                    {modals.isGameRecordListOpen && currentUserWithStatus && <GameRecordListModal 
+                        currentUser={currentUserWithStatus} 
+                        onClose={handlers.closeGameRecordList} 
+                        onAction={handlers.handleAction}
+                        onViewRecord={handlers.openGameRecordViewer}
+                        isTopmost={topmostModalId === 'gameRecordList'}
+                    />}
+                    {modals.viewingGameRecord && <GameRecordViewerModal 
+                        record={modals.viewingGameRecord} 
+                        onClose={handlers.closeGameRecordViewer}
+                        isTopmost={topmostModalId === 'gameRecordViewer'}
+                    />}
                 </>
             )}
             <InstallPrompt />

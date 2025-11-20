@@ -63,10 +63,11 @@ const RankingList: React.FC<RankingListProps> = ({ currentUser, mode, onViewUser
             })
             .map(u => {
                 // dailyRankings가 있으면 우선 사용 (현재 시즌 랭킹점수)
+                // dailyRankings.score는 1200에서의 차이값이므로 1200을 더해서 실제 점수로 표시
                 if (u.dailyRankings?.[mode]) {
                     return {
                         ...u,
-                        avgScore: u.dailyRankings[mode].score,
+                        avgScore: 1200 + u.dailyRankings[mode].score,
                         rank: u.dailyRankings[mode].rank
                     };
                 } else {
