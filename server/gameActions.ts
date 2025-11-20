@@ -286,6 +286,7 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
         type.startsWith('UPDATE_GUILD') || 
         type.startsWith('SEND_GUILD') || 
         type.startsWith('GET_GUILD') || 
+        type.startsWith('LIST_GUILDS') ||
         type.startsWith('START_GUILD') || 
         type.startsWith('DONATE_TO_GUILD') || 
         type.startsWith('PURCHASE_GUILD') || 

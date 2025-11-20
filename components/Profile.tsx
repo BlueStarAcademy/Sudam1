@@ -16,6 +16,9 @@ import GameRankingBoard from './GameRankingBoard.js';
 import BadukRankingBoard from './BadukRankingBoard.js';
 import MannerRankModal from './MannerRankModal.js';
 import HomeBoardPanel from './HomeBoardPanel.js';
+import GuildCreateModal from './guild/GuildCreateModal.js';
+import GuildJoinModal from './guild/GuildJoinModal.js';
+import type { Guild } from '../types/entities.js';
 
 interface ProfileProps {
 }
@@ -267,6 +270,9 @@ const Profile: React.FC<ProfileProps> = () => {
     const [towerTimeLeft, setTowerTimeLeft] = useState('');
     const [selectedPreset, setSelectedPreset] = useState(0);
     const [showMannerRankModal, setShowMannerRankModal] = useState(false);
+    const [isGuildCreateModalOpen, setIsGuildCreateModalOpen] = useState(false);
+    const [isGuildJoinModalOpen, setIsGuildJoinModalOpen] = useState(false);
+    const [guildInfo, setGuildInfo] = useState<Guild | null>(null);
 
     useEffect(() => {
         const calculateTime = () => {
@@ -284,6 +290,25 @@ const Profile: React.FC<ProfileProps> = () => {
         const interval = setInterval(calculateTime, 60 * 60 * 1000); // Update every hour
         return () => clearInterval(interval);
     }, []);
+
+    // Load guild info when user has a guild
+    useEffect(() => {
+        if (currentUserWithStatus?.guildId) {
+            const loadGuildInfo = async () => {
+                try {
+                    const result: any = await handlers.handleAction({ type: 'GET_GUILD_INFO' });
+                    if (result?.clientResponse?.guild) {
+                        setGuildInfo(result.clientResponse.guild);
+                    }
+                } catch (error) {
+                    console.error('Failed to load guild info:', error);
+                }
+            };
+            loadGuildInfo();
+        } else {
+            setGuildInfo(null);
+        }
+    }, [currentUserWithStatus?.guildId, handlers]);
     
     if (!currentUserWithStatus) return null;
 
@@ -546,27 +571,45 @@ const Profile: React.FC<ProfileProps> = () => {
 
             <div className="flex-grow flex flex-col min-h-0 border-t border-color mt-2 pt-2">
                 <div className="bg-tertiary/30 p-2 rounded-md mb-2">
-                    <div className="flex items-center gap-2">
-                        {/* 길드 아이콘 버튼 */}
+                    {currentUserWithStatus.guildId && guildInfo ? (
                         <button
                             onClick={() => { window.location.hash = '#/guild'; }}
-                            className="flex-shrink-0 w-10 h-10 rounded-md bg-secondary/50 hover:bg-secondary/70 border border-color transition-colors flex items-center justify-center"
-                            title="길드"
+                            className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-tertiary/50 transition-colors cursor-pointer"
+                            title="길드 홈으로 이동"
                         >
-                            <img src="/images/button/guild.png" alt="길드" className="w-8 h-8 object-contain" />
+                            <div className="flex-shrink-0 w-10 h-10 rounded-md bg-secondary/50 border border-color flex items-center justify-center">
+                                {guildInfo.emblem ? (
+                                    <span className="text-2xl">{guildInfo.emblem}</span>
+                                ) : (
+                                    <img src="/images/button/guild.png" alt="길드" className="w-8 h-8 object-contain" />
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0 text-left">
+                                <div className="font-semibold text-white truncate" style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }}>
+                                    {guildInfo.name}
+                                </div>
+                                <div className="text-xs text-gray-400">
+                                    레벨 {guildInfo.level}
+                                </div>
+                            </div>
                         </button>
-                        {/* 나머지 공간에 버튼들 */}
-                        <div className="flex-1 flex gap-2">
-                            {currentUserWithStatus.guildId ? (
-                                <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 justify-center !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드 입장</Button>
-                            ) : (
-                                <>
-                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 justify-center !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드창설</Button>
-                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 justify-center !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드가입</Button>
-                                </>
-                            )}
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            {/* 길드 아이콘 버튼 */}
+                            <button
+                                onClick={() => { window.location.hash = '#/guild'; }}
+                                className="flex-shrink-0 w-10 h-10 rounded-md bg-secondary/50 hover:bg-secondary/70 border border-color transition-colors flex items-center justify-center"
+                                title="길드"
+                            >
+                                <img src="/images/button/guild.png" alt="길드" className="w-8 h-8 object-contain" />
+                            </button>
+                            {/* 나머지 공간에 버튼들 */}
+                            <div className="flex-1 flex gap-2">
+                                <Button onClick={() => setIsGuildCreateModalOpen(true)} colorScheme="none" className="flex-1 justify-center !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드창설</Button>
+                                <Button onClick={() => setIsGuildJoinModalOpen(true)} colorScheme="none" className="flex-1 justify-center !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드가입</Button>
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
                  <div className="flex justify-between items-center mb-1 flex-shrink-0 whitespace-nowrap">
                     <h3 className="font-semibold text-secondary text-sm whitespace-nowrap overflow-hidden" style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }}>능력치</h3>
@@ -603,7 +646,7 @@ const Profile: React.FC<ProfileProps> = () => {
                 </div>
             </div>
         </>
-    ), [currentUserWithStatus, handlers, mannerRank, mannerStyle, totalMannerScore, availablePoints, coreStatBonuses]);
+    ), [currentUserWithStatus, handlers, mannerRank, mannerStyle, totalMannerScore, availablePoints, coreStatBonuses, guildInfo]);
     
     const LobbyCards = (
         <div className="grid grid-cols-12 grid-rows-2 gap-2 lg:gap-4 h-full">
@@ -826,25 +869,43 @@ const Profile: React.FC<ProfileProps> = () => {
 
                             <div className="flex-grow flex flex-col min-h-0 border-t border-color mt-1 pt-1">
                                 <div className="bg-tertiary/30 p-1 rounded-md mb-1">
-                                    <div className="flex items-center gap-1">
+                                    {currentUserWithStatus.guildId && guildInfo ? (
                                         <button
                                             onClick={() => { window.location.hash = '#/guild'; }}
-                                            className="flex-shrink-0 w-6 h-6 rounded-md bg-secondary/50 hover:bg-secondary/70 border border-color transition-colors flex items-center justify-center"
-                                            title="길드"
+                                            className="w-full flex items-center gap-1 p-1 rounded-md hover:bg-tertiary/50 transition-colors cursor-pointer"
+                                            title="길드 홈으로 이동"
                                         >
-                                            <img src="/images/button/guild.png" alt="길드" className="w-5 h-5 object-contain" />
+                                            <div className="flex-shrink-0 w-6 h-6 rounded-md bg-secondary/50 border border-color flex items-center justify-center">
+                                                {guildInfo.emblem ? (
+                                                    <span className="text-sm">{guildInfo.emblem}</span>
+                                                ) : (
+                                                    <img src="/images/button/guild.png" alt="길드" className="w-5 h-5 object-contain" />
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0 text-left">
+                                                <div className="font-semibold text-white text-[9px] truncate">
+                                                    {guildInfo.name}
+                                                </div>
+                                                <div className="text-[8px] text-gray-400">
+                                                    Lv.{guildInfo.level}
+                                                </div>
+                                            </div>
                                         </button>
-                                        <div className="flex-1 flex gap-1">
-                                            {currentUserWithStatus.guildId ? (
-                                                <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드 입장</Button>
-                                            ) : (
-                                                <>
-                                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드창설</Button>
-                                                    <Button onClick={() => { window.location.hash = '#/guild'; }} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드가입</Button>
-                                                </>
-                                            )}
+                                    ) : (
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                onClick={() => { window.location.hash = '#/guild'; }}
+                                                className="flex-shrink-0 w-6 h-6 rounded-md bg-secondary/50 hover:bg-secondary/70 border border-color transition-colors flex items-center justify-center"
+                                                title="길드"
+                                            >
+                                                <img src="/images/button/guild.png" alt="길드" className="w-5 h-5 object-contain" />
+                                            </button>
+                                            <div className="flex-1 flex gap-1">
+                                                <Button onClick={() => setIsGuildCreateModalOpen(true)} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드창설</Button>
+                                                <Button onClick={() => setIsGuildJoinModalOpen(true)} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드가입</Button>
+                                            </div>
                                         </div>
-                                    </div>
+                                    )}
                                 </div>
                                 <div className="flex justify-between items-center mb-0.5 flex-shrink-0 whitespace-nowrap">
                                     <h3 className="font-semibold text-secondary text-[10px] whitespace-nowrap overflow-hidden">능력치</h3>
@@ -976,6 +1037,30 @@ const Profile: React.FC<ProfileProps> = () => {
                     user={currentUserWithStatus}
                     onClose={() => setShowMannerRankModal(false)}
                     isTopmost={true}
+                />
+            )}
+            {isGuildCreateModalOpen && (
+                <GuildCreateModal
+                    onClose={() => setIsGuildCreateModalOpen(false)}
+                    onSuccess={async (guild: Guild) => {
+                        setIsGuildCreateModalOpen(false);
+                        // 길드 정보 업데이트
+                        setGuildInfo(guild);
+                        // 길드 생성 성공 시 길드 페이지로 이동
+                        window.location.hash = '#/guild';
+                    }}
+                />
+            )}
+            {isGuildJoinModalOpen && (
+                <GuildJoinModal
+                    onClose={() => setIsGuildJoinModalOpen(false)}
+                    onSuccess={async (guild: Guild) => {
+                        setIsGuildJoinModalOpen(false);
+                        // 길드 정보 업데이트
+                        setGuildInfo(guild);
+                        // 길드 가입 성공 시 길드 페이지로 이동
+                        window.location.hash = '#/guild';
+                    }}
                 />
             )}
         </div>

@@ -3,6 +3,7 @@ import { useAppContext } from '../../hooks/useAppContext.js';
 import { Guild } from '../../types/entities.js';
 import Button from '../Button.js';
 import DraggableWindow from '../DraggableWindow.js';
+import { resourceIcons } from '../resourceIcons.js';
 
 interface GuildCreateModalProps {
     onClose: () => void;
@@ -24,6 +25,12 @@ const GuildCreateModal: React.FC<GuildCreateModalProps> = ({ onClose, onSuccess 
 
         if (name.length < 2 || name.length > 20) {
             setError('길드 이름은 2자 이상 20자 이하여야 합니다.');
+            return;
+        }
+
+        // Check if user already has a guild
+        if (currentUserWithStatus?.guildId) {
+            setError('이미 길드에 가입되어 있습니다. 길드 홈에서 확인해주세요.');
             return;
         }
 
@@ -90,12 +97,26 @@ const GuildCreateModal: React.FC<GuildCreateModalProps> = ({ onClose, onSuccess 
                 </div>
 
                 <div className="mb-4 p-3 bg-yellow-900/30 border border-yellow-700/50 rounded-lg">
-                    <p className="text-sm text-yellow-200">
-                        길드 생성 비용: <span className="font-bold">10,000 골드</span>
-                    </p>
-                    <p className="text-xs text-yellow-300 mt-1">
-                        현재 보유: {currentUserWithStatus?.gold?.toLocaleString() || 0} 골드
-                    </p>
+                    <div className="flex items-center gap-2 mb-2">
+                        <p className="text-sm text-yellow-200">
+                            길드 생성 비용:
+                        </p>
+                        <div className="flex items-center gap-1">
+                            <img src={resourceIcons.diamonds} alt="다이아" className="w-5 h-5 object-contain" />
+                            <span className="font-bold text-yellow-200">100</span>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <p className="text-xs text-yellow-300">
+                            현재 보유:
+                        </p>
+                        <div className="flex items-center gap-1">
+                            <img src={resourceIcons.diamonds} alt="다이아" className="w-4 h-4 object-contain" />
+                            <span className="text-xs text-yellow-300 font-semibold">
+                                {currentUserWithStatus?.diamonds?.toLocaleString() || 0}
+                            </span>
+                        </div>
+                    </div>
                 </div>
 
                 {error && (

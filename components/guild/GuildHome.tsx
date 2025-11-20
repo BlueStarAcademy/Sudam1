@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext.js';
-import { Guild, GuildMember, GuildMessage, GuildMission, GuildShop, GuildDonation } from '../../types/entities.js';
+import type { Guild, GuildMember, GuildMessage, GuildMission, GuildShop, GuildDonation } from '../../types/entities.js';
 import Button from '../Button.js';
 import GuildCreateModal from './GuildCreateModal.js';
 import GuildJoinModal from './GuildJoinModal.js';
@@ -8,7 +8,7 @@ import GuildInfoPanel from './GuildInfoPanel.js';
 import GuildMemberList from './GuildMemberList.js';
 import GuildChat from './GuildChat.js';
 import GuildMissionPanel from './GuildMissionPanel.js';
-import GuildShop from './GuildShop.js';
+import GuildShopComponent from './GuildShop.js';
 import GuildDonationPanel from './GuildDonationPanel.js';
 import GuildWarPanel from './GuildWarPanel.js';
 
@@ -202,7 +202,7 @@ const GuildHome: React.FC = () => {
                     />
                 )}
                 {activeTab === 'shop' && (
-                    <GuildShop
+                    <GuildShopComponent
                         guildId={guild.id}
                         shopItems={shopItems}
                         onShopItemsUpdate={setShopItems}

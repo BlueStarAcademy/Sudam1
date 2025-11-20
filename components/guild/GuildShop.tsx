@@ -1,5 +1,5 @@
 import React from 'react';
-import { GuildShop } from '../../types/entities.js';
+import type { GuildShop } from '../../types/entities.js';
 import { useAppContext } from '../../hooks/useAppContext.js';
 import Button from '../Button.js';
 
@@ -9,7 +9,7 @@ interface GuildShopProps {
     onShopItemsUpdate: (items: GuildShop[]) => void;
 }
 
-const GuildShop: React.FC<GuildShopProps> = ({ guildId, shopItems, onShopItemsUpdate }) => {
+const GuildShopComponent: React.FC<GuildShopProps> = ({ guildId, shopItems, onShopItemsUpdate }) => {
     const { handlers } = useAppContext();
 
     return (
@@ -61,5 +61,5 @@ const GuildShop: React.FC<GuildShopProps> = ({ guildId, shopItems, onShopItemsUp
     );
 };
 
-export default GuildShop;
+export default GuildShopComponent;
 

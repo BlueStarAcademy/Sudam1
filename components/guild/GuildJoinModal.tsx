@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useAppContext } from '../../hooks/useAppContext.js';
 import { Guild } from '../../types/entities.js';
 import Button from '../Button.js';
@@ -9,72 +9,99 @@ interface GuildJoinModalProps {
     onSuccess: (guild: Guild) => void;
 }
 
+type GuildWithMemberCount = Guild & { memberCount: number };
+
 const GuildJoinModal: React.FC<GuildJoinModalProps> = ({ onClose, onSuccess }) => {
     const { handlers } = useAppContext();
-    const [guildId, setGuildId] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [guilds, setGuilds] = useState<GuildWithMemberCount[]>([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [searchQuery, setSearchQuery] = useState('');
+    const [joiningGuildId, setJoiningGuildId] = useState<string | null>(null);
 
-    // TODO: Implement guild search API
-    const handleSearch = async () => {
-        // Placeholder - should implement GET_GUILDS or similar action
-        setError('길드 검색 기능은 아직 구현되지 않았습니다. 길드 ID를 직접 입력하세요.');
+    // Load guilds on mount and when search query changes
+    useEffect(() => {
+        loadGuilds();
+    }, []);
+
+    const loadGuilds = async (query?: string) => {
+        setLoading(true);
+        setError(null);
+        try {
+            const result: any = await handlers.handleAction({
+                type: 'LIST_GUILDS',
+                payload: { searchQuery: query || '', limit: 100 },
+            });
+
+            if (result?.error) {
+                setError(result.error);
+            } else if (result?.clientResponse?.guilds) {
+                setGuilds(result.clientResponse.guilds);
+            }
+        } catch (err: any) {
+            setError(err.message || '길드 목록을 불러오는데 실패했습니다.');
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const handleJoin = async () => {
-        if (!guildId.trim()) {
-            setError('길드 ID를 입력해주세요.');
-            return;
-        }
+    const handleSearch = () => {
+        loadGuilds(searchQuery);
+    };
 
-        setLoading(true);
+    const handleJoin = async (guild: GuildWithMemberCount) => {
+        if (joiningGuildId) return; // Already processing
+        
+        setJoiningGuildId(guild.id);
         setError(null);
 
         try {
-            // If guildName is provided, we need to find the guild first
-            // For now, assume guildId is provided
             const result: any = await handlers.handleAction({
                 type: 'JOIN_GUILD',
-                payload: { guildId: guildId.trim() },
+                payload: { guildId: guild.id },
             });
 
             if (result?.error) {
                 setError(result.error);
             } else if (result?.clientResponse?.guild) {
                 onSuccess(result.clientResponse.guild);
-            } else if (result?.error) {
-                setError(result.error);
             }
         } catch (err: any) {
             setError(err.message || '길드 가입에 실패했습니다.');
         } finally {
-            setLoading(false);
+            setJoiningGuildId(null);
         }
     };
+
+    // Filter guilds based on search query (client-side filtering for instant feedback)
+    const filteredGuilds = useMemo(() => {
+        if (!searchQuery.trim()) return guilds;
+        const lowerQuery = searchQuery.toLowerCase();
+        return guilds.filter(guild => 
+            guild.name.toLowerCase().includes(lowerQuery) ||
+            (guild.description?.toLowerCase().includes(lowerQuery))
+        );
+    }, [guilds, searchQuery]);
+
+    // Get join type from guild settings (default: 'auto' for immediate join)
+    const getJoinType = (guild: Guild): 'auto' | 'request' => {
+        if (!guild.settings || typeof guild.settings !== 'object') return 'auto';
+        return (guild.settings as any).joinType === 'request' ? 'request' : 'auto';
+    };
+
+    const MAX_GUILD_MEMBERS = 50;
 
     return (
         <DraggableWindow
             title="길드 가입"
             windowId="guild-join"
             onClose={onClose}
-            initialWidth={500}
+            initialWidth={700}
+            initialHeight={600}
             isTopmost
         >
-            <div className="p-6">
-                <div className="mb-4">
-                    <label className="block text-sm font-semibold text-gray-300 mb-2">
-                        길드 ID
-                    </label>
-                    <input
-                        type="text"
-                        value={guildId}
-                        onChange={(e) => setGuildId(e.target.value)}
-                        placeholder="길드 ID를 입력하세요"
-                        className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
-                    />
-                </div>
-
+            <div className="p-6 flex flex-col h-full">
+                {/* Search Bar */}
                 <div className="mb-4">
                     <label className="block text-sm font-semibold text-gray-300 mb-2">
                         길드 이름으로 검색
@@ -84,6 +111,7 @@ const GuildJoinModal: React.FC<GuildJoinModalProps> = ({ onClose, onSuccess }) =
                             type="text"
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
+                            onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                             placeholder="길드 이름을 입력하세요"
                             className="flex-1 px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
                         />
@@ -91,6 +119,7 @@ const GuildJoinModal: React.FC<GuildJoinModalProps> = ({ onClose, onSuccess }) =
                             onClick={handleSearch}
                             colorScheme="blue"
                             className="!py-2 !px-4"
+                            disabled={loading}
                         >
                             검색
                         </Button>
@@ -103,22 +132,80 @@ const GuildJoinModal: React.FC<GuildJoinModalProps> = ({ onClose, onSuccess }) =
                     </div>
                 )}
 
-                <div className="flex gap-3">
+                {/* Guild List */}
+                <div className="flex-1 overflow-y-auto mb-4">
+                    {loading && guilds.length === 0 ? (
+                        <div className="flex items-center justify-center h-32">
+                            <p className="text-gray-400">길드 목록을 불러오는 중...</p>
+                        </div>
+                    ) : filteredGuilds.length === 0 ? (
+                        <div className="flex items-center justify-center h-32">
+                            <p className="text-gray-400">검색 결과가 없습니다.</p>
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            {filteredGuilds.map((guild) => {
+                                const joinType = getJoinType(guild);
+                                const isFull = guild.memberCount >= MAX_GUILD_MEMBERS;
+                                const isJoining = joiningGuildId === guild.id;
+                                
+                                return (
+                                    <div
+                                        key={guild.id}
+                                        className="p-4 bg-gray-800/50 rounded-lg border border-gray-700 hover:border-gray-600 transition-colors"
+                                    >
+                                        <div className="flex items-start justify-between gap-4">
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    <h3 className="text-lg font-semibold text-white truncate">
+                                                        {guild.name}
+                                                    </h3>
+                                                    {guild.emblem && (
+                                                        <span className="text-xl">{guild.emblem}</span>
+                                                    )}
+                                                </div>
+                                                <div className="flex items-center gap-4 text-sm text-gray-400 mb-2">
+                                                    <span>인원: {guild.memberCount}/{MAX_GUILD_MEMBERS}</span>
+                                                    <span>레벨: {guild.level}</span>
+                                                </div>
+                                                {guild.description && (
+                                                    <p className="text-sm text-gray-300 line-clamp-2">
+                                                        {guild.description}
+                                                    </p>
+                                                )}
+                                            </div>
+                                            <div className="flex-shrink-0">
+                                                <Button
+                                                    onClick={() => handleJoin(guild)}
+                                                    colorScheme={joinType === 'auto' ? 'green' : 'blue'}
+                                                    className="!py-2 !px-4 whitespace-nowrap"
+                                                    disabled={isFull || isJoining || loading}
+                                                >
+                                                    {isJoining 
+                                                        ? '처리 중...' 
+                                                        : isFull
+                                                        ? '인원 가득'
+                                                        : joinType === 'auto'
+                                                        ? '가입'
+                                                        : '신청'}
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-gray-700">
                     <Button
                         onClick={onClose}
                         colorScheme="gray"
                         className="flex-1"
-                        disabled={loading}
+                        disabled={loading || joiningGuildId !== null}
                     >
                         취소
-                    </Button>
-                    <Button
-                        onClick={handleJoin}
-                        colorScheme="green"
-                        className="flex-1"
-                        disabled={loading || !guildId.trim()}
-                    >
-                        {loading ? '가입 중...' : '길드 가입'}
                     </Button>
                 </div>
             </div>
@@ -127,4 +214,3 @@ const GuildJoinModal: React.FC<GuildJoinModalProps> = ({ onClose, onSuccess }) =
 };
 
 export default GuildJoinModal;
-

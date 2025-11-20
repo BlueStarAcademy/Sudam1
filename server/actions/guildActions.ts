@@ -4,13 +4,14 @@ import { type ServerAction, type User, type VolatileState } from '../../types.js
 import { broadcast, sendToUser } from '../socket.js';
 import * as guildRepo from '../prisma/guildRepository.js';
 import { containsProfanity } from '../../profanity.js';
+import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
 
 type HandleActionResult = {
     clientResponse?: any;
     error?: string;
 };
 
-const GUILD_CREATE_COST = 10000; // 골드
+const GUILD_CREATE_COST = 100; // 다이아
 const MAX_GUILD_NAME_LENGTH = 20;
 const MIN_GUILD_NAME_LENGTH = 2;
 const MAX_GUILD_DESCRIPTION_LENGTH = 200;
@@ -18,10 +19,23 @@ const MAX_GUILD_MEMBERS = 50;
 
 export const handleGuildAction = async (volatileState: VolatileState, action: ServerAction & { userId: string }, user: User): Promise<HandleActionResult> => {
     const { type, payload } = action;
+    
+    // Debug: Log user guild status at the start
+    if (type === 'CREATE_GUILD' || type === 'JOIN_GUILD') {
+        console.log(`[handleGuildAction] ${type} - User ${user.id} (${user.nickname}) guildId: ${user.guildId || 'null/undefined'}`);
+    }
 
     switch (type) {
         case 'CREATE_GUILD': {
             const { name, description, emblem } = payload;
+            
+            // Get fresh user data from DB to ensure we have the latest guildId
+            const freshUser = await db.getUser(user.id);
+            if (!freshUser) {
+                return { error: '사용자를 찾을 수 없습니다.' };
+            }
+            // Use fresh user data for validation
+            user = freshUser;
             
             // Validation
             if (!name || name.length < MIN_GUILD_NAME_LENGTH || name.length > MAX_GUILD_NAME_LENGTH) {
@@ -36,14 +50,67 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
                 return { error: '부적절한 단어가 포함되어 있습니다.' };
             }
             
-            // Check if user already has a guild
-            if (user.guildId) {
-                return { error: '이미 길드에 가입되어 있습니다.' };
+            // Admin users can always create a guild, even if they're in one
+            // For admin, automatically leave the old guild if they have one
+            console.log(`[CREATE_GUILD] User ${user.id} (${user.nickname}) isAdmin: ${user.isAdmin}, guildId: ${user.guildId || 'null'}`);
+            if (user.isAdmin) {
+                const userGuildId = user.guildId;
+                if (userGuildId && typeof userGuildId === 'string' && userGuildId.trim() !== '') {
+                    console.log(`[CREATE_GUILD] Admin user ${user.id} has guildId: "${userGuildId}", auto-leaving old guild...`);
+                    try {
+                        const existingGuild = await guildRepo.getGuildById(userGuildId);
+                        if (existingGuild) {
+                            // Leave the old guild
+                            try {
+                                const oldMembers = await guildRepo.getGuildMembers(userGuildId);
+                                const userMember = oldMembers.find(m => m.userId === user.id);
+                                if (userMember) {
+                                    await guildRepo.removeGuildMember(userGuildId, user.id);
+                                    console.log(`[CREATE_GUILD] Admin user ${user.id} removed from old guild ${userGuildId}`);
+                                }
+                            } catch (leaveError) {
+                                console.error(`[CREATE_GUILD] Error leaving old guild for admin:`, leaveError);
+                            }
+                        }
+                    } catch (error) {
+                        console.error(`[CREATE_GUILD] Error checking old guild for admin:`, error);
+                    }
+                    // Always clear guildId for admin
+                    user.guildId = undefined;
+                    await db.updateUser(user);
+                    console.log(`[CREATE_GUILD] Admin user ${user.id} guildId cleared, proceeding with new guild creation...`);
+                }
+            } else {
+                // Non-admin users: Check if user already has a guild
+                const userGuildId = user.guildId;
+                if (userGuildId && typeof userGuildId === 'string' && userGuildId.trim() !== '') {
+                    console.log(`[CREATE_GUILD] User ${user.id} has guildId: "${userGuildId}", checking if guild exists...`);
+                    try {
+                        const existingGuild = await guildRepo.getGuildById(userGuildId);
+                        if (existingGuild) {
+                            console.log(`[CREATE_GUILD] User ${user.id} is already in guild: ${existingGuild.name} (id: ${existingGuild.id})`);
+                            return { error: '이미 길드에 가입되어 있습니다.' };
+                        } else {
+                            // Guild doesn't exist, clean up the invalid guildId
+                            console.warn(`[CREATE_GUILD] User ${user.id} has invalid guildId "${userGuildId}" (guild not found), cleaning up...`);
+                            user.guildId = undefined;
+                            await db.updateUser(user);
+                            console.log(`[CREATE_GUILD] Cleaned up invalid guildId for user ${user.id}`);
+                        }
+                    } catch (error) {
+                        console.error(`[CREATE_GUILD] Error checking guild existence for user ${user.id}:`, error);
+                        user.guildId = undefined;
+                        await db.updateUser(user);
+                        console.log(`[CREATE_GUILD] Cleaned up guildId due to error for user ${user.id}`);
+                    }
+                } else {
+                    console.log(`[CREATE_GUILD] User ${user.id} has no valid guildId (value: ${userGuildId}), proceeding with guild creation...`);
+                }
             }
             
-            // Check if user has enough gold
-            if (user.gold < GUILD_CREATE_COST) {
-                return { error: `길드 생성에는 ${GUILD_CREATE_COST.toLocaleString()} 골드가 필요합니다.` };
+            // Check if user has enough diamonds
+            if (user.diamonds < GUILD_CREATE_COST) {
+                return { error: `길드 생성에는 ${GUILD_CREATE_COST.toLocaleString()} 다이아가 필요합니다.` };
             }
             
             // Check if guild name already exists
@@ -60,24 +127,37 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
                 emblem,
             });
             
-            // Deduct gold
-            user.gold -= GUILD_CREATE_COST;
+            // Deduct diamonds
+            user.diamonds -= GUILD_CREATE_COST;
             user.guildId = guild.id;
             await db.updateUser(user);
             
             // Broadcast guild update
             broadcast({ type: 'GUILD_UPDATE', payload: { guild } });
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: { guildId: guild.id, gold: user.gold } } });
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
-            return { clientResponse: { guild } };
+            // Return updated user info for immediate client update
+            const updatedUser = getSelectiveUserUpdate(user, 'CREATE_GUILD', { additionalFields: ['guildId', 'diamonds'] });
+            
+            return { clientResponse: { guild, updatedUser } };
         }
         
         case 'JOIN_GUILD': {
             const { guildId } = payload;
             
             // Check if user already has a guild
+            // If guildId is set, verify the guild actually exists
             if (user.guildId) {
-                return { error: '이미 길드에 가입되어 있습니다.' };
+                const existingGuild = await guildRepo.getGuildById(user.guildId);
+                if (existingGuild) {
+                    return { error: '이미 길드에 가입되어 있습니다.' };
+                } else {
+                    // Guild doesn't exist, clean up the invalid guildId
+                    console.warn(`[JOIN_GUILD] User ${user.id} has invalid guildId ${user.guildId}, cleaning up...`);
+                    user.guildId = undefined;
+                    await db.updateUser(user);
+                }
             }
             
             // Get guild
@@ -102,9 +182,13 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
             // Broadcast updates
             const updatedMembers = await guildRepo.getGuildMembers(guildId);
             broadcast({ type: 'GUILD_UPDATE', payload: { guild, members: updatedMembers } });
-            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: { guildId: guildId } } });
+            const fullUserForBroadcast = JSON.parse(JSON.stringify(user));
+            broadcast({ type: 'USER_UPDATE', payload: { [user.id]: fullUserForBroadcast } });
             
-            return { clientResponse: { guild, members: updatedMembers } };
+            // Return updated user info for immediate client update
+            const updatedUser = getSelectiveUserUpdate(user, 'JOIN_GUILD', { additionalFields: ['guildId'] });
+            
+            return { clientResponse: { guild, members: updatedMembers, updatedUser } };
         }
         
         case 'LEAVE_GUILD': {
@@ -348,6 +432,12 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
                     donations,
                 },
             };
+        }
+        
+        case 'LIST_GUILDS': {
+            const { searchQuery, limit = 50 } = payload || {};
+            const guilds = await guildRepo.listGuilds(searchQuery, limit);
+            return { clientResponse: { guilds } };
         }
         
         case 'START_GUILD_MISSION': {

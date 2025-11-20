@@ -812,6 +812,33 @@ export const handleAdminAction = async (volatileState: VolatileState, action: Se
             return { clientResponse: { message: '게시글이 삭제되었습니다.' } };
         }
         
+        case 'ADMIN_CLEAR_USER_GUILD': {
+            const { targetUserId } = payload as { targetUserId: string };
+            const targetUser = await db.getUser(targetUserId);
+            if (!targetUser) return { error: '대상 사용자를 찾을 수 없습니다.' };
+
+            const backupData = JSON.parse(JSON.stringify(targetUser));
+            const oldGuildId = targetUser.guildId;
+
+            // Clear guildId
+            targetUser.guildId = undefined;
+            await db.updateUser(targetUser);
+            await createAdminLog(user, 'clear_user_guild', targetUser, { oldGuildId });
+
+            // WebSocket으로 사용자 업데이트 브로드캐스트
+            const updatedUser = JSON.parse(JSON.stringify(targetUser));
+            const { broadcastUserUpdate } = await import('../socket.js');
+            broadcastUserUpdate(updatedUser, ['guildId']);
+
+            return {
+                clientResponse: {
+                    message: '사용자의 길드 정보가 초기화되었습니다.',
+                    updatedUser,
+                    targetUserId: targetUser.id
+                }
+            };
+        }
+        
         default:
             return { error: 'Unknown admin action type.' };
     }

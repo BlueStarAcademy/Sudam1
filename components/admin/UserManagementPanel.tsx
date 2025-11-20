@@ -318,7 +318,11 @@ const UserManagementPanel: React.FC<UserManagementPanelProps> = ({ allUsers, onA
     const filteredUsers = useMemo(() => {
         if (!searchQuery.trim()) return allUsers;
         const lowercasedQuery = searchQuery.toLowerCase();
-        return allUsers.filter(user => user.nickname.toLowerCase().includes(lowercasedQuery) || user.username.toLowerCase().includes(lowercasedQuery));
+        return allUsers.filter(user => {
+            const nickname = user.nickname?.toLowerCase() || '';
+            const username = user.username?.toLowerCase() || '';
+            return nickname.includes(lowercasedQuery) || username.includes(lowercasedQuery);
+        });
     }, [allUsers, searchQuery]);
 
     return (

@@ -561,3 +561,33 @@ export const getGuildWarMatches = async (warId: string): Promise<GuildWarMatch[]
     }));
 };
 
+export const listGuilds = async (searchQuery?: string, limit: number = 50): Promise<Array<Guild & { memberCount: number }>> => {
+    const where = searchQuery 
+        ? { name: { contains: searchQuery, mode: 'insensitive' as const } }
+        : {};
+    
+    const guilds = await prismaClient.guild.findMany({
+        where,
+        include: {
+            members: true,
+        },
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+    });
+    
+    return guilds.map(guild => ({
+        id: guild.id,
+        name: guild.name,
+        leaderId: guild.leaderId,
+        description: guild.description || undefined,
+        emblem: guild.emblem || undefined,
+        settings: guild.settings as any,
+        gold: Number(guild.gold),
+        level: guild.level,
+        experience: Number(guild.experience),
+        createdAt: guild.createdAt.getTime(),
+        updatedAt: guild.updatedAt.getTime(),
+        memberCount: guild.members.length,
+    }));
+};
+
