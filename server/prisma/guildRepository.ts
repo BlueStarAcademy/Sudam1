@@ -90,6 +90,35 @@ export const getGuildByName = async (name: string): Promise<Guild | null> => {
     };
 };
 
+export const getGuildByLeaderId = async (leaderId: string): Promise<Guild | null> => {
+    const guild = await prismaClient.guild.findUnique({
+        where: { leaderId },
+    });
+    
+    if (!guild) return null;
+    
+    return {
+        id: guild.id,
+        name: guild.name,
+        leaderId: guild.leaderId,
+        description: guild.description || undefined,
+        emblem: guild.emblem || undefined,
+        settings: guild.settings as any,
+        gold: Number(guild.gold),
+        level: guild.level,
+        experience: Number(guild.experience),
+        createdAt: guild.createdAt.getTime(),
+        updatedAt: guild.updatedAt.getTime(),
+    };
+};
+
+export const deleteGuild = async (guildId: string): Promise<void> => {
+    // 외래 키 제약 조건으로 인해 관련 데이터는 자동 삭제됨
+    await prismaClient.guild.delete({
+        where: { id: guildId },
+    });
+};
+
 export const updateGuild = async (guildId: string, updates: Partial<{
     name: string;
     description: string;
@@ -157,6 +186,25 @@ export const removeGuildMember = async (guildId: string, userId: string): Promis
             userId,
         },
     });
+};
+
+export const getGuildMemberByUserId = async (userId: string): Promise<GuildMember | null> => {
+    const member = await prismaClient.guildMember.findUnique({
+        where: { userId },
+    });
+    
+    if (!member) return null;
+    
+    return {
+        id: member.id,
+        guildId: member.guildId,
+        userId: member.userId,
+        role: member.role as 'leader' | 'officer' | 'member',
+        joinDate: member.joinDate.getTime(),
+        contributionTotal: Number(member.contributionTotal),
+        createdAt: member.createdAt.getTime(),
+        updatedAt: member.updatedAt.getTime(),
+    };
 };
 
 export const getGuildMembers = async (guildId: string): Promise<GuildMember[]> => {
@@ -562,32 +610,47 @@ export const getGuildWarMatches = async (warId: string): Promise<GuildWarMatch[]
 };
 
 export const listGuilds = async (searchQuery?: string, limit: number = 50): Promise<Array<Guild & { memberCount: number }>> => {
-    const where = searchQuery 
-        ? { name: { contains: searchQuery, mode: 'insensitive' as const } }
-        : {};
-    
-    const guilds = await prismaClient.guild.findMany({
-        where,
-        include: {
-            members: true,
-        },
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-    });
-    
-    return guilds.map(guild => ({
-        id: guild.id,
-        name: guild.name,
-        leaderId: guild.leaderId,
-        description: guild.description || undefined,
-        emblem: guild.emblem || undefined,
-        settings: guild.settings as any,
-        gold: Number(guild.gold),
-        level: guild.level,
-        experience: Number(guild.experience),
-        createdAt: guild.createdAt.getTime(),
-        updatedAt: guild.updatedAt.getTime(),
-        memberCount: guild.members.length,
-    }));
+    try {
+        let where: any = {};
+        
+        // 검색 쿼리가 있으면 이름으로 검색 (대소문자 구분 없음)
+        if (searchQuery && searchQuery.trim()) {
+            where.name = {
+                contains: searchQuery.trim(),
+                mode: 'insensitive' as const,
+            };
+        }
+        
+        console.log(`[listGuilds] Query: "${searchQuery}", limit: ${limit}, where:`, JSON.stringify(where));
+        
+        const guilds = await prismaClient.guild.findMany({
+            where,
+            include: {
+                members: true,
+            },
+            take: limit,
+            orderBy: { createdAt: 'desc' },
+        });
+        
+        console.log(`[listGuilds] Found ${guilds.length} guild(s)`);
+        
+        return guilds.map(guild => ({
+            id: guild.id,
+            name: guild.name,
+            leaderId: guild.leaderId,
+            description: guild.description || undefined,
+            emblem: guild.emblem || undefined,
+            settings: guild.settings as any,
+            gold: Number(guild.gold),
+            level: guild.level,
+            experience: Number(guild.experience),
+            createdAt: guild.createdAt.getTime(),
+            updatedAt: guild.updatedAt.getTime(),
+            memberCount: guild.members.length,
+        }));
+    } catch (error) {
+        console.error('[listGuilds] Error:', error);
+        throw error;
+    }
 };
 

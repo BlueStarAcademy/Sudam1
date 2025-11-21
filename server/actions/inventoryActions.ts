@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, InventoryItem, ItemOption, ItemGrade, EquipmentSlot, CoreStat, SpecialStat, MythicStat, type ItemOptionType, type BorderInfo, type ChatMessage } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, InventoryItem, ItemOption, EquipmentSlot, CoreStat, SpecialStat, MythicStat, type ItemOptionType, type BorderInfo, type ChatMessage } from '../../types.js';
+import { ItemGrade } from '../../types/enums.js';
 import { broadcast } from '../socket.js';
 import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
 import {
@@ -41,7 +42,7 @@ type HandleActionResult = {
 };
 
 const ALL_SLOTS: EquipmentSlot[] = ['fan', 'board', 'top', 'bottom', 'bowl', 'stones'];
-const GRADE_ORDER: ItemGrade[] = ['normal', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+const GRADE_ORDER: ItemGrade[] = [ItemGrade.Normal, ItemGrade.Uncommon, ItemGrade.Rare, ItemGrade.Epic, ItemGrade.Legendary, ItemGrade.Mythic];
 
 const currencyBundles: Record<string, { type: 'gold' | 'diamonds', min: number, max: number }> = {
     '골드 꾸러미1': { type: 'gold', min: 10, max: 500 },
@@ -253,9 +254,9 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             // 대성공이면 D.신화(신화 등급이지만 특별한 형태)
             let outcomeGrade: ItemGrade;
             let isDivineMythic = false;
-            if (grade === 'mythic') {
+            if (grade === ItemGrade.Mythic) {
                 // 신화 합성: 대성공이 아니면 신화, 대성공이면 D.신화
-                outcomeGrade = 'mythic';
+                outcomeGrade = ItemGrade.Mythic;
                 isDivineMythic = isGreatSuccess;
             } else {
                 // 다른 등급 합성: 기존 로직 유지
@@ -483,7 +484,7 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
                     quantity: amount,
                     image: bundleInfo.type === 'gold' ? '/images/icon/Gold.png' : '/images/icon/Zem.png',
                     type: 'material' as const,
-                    grade: bundleInfo.type === 'gold' ? 'uncommon' as const : 'rare' as const
+                    grade: bundleInfo.type === 'gold' ? ItemGrade.Uncommon : ItemGrade.Rare
                 }));
 
                 // 선택적 필드만 반환 (메시지 크기 최적화)

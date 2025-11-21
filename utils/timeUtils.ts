@@ -138,3 +138,39 @@ export const getStartOfDayKST = (timestamp: number = Date.now()): number => {
     // Convert back to UTC timestamp
     return kstDate.getTime() - KST_OFFSET;
 };
+
+export const formatDateTimeKST = (timestamp: number): string => {
+    const kstDate = getKSTDate(timestamp);
+    return kstDate.toLocaleString('ko-KR', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit',
+        timeZone: 'Asia/Seoul'
+    });
+};
+
+export const formatLastLogin = (timestamp: number | undefined): string => {
+    if (!timestamp) return '방문 기록 없음';
+    const now = Date.now();
+    const diff = now - timestamp;
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    if (days === 0) return '오늘';
+    if (days === 1) return '어제';
+    if (days < 7) return `${days}일 전`;
+    if (days < 30) return `${Math.floor(days / 7)}주 전`;
+    if (days < 365) return `${Math.floor(days / 30)}개월 전`;
+    return `${Math.floor(days / 365)}년 전`;
+};
+
+export const getTimeUntilNextMondayKST = (): number => {
+    const now = Date.now();
+    const kstNow = getKSTDate(now);
+    const dayOfWeek = kstNow.getUTCDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+    const daysUntilMonday = dayOfWeek === 0 ? 1 : (8 - dayOfWeek) % 7 || 7;
+    const nextMonday = new Date(kstNow);
+    nextMonday.setUTCDate(kstNow.getUTCDate() + daysUntilMonday);
+    nextMonday.setUTCHours(0, 0, 0, 0);
+    return nextMonday.getTime() - KST_OFFSET - now;
+};

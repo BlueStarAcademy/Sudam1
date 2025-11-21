@@ -1,4 +1,5 @@
 import { GameMode, GameSettings } from '../types';
+import { AlkkagiLayoutType } from '../types/enums.js';
 
 // 랭킹전 기본 설정
 export const RANKED_GAME_SETTINGS: Record<GameMode, GameSettings> = {
@@ -117,7 +118,7 @@ export const RANKED_GAME_SETTINGS: Record<GameMode, GameSettings> = {
         boardSize: 13,
         komi: 0,
         alkkagiRounds: 3, // 3라운드
-        alkkagiPlacementType: 'normal', // 일반배치
+        alkkagiLayout: AlkkagiLayoutType.Normal, // 일반배치
         alkkagiStoneCount: 5, // 5개 배치
         alkkagiGaugeSpeed: 3, // 게이지속도 빠름 x3
         alkkagiSlowItemCount: 2, // 슬로우 2개

@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, TournamentType, PlayerForTournament, InventoryItem, InventoryItemType, TournamentState, LeagueTier, CoreStat, EquipmentSlot, ItemGrade } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, TournamentType, PlayerForTournament, InventoryItem, InventoryItemType, TournamentState, LeagueTier, CoreStat, EquipmentSlot } from '../../types.js';
+import { ItemGrade } from '../../types/enums.js';
 import * as types from '../../types.js';
 import { TOURNAMENT_DEFINITIONS, BASE_TOURNAMENT_REWARDS, CONSUMABLE_ITEMS, MATERIAL_ITEMS, TOURNAMENT_SCORE_REWARDS, BOT_NAMES, AVATAR_POOL, BORDER_POOL } from '../../constants';
 import { updateQuestProgress } from '../questService.js';
@@ -22,7 +23,7 @@ type HandleActionResult = {
 };
 
 const ALL_SLOTS: EquipmentSlot[] = ['fan', 'board', 'top', 'bottom', 'bowl', 'stones'];
-const GRADE_ORDER: ItemGrade[] = ['normal', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+const GRADE_ORDER: ItemGrade[] = [ItemGrade.Normal, ItemGrade.Uncommon, ItemGrade.Rare, ItemGrade.Epic, ItemGrade.Legendary, ItemGrade.Mythic];
 
 const getRandomInt = (min: number, max: number): number => {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -41,56 +42,56 @@ const LEAGUE_BOT_CONFIG: Record<LeagueTier, {
         maxLevel: 10,
         minStat: 100,
         maxStat: 120,
-        equipmentGrade: 'rare', // 고급장비 (rare/epic)
+        equipmentGrade: ItemGrade.Rare, // 고급장비 (rare/epic)
     },
     [LeagueTier.Rookie]: {
         minLevel: 8,
         maxLevel: 15,
         minStat: 110,
         maxStat: 135,
-        equipmentGrade: 'rare',
+        equipmentGrade: ItemGrade.Rare,
     },
     [LeagueTier.Rising]: {
         minLevel: 12,
         maxLevel: 20,
         minStat: 125,
         maxStat: 150,
-        equipmentGrade: 'epic',
+        equipmentGrade: ItemGrade.Epic,
     },
     [LeagueTier.Ace]: {
         minLevel: 18,
         maxLevel: 28,
         minStat: 145,
         maxStat: 170,
-        equipmentGrade: 'epic',
+        equipmentGrade: ItemGrade.Epic,
     },
     [LeagueTier.Diamond]: {
         minLevel: 25,
         maxLevel: 35,
         minStat: 165,
         maxStat: 190,
-        equipmentGrade: 'legendary',
+        equipmentGrade: ItemGrade.Legendary,
     },
     [LeagueTier.Master]: {
         minLevel: 32,
         maxLevel: 42,
         minStat: 180,
         maxStat: 210,
-        equipmentGrade: 'legendary',
+        equipmentGrade: ItemGrade.Legendary,
     },
     [LeagueTier.Grandmaster]: {
         minLevel: 40,
         maxLevel: 48,
         minStat: 195,
         maxStat: 225,
-        equipmentGrade: 'legendary',
+        equipmentGrade: ItemGrade.Legendary,
     },
     [LeagueTier.Challenger]: {
         minLevel: 45,
         maxLevel: 50,
         minStat: 200,
         maxStat: 230,
-        equipmentGrade: 'mythic', // 신화장비
+        equipmentGrade: ItemGrade.Mythic, // 신화장비
     },
 };
 
@@ -111,15 +112,15 @@ export const createBotUser = (league: LeagueTier, tournamentType: TournamentType
         // 고급장비(rare)의 경우 rare 또는 epic 중 랜덤 선택
         let selectedGrade: ItemGrade = config.equipmentGrade;
         
-        if (config.equipmentGrade === 'rare') {
+        if (config.equipmentGrade === ItemGrade.Rare) {
             // rare 리그: rare(70%) 또는 epic(30%)
-            selectedGrade = Math.random() < 0.7 ? 'rare' : 'epic';
-        } else if (config.equipmentGrade === 'epic') {
+            selectedGrade = Math.random() < 0.7 ? ItemGrade.Rare : ItemGrade.Epic;
+        } else if (config.equipmentGrade === ItemGrade.Epic) {
             // epic 리그: epic(80%) 또는 legendary(20%)
-            selectedGrade = Math.random() < 0.8 ? 'epic' : 'legendary';
-        } else if (config.equipmentGrade === 'legendary') {
+            selectedGrade = Math.random() < 0.8 ? ItemGrade.Epic : ItemGrade.Legendary;
+        } else if (config.equipmentGrade === ItemGrade.Legendary) {
             // legendary 리그: legendary(85%) 또는 mythic(15%)
-            selectedGrade = Math.random() < 0.85 ? 'legendary' : 'mythic';
+            selectedGrade = Math.random() < 0.85 ? ItemGrade.Legendary : ItemGrade.Mythic;
         }
         // mythic 리그는 항상 mythic
         

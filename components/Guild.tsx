@@ -1,8 +1,9 @@
+// This file is kept for build compatibility but is no longer used
+// Guild functionality is now integrated into Profile component
 import React from 'react';
-import GuildHome from './guild/GuildHome.js';
 
 const Guild: React.FC = () => {
-  return <GuildHome />;
+  return null;
 };
 
 export default Guild;

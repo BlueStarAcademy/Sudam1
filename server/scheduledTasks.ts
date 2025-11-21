@@ -2,6 +2,7 @@
 
 import * as db from './db.js';
 import * as types from '../types.js';
+import type { WeeklyCompetitor } from '../types/index.js';
 import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, SEASONAL_TIER_BORDERS, DAILY_QUESTS, WEEKLY_QUESTS, MONTHLY_QUESTS, TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL } from '../constants';
 import { randomUUID } from 'crypto';
 import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferentWeekKST, isSameDayKST, getStartOfDayKST, isDifferentDayKST, isDifferentMonthKST, getKSTDay, getKSTHours, getKSTMinutes, getKSTFullYear, getKSTMonth, getKSTDate_UTC } from '../utils/timeUtils.js';
@@ -11,6 +12,7 @@ import { calculateTotalStats } from './statService.js';
 import { TournamentType } from '../types.js';
 import { startTournamentSessionForUser } from './actions/tournamentActions.js';
 import { broadcast } from './socket.js';
+import * as mailRepo from './prisma/mailRepository.js';
 
 let lastSeasonProcessed: SeasonInfo | null = null;
 let lastWeeklyResetTimestamp: number | null = null;
@@ -651,7 +653,7 @@ export async function grantThreeDaysBotScores(): Promise<void> {
         
         // 모든 가능한 봇 ID에 대해 점수 부여 (최대 16명의 경쟁상대이므로 0~15까지)
         const NUM_COMPETITORS = 16;
-        const actualUserCount = updatedUser.weeklyCompetitors.filter(c => !c.id.startsWith('bot-')).length;
+        const actualUserCount = updatedUser.weeklyCompetitors.filter((c: WeeklyCompetitor) => !c.id.startsWith('bot-')).length;
         const botsNeeded = Math.max(0, NUM_COMPETITORS - actualUserCount);
         
         // 주간 경쟁상대가 업데이트된 주의 모든 날짜에 대해 봇 점수 부여

@@ -292,23 +292,40 @@ const Profile: React.FC<ProfileProps> = () => {
     }, []);
 
     // Load guild info when user has a guild
+    const loadGuildInfoRef = useRef(false);
     useEffect(() => {
-        if (currentUserWithStatus?.guildId) {
-            const loadGuildInfo = async () => {
-                try {
-                    const result: any = await handlers.handleAction({ type: 'GET_GUILD_INFO' });
-                    if (result?.clientResponse?.guild) {
-                        setGuildInfo(result.clientResponse.guild);
-                    }
-                } catch (error) {
-                    console.error('Failed to load guild info:', error);
-                }
-            };
-            loadGuildInfo();
-        } else {
-            setGuildInfo(null);
+        // 이미 로딩 중이거나 길드 ID가 없으면 무시
+        if (loadGuildInfoRef.current || !currentUserWithStatus?.guildId) {
+            if (!currentUserWithStatus?.guildId) {
+                setGuildInfo(null);
+                loadGuildInfoRef.current = false;
+            }
+            return;
         }
-    }, [currentUserWithStatus?.guildId, handlers]);
+        
+        const loadGuildInfo = async () => {
+            if (!currentUserWithStatus?.guildId) return;
+            
+            try {
+                loadGuildInfoRef.current = true;
+                const result: any = await handlers.handleAction({ type: 'GET_GUILD_INFO' });
+                if (result?.clientResponse?.guild) {
+                    setGuildInfo(result.clientResponse.guild);
+                } else if (result?.error) {
+                    // 에러가 발생하면 길드 정보 초기화
+                    setGuildInfo(null);
+                    console.warn('Failed to load guild info:', result.error);
+                }
+            } catch (error) {
+                console.error('Failed to load guild info:', error);
+                setGuildInfo(null);
+            } finally {
+                loadGuildInfoRef.current = false;
+            }
+        };
+        loadGuildInfo();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUserWithStatus?.guildId]);
     
     if (!currentUserWithStatus) return null;
 
@@ -573,9 +590,9 @@ const Profile: React.FC<ProfileProps> = () => {
                 <div className="bg-tertiary/30 p-2 rounded-md mb-2">
                     {currentUserWithStatus.guildId && guildInfo ? (
                         <button
-                            onClick={() => { window.location.hash = '#/guild'; }}
+                            onClick={() => window.location.hash = '#/guild'}
                             className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-tertiary/50 transition-colors cursor-pointer"
-                            title="길드 홈으로 이동"
+                            title="길드 홈 보기"
                         >
                             <div className="flex-shrink-0 w-10 h-10 rounded-md bg-secondary/50 border border-color flex items-center justify-center">
                                 {guildInfo.emblem ? (
@@ -596,13 +613,6 @@ const Profile: React.FC<ProfileProps> = () => {
                     ) : (
                         <div className="flex items-center gap-2">
                             {/* 길드 아이콘 버튼 */}
-                            <button
-                                onClick={() => { window.location.hash = '#/guild'; }}
-                                className="flex-shrink-0 w-10 h-10 rounded-md bg-secondary/50 hover:bg-secondary/70 border border-color transition-colors flex items-center justify-center"
-                                title="길드"
-                            >
-                                <img src="/images/button/guild.png" alt="길드" className="w-8 h-8 object-contain" />
-                            </button>
                             {/* 나머지 공간에 버튼들 */}
                             <div className="flex-1 flex gap-2">
                                 <Button onClick={() => setIsGuildCreateModalOpen(true)} colorScheme="none" className="flex-1 justify-center !py-0.5 rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_12px_32px_-18px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드창설</Button>
@@ -871,9 +881,9 @@ const Profile: React.FC<ProfileProps> = () => {
                                 <div className="bg-tertiary/30 p-1 rounded-md mb-1">
                                     {currentUserWithStatus.guildId && guildInfo ? (
                                         <button
-                                            onClick={() => { window.location.hash = '#/guild'; }}
+                                            onClick={() => window.location.hash = '#/guild'}
                                             className="w-full flex items-center gap-1 p-1 rounded-md hover:bg-tertiary/50 transition-colors cursor-pointer"
-                                            title="길드 홈으로 이동"
+                                            title="길드 홈 보기"
                                         >
                                             <div className="flex-shrink-0 w-6 h-6 rounded-md bg-secondary/50 border border-color flex items-center justify-center">
                                                 {guildInfo.emblem ? (
@@ -893,13 +903,6 @@ const Profile: React.FC<ProfileProps> = () => {
                                         </button>
                                     ) : (
                                         <div className="flex items-center gap-1">
-                                            <button
-                                                onClick={() => { window.location.hash = '#/guild'; }}
-                                                className="flex-shrink-0 w-6 h-6 rounded-md bg-secondary/50 hover:bg-secondary/70 border border-color transition-colors flex items-center justify-center"
-                                                title="길드"
-                                            >
-                                                <img src="/images/button/guild.png" alt="길드" className="w-5 h-5 object-contain" />
-                                            </button>
                                             <div className="flex-1 flex gap-1">
                                                 <Button onClick={() => setIsGuildCreateModalOpen(true)} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드창설</Button>
                                                 <Button onClick={() => setIsGuildJoinModalOpen(true)} colorScheme="none" className="flex-1 !text-[7px] !py-0.5 !px-1 justify-center rounded-xl border border-indigo-400/50 bg-gradient-to-r from-indigo-500/90 via-purple-500/90 to-pink-500/90 text-white shadow-[0_8px_20px_-12px_rgba(99,102,241,0.85)] hover:from-indigo-400 hover:to-pink-400">길드가입</Button>
@@ -1043,10 +1046,11 @@ const Profile: React.FC<ProfileProps> = () => {
                 <GuildCreateModal
                     onClose={() => setIsGuildCreateModalOpen(false)}
                     onSuccess={async (guild: Guild) => {
+                        console.log('[Profile] Guild created, opening guild home modal:', guild);
                         setIsGuildCreateModalOpen(false);
                         // 길드 정보 업데이트
                         setGuildInfo(guild);
-                        // 길드 생성 성공 시 길드 페이지로 이동
+                        // 길드 생성 성공 시 길드 홈 페이지로 이동
                         window.location.hash = '#/guild';
                     }}
                 />
@@ -1058,7 +1062,7 @@ const Profile: React.FC<ProfileProps> = () => {
                         setIsGuildJoinModalOpen(false);
                         // 길드 정보 업데이트
                         setGuildInfo(guild);
-                        // 길드 가입 성공 시 길드 페이지로 이동
+                        // 길드 가입 성공 시 길드 홈 페이지로 이동
                         window.location.hash = '#/guild';
                     }}
                 />

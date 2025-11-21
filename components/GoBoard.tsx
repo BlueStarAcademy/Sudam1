@@ -885,7 +885,7 @@ const GoBoard: React.FC<GoBoardProps> = (props) => {
                     let isPatternStone = false;
                     if (!isHiddenMove) {
                         // 히든 돌이 아닌 경우에만 패턴 문양 확인
-                        isPatternStone = (player === Player.Black && blackPatternStones?.some(p => p.x === x && p.y === y)) || (player === Player.White && whitePatternStones?.some(p => p.x === x && p.y === y));
+                        isPatternStone = ((player === Player.Black && blackPatternStones?.some(p => p.x === x && p.y === y)) || (player === Player.White && whitePatternStones?.some(p => p.x === x && p.y === y))) ?? false;
                     }
 
                     

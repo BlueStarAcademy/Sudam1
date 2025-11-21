@@ -136,7 +136,6 @@ const GameRecordListModal: React.FC<GameRecordListModalProps> = ({ currentUser, 
         <DraggableWindow 
             title="기보 목록" 
             onClose={onClose} 
-            initialPosition={{ x: 50, y: 50 }}
             initialWidth={1200}
             windowId="gameRecordList"
         >

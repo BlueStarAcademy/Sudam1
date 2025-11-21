@@ -111,7 +111,7 @@ const DisassemblyPreviewPanel: React.FC<{
     );
 };
 
-const GRADES_FOR_SELECTION: ItemGrade[] = ['normal', 'uncommon', 'rare', 'epic', 'legendary'];
+const GRADES_FOR_SELECTION: ItemGrade[] = [ItemGrade.Normal, ItemGrade.Uncommon, ItemGrade.Rare, ItemGrade.Epic, ItemGrade.Legendary];
 
 const GRADE_NAMES_KO: Record<ItemGrade, string> = {
     normal: '일반',

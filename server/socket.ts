@@ -154,7 +154,8 @@ export const createWebSocketServer = (server: Server) => {
                     gameChats: volatileState.gameChats,
                     userConnections: volatileState.userConnections,
                     userStatuses: volatileState.userStatuses,
-                    userLastChatMessage: volatileState.userLastChatMessage
+                    userLastChatMessage: volatileState.userLastChatMessage,
+                    guilds: allData.guilds || {}
                 };
                 
                 try {

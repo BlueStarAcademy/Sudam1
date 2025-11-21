@@ -176,6 +176,7 @@ export const updateMissileState = (game: types.LiveGameSession, now: number) => 
             // 애니메이션이 종료되었는지 확인 (정상 종료: elapsed >= duration)
             if (elapsed >= duration) {
                 // 이미 처리된 애니메이션인지 확인 (중복 처리 방지)
+                const lastProcessedAnimationTime = (game as any).lastProcessedMissileAnimationTime;
                 if (lastProcessedAnimationTime === animationStartTime) {
                     // 이미 처리된 애니메이션 - 무시하고 정리만 수행
                     console.warn(`[updateMissileState] Game ${game.id} animation already processed (startTime=${animationStartTime}), cleaning up...`);

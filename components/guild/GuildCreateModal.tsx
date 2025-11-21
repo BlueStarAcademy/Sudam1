@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext.js';
 import { Guild } from '../../types/entities.js';
 import Button from '../Button.js';
@@ -17,6 +17,16 @@ const GuildCreateModal: React.FC<GuildCreateModalProps> = ({ onClose, onSuccess 
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Check if user already has a guild when modal opens
+    // Admin users can always create a guild, even if they're in one
+    useEffect(() => {
+        if (currentUserWithStatus?.guildId && !currentUserWithStatus?.isAdmin) {
+            // User already has a guild (and is not admin), close modal to show guild home
+            onClose();
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [currentUserWithStatus?.guildId, currentUserWithStatus?.isAdmin]);
+
     const handleCreate = async () => {
         if (!name.trim()) {
             setError('길드 이름을 입력해주세요.');
@@ -29,8 +39,10 @@ const GuildCreateModal: React.FC<GuildCreateModalProps> = ({ onClose, onSuccess 
         }
 
         // Check if user already has a guild
-        if (currentUserWithStatus?.guildId) {
-            setError('이미 길드에 가입되어 있습니다. 길드 홈에서 확인해주세요.');
+        // Admin users can always create a guild, even if they're in one
+        if (currentUserWithStatus?.guildId && !currentUserWithStatus?.isAdmin) {
+            // User already has a guild (and is not admin), close modal to show guild home
+            onClose();
             return;
         }
 
@@ -38,19 +50,54 @@ const GuildCreateModal: React.FC<GuildCreateModalProps> = ({ onClose, onSuccess 
         setError(null);
 
         try {
+            console.log('[GuildCreateModal] Attempting to create guild:', { name: name.trim(), description: description.trim() || undefined });
             const result: any = await handlers.handleAction({
                 type: 'CREATE_GUILD',
                 payload: { name: name.trim(), description: description.trim() || undefined },
             });
 
+            console.log('[GuildCreateModal] Received response:', {
+                hasResult: !!result,
+                hasError: !!result?.error,
+                hasSuccess: !!result?.success,
+                hasGuild: !!result?.guild,
+                hasClientResponse: !!result?.clientResponse,
+                hasClientResponseGuild: !!result?.clientResponse?.guild,
+                result: result
+            });
+
+            // Server returns { success: true, guild: {...}, updatedUser: {...} } 
+            // or { clientResponse: { guild: {...}, updatedUser: {...} } }
+            const guild = result?.guild || result?.clientResponse?.guild;
+
             if (result?.error) {
+                console.warn('[GuildCreateModal] Error received:', result.error);
+                // If error is about already being in a guild, close modal to show guild home
+                if (result.error.includes('이미 길드에 가입되어 있습니다') || 
+                    result.error.includes('already in guild')) {
+                    onClose();
+                    return;
+                }
                 setError(result.error);
-            } else if (result?.clientResponse?.guild) {
-                onSuccess(result.clientResponse.guild);
-            } else if (result?.error) {
-                setError(result.error);
+            } else if (guild) {
+                console.log('[GuildCreateModal] Guild created successfully:', guild);
+                setLoading(false);
+                onSuccess(guild);
+            } else {
+                console.error('[GuildCreateModal] Unexpected response format:', {
+                    result,
+                    hasResult: !!result,
+                    hasSuccess: !!result?.success,
+                    hasGuild: !!result?.guild,
+                    hasClientResponse: !!result?.clientResponse,
+                    hasClientResponseGuild: !!result?.clientResponse?.guild,
+                    clientResponseKeys: result?.clientResponse ? Object.keys(result.clientResponse) : [],
+                    resultKeys: result ? Object.keys(result) : []
+                });
+                setError('길드 생성 응답 형식이 올바르지 않습니다.');
             }
         } catch (err: any) {
+            console.error('[GuildCreateModal] Exception occurred:', err);
             setError(err.message || '길드 생성에 실패했습니다.');
         } finally {
             setLoading(false);

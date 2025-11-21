@@ -37,11 +37,11 @@ const GuildInfoPanel: React.FC<GuildInfoPanelProps> = ({ guild, members }) => {
                     </div>
                     <div>
                         <span className="text-gray-400">경험치:</span>
-                        <span className="ml-2 text-white font-semibold">{guild.experience.toLocaleString()}</span>
+                        <span className="ml-2 text-white font-semibold">{(guild.experience ?? 0).toLocaleString()}</span>
                     </div>
                     <div>
                         <span className="text-gray-400">길드 골드:</span>
-                        <span className="ml-2 text-yellow-400 font-semibold">{guild.gold.toLocaleString()}</span>
+                        <span className="ml-2 text-yellow-400 font-semibold">{(guild.gold ?? 0).toLocaleString()}</span>
                     </div>
                     <div>
                         <span className="text-gray-400">멤버 수:</span>

@@ -14,7 +14,7 @@ export const PLAYFUL_GAME_MODES = [
   { mode: GameMode.Dice, name: "주사위 바둑", description: "총 3라운드에 걸쳐, 주사위를 굴려 나온 수만큼 흑돌을 놓아 백돌을 모두 따내는 게임입니다. 두 플레이어 모두 흑돌로 플레이합니다.", available: true, image: "/images/simbols/simbolp1.png" },
   { mode: GameMode.Omok, name: "오목", description: "다섯 개의 돌을 먼저 나란히 놓으면 승리하는 클래식 게임입니다.", available: true, image: "/images/simbols/simbolp2.png" },
   { mode: GameMode.Ttamok, name: "따목", description: "오목을 만들거나 정해진 상대 돌을 먼저 따내면 승리합니다.", available: true, image: "/images/simbols/simbolp3.png" },
-  { mode: GameMode.Thief, name: "도둑잡기", description: "도둑(흑)과 경찰(백) 역할을 번갈아 맡아 5턴씩 진행하며, 총점으로 승패를 가리는 전략 주사위 게임입니다.", available: true, image: "/images/simbols/simbolp4.png" },
+  { mode: GameMode.Thief, name: "도둑과경찰", description: "도둑(흑)과 경찰(백) 역할을 번갈아 맡아 5턴씩 진행하며, 총점으로 승패를 가리는 전략 주사위 게임입니다.", available: true, image: "/images/simbols/simbolp4.png" },
   { mode: GameMode.Alkkagi, name: "알까기", description: "손가락으로 바둑돌을 쳐서 상대방의 돌을 판 밖으로 밀어내는 게임입니다.", available: true, image: "/images/simbols/simbolp5.png" },
   { mode: GameMode.Curling, name: "컬링", description: "바둑판 위에서 돌을 미끄러뜨려 목표(하우스)에 가장 가깝게 보내 점수를 얻는 게임입니다.", available: true, image: "/images/simbols/simbolp6.png" }
 ];

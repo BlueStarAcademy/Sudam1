@@ -592,7 +592,22 @@ export const tryMatchPlayers = async (volatileState: VolatileState, lobbyType: '
     // 매칭 성공: 게임 생성
     const { player1: entry1, player2: entry2 } = bestMatch;
     const commonModes = entry1.selectedModes.filter(m => entry2.selectedModes.includes(m));
-    const selectedMode = commonModes[0]; // 첫 번째 공통 모드 선택
+    
+    // 우선순위를 고려하여 가장 높은 우선순위의 공통 모드 선택
+    // 각 플레이어의 selectedModes 배열 인덱스 합이 가장 작은 모드를 선택
+    let selectedMode: GameMode = commonModes[0];
+    let minPrioritySum = Infinity;
+    
+    for (const mode of commonModes) {
+        const player1Priority = entry1.selectedModes.indexOf(mode);
+        const player2Priority = entry2.selectedModes.indexOf(mode);
+        const prioritySum = player1Priority + player2Priority;
+        
+        if (prioritySum < minPrioritySum) {
+            minPrioritySum = prioritySum;
+            selectedMode = mode;
+        }
+    }
     
     // 랭킹전 기본 설정 가져오기
     const { getRankedGameSettings } = await import('../../constants/rankedGameSettings.js');

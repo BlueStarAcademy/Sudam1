@@ -93,6 +93,27 @@ const RankedMatchSelectionModal: React.FC<RankedMatchSelectionModalProps> = ({
     const [selectedMode, setSelectedMode] = useState<GameMode | null>(null);
     const [windowWidth, setWindowWidth] = useState(window.innerWidth);
     const [windowHeight, setWindowHeight] = useState(window.innerHeight);
+
+    // 우선순위 조정 함수들
+    const moveModeUp = (mode: GameMode) => {
+        setSelectedModes(prev => {
+            const index = prev.indexOf(mode);
+            if (index <= 0) return prev;
+            const newModes = [...prev];
+            [newModes[index - 1], newModes[index]] = [newModes[index], newModes[index - 1]];
+            return newModes;
+        });
+    };
+
+    const moveModeDown = (mode: GameMode) => {
+        setSelectedModes(prev => {
+            const index = prev.indexOf(mode);
+            if (index < 0 || index >= prev.length - 1) return prev;
+            const newModes = [...prev];
+            [newModes[index], newModes[index + 1]] = [newModes[index + 1], newModes[index]];
+            return newModes;
+        });
+    };
     
     useEffect(() => {
         const handleResize = () => {
@@ -232,6 +253,8 @@ const RankedMatchSelectionModal: React.FC<RankedMatchSelectionModalProps> = ({
                     <h3 className="font-bold text-green-300 mb-3" style={{ fontSize: `${Math.max(12, Math.round(16 * mobileTextScale))}px` }}>
                         게임 종류 선택 (다중 선택 가능)
                     </h3>
+                    
+                    {/* 모든 게임들 표시 (선택 여부와 관계없이) */}
                     <div className="flex-1 grid grid-cols-2 gap-2 overflow-y-auto pr-2">
                         {availableGameDefinitions.map((game) => {
                             const isSelected = selectedModes.includes(game.mode);
@@ -248,6 +271,7 @@ const RankedMatchSelectionModal: React.FC<RankedMatchSelectionModalProps> = ({
                             );
                         })}
                     </div>
+
                     <div className="mt-3 pt-3 border-t border-gray-700">
                         <p className="text-xs text-gray-400">
                             선택된 게임: {selectedModes.length}개
@@ -255,12 +279,97 @@ const RankedMatchSelectionModal: React.FC<RankedMatchSelectionModalProps> = ({
                     </div>
                 </div>
 
-                {/* Right Panel: Game Description and Settings */}
+                {/* Right Panel: Priority List, Game Description and Settings */}
                 <div className={`w-2/3 bg-primary ${isMobile ? 'p-2' : 'p-4'} flex flex-col rounded-r-lg overflow-y-auto`}>
+                    {/* 우선순위 목록 - 오른쪽 제일 위에 표시 */}
+                    {selectedModes.length > 0 && (
+                        <div className="mb-4 flex-1 min-h-0 flex flex-col">
+                            <h4 className="font-semibold text-yellow-300 mb-2 flex-shrink-0" style={{ fontSize: `${Math.max(12, Math.round(14 * mobileTextScale))}px` }}>
+                                선택된 게임 우선순위 (1순위가 가장 높음)
+                            </h4>
+                            <div className="bg-gray-900/50 border border-yellow-700/50 rounded-lg p-3 flex-1 min-h-0 flex flex-col">
+                                <div className="space-y-2 flex-1 overflow-y-auto min-h-0">
+                                    {selectedModes.map((mode, index) => {
+                                        const gameDef = availableGameDefinitions.find(g => g.mode === mode);
+                                        if (!gameDef) return null;
+                                        
+                                        return (
+                                            <div 
+                                                key={mode} 
+                                                className="flex items-center gap-2 bg-gray-800/70 rounded-lg p-2 border border-gray-700 hover:border-green-500 transition-colors"
+                                            >
+                                                {/* 우선순위 번호 */}
+                                                <div className="flex-shrink-0 w-7 h-7 bg-green-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                                                    {index + 1}
+                                                </div>
+                                                
+                                                {/* 게임 이미지 */}
+                                                <img 
+                                                    src={gameDef.image} 
+                                                    alt={gameDef.name}
+                                                    className="w-10 h-10 object-contain flex-shrink-0"
+                                                />
+                                                
+                                                {/* 게임 이름 */}
+                                                <span className="flex-grow text-sm text-white font-medium">
+                                                    {gameDef.name}
+                                                </span>
+                                                
+                                                {/* 우선순위 조정 및 취소 버튼 */}
+                                                <div className="flex items-center gap-1 flex-shrink-0">
+                                                    {/* 우선순위 조정 버튼 */}
+                                                    <div className="flex flex-col gap-1">
+                                                        <button
+                                                            onClick={() => moveModeUp(mode)}
+                                                            disabled={index === 0}
+                                                            className={`w-6 h-6 flex items-center justify-center rounded ${
+                                                                index === 0 
+                                                                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
+                                                                    : 'bg-green-600 hover:bg-green-500 text-white'
+                                                            }`}
+                                                            style={{ fontSize: '11px' }}
+                                                            title="우선순위 올리기"
+                                                        >
+                                                            ↑
+                                                        </button>
+                                                        <button
+                                                            onClick={() => moveModeDown(mode)}
+                                                            disabled={index === selectedModes.length - 1}
+                                                            className={`w-6 h-6 flex items-center justify-center rounded ${
+                                                                index === selectedModes.length - 1 
+                                                                    ? 'bg-gray-700 text-gray-500 cursor-not-allowed' 
+                                                                    : 'bg-green-600 hover:bg-green-500 text-white'
+                                                            }`}
+                                                            style={{ fontSize: '11px' }}
+                                                            title="우선순위 내리기"
+                                                        >
+                                                            ↓
+                                                        </button>
+                                                    </div>
+                                                    {/* 선택 취소 버튼 */}
+                                                    <button
+                                                        onClick={() => handleModeToggle(mode)}
+                                                        className="w-6 h-6 flex items-center justify-center rounded bg-red-600 hover:bg-red-500 text-white"
+                                                        style={{ fontSize: '12px' }}
+                                                        title="선택 취소"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-xs text-yellow-300 mt-2 pt-2 border-t border-gray-700 flex-shrink-0">
+                                    💡 우선순위는 위아래 버튼으로 조정하거나, 선택 취소(×)로 제거할 수 있습니다.
+                                </p>
+                            </div>
+                        </div>
+                    )}
                     {selectedGameDefinition ? (
-                        <>
-                            {/* Game Info */}
-                            <div className={`bg-gray-900/50 rounded-lg border border-gray-700 ${isMobile ? 'p-2' : 'p-3'} mb-4 flex-shrink-0`}>
+                        <div className={`flex gap-4 ${isMobile ? 'flex-col' : 'flex-row'} flex-shrink-0`} style={{ maxHeight: '40%' }}>
+                            {/* Game Info - 왼쪽 */}
+                            <div className={`bg-gray-900/50 rounded-lg border border-gray-700 ${isMobile ? 'p-2' : 'p-3'} ${isMobile ? 'w-full' : 'w-1/2'} flex-shrink-0 flex flex-col`}>
                                 <div className="flex items-center gap-3 mb-3">
                                     <img 
                                         src={selectedGameDefinition.image} 
@@ -276,7 +385,7 @@ const RankedMatchSelectionModal: React.FC<RankedMatchSelectionModalProps> = ({
                                         </p>
                                     </div>
                                 </div>
-                                <div className="border-t border-gray-700 pt-3 mt-3">
+                                <div className="border-t border-gray-700 pt-3 mt-3 flex-1">
                                     <h4 className="font-semibold text-gray-300 mb-2" style={{ fontSize: `${Math.max(10, Math.round(12 * mobileTextScale))}px` }}>
                                         게임 설명
                                     </h4>
@@ -286,23 +395,21 @@ const RankedMatchSelectionModal: React.FC<RankedMatchSelectionModalProps> = ({
                                 </div>
                             </div>
 
-                            {/* Ranked Settings */}
-                            <div className="flex-1 min-h-0">
+                            {/* Ranked Settings - 오른쪽 */}
+                            <div className={`bg-yellow-900/20 border border-yellow-700/50 rounded-lg ${isMobile ? 'p-2' : 'p-3'} ${isMobile ? 'w-full' : 'w-1/2'} flex-shrink-0 flex flex-col`}>
                                 <h4 className="font-semibold text-yellow-300 mb-3 flex-shrink-0" style={{ fontSize: `${Math.max(10, Math.round(12 * mobileTextScale))}px` }}>
-                                    랭킹전 강제 설정
+                                    게임 설정
                                 </h4>
-                                <div className="bg-yellow-900/20 border border-yellow-700/50 rounded-lg p-3">
-                                    <div className="grid grid-cols-2 gap-2">
-                                        {renderRankedSettings(selectedGameDefinition.mode)?.map((item, idx) => (
-                                            <div key={idx} className="flex justify-between items-center text-sm">
-                                                <span className="text-gray-400">{item.label}:</span>
-                                                <span className="text-yellow-200 font-semibold">{item.value}</span>
-                                            </div>
-                                        ))}
-                                    </div>
+                                <div className="grid grid-cols-1 gap-2 overflow-y-auto flex-1">
+                                    {renderRankedSettings(selectedGameDefinition.mode)?.map((item, idx) => (
+                                        <div key={idx} className="flex justify-between items-center text-sm">
+                                            <span className="text-gray-300">{item.label}:</span>
+                                            <span className="text-yellow-200 font-semibold">{item.value}</span>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        </>
+                        </div>
                     ) : (
                         <div className="flex-1 flex items-center justify-center">
                             <p className="text-gray-400 text-center">

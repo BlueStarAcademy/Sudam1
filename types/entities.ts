@@ -1,4 +1,4 @@
-import { Player, GameMode, LeagueTier, UserStatus, WinReason, RPSChoice, DiceGoVariant, AlkkagiPlacementType, AlkkagiLayoutType, Point, Move, BoardState, EquipmentSlot, InventoryItemType, ItemGrade, CoreStat, ItemOptionType, TournamentType, TournamentSimulationStatus, GameStatus, SinglePlayerLevel, GameCategory } from './enums.js';
+import { Player, GameMode, LeagueTier, UserStatus, WinReason, RPSChoice, DiceGoVariant, AlkkagiPlacementType, AlkkagiLayoutType, Point, Move, BoardState, EquipmentSlot, InventoryItemType, ItemGrade, CoreStat, ItemOptionType, TournamentType, TournamentSimulationStatus, GameStatus, SinglePlayerLevel, GameCategory, GuildMemberRole, GuildResearchId } from './enums.js';
 // FIX: ChatMessage is now defined in api.ts to break circular dependency.
 import { UserStatusInfo, ChatMessage } from './api.js';
 
@@ -326,6 +326,11 @@ export type User = {
     championship?: { rank: number; score: number; lastUpdated: number };
   };
   savedGameRecords?: GameRecord[];
+  lastLoginAt?: number;
+  dailyDonations?: { gold: number; diamond: number; date: number };
+  guildCoins?: number;
+  guildBossAttempts?: number;
+  guildApplications?: Array<{ guildId: string; appliedAt: number }>;
 };
 
 export type GameRecord = {
@@ -462,6 +467,7 @@ export type GameSettings = {
   scanCount?: number;
   missileCount?: number;
   mixedModes?: GameMode[];
+  autoScoring?: boolean;
   
   // Omok settings
   has33Forbidden?: boolean;
@@ -477,12 +483,12 @@ export type GameSettings = {
   // Alkkagi settings
   alkkagiPlacementType?: AlkkagiPlacementType;
   alkkagiLayout?: AlkkagiLayoutType;
+  alkkagiRounds?: 1 | 2 | 3;
   alkkagiStoneCount?: number;
   alkkagiGaugeSpeed?: number;
   alkkagiSlowItemCount?: number;
   alkkagiAimingLineItemCount?: number;
   alkkagiItemCount?: number;
-  alkkagiRounds?: 1 | 2 | 3;
 
   // Curling settings
   curlingStoneCount?: number;
@@ -847,10 +853,35 @@ export type Guild = {
   leaderId: string;
   description?: string;
   emblem?: string;
+  icon?: string;
   settings?: any;
   gold: number;
   level: number;
   experience: number;
+  xp?: number; // alias for experience
+  researchPoints?: number;
+  research?: Record<string, { level: number }>;
+  researchTask?: { researchId: string; startedAt: number; completedAt: number; completionTime?: number } | null;
+  members?: GuildMember[];
+  memberLimit?: number;
+  isPublic?: boolean;
+  announcement?: string;
+  chatHistory?: GuildMessage[];
+  checkIns?: Record<string, number>;
+  dailyCheckInRewardsClaimed?: string[];
+  guildBossState?: {
+    bossId: string;
+    hp: number;
+    maxHp: number;
+    defeatedAt?: number;
+    lastResetAt: number;
+    currentBossId?: string;
+    currentBossHp?: number;
+    totalDamageLog?: Record<string, number>;
+  } | null;
+  weeklyMissions?: GuildMission[];
+  applicants?: Array<{ userId: string; appliedAt: number }>;
+  recruitmentBanUntil?: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -859,9 +890,11 @@ export type GuildMember = {
   id: string;
   guildId: string;
   userId: string;
+  nickname?: string;
   role: 'leader' | 'officer' | 'member';
   joinDate: number;
   contributionTotal: number;
+  weeklyContribution?: number;
   createdAt: number;
   updatedAt: number;
 };
@@ -872,6 +905,10 @@ export type GuildMessage = {
   authorId: string;
   content: string;
   createdAt: number;
+  user?: { id: string; nickname: string };
+  system?: boolean;
+  timestamp?: number;
+  text?: string;
 };
 
 export type GuildMission = {
@@ -879,8 +916,14 @@ export type GuildMission = {
   guildId: string;
   missionType: string;
   status: 'active' | 'completed' | 'expired';
+  title?: string;
+  description?: string;
+  target?: number;
   progress?: any;
-  target?: any;
+  progressKey?: string;
+  personalReward?: { guildCoins?: number };
+  guildReward?: { guildXp?: number };
+  claimedBy?: string[];
   resetAt?: number;
   createdAt: number;
   updatedAt: number;
@@ -922,6 +965,77 @@ export type GuildWar = {
   updatedAt: number;
 };
 
+// --- Guild Research & Boss Types ---
+export enum GuildResearchCategory {
+    development = 'development',
+    boss = 'boss',
+    stats = 'stats',
+    rewards = 'rewards',
+}
+
+export interface GuildResearchProject {
+    image: string;
+    category: GuildResearchCategory;
+    name: string;
+    description: string;
+    maxLevel: number;
+    baseCost: number;
+    costMultiplier: number;
+    baseEffect: number;
+    effectUnit: '%' | '점' | '명';
+    baseTimeHours: number;
+    timeIncrementHours: number;
+    requiredGuildLevel: number[];
+}
+
+export interface GuildBossSkillEffect {
+    type: 'damage' | 'hp_percent' | 'heal' | 'debuff';
+    value?: [number, number];
+    hits?: number;
+    debuffType?: 'user_combat_power_reduction_percent' | 'user_heal_reduction_percent';
+    debuffValue?: [number, number];
+    debuffDuration?: number;
+}
+
+export interface GuildBossSkillSubEffect extends GuildBossSkillEffect {}
+
+export interface GuildBossSkill {
+    id: string;
+    name: string;
+    description: string;
+    type: 'active' | 'passive';
+    image: string;
+}
+
+export interface GuildBossActiveSkill extends GuildBossSkill {
+    type: 'active';
+    checkStat: CoreStat | CoreStat[];
+    onSuccess: GuildBossSkillEffect[];
+    onFailure: GuildBossSkillEffect[];
+}
+
+export interface GuildBossPassiveSkill extends GuildBossSkill {
+    type: 'passive';
+    passiveTrigger: 'always' | 'every_turn' | 'on_user_heal';
+    checkStat?: CoreStat;
+    passiveEffect: GuildBossSkillSubEffect[];
+    passiveChance?: number;
+}
+
+export interface GuildBossInfo {
+    id: string;
+    name: string;
+    description: string;
+    image: string;
+    maxHp: number;
+    hp: number;
+    stats: Record<CoreStat, number>;
+    skills: (GuildBossActiveSkill | GuildBossPassiveSkill)[];
+    strategyGuide: string;
+    recommendedStats: CoreStat[];
+    recommendedResearch: GuildResearchId[];
+}
+
 export type GuildWarMatch = {
   id: string;
   warId: string;
@@ -935,3 +1049,37 @@ export type GuildWarMatch = {
   createdAt: number;
   updatedAt: number;
 };
+
+export type BattleLogEntry = {
+    turn: number;
+    icon: string;
+    message: string;
+    isUserAction: boolean;
+    bossHealingDone?: number;
+    damageTaken?: number;
+    healingDone?: number;
+    debuffsApplied?: string[];
+    isCrit?: boolean;
+};
+
+export type GuildBossBattleResult = {
+    damageDealt: number;
+    turnsSurvived: number;
+    rewards: { guildCoins: number };
+    battleLog: BattleLogEntry[];
+    bossHpBefore: number;
+    bossHpAfter: number;
+    bossMaxHp: number;
+    userHp: number;
+    maxUserHp: number;
+};
+
+export interface MannerEffects {
+    maxActionPoints: number;
+    actionPointRegenInterval: number;
+    goldBonusPercent: number;
+    itemDropRateBonus: number;
+    mannerActionButtonBonus: number;
+    rewardMultiplier: number;
+    enhancementSuccessRateBonus: number;
+}

@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { flushSync } from 'react-dom';
 // FIX: The main types barrel file now exports settings types. Use it for consistency.
-import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, UserStatusInfo, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset, Player, HomeBoardPost, GameRecord } from '../types.js';
+import { User, LiveGameSession, UserWithStatus, ServerAction, GameMode, Negotiation, ChatMessage, UserStatus, UserStatusInfo, AdminLog, Announcement, OverrideAnnouncement, InventoryItem, AppState, InventoryItemType, AppRoute, QuestReward, DailyQuestData, WeeklyQuestData, MonthlyQuestData, Theme, SoundSettings, FeatureSettings, AppSettings, PanelEdgeStyle, CoreStat, SpecialStat, MythicStat, EquipmentSlot, EquipmentPreset, Player, HomeBoardPost, GameRecord, Guild } from '../types.js';
 import { audioService } from '../services/audioService.js';
 import { stableStringify, parseHash } from '../utils/appUtils.js';
 import { 
@@ -234,6 +234,7 @@ export const useApp = () => {
     const [globalOverrideAnnouncement, setGlobalOverrideAnnouncement] = useState<OverrideAnnouncement | null>(null);
     const [announcementInterval, setAnnouncementInterval] = useState(3);
     const [homeBoardPosts, setHomeBoardPosts] = useState<HomeBoardPost[]>([]);
+    const [guilds, setGuilds] = useState<Record<string, Guild>>({});
     
     // --- UI Modals & Toasts ---
     const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -267,7 +268,7 @@ export const useApp = () => {
     const [isEquipmentEffectsModalOpen, setIsEquipmentEffectsModalOpen] = useState(false);
     const [isBlacksmithModalOpen, setIsBlacksmithModalOpen] = useState(false);
     const [isGameRecordListOpen, setIsGameRecordListOpen] = useState(false);
-    const [viewingGameRecord, setViewingGameRecord] = useState<types.GameRecord | null>(null);
+    const [viewingGameRecord, setViewingGameRecord] = useState<GameRecord | null>(null);
     const [blacksmithSelectedItemForEnhancement, setBlacksmithSelectedItemForEnhancement] = useState<InventoryItem | null>(null);
     const [blacksmithActiveTab, setBlacksmithActiveTab] = useState<'enhance' | 'combine' | 'disassemble' | 'convert'>('enhance');
     const [combinationResult, setCombinationResult] = useState<{ item: InventoryItem; xpGained: number; isGreatSuccess: boolean; } | null>(null);
@@ -1395,6 +1396,54 @@ export const useApp = () => {
                         });
                     }
                 }
+                
+                // Handle guild creation response
+                if (action.type === 'CREATE_GUILD') {
+                    console.log(`[handleAction] CREATE_GUILD - Processing response:`, {
+                        hasResult: !!result,
+                        hasSuccess: result?.success,
+                        hasGuild: !!result?.guild,
+                        hasClientResponse: !!result?.clientResponse,
+                        hasClientResponseGuild: !!result?.clientResponse?.guild,
+                        resultKeys: result ? Object.keys(result) : [],
+                        clientResponseKeys: result?.clientResponse ? Object.keys(result.clientResponse) : []
+                    });
+                    // Server returns { success: true, ...result.clientResponse }
+                    // So result.guild or result.clientResponse?.guild should work
+                    const guild = result?.guild || result?.clientResponse?.guild;
+                    if (guild) {
+                        console.log(`[handleAction] CREATE_GUILD - Guild found:`, guild);
+                        setGuilds(prev => ({ ...prev, [guild.id]: guild }));
+                        // Return result in the format expected by modal
+                        return { clientResponse: { guild, updatedUser: result?.updatedUser || result?.clientResponse?.updatedUser } };
+                    }
+                }
+                
+                // Handle guild list response
+                if (action.type === 'LIST_GUILDS' && result?.clientResponse?.guilds) {
+                    const guildsList = result.clientResponse.guilds;
+                    if (Array.isArray(guildsList)) {
+                        const guildsMap: Record<string, Guild> = {};
+                        guildsList.forEach((g: any) => {
+                            if (g && g.id) guildsMap[g.id] = g;
+                        });
+                        setGuilds(prev => ({ ...prev, ...guildsMap }));
+                    }
+                }
+                
+                // Handle other guild responses that might include guilds
+                if (result?.clientResponse?.guilds && typeof result.clientResponse.guilds === 'object') {
+                    setGuilds(prev => ({ ...prev, ...result.clientResponse.guilds }));
+                }
+                
+                if (result?.guilds && typeof result.guilds === 'object') {
+                    setGuilds(prev => ({ ...prev, ...result.guilds }));
+                }
+                
+                // Return result for actions that need it (preserve original structure)
+                if (result && (result.clientResponse || result.guild || result.gameId)) {
+                    return result;
+                }
             }
         } catch (err: any) {
             console.error(`[handleAction] ${action.type} - Exception:`, err);
@@ -1596,15 +1645,13 @@ export const useApp = () => {
                 // Vite 개발 서버를 사용하는 경우 프록시를 통해 연결
                 let wsUrl: string;
                 
-                // Vite 개발 서버를 사용하는 경우 (포트가 5173이거나 hostname이 localhost/127.0.0.1인 경우)
+                // Vite 개발 서버를 사용하는 경우 (포트가 5173인 경우)
                 const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const isViteDevServer = window.location.port === '5173';
-                const isLocalHost =
-                    window.location.hostname === 'localhost' ||
-                    window.location.hostname === '127.0.0.1';
+                const isViteDevServer = window.location.port === '5173' || window.location.port === '';
 
-                if (isViteDevServer && isLocalHost) {
-                    // 로컬 Vite 개발 환경에서는 프록시 (/ws) 사용
+                if (isViteDevServer) {
+                    // Vite 개발 환경에서는 프록시 (/ws) 사용
+                    // 네트워크 주소(192.168.x.x)로 접속해도 프록시 사용
                     wsUrl = `${wsProtocol}//${window.location.host}/ws`;
                 } else {
                     // 그 외 환경에서는 서버(4000)의 /ws 엔드포인트로 직접 연결
@@ -1737,7 +1784,8 @@ export const useApp = () => {
                                 globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
                                 gameModeAvailability: message.payload.gameModeAvailability,
                                 announcementInterval: message.payload.announcementInterval,
-                                homeBoardPosts: message.payload.homeBoardPosts
+                                homeBoardPosts: message.payload.homeBoardPosts,
+                                guilds: message.payload.guilds || {}
                             };
                             startBuffer.receivedChunks++;
                             if (message.payload.isLast) {
@@ -1766,21 +1814,22 @@ export const useApp = () => {
                             if (message.payload.isLast) {
                                 console.log('[WebSocket] All chunks received, processing...');
                                 if (!chunkBuffer.otherData) {
-                                    chunkBuffer.otherData = {
-                                        onlineUsers: message.payload.onlineUsers,
-                                        liveGames: message.payload.liveGames,
-                                        singlePlayerGames: message.payload.singlePlayerGames,
-                                        towerGames: message.payload.towerGames,
-                                        negotiations: message.payload.negotiations,
-                                        waitingRoomChats: message.payload.waitingRoomChats,
-                                        gameChats: message.payload.gameChats,
-                                        adminLogs: message.payload.adminLogs,
-                                        announcements: message.payload.announcements,
-                                        globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
-                                        gameModeAvailability: message.payload.gameModeAvailability,
-                                        announcementInterval: message.payload.announcementInterval,
-                                        homeBoardPosts: message.payload.homeBoardPosts
-                                    };
+                                chunkBuffer.otherData = {
+                                    onlineUsers: message.payload.onlineUsers,
+                                    liveGames: message.payload.liveGames,
+                                    singlePlayerGames: message.payload.singlePlayerGames,
+                                    towerGames: message.payload.towerGames,
+                                    negotiations: message.payload.negotiations,
+                                    waitingRoomChats: message.payload.waitingRoomChats,
+                                    gameChats: message.payload.gameChats,
+                                    adminLogs: message.payload.adminLogs,
+                                    announcements: message.payload.announcements,
+                                    globalOverrideAnnouncement: message.payload.globalOverrideAnnouncement,
+                                    gameModeAvailability: message.payload.gameModeAvailability,
+                                    announcementInterval: message.payload.announcementInterval,
+                                    homeBoardPosts: message.payload.homeBoardPosts,
+                                    guilds: message.payload.guilds || chunkBuffer.otherData?.guilds || {}
+                                };
                                 }
                                 processInitialState(chunkBuffer.users, chunkBuffer.otherData);
                                 (window as any).__chunkedStateBuffer = null;
@@ -1808,7 +1857,8 @@ export const useApp = () => {
                                 globalOverrideAnnouncement,
                                 gameModeAvailability,
                                 announcementInterval,
-                                homeBoardPosts
+                                homeBoardPosts,
+                                guilds
                             } = message.payload;
                             processInitialState(users, {
                                 onlineUsers,
@@ -1823,7 +1873,8 @@ export const useApp = () => {
                                 globalOverrideAnnouncement,
                                 gameModeAvailability,
                                 announcementInterval,
-                                homeBoardPosts
+                                homeBoardPosts,
+                                guilds
                             });
                             completeInitialState();
                             return;
@@ -2454,8 +2505,10 @@ export const useApp = () => {
                             return;
                         }
                         case 'GUILD_UPDATE': {
-                            // Guild update is handled by components that listen to it
-                            // Components can reload guild info when this message is received
+                            const { guilds: updatedGuilds } = message.payload || {};
+                            if (updatedGuilds && typeof updatedGuilds === 'object') {
+                                setGuilds(prev => ({ ...prev, ...updatedGuilds }));
+                            }
                             return;
                         }
                         case 'GUILD_MESSAGE': {
@@ -2477,8 +2530,21 @@ export const useApp = () => {
                             console.error('[WebSocket] Error message:', message.payload?.message || 'Unknown error');
                             return;
                         }
-                        default:
-                            console.warn('[WebSocket] Unhandled message type:', message.type);
+                        default: {
+                            // broadcast({ guilds }) 형태의 메시지도 처리 (타입이 없는 경우)
+                            if ((message as any).guilds && typeof (message as any).guilds === 'object') {
+                                setGuilds(prev => ({ ...prev, ...(message as any).guilds }));
+                            }
+                            // payload.guilds가 있는 경우 처리
+                            if (message.payload?.guilds && typeof message.payload.guilds === 'object') {
+                                setGuilds(prev => ({ ...prev, ...message.payload.guilds }));
+                            }
+                            // 기존 default 처리 (이미 다른 case에서 처리되지 않은 경우)
+                            if (message.type && !['USER_UPDATE', 'USER_STATUS_UPDATE', 'GAME_UPDATE', 'NEGOTIATION_UPDATE', 'CHAT_MESSAGE', 'WAITING_ROOM_CHAT', 'GAME_CHAT', 'TOURNAMENT_UPDATE', 'RANKED_MATCHING_UPDATE', 'RANKED_MATCH_FOUND', 'GUILD_UPDATE', 'GUILD_MESSAGE', 'GUILD_MISSION_UPDATE', 'GUILD_WAR_UPDATE', 'ERROR', 'INITIAL_STATE', 'INITIAL_STATE_START', 'INITIAL_STATE_CHUNK', 'CONNECTION_ESTABLISHED'].includes(message.type)) {
+                                console.warn('[WebSocket] Unhandled message type:', message.type);
+                            }
+                            return;
+                        }
                     }
                 }
 
@@ -2812,6 +2878,9 @@ export const useApp = () => {
     }, [handleAction]);
 
     const presets = useMemo(() => currentUser?.equipmentPresets || [], [currentUser?.equipmentPresets]);
+    
+    const [isPresetModalOpen, setIsPresetModalOpen] = useState(false);
+    const [isGuildShopOpen, setIsGuildShopOpen] = useState(false);
 
     const {
         mainOptionBonuses,
@@ -3011,6 +3080,11 @@ export const useApp = () => {
             closeGameRecordViewer: () => setViewingGameRecord(null),
             setBlacksmithActiveTab,
             closeEnhancementModal,
+            openPresetModal: () => setIsPresetModalOpen(true),
+            closePresetModal: () => setIsPresetModalOpen(false),
+            openGuildShop: () => setIsGuildShopOpen(true),
+            closeGuildShop: () => setIsGuildShopOpen(false),
         },
+        guilds,
     };
 };

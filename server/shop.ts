@@ -1,6 +1,7 @@
 
 import { randomUUID } from 'crypto';
-import { type InventoryItem, type ItemGrade, type EquipmentSlot, type ItemOptions, type ItemOption, CoreStat, SpecialStat, MythicStat, type ItemOptionType, type BorderInfo } from '../types.js';
+import { type InventoryItem, type EquipmentSlot, type ItemOptions, type ItemOption, CoreStat, SpecialStat, MythicStat, type ItemOptionType, type BorderInfo } from '../types.js';
+import { ItemGrade } from '../types/enums.js';
 import {
     EQUIPMENT_POOL,
     MATERIAL_ITEMS,
@@ -136,7 +137,7 @@ export const createItemFromTemplate = (template: Omit<InventoryItem, 'id' | 'cre
 function openBoxWithLootTable(lootTable: { grade: ItemGrade; weight: number }[]): InventoryItem {
     const totalWeight = lootTable.reduce((sum, item) => sum + item.weight, 0);
     let random = Math.random() * totalWeight;
-    let selectedGrade: ItemGrade = 'normal';
+    let selectedGrade: ItemGrade = ItemGrade.Normal;
 
     for (const item of lootTable) {
         if (random < item.weight) {
@@ -151,12 +152,12 @@ function openBoxWithLootTable(lootTable: { grade: ItemGrade; weight: number }[])
     return createItemFromTemplate(template);
 }
 
-const EQUIPMENT_BOX_1_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: 'normal', weight: 70 }, { grade: 'uncommon', weight: 20 }, { grade: 'rare', weight: 10 }];
-const EQUIPMENT_BOX_2_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: 'normal', weight: 50 }, { grade: 'uncommon', weight: 25 }, { grade: 'rare', weight: 20 }, { grade: 'epic', weight: 5 }];
-const EQUIPMENT_BOX_3_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: 'uncommon', weight: 40 }, { grade: 'rare', weight: 30 }, { grade: 'epic', weight: 25 }, { grade: 'legendary', weight: 5 }];
-const EQUIPMENT_BOX_4_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: 'rare', weight: 50 }, { grade: 'epic', weight: 40 }, { grade: 'legendary', weight: 8 }, { grade: 'mythic', weight: 2 }];
-const EQUIPMENT_BOX_5_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: 'epic', weight: 75 }, { grade: 'legendary', weight: 20 }, { grade: 'mythic', weight: 5 }];
-const EQUIPMENT_BOX_6_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: 'legendary', weight: 90 }, { grade: 'mythic', weight: 10 }];
+const EQUIPMENT_BOX_1_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: ItemGrade.Normal, weight: 70 }, { grade: ItemGrade.Uncommon, weight: 20 }, { grade: ItemGrade.Rare, weight: 10 }];
+const EQUIPMENT_BOX_2_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: ItemGrade.Normal, weight: 50 }, { grade: ItemGrade.Uncommon, weight: 25 }, { grade: ItemGrade.Rare, weight: 20 }, { grade: ItemGrade.Epic, weight: 5 }];
+const EQUIPMENT_BOX_3_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: ItemGrade.Uncommon, weight: 40 }, { grade: ItemGrade.Rare, weight: 30 }, { grade: ItemGrade.Epic, weight: 25 }, { grade: ItemGrade.Legendary, weight: 5 }];
+const EQUIPMENT_BOX_4_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: ItemGrade.Rare, weight: 50 }, { grade: ItemGrade.Epic, weight: 40 }, { grade: ItemGrade.Legendary, weight: 8 }, { grade: ItemGrade.Mythic, weight: 2 }];
+const EQUIPMENT_BOX_5_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: ItemGrade.Epic, weight: 75 }, { grade: ItemGrade.Legendary, weight: 20 }, { grade: ItemGrade.Mythic, weight: 5 }];
+const EQUIPMENT_BOX_6_LOOT_TABLE: { grade: ItemGrade; weight: number }[] = [ { grade: ItemGrade.Legendary, weight: 90 }, { grade: ItemGrade.Mythic, weight: 10 }];
 
 export function openEquipmentBox1(): InventoryItem { return openBoxWithLootTable(EQUIPMENT_BOX_1_LOOT_TABLE); }
 export function openEquipmentBox2(): InventoryItem { return openBoxWithLootTable(EQUIPMENT_BOX_2_LOOT_TABLE); }
@@ -171,6 +172,18 @@ const MATERIAL_BOX_3_PROBABILITY = { '하급 강화석': 0.1, '중급 강화석'
 const MATERIAL_BOX_4_PROBABILITY = { '중급 강화석': 0.35, '상급 강화석': 0.45, '최상급 강화석': 0.2 };
 const MATERIAL_BOX_5_PROBABILITY = { '상급 강화석': 0.5, '최상급 강화석': 0.4, '신비의 강화석': 0.1 };
 const MATERIAL_BOX_6_PROBABILITY = { '상급 강화석': 0.25, '최상급 강화석': 0.25, '신비의 강화석': 0.5 };
+
+const gradeOrder: ItemGrade[] = [ItemGrade.Normal, ItemGrade.Uncommon, ItemGrade.Rare, ItemGrade.Epic, ItemGrade.Legendary, ItemGrade.Mythic];
+
+export const openGuildGradeBox = (grade: ItemGrade): InventoryItem => {
+    const itemsOfSelectedGrade = EQUIPMENT_POOL.filter(item => item.grade === grade);
+    if (itemsOfSelectedGrade.length === 0) {
+        const lowerGrade = gradeOrder[gradeOrder.indexOf(grade) - 1] || 'normal';
+        return openGuildGradeBox(lowerGrade);
+    }
+    const template = itemsOfSelectedGrade[Math.floor(Math.random() * itemsOfSelectedGrade.length)];
+    return createItemFromTemplate(template);
+};
 
 export function openMaterialBox(boxId: 'material_box_1' | 'material_box_2' | 'material_box_3' | 'material_box_4' | 'material_box_5' | 'material_box_6', rolls: number): InventoryItem[] {
     const probabilities = {

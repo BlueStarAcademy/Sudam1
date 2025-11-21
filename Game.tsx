@@ -610,7 +610,7 @@ const Game: React.FC<GameComponentProps> = ({ session }) => {
 
         if (isAiTurn) {
             // 게임이 이미 종료되었는지 확인
-            if (gameStatus === 'ended' || gameStatus === 'no_contest' || gameStatus === 'scoring') {
+            if (gameStatus !== 'playing' && (gameStatus === 'ended' || gameStatus === 'no_contest' || gameStatus === 'scoring')) {
                 console.log(`[Game] ${isTower ? 'Tower' : 'Single player'} game already ended, skipping AI move:`, {
                     gameId: session.id,
                     gameStatus

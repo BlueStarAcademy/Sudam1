@@ -282,7 +282,7 @@ export const deleteGame = async (id: string): Promise<void> => {
 
 
 // --- Full State Retrieval (for client sync) ---
-export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCredentials' | 'liveGames' | 'singlePlayerGames' | 'towerGames' | 'adminLogs' | 'announcements' | 'globalOverrideAnnouncement' | 'gameModeAvailability' | 'announcementInterval' | 'homeBoardPosts'>> => {
+export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCredentials' | 'liveGames' | 'singlePlayerGames' | 'towerGames' | 'adminLogs' | 'announcements' | 'globalOverrideAnnouncement' | 'gameModeAvailability' | 'announcementInterval' | 'homeBoardPosts'> & { guilds?: Record<string, any> }> => {
     const users = await listUsers();
     const allGames = await getAllActiveGames();
     const kvRepository = await import('./repositories/kvRepository.ts');
@@ -309,6 +309,7 @@ export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCreden
     const gameModeAvailability = await kvRepository.getKV<Record<GameMode, boolean>>('gameModeAvailability') || {};
     const announcementInterval = await kvRepository.getKV<number>('announcementInterval') || 3;
     const homeBoardPosts = await getAllHomeBoardPosts();
+    const guilds = await kvRepository.getKV<Record<string, any>>('guilds') || {};
     
     // 사용자 데이터 최적화: 공개 정보만 포함 (인벤토리, 메일, 퀘스트 등은 제외)
     const optimizedUsers: Record<string, any> = {};
@@ -355,5 +356,6 @@ export const getAllData = async (): Promise<Pick<AppState, 'users' | 'userCreden
         gameModeAvailability,
         announcementInterval,
         homeBoardPosts,
+        guilds,
     };
 };

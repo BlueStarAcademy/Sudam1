@@ -207,6 +207,25 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
                 const { handleSinglePlayerAction } = await import('./actions/singlePlayerActions.js');
                 return handleSinglePlayerAction(volatileState, action, user);
             }
+            // 미사일 액션은 서버에서 처리해야 함 (게임 상태 변경)
+            if (type === 'START_MISSILE_SELECTION' || type === 'LAUNCH_MISSILE' || type === 'CANCEL_MISSILE_SELECTION' || type === 'MISSILE_INVALID_SELECTION') {
+                // 전략 게임 핸들러를 통해 미사일 액션 처리
+                if (SPECIAL_GAME_MODES.some(m => m.mode === game.mode)) {
+                    const result = await handleStrategicGameAction(volatileState, game, action, user);
+                    if (result !== null && result !== undefined) {
+                        // 캐시 업데이트
+                        updateGameCache(game);
+                        // DB 저장은 비동기로 처리하여 응답 지연 최소화
+                        db.saveGame(game).catch(err => {
+                            console.error(`[GameActions] Failed to save game ${game.id}:`, err);
+                        });
+                        // 게임 상태 변경 후 실시간 브로드캐스트 (게임 참가자에게만 전송)
+                        const { broadcastToGameParticipants } = await import('./socket.js');
+                        broadcastToGameParticipants(game.id, { type: 'GAME_UPDATE', payload: { [game.id]: game } }, game);
+                        return result;
+                    }
+                }
+            }
             // 놀이바둑 AI 게임의 PLACE_STONE은 서버에서 AI 처리
             if (type === 'PLACE_STONE' && game.isAiGame && PLAYFUL_GAME_MODES.some(m => m.mode === game.mode)) {
                 // AI 차례인지 확인

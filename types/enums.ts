@@ -139,7 +139,14 @@ export enum AlkkagiLayoutType {
 // --- User and Item Enums ---
 export type EquipmentSlot = 'fan' | 'board' | 'top' | 'bottom' | 'bowl' | 'stones';
 export type InventoryItemType = 'equipment' | 'consumable' | 'material';
-export type ItemGrade = 'normal' | 'uncommon' | 'rare' | 'epic' | 'legendary' | 'mythic';
+export enum ItemGrade {
+    Normal = 'normal',
+    Uncommon = 'uncommon',
+    Rare = 'rare',
+    Epic = 'epic',
+    Legendary = 'legendary',
+    Mythic = 'mythic',
+}
 export enum CoreStat {
     Concentration = '집중력',
     ThinkingSpeed = '사고속도',
@@ -192,6 +199,39 @@ export enum GameCategory {
     Normal = 'normal',      // 일반 게임 (전략/놀이바둑 대기실)
     SinglePlayer = 'singleplayer',  // 싱글플레이
     Tower = 'tower'         // 도전의 탑
+}
+
+// --- Guild Enums ---
+export enum GuildMemberRole {
+    Master = 'leader',
+    Vice = 'officer',
+    Member = 'member',
+}
+
+export enum GuildResearchId {
+    // 길드 발전
+    member_limit_increase = 'member_limit_increase',
+    
+    // 보스 관련
+    boss_hp_increase = 'boss_hp_increase',
+    boss_skill_heal_block = 'boss_skill_heal_block',
+    boss_skill_regen = 'boss_skill_regen',
+    boss_skill_ignite = 'boss_skill_ignite',
+    
+    // 스탯 연구
+    stat_concentration = 'stat_concentration',
+    stat_thinking_speed = 'stat_thinking_speed',
+    stat_judgment = 'stat_judgment',
+    stat_calculation = 'stat_calculation',
+    stat_combat_power = 'stat_combat_power',
+    stat_stability = 'stat_stability',
+    ap_regen_boost = 'ap_regen_boost',
+    
+    // 보상 연구
+    reward_strategic_gold = 'reward_strategic_gold',
+    reward_playful_gold = 'reward_playful_gold',
+    reward_strategic_xp = 'reward_strategic_xp',
+    reward_playful_xp = 'reward_playful_xp',
 }
 
 // --- Game Primitives ---

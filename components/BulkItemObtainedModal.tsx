@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo } from 'react';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
-import { InventoryItem, ItemGrade } from '../types.js';
+import { InventoryItem } from '../types.js';
+import { ItemGrade } from '../types/enums.js';
 import { audioService } from '../services/audioService.js';
 import { GRADE_LEVEL_REQUIREMENTS } from '../constants';
 
@@ -44,13 +45,13 @@ const BulkItemObtainedModal: React.FC<BulkItemObtainedModalProps> = ({ items, on
     
     useEffect(() => {
         if (items && items.length > 0) {
-            const gradeOrder: ItemGrade[] = ['normal', 'uncommon', 'rare', 'epic', 'legendary', 'mythic'];
+            const gradeOrder: ItemGrade[] = [ItemGrade.Normal, ItemGrade.Uncommon, ItemGrade.Rare, ItemGrade.Epic, ItemGrade.Legendary, ItemGrade.Mythic];
             const bestItem = items.reduce((best, current) => {
-                const bestGrade = best.grade || 'normal';
-                const currentGrade = current.grade || 'normal';
+                const bestGrade = best.grade || ItemGrade.Normal;
+                const currentGrade = current.grade || ItemGrade.Normal;
                 return gradeOrder.indexOf(currentGrade) > gradeOrder.indexOf(bestGrade) ? current : best;
             });
-            if (['epic', 'legendary', 'mythic'].includes(bestItem.grade)) {
+            if ([ItemGrade.Epic, ItemGrade.Legendary, ItemGrade.Mythic].includes(bestItem.grade)) {
                 audioService.gachaEpicOrHigher();
             }
         }

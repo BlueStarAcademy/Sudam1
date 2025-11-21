@@ -34,3 +34,17 @@ export async function deleteMail(id: string, tx?: Tx): Promise<void> {
     await client.userMail.delete({ where: { id } });
 }
 
+export async function deleteExpiredMails(tx?: Tx): Promise<number> {
+    const client = tx ?? prisma;
+    const now = new Date();
+    const result = await client.userMail.deleteMany({
+        where: {
+            expiresAt: {
+                not: null,
+                lt: now, // expiresAt이 현재 시간보다 이전인 메일 삭제
+            },
+        },
+    });
+    return result.count;
+}
+

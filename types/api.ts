@@ -32,6 +32,7 @@ export type ChatMessage = {
 
 export type HandleActionResult = { 
     clientResponse?: any;
+    matchingInfo?: any;
     error?: string;
     claimAllTrainingQuestRewards?: any;
 };
@@ -80,7 +81,8 @@ export interface VolatileState {
     userCache?: Map<string, { user: User; lastUpdated: number }>;
     // 랭킹전 매칭 큐
     rankedMatchingQueue?: {
-        [lobbyType: 'strategic' | 'playful']: Record<string, RankedMatchingEntry>;
+        strategic?: Record<string, RankedMatchingEntry>;
+        playful?: Record<string, RankedMatchingEntry>;
     };
 }
 
@@ -231,6 +233,9 @@ export type ServerAction =
     | { type: 'ADMIN_FORCE_DELETE_GAME', payload: { gameId: string } }
     | { type: 'ADMIN_FORCE_WIN', payload: { gameId: string, winnerId: string } }
     | { type: 'ADMIN_UPDATE_USER_DETAILS', payload: { targetUserId: string, updatedDetails: Partial<User> } }
+    | { type: 'ADMIN_UPDATE_GUILD_DETAILS', payload: { guildId: string; updatedDetails: Partial<any> } }
+    | { type: 'ADMIN_APPLY_GUILD_SANCTION', payload: { guildId: string; sanctionType: 'recruitment'; durationHours: number } }
+    | { type: 'ADMIN_DELETE_GUILD', payload: { guildId: string } }
     | { type: 'ADMIN_RESET_TOURNAMENT_SESSION', payload: { targetUserId: string; tournamentType: TournamentType } }
     | { type: 'ADMIN_CREATE_HOME_BOARD_POST', payload: { title: string; content: string; isPinned: boolean } }
     | { type: 'ADMIN_UPDATE_HOME_BOARD_POST', payload: { postId: string; title: string; content: string; isPinned: boolean } }
@@ -268,21 +273,43 @@ export type ServerAction =
     | { type: 'LEVEL_UP_TRAINING_QUEST', payload: { missionId: string } }
     | { type: 'MANNER_ACTION', payload: { targetUserId: string, actionType: 'up' | 'down' } }
     // Guild
-    | { type: 'CREATE_GUILD', payload: { name: string; description?: string; emblem?: string } }
+    | { type: 'CREATE_GUILD', payload: { name: string; description?: string; emblem?: string; isPublic?: boolean } }
     | { type: 'JOIN_GUILD', payload: { guildId: string } }
     | { type: 'LEAVE_GUILD', payload?: never }
+    | { type: 'GUILD_LEAVE', payload?: never }
+    | { type: 'LIST_GUILDS', payload?: { searchQuery?: string; limit?: number } }
     | { type: 'KICK_GUILD_MEMBER', payload: { memberId: string } }
+    | { type: 'GUILD_KICK_MEMBER', payload: { guildId?: string; memberId: string; targetMemberId?: string } }
     | { type: 'UPDATE_GUILD_MEMBER_ROLE', payload: { memberId: string; role: 'leader' | 'officer' | 'member' } }
+    | { type: 'GUILD_PROMOTE_MEMBER', payload: { guildId?: string; memberId?: string; targetMemberId?: string } }
+    | { type: 'GUILD_DEMOTE_MEMBER', payload: { guildId?: string; memberId?: string; targetMemberId?: string } }
+    | { type: 'GUILD_TRANSFER_MASTERSHIP', payload: { guildId?: string; memberId?: string; targetMemberId?: string } }
     | { type: 'UPDATE_GUILD_SETTINGS', payload: { settings: any } }
+    | { type: 'GUILD_UPDATE_PROFILE', payload: { guildId?: string; name?: string; description?: string; emblem?: string; icon?: string; isPublic?: boolean } }
+    | { type: 'GUILD_UPDATE_ANNOUNCEMENT', payload: { guildId?: string; announcement: string } }
     | { type: 'SEND_GUILD_MESSAGE', payload: { content: string } }
+    | { type: 'SEND_GUILD_CHAT_MESSAGE', payload: { content: string } }
+    | { type: 'GUILD_DELETE_CHAT_MESSAGE', payload: { messageId: string; timestamp?: number } }
     | { type: 'GET_GUILD_MESSAGES', payload?: { limit?: number; before?: number } }
     | { type: 'START_GUILD_MISSION', payload: { missionType: string; target: any } }
     | { type: 'UPDATE_GUILD_MISSION_PROGRESS', payload: { missionId: string; progress: any } }
+    | { type: 'GUILD_CLAIM_MISSION_REWARD', payload: { missionId: string } }
     | { type: 'DONATE_TO_GUILD', payload: { amount?: number; itemId?: string } }
+    | { type: 'GUILD_DONATE_GOLD', payload?: never }
+    | { type: 'GUILD_DONATE_DIAMOND', payload?: never }
     | { type: 'PURCHASE_GUILD_SHOP_ITEM', payload: { shopItemId: string } }
+    | { type: 'GUILD_BUY_SHOP_ITEM', payload: { shopItemId: string; itemId?: string; quantity?: number } }
+    | { type: 'GUILD_CHECK_IN', payload?: never }
+    | { type: 'GUILD_CLAIM_CHECK_IN_REWARD', payload: { userId?: string; milestoneIndex: number } }
     | { type: 'START_GUILD_WAR', payload: { targetGuildId: string } }
     | { type: 'END_GUILD_WAR', payload: { warId: string } }
     | { type: 'GET_GUILD_INFO', payload?: never }
+    | { type: 'GUILD_ACCEPT_APPLICANT', payload: { guildId?: string; userId: string; applicantId?: string } }
+    | { type: 'GUILD_REJECT_APPLICANT', payload: { guildId?: string; userId: string; applicantId?: string } }
+    | { type: 'GUILD_CANCEL_APPLICATION', payload: { guildId: string } }
+    | { type: 'GUILD_START_RESEARCH', payload: { guildId?: string; researchId: string } }
+    | { type: 'START_GUILD_BOSS_BATTLE', payload: { bossId?: string; result?: any; bossName?: string } }
+    | { type: 'LOAD_EQUIPMENT_PRESET', payload: { presetName?: string; presetIndex?: number } }
     ;
 
 export interface GameProps {

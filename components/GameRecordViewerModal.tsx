@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { GameRecord } from '../types.js';
+import { GameRecord, Player } from '../types.js';
 import DraggableWindow from './DraggableWindow.js';
 import Button from './Button.js';
 import SgfViewer from './SgfViewer.js';
@@ -44,7 +44,6 @@ const GameRecordViewerModal: React.FC<GameRecordViewerModalProps> = ({ record, o
         <DraggableWindow 
             title={`기보 보기 - ${record.opponent.nickname}`} 
             onClose={onClose} 
-            initialPosition={{ x: 50, y: 50 }}
             initialWidth={1000}
             windowId="gameRecordViewer"
         >

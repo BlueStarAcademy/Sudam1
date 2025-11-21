@@ -451,14 +451,14 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
                             {/* 보상 박스들 */}
                             {summary ? (
                                 <>
-                                    {(summary.gold > 0 || (summary.xp && summary.xp.change > 0) || (summary.items && summary.items.length > 0)) ? (
+                                    {((summary.gold ?? 0) > 0 || (summary.xp && summary.xp.change > 0) || (summary.items && summary.items.length > 0)) ? (
                                         <div className="flex gap-1.5 justify-center items-stretch flex-wrap">
                                             {/* Gold Reward */}
-                                            {summary.gold > 0 && (
+                                            {(summary.gold ?? 0) > 0 && (
                                                 <div className={`${isMobile ? 'w-16 h-16' : 'w-24 h-24'} bg-gradient-to-br from-yellow-600/30 to-yellow-800/30 border-2 border-yellow-500/50 rounded-lg flex flex-col items-center justify-center ${isMobile ? 'p-1' : 'p-2'} shadow-lg`}>
                                                     <img src="/images/icon/Gold.png" alt="골드" className={`${isMobile ? 'w-6 h-6' : 'w-10 h-10'} mb-0.5`} />
                                                     <p className="font-bold text-yellow-300 text-center" style={{ fontSize: isMobile ? `${9 * mobileTextScale}px` : '11px' }}>
-                                                        {summary.gold.toLocaleString()}
+                                                        {(summary.gold ?? 0).toLocaleString()}
                                                     </p>
                                                 </div>
                                             )}

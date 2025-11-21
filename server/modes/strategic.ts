@@ -1,6 +1,7 @@
 // FIX: Correctly import summaryService to resolve module not found error.
 import * as summaryService from '../summaryService.js';
 import * as types from '../../types.js';
+import { UserStatus } from '../../types/enums.js';
 import * as db from '../db.js';
 import { getGoLogic, processMove } from '../goLogic.js';
 import { getGameResult } from '../gameModes.js';
@@ -500,7 +501,7 @@ const handleStandardAction = async (volatileState: types.VolatileState, game: ty
             await summaryService.processGameSummary(game);
 
             if (volatileState.userStatuses[user.id]) {
-                volatileState.userStatuses[user.id] = { status: 'waiting', mode: game.mode };
+                volatileState.userStatuses[user.id] = { status: UserStatus.Waiting, mode: game.mode };
             }
 
             return {};

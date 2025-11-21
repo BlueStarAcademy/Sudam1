@@ -28,7 +28,7 @@ const GuildChat: React.FC<GuildChatProps> = ({ guildId, messages, onMessagesUpda
                 const message = JSON.parse(event.data);
                 if (message.type === 'GUILD_MESSAGE' && message.payload?.message?.guildId === guildId) {
                     const newMessage = message.payload.message;
-                    onMessagesUpdate(prev => [...prev, newMessage]);
+                    onMessagesUpdate([...(messages || []), newMessage]);
                 }
             } catch (e) {
                 // Ignore

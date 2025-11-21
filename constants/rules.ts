@@ -1,5 +1,5 @@
 import { ActionButton, GameMode } from '../types.js';
-import type { ItemGrade } from '../types/enums.js';
+import { ItemGrade } from '../types/enums.js';
 
 type CombinationGreatSuccessRates = {
     'normal'?: number;
@@ -84,53 +84,53 @@ export const NO_CONTEST_RANKING_PENALTY = 50;
 export const BLACKSMITH_MAX_LEVEL = 20;
 
 export const BLACKSMITH_COMBINATION_XP_GAIN: Record<ItemGrade, [number, number]> = {
-    normal: [10, 30],
-    uncommon: [20, 50],
-    rare: [30, 80],
-    epic: [50, 150],
-    legendary: [100, 300],
-    mythic: [200, 500],
+    [ItemGrade.Normal]: [10, 30],
+    [ItemGrade.Uncommon]: [20, 50],
+    [ItemGrade.Rare]: [30, 80],
+    [ItemGrade.Epic]: [50, 150],
+    [ItemGrade.Legendary]: [100, 300],
+    [ItemGrade.Mythic]: [200, 500],
 };
 
 export const BLACKSMITH_ENHANCEMENT_XP_GAIN: Record<ItemGrade, [number, number]> = {
-    normal: [1, 10],
-    uncommon: [5, 20],
-    rare: [10, 30],
-    epic: [20, 50],
-    legendary: [50, 100],
-    mythic: [100, 300],
+    [ItemGrade.Normal]: [1, 10],
+    [ItemGrade.Uncommon]: [5, 20],
+    [ItemGrade.Rare]: [10, 30],
+    [ItemGrade.Epic]: [20, 50],
+    [ItemGrade.Legendary]: [50, 100],
+    [ItemGrade.Mythic]: [100, 300],
 };
 
 export const BLACKSMITH_DISASSEMBLY_XP_GAIN: Record<ItemGrade, [number, number]> = {
-    normal: [1, 5],
-    uncommon: [5, 10],
-    rare: [10, 20],
-    epic: [20, 40],
-    legendary: [50, 100],
-    mythic: [100, 300],
+    [ItemGrade.Normal]: [1, 5],
+    [ItemGrade.Uncommon]: [5, 10],
+    [ItemGrade.Rare]: [10, 20],
+    [ItemGrade.Epic]: [20, 40],
+    [ItemGrade.Legendary]: [50, 100],
+    [ItemGrade.Mythic]: [100, 300],
 };
 
 export const BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL: ItemGrade[] = [
-    'uncommon', // Level 1: 고급 이하 (Uncommon or lower)
-    'rare',     // Level 2: 희귀 이하 (Rare or lower)
-    'epic',     // Level 3: 에픽 이하 (Epic or lower)
-    'legendary',// Level 4: 전설 이하 (Legendary or lower)
-    'mythic',   // Level 5: 모든 장비 (All equipment)
-    'mythic',   // Level 6
-    'mythic',   // Level 7
-    'mythic',   // Level 8
-    'mythic',   // Level 9
-    'mythic',   // Level 10
-    'mythic',   // Level 11
-    'mythic',   // Level 12
-    'mythic',   // Level 13
-    'mythic',   // Level 14
-    'mythic',   // Level 15
-    'mythic',   // Level 16
-    'mythic',   // Level 17
-    'mythic',   // Level 18
-    'mythic',   // Level 19
-    'mythic',   // Level 20
+    ItemGrade.Uncommon, // Level 1: 고급 이하 (Uncommon or lower)
+    ItemGrade.Rare,     // Level 2: 희귀 이하 (Rare or lower)
+    ItemGrade.Epic,     // Level 3: 에픽 이하 (Epic or lower)
+    ItemGrade.Legendary,// Level 4: 전설 이하 (Legendary or lower)
+    ItemGrade.Mythic,   // Level 5: 모든 장비 (All equipment)
+    ItemGrade.Mythic,   // Level 6
+    ItemGrade.Mythic,   // Level 7
+    ItemGrade.Mythic,   // Level 8
+    ItemGrade.Mythic,   // Level 9
+    ItemGrade.Mythic,   // Level 10
+    ItemGrade.Mythic,   // Level 11
+    ItemGrade.Mythic,   // Level 12
+    ItemGrade.Mythic,   // Level 13
+    ItemGrade.Mythic,   // Level 14
+    ItemGrade.Mythic,   // Level 15
+    ItemGrade.Mythic,   // Level 16
+    ItemGrade.Mythic,   // Level 17
+    ItemGrade.Mythic,   // Level 18
+    ItemGrade.Mythic,   // Level 19
+    ItemGrade.Mythic,   // Level 20
 ];
 
 export const BLACKSMITH_COMBINATION_GREAT_SUCCESS_RATES: CombinationGreatSuccessRates[] = [

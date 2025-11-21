@@ -170,11 +170,11 @@ const WaitingRoom: React.FC<WaitingRoomComponentProps> = ({ mode }) => {
       try {
         const message = JSON.parse(event.data);
         if (message.type === 'RANKED_MATCHING_UPDATE') {
-          const queue = message.payload?.queue;
+          const queue = message.payload?.queue as Record<string, Record<string, any>> | undefined;
           if (queue) {
             // mode를 직접 사용하여 lobbyType 계산
-            const lobbyType = (mode === 'strategic' || (mode !== 'playful' && SPECIAL_GAME_MODES.some(m => m.mode === mode))) ? 'strategic' : 'playful';
-            const userEntry = queue[lobbyType]?.[currentUserWithStatus?.id];
+            const lobbyType: 'strategic' | 'playful' = (mode === 'strategic' || (mode !== 'playful' && SPECIAL_GAME_MODES.some(m => m.mode === mode))) ? 'strategic' : 'playful';
+            const userEntry = currentUserWithStatus?.id ? queue[lobbyType]?.[currentUserWithStatus.id] : undefined;
             if (userEntry) {
               setIsRankedMatching(true);
               setRankedMatchingStartTime(userEntry.startTime);

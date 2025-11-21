@@ -141,7 +141,7 @@ const Header: React.FC = () => {
                     <div className="hidden sm:flex items-center gap-1 sm:gap-2">
                     {isAdmin && (
                         <Button
-                            onClick={() => window.location.hash = '#/admin'}
+                            onClick={() => { window.location.hash = '#/admin'; }}
                             colorScheme="none"
                             className="flex-shrink-0 whitespace-nowrap !px-3 !py-1.5 text-[9px] sm:text-xs rounded-lg border border-indigo-300/50 bg-gradient-to-r from-indigo-500/85 via-sky-500/80 to-cyan-400/80 text-white shadow-[0_10px_24px_-18px_rgba(59,130,246,0.55)] hover:-translate-y-0.5 hover:shadow-[0_16px_32px_-18px_rgba(96,165,250,0.6)]"
                             style={{ letterSpacing: '0.08em' }}

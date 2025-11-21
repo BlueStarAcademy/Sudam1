@@ -13,8 +13,8 @@ import Admin from './Admin.js';
 import TournamentLobby from './TournamentLobby.js';
 import TournamentArena from './arenas/TournamentArena.js';
 import SinglePlayerLobby from './SinglePlayerLobby.js';
-import Guild from './Guild.js';
 import TowerLobby from './TowerLobby.js';
+import GuildHome from './guild/GuildHome.js';
 
 // 게임 라우트 로더 컴포넌트 (게임이 로드될 때까지 대기)
 const GameRouteLoader: React.FC<{ gameId: string }> = ({ gameId }) => {
@@ -153,10 +153,10 @@ const Router: React.FC = () => {
             return <TournamentLobby />;
         case 'singleplayer':
              return <SinglePlayerLobby />;
-        case 'guild':
-            return <Guild />;
         case 'tower':
             return <TowerLobby />;
+        case 'guild':
+            return <GuildHome />;
         default:
             window.location.hash = '#/profile';
             return null;

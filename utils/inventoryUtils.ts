@@ -1,5 +1,6 @@
 import { randomUUID } from 'crypto';
 import { InventoryItem, InventoryItemType } from '../types.js';
+import { ItemGrade } from '../types/enums.js';
 import { CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../constants';
 
 const CONSUMABLE_TEMPLATE_MAP: Record<string, Omit<InventoryItem, 'id'|'createdAt'|'isEquipped'|'level'|'stars'|'options'|'enhancementFails'>> = CONSUMABLE_ITEMS.reduce((map, item) => {
@@ -182,7 +183,7 @@ export const createItemInstancesFromReward = (itemRefs: (InventoryItem | { itemI
                 type: 'consumable',
                 slot: null,
                 image: '/images/icon/Reward.png',
-                grade: 'normal',
+                grade: ItemGrade.Normal,
                 id: `item-${randomUUID()}`,
                 createdAt: Date.now(),
                 quantity,

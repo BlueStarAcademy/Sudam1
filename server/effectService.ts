@@ -92,7 +92,9 @@ export const calculateUserEffects = (user: User): CalculatedEffects => {
         calculatedEffects.mythicStatBonuses[key] = { flat: 0, percent: 0 };
     }
 
-    const equippedItems = user.inventory.filter(i => i.isEquipped && i.type === 'equipment' && i.options);
+    const equippedItems = (user.inventory && Array.isArray(user.inventory))
+        ? user.inventory.filter(i => i.isEquipped && i.type === 'equipment' && i.options)
+        : [];
 
     // Add equipment effects
     for (const item of equippedItems) {
