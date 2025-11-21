@@ -29,11 +29,9 @@ FROM base AS runner
 WORKDIR /app
 ENV PORT=4000
 
-# Install KataGo dependencies (OpenCL libraries for CPU mode)
-RUN apk add --no-cache \
-    opencl-headers \
-    opencl-icd-loader \
-    mesa-opencl
+# KataGo dependencies: KataGo can run in CPU mode without OpenCL
+# OpenCL is only needed for GPU acceleration (optional)
+# For Railway deployment, we'll use CPU mode which doesn't require OpenCL libraries
 
 # Copy production dependencies
 COPY --from=deps /app/node_modules ./node_modules
