@@ -868,7 +868,7 @@ export type Guild = {
   announcement?: string;
   chatHistory?: GuildMessage[];
   checkIns?: Record<string, number>;
-  dailyCheckInRewardsClaimed?: string[];
+  dailyCheckInRewardsClaimed?: Array<{ userId: string; milestoneIndex: number }>;
   guildBossState?: {
     bossId: string;
     hp: number;

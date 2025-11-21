@@ -70,8 +70,36 @@ export interface CalculatedEffects extends MannerEffects {
     mythicStatBonuses: Record<MythicStat, { flat: number; percent: number }>;
 }
 
-export const calculateUserEffects = (user: User): CalculatedEffects => {
+export const calculateUserEffects = (user: User | null | undefined): CalculatedEffects => {
     // Start with manner effects
+    if (!user) {
+        // Return default effects if user is null/undefined
+        const defaultEffects: CalculatedEffects = {
+            maxActionPoints: 30,
+            actionPointRegenInterval: ACTION_POINT_REGEN_INTERVAL_MS,
+            goldRewardMultiplier: 1,
+            winGoldBonusPercent: 0,
+            dropChanceMultiplier: 1,
+            winDropBonusPercent: 0,
+            itemDropRateBonus: 0,
+            disassemblyJackpotBonusPercent: 0,
+            allStatsFlatBonus: 0,
+            coreStatBonuses: {} as Record<CoreStat, { flat: number; percent: number }>,
+            specialStatBonuses: {} as Record<SpecialStat, { flat: number; percent: number }>,
+            mythicStatBonuses: {} as Record<MythicStat, { flat: number; percent: number }>,
+        };
+        for (const key of Object.values(CoreStat)) {
+            defaultEffects.coreStatBonuses[key] = { flat: 0, percent: 0 };
+        }
+        for (const key of Object.values(SpecialStat)) {
+            defaultEffects.specialStatBonuses[key] = { flat: 0, percent: 0 };
+        }
+        for (const key of Object.values(MythicStat)) {
+            defaultEffects.mythicStatBonuses[key] = { flat: 0, percent: 0 };
+        }
+        return defaultEffects;
+    }
+
     const effects = getMannerEffects(user);
 
     const calculatedEffects: CalculatedEffects = {
@@ -93,7 +121,7 @@ export const calculateUserEffects = (user: User): CalculatedEffects => {
     }
 
     const equippedItems = (user.inventory && Array.isArray(user.inventory))
-        ? user.inventory.filter(i => i.isEquipped && i.type === 'equipment' && i.options)
+        ? user.inventory.filter(i => i && i.isEquipped && i.type === 'equipment' && i.options)
         : [];
 
     // Add equipment effects

@@ -10780,3 +10780,273 @@ numSearchThreads = 8
 2025-11-21 11:12:17+0900: Loaded model C:\project\SUDAMR\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
 2025-11-21 11:12:17+0900: Analyzing up to 4 positions at a time in parallel
 2025-11-21 11:12:17+0900: Started, ready to begin handling requests
+2025-11-21 13:04:26+0900: Running with following config:
+analysisPVLen = 10
+homeDataDir = C:/project/SUDAM/server/katago_home
+logFile = ./katago_analysis_log.txt
+maxVisits = 1000
+nnMaxBatchSize = 16
+numAnalysisThreads = 4
+numSearchThreads = 8
+
+2025-11-21 13:04:26+0900: Analysis Engine starting...
+2025-11-21 13:04:26+0900: KataGo v1.16.3
+2025-11-21 13:04:27+0900: nnRandSeed0 = 11704683162488489128
+2025-11-21 13:04:27+0900: After dedups: nnModelFile0 = C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz useFP16 auto useNHWC auto
+2025-11-21 13:04:27+0900: Initializing neural net buffer to be size 19 * 19 allowing smaller boards
+2025-11-21 13:04:30+0900: Found OpenCL Platform 0: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 13:04:30+0900: Found 1 device(s) on platform 0 with type CPU or GPU or Accelerator
+2025-11-21 13:04:30+0900: Found OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) (score 11000300)
+2025-11-21 13:04:30+0900: Creating context for OpenCL Platform: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 13:04:30+0900: Using OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) OpenCL 3.0 CUDA (Extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_win32 cl_khr_external_memory_win32)
+2025-11-21 13:04:30+0900: Loaded tuning parameters from: C:/project/SUDAM/server/katago_home/opencltuning/tune11_gpuNVIDIAGeForceRTX3060_x19_y19_c512_mv15.txt
+2025-11-21 13:04:31+0900: OpenCL backend thread 0: Model version 15
+2025-11-21 13:04:31+0900: OpenCL backend thread 0: Model name: kata1-b28c512nbt-s9853922560-d5031756885
+2025-11-21 13:04:33+0900: OpenCL backend thread 0: FP16Storage true FP16Compute false FP16TensorCores true FP16TensorCoresFor1x1 false
+2025-11-21 13:04:33+0900: Note: nnMaxBatchSize * number of GPUs (16) is smaller than numSearchThreads * numAnalysisThreads (32)
+2025-11-21 13:04:33+0900: The number of simultaneous threads that might query the GPU could be larger than the batch size that the GPU will handle at once.
+2025-11-21 13:04:33+0900: It may improve performance to increase nnMaxBatchSize, unless you are constrained on GPU memory.
+2025-11-21 13:04:33+0900: Loaded config C:\project\SUDAM\server\temp_katago_config.cfg
+2025-11-21 13:04:33+0900: Loaded model C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
+2025-11-21 13:04:33+0900: Analyzing up to 4 positions at a time in parallel
+2025-11-21 13:04:33+0900: Started, ready to begin handling requests
+2025-11-21 14:04:27+0900: Running with following config:
+analysisPVLen = 10
+homeDataDir = C:/project/SUDAM/server/katago_home
+logFile = ./katago_analysis_log.txt
+maxVisits = 1000
+nnMaxBatchSize = 16
+numAnalysisThreads = 4
+numSearchThreads = 8
+
+2025-11-21 14:04:27+0900: Analysis Engine starting...
+2025-11-21 14:04:27+0900: KataGo v1.16.3
+2025-11-21 14:04:27+0900: nnRandSeed0 = 10191147111647797937
+2025-11-21 14:04:27+0900: After dedups: nnModelFile0 = C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz useFP16 auto useNHWC auto
+2025-11-21 14:04:27+0900: Initializing neural net buffer to be size 19 * 19 allowing smaller boards
+2025-11-21 14:04:30+0900: Found OpenCL Platform 0: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:04:30+0900: Found 1 device(s) on platform 0 with type CPU or GPU or Accelerator
+2025-11-21 14:04:30+0900: Found OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) (score 11000300)
+2025-11-21 14:04:30+0900: Creating context for OpenCL Platform: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:04:30+0900: Using OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) OpenCL 3.0 CUDA (Extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_win32 cl_khr_external_memory_win32)
+2025-11-21 14:04:30+0900: Loaded tuning parameters from: C:/project/SUDAM/server/katago_home/opencltuning/tune11_gpuNVIDIAGeForceRTX3060_x19_y19_c512_mv15.txt
+2025-11-21 14:04:30+0900: OpenCL backend thread 0: Model version 15
+2025-11-21 14:04:30+0900: OpenCL backend thread 0: Model name: kata1-b28c512nbt-s9853922560-d5031756885
+2025-11-21 14:04:33+0900: OpenCL backend thread 0: FP16Storage true FP16Compute false FP16TensorCores true FP16TensorCoresFor1x1 false
+2025-11-21 14:04:33+0900: Note: nnMaxBatchSize * number of GPUs (16) is smaller than numSearchThreads * numAnalysisThreads (32)
+2025-11-21 14:04:33+0900: The number of simultaneous threads that might query the GPU could be larger than the batch size that the GPU will handle at once.
+2025-11-21 14:04:33+0900: It may improve performance to increase nnMaxBatchSize, unless you are constrained on GPU memory.
+2025-11-21 14:04:33+0900: Loaded config C:\project\SUDAM\server\temp_katago_config.cfg
+2025-11-21 14:04:33+0900: Loaded model C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
+2025-11-21 14:04:33+0900: Analyzing up to 4 positions at a time in parallel
+2025-11-21 14:04:33+0900: Started, ready to begin handling requests
+2025-11-21 14:06:52+0900: Running with following config:
+analysisPVLen = 10
+homeDataDir = C:/project/SUDAM/server/katago_home
+logFile = ./katago_analysis_log.txt
+maxVisits = 1000
+nnMaxBatchSize = 16
+numAnalysisThreads = 4
+numSearchThreads = 8
+
+2025-11-21 14:06:52+0900: Analysis Engine starting...
+2025-11-21 14:06:52+0900: KataGo v1.16.3
+2025-11-21 14:06:52+0900: nnRandSeed0 = 13455089465628302864
+2025-11-21 14:06:52+0900: After dedups: nnModelFile0 = C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz useFP16 auto useNHWC auto
+2025-11-21 14:06:52+0900: Initializing neural net buffer to be size 19 * 19 allowing smaller boards
+2025-11-21 14:06:55+0900: Found OpenCL Platform 0: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:06:55+0900: Found 1 device(s) on platform 0 with type CPU or GPU or Accelerator
+2025-11-21 14:06:55+0900: Found OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) (score 11000300)
+2025-11-21 14:06:55+0900: Creating context for OpenCL Platform: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:06:55+0900: Using OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) OpenCL 3.0 CUDA (Extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_win32 cl_khr_external_memory_win32)
+2025-11-21 14:06:55+0900: Loaded tuning parameters from: C:/project/SUDAM/server/katago_home/opencltuning/tune11_gpuNVIDIAGeForceRTX3060_x19_y19_c512_mv15.txt
+2025-11-21 14:06:55+0900: OpenCL backend thread 0: Model version 15
+2025-11-21 14:06:55+0900: OpenCL backend thread 0: Model name: kata1-b28c512nbt-s9853922560-d5031756885
+2025-11-21 14:06:58+0900: OpenCL backend thread 0: FP16Storage true FP16Compute false FP16TensorCores true FP16TensorCoresFor1x1 false
+2025-11-21 14:06:58+0900: Note: nnMaxBatchSize * number of GPUs (16) is smaller than numSearchThreads * numAnalysisThreads (32)
+2025-11-21 14:06:58+0900: The number of simultaneous threads that might query the GPU could be larger than the batch size that the GPU will handle at once.
+2025-11-21 14:06:58+0900: It may improve performance to increase nnMaxBatchSize, unless you are constrained on GPU memory.
+2025-11-21 14:06:58+0900: Loaded config C:\project\SUDAM\server\temp_katago_config.cfg
+2025-11-21 14:06:58+0900: Loaded model C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
+2025-11-21 14:06:58+0900: Analyzing up to 4 positions at a time in parallel
+2025-11-21 14:06:58+0900: Started, ready to begin handling requests
+2025-11-21 14:08:47+0900: Running with following config:
+analysisPVLen = 10
+homeDataDir = C:/project/SUDAM/server/katago_home
+logFile = ./katago_analysis_log.txt
+maxVisits = 1000
+nnMaxBatchSize = 16
+numAnalysisThreads = 4
+numSearchThreads = 8
+
+2025-11-21 14:08:47+0900: Analysis Engine starting...
+2025-11-21 14:08:47+0900: KataGo v1.16.3
+2025-11-21 14:08:47+0900: nnRandSeed0 = 4038843271110683168
+2025-11-21 14:08:47+0900: After dedups: nnModelFile0 = C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz useFP16 auto useNHWC auto
+2025-11-21 14:08:47+0900: Initializing neural net buffer to be size 19 * 19 allowing smaller boards
+2025-11-21 14:08:50+0900: Found OpenCL Platform 0: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:08:50+0900: Found 1 device(s) on platform 0 with type CPU or GPU or Accelerator
+2025-11-21 14:08:50+0900: Found OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) (score 11000300)
+2025-11-21 14:08:50+0900: Creating context for OpenCL Platform: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:08:50+0900: Using OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) OpenCL 3.0 CUDA (Extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_win32 cl_khr_external_memory_win32)
+2025-11-21 14:08:50+0900: Loaded tuning parameters from: C:/project/SUDAM/server/katago_home/opencltuning/tune11_gpuNVIDIAGeForceRTX3060_x19_y19_c512_mv15.txt
+2025-11-21 14:08:50+0900: OpenCL backend thread 0: Model version 15
+2025-11-21 14:08:50+0900: OpenCL backend thread 0: Model name: kata1-b28c512nbt-s9853922560-d5031756885
+2025-11-21 14:08:52+0900: OpenCL backend thread 0: FP16Storage true FP16Compute false FP16TensorCores true FP16TensorCoresFor1x1 false
+2025-11-21 14:08:52+0900: Note: nnMaxBatchSize * number of GPUs (16) is smaller than numSearchThreads * numAnalysisThreads (32)
+2025-11-21 14:08:52+0900: The number of simultaneous threads that might query the GPU could be larger than the batch size that the GPU will handle at once.
+2025-11-21 14:08:52+0900: It may improve performance to increase nnMaxBatchSize, unless you are constrained on GPU memory.
+2025-11-21 14:08:52+0900: Loaded config C:\project\SUDAM\server\temp_katago_config.cfg
+2025-11-21 14:08:52+0900: Loaded model C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
+2025-11-21 14:08:52+0900: Analyzing up to 4 positions at a time in parallel
+2025-11-21 14:08:52+0900: Started, ready to begin handling requests
+2025-11-21 14:12:01+0900: Running with following config:
+analysisPVLen = 10
+homeDataDir = C:/project/SUDAM/server/katago_home
+logFile = ./katago_analysis_log.txt
+maxVisits = 1000
+nnMaxBatchSize = 16
+numAnalysisThreads = 4
+numSearchThreads = 8
+
+2025-11-21 14:12:01+0900: Analysis Engine starting...
+2025-11-21 14:12:01+0900: KataGo v1.16.3
+2025-11-21 14:12:01+0900: nnRandSeed0 = 2255029412786311366
+2025-11-21 14:12:01+0900: After dedups: nnModelFile0 = C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz useFP16 auto useNHWC auto
+2025-11-21 14:12:01+0900: Initializing neural net buffer to be size 19 * 19 allowing smaller boards
+2025-11-21 14:12:04+0900: Found OpenCL Platform 0: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:12:04+0900: Found 1 device(s) on platform 0 with type CPU or GPU or Accelerator
+2025-11-21 14:12:04+0900: Found OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) (score 11000300)
+2025-11-21 14:12:04+0900: Creating context for OpenCL Platform: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:12:04+0900: Using OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) OpenCL 3.0 CUDA (Extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_win32 cl_khr_external_memory_win32)
+2025-11-21 14:12:04+0900: Loaded tuning parameters from: C:/project/SUDAM/server/katago_home/opencltuning/tune11_gpuNVIDIAGeForceRTX3060_x19_y19_c512_mv15.txt
+2025-11-21 14:12:05+0900: OpenCL backend thread 0: Model version 15
+2025-11-21 14:12:05+0900: OpenCL backend thread 0: Model name: kata1-b28c512nbt-s9853922560-d5031756885
+2025-11-21 14:12:07+0900: OpenCL backend thread 0: FP16Storage true FP16Compute false FP16TensorCores true FP16TensorCoresFor1x1 false
+2025-11-21 14:12:07+0900: Note: nnMaxBatchSize * number of GPUs (16) is smaller than numSearchThreads * numAnalysisThreads (32)
+2025-11-21 14:12:07+0900: The number of simultaneous threads that might query the GPU could be larger than the batch size that the GPU will handle at once.
+2025-11-21 14:12:07+0900: It may improve performance to increase nnMaxBatchSize, unless you are constrained on GPU memory.
+2025-11-21 14:12:07+0900: Loaded config C:\project\SUDAM\server\temp_katago_config.cfg
+2025-11-21 14:12:07+0900: Loaded model C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
+2025-11-21 14:12:07+0900: Analyzing up to 4 positions at a time in parallel
+2025-11-21 14:12:07+0900: Started, ready to begin handling requests
+2025-11-21 14:24:00+0900: Running with following config:
+analysisPVLen = 10
+homeDataDir = C:/project/SUDAM/server/katago_home
+logFile = ./katago_analysis_log.txt
+maxVisits = 1000
+nnMaxBatchSize = 16
+numAnalysisThreads = 4
+numSearchThreads = 8
+
+2025-11-21 14:24:00+0900: Analysis Engine starting...
+2025-11-21 14:24:00+0900: KataGo v1.16.3
+2025-11-21 14:24:00+0900: nnRandSeed0 = 9513724879696569820
+2025-11-21 14:24:00+0900: After dedups: nnModelFile0 = C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz useFP16 auto useNHWC auto
+2025-11-21 14:24:00+0900: Initializing neural net buffer to be size 19 * 19 allowing smaller boards
+2025-11-21 14:24:03+0900: Found OpenCL Platform 0: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:24:03+0900: Found 1 device(s) on platform 0 with type CPU or GPU or Accelerator
+2025-11-21 14:24:03+0900: Found OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) (score 11000300)
+2025-11-21 14:24:03+0900: Creating context for OpenCL Platform: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:24:03+0900: Using OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) OpenCL 3.0 CUDA (Extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_win32 cl_khr_external_memory_win32)
+2025-11-21 14:24:03+0900: Loaded tuning parameters from: C:/project/SUDAM/server/katago_home/opencltuning/tune11_gpuNVIDIAGeForceRTX3060_x19_y19_c512_mv15.txt
+2025-11-21 14:24:03+0900: OpenCL backend thread 0: Model version 15
+2025-11-21 14:24:03+0900: OpenCL backend thread 0: Model name: kata1-b28c512nbt-s9853922560-d5031756885
+2025-11-21 14:24:06+0900: OpenCL backend thread 0: FP16Storage true FP16Compute false FP16TensorCores true FP16TensorCoresFor1x1 false
+2025-11-21 14:24:06+0900: Note: nnMaxBatchSize * number of GPUs (16) is smaller than numSearchThreads * numAnalysisThreads (32)
+2025-11-21 14:24:06+0900: The number of simultaneous threads that might query the GPU could be larger than the batch size that the GPU will handle at once.
+2025-11-21 14:24:06+0900: It may improve performance to increase nnMaxBatchSize, unless you are constrained on GPU memory.
+2025-11-21 14:24:06+0900: Loaded config C:\project\SUDAM\server\temp_katago_config.cfg
+2025-11-21 14:24:06+0900: Loaded model C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
+2025-11-21 14:24:06+0900: Analyzing up to 4 positions at a time in parallel
+2025-11-21 14:24:06+0900: Started, ready to begin handling requests
+2025-11-21 14:27:54+0900: Running with following config:
+analysisPVLen = 10
+homeDataDir = C:/project/SUDAM/server/katago_home
+logFile = ./katago_analysis_log.txt
+maxVisits = 1000
+nnMaxBatchSize = 16
+numAnalysisThreads = 4
+numSearchThreads = 8
+
+2025-11-21 14:27:54+0900: Analysis Engine starting...
+2025-11-21 14:27:54+0900: KataGo v1.16.3
+2025-11-21 14:27:54+0900: nnRandSeed0 = 16773228993308881021
+2025-11-21 14:27:54+0900: After dedups: nnModelFile0 = C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz useFP16 auto useNHWC auto
+2025-11-21 14:27:54+0900: Initializing neural net buffer to be size 19 * 19 allowing smaller boards
+2025-11-21 14:27:57+0900: Found OpenCL Platform 0: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:27:57+0900: Found 1 device(s) on platform 0 with type CPU or GPU or Accelerator
+2025-11-21 14:27:57+0900: Found OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) (score 11000300)
+2025-11-21 14:27:57+0900: Creating context for OpenCL Platform: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 14:27:57+0900: Using OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) OpenCL 3.0 CUDA (Extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_win32 cl_khr_external_memory_win32)
+2025-11-21 14:27:57+0900: Loaded tuning parameters from: C:/project/SUDAM/server/katago_home/opencltuning/tune11_gpuNVIDIAGeForceRTX3060_x19_y19_c512_mv15.txt
+2025-11-21 14:27:57+0900: OpenCL backend thread 0: Model version 15
+2025-11-21 14:27:57+0900: OpenCL backend thread 0: Model name: kata1-b28c512nbt-s9853922560-d5031756885
+2025-11-21 14:28:00+0900: OpenCL backend thread 0: FP16Storage true FP16Compute false FP16TensorCores true FP16TensorCoresFor1x1 false
+2025-11-21 14:28:00+0900: Note: nnMaxBatchSize * number of GPUs (16) is smaller than numSearchThreads * numAnalysisThreads (32)
+2025-11-21 14:28:00+0900: The number of simultaneous threads that might query the GPU could be larger than the batch size that the GPU will handle at once.
+2025-11-21 14:28:00+0900: It may improve performance to increase nnMaxBatchSize, unless you are constrained on GPU memory.
+2025-11-21 14:28:00+0900: Loaded config C:\project\SUDAM\server\temp_katago_config.cfg
+2025-11-21 14:28:00+0900: Loaded model C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
+2025-11-21 14:28:00+0900: Analyzing up to 4 positions at a time in parallel
+2025-11-21 14:28:00+0900: Started, ready to begin handling requests
+2025-11-21 16:23:22+0900: Running with following config:
+analysisPVLen = 10
+homeDataDir = C:/project/SUDAM/server/katago_home
+logFile = ./katago_analysis_log.txt
+maxVisits = 1000
+nnMaxBatchSize = 16
+numAnalysisThreads = 4
+numSearchThreads = 8
+
+2025-11-21 16:23:22+0900: Analysis Engine starting...
+2025-11-21 16:23:22+0900: KataGo v1.16.3
+2025-11-21 16:23:22+0900: nnRandSeed0 = 11165916826051429798
+2025-11-21 16:23:22+0900: After dedups: nnModelFile0 = C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz useFP16 auto useNHWC auto
+2025-11-21 16:23:22+0900: Initializing neural net buffer to be size 19 * 19 allowing smaller boards
+2025-11-21 16:23:25+0900: Found OpenCL Platform 0: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 16:23:25+0900: Found 1 device(s) on platform 0 with type CPU or GPU or Accelerator
+2025-11-21 16:23:25+0900: Found OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) (score 11000300)
+2025-11-21 16:23:25+0900: Creating context for OpenCL Platform: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 16:23:25+0900: Using OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) OpenCL 3.0 CUDA (Extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_win32 cl_khr_external_memory_win32)
+2025-11-21 16:23:25+0900: Loaded tuning parameters from: C:/project/SUDAM/server/katago_home/opencltuning/tune11_gpuNVIDIAGeForceRTX3060_x19_y19_c512_mv15.txt
+2025-11-21 16:23:26+0900: OpenCL backend thread 0: Model version 15
+2025-11-21 16:23:26+0900: OpenCL backend thread 0: Model name: kata1-b28c512nbt-s9853922560-d5031756885
+2025-11-21 16:23:28+0900: OpenCL backend thread 0: FP16Storage true FP16Compute false FP16TensorCores true FP16TensorCoresFor1x1 false
+2025-11-21 16:23:28+0900: Note: nnMaxBatchSize * number of GPUs (16) is smaller than numSearchThreads * numAnalysisThreads (32)
+2025-11-21 16:23:28+0900: The number of simultaneous threads that might query the GPU could be larger than the batch size that the GPU will handle at once.
+2025-11-21 16:23:28+0900: It may improve performance to increase nnMaxBatchSize, unless you are constrained on GPU memory.
+2025-11-21 16:23:28+0900: Loaded config C:\project\SUDAM\server\temp_katago_config.cfg
+2025-11-21 16:23:28+0900: Loaded model C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
+2025-11-21 16:23:29+0900: Analyzing up to 4 positions at a time in parallel
+2025-11-21 16:23:29+0900: Started, ready to begin handling requests
+2025-11-21 17:05:30+0900: Running with following config:
+analysisPVLen = 10
+homeDataDir = C:/project/SUDAM/server/katago_home
+logFile = ./katago_analysis_log.txt
+maxVisits = 1000
+nnMaxBatchSize = 16
+numAnalysisThreads = 4
+numSearchThreads = 8
+
+2025-11-21 17:05:30+0900: Analysis Engine starting...
+2025-11-21 17:05:30+0900: KataGo v1.16.3
+2025-11-21 17:05:30+0900: nnRandSeed0 = 4768623672394433480
+2025-11-21 17:05:30+0900: After dedups: nnModelFile0 = C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz useFP16 auto useNHWC auto
+2025-11-21 17:05:30+0900: Initializing neural net buffer to be size 19 * 19 allowing smaller boards
+2025-11-21 17:05:33+0900: Found OpenCL Platform 0: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 17:05:33+0900: Found 1 device(s) on platform 0 with type CPU or GPU or Accelerator
+2025-11-21 17:05:33+0900: Found OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) (score 11000300)
+2025-11-21 17:05:33+0900: Creating context for OpenCL Platform: NVIDIA CUDA (NVIDIA Corporation) (OpenCL 3.0 CUDA 12.6.65)
+2025-11-21 17:05:33+0900: Using OpenCL Device 0: NVIDIA GeForce RTX 3060 (NVIDIA Corporation) OpenCL 3.0 CUDA (Extensions: cl_khr_global_int32_base_atomics cl_khr_global_int32_extended_atomics cl_khr_local_int32_base_atomics cl_khr_local_int32_extended_atomics cl_khr_fp64 cl_khr_3d_image_writes cl_khr_byte_addressable_store cl_khr_icd cl_khr_gl_sharing cl_nv_compiler_options cl_nv_device_attribute_query cl_nv_pragma_unroll cl_nv_d3d10_sharing cl_khr_d3d10_sharing cl_nv_d3d11_sharing cl_nv_copy_opts cl_nv_create_buffer cl_khr_int64_base_atomics cl_khr_int64_extended_atomics cl_khr_device_uuid cl_khr_pci_bus_info cl_khr_external_semaphore cl_khr_external_memory cl_khr_external_semaphore_win32 cl_khr_external_memory_win32)
+2025-11-21 17:05:33+0900: Loaded tuning parameters from: C:/project/SUDAM/server/katago_home/opencltuning/tune11_gpuNVIDIAGeForceRTX3060_x19_y19_c512_mv15.txt
+2025-11-21 17:05:33+0900: OpenCL backend thread 0: Model version 15
+2025-11-21 17:05:33+0900: OpenCL backend thread 0: Model name: kata1-b28c512nbt-s9853922560-d5031756885
+2025-11-21 17:05:36+0900: OpenCL backend thread 0: FP16Storage true FP16Compute false FP16TensorCores true FP16TensorCoresFor1x1 false
+2025-11-21 17:05:36+0900: Note: nnMaxBatchSize * number of GPUs (16) is smaller than numSearchThreads * numAnalysisThreads (32)
+2025-11-21 17:05:36+0900: The number of simultaneous threads that might query the GPU could be larger than the batch size that the GPU will handle at once.
+2025-11-21 17:05:36+0900: It may improve performance to increase nnMaxBatchSize, unless you are constrained on GPU memory.
+2025-11-21 17:05:36+0900: Loaded config C:\project\SUDAM\server\temp_katago_config.cfg
+2025-11-21 17:05:36+0900: Loaded model C:\project\SUDAM\katago\kata1-b28c512nbt-s9853922560-d5031756885.bin.gz
+2025-11-21 17:05:36+0900: Analyzing up to 4 positions at a time in parallel
+2025-11-21 17:05:36+0900: Started, ready to begin handling requests

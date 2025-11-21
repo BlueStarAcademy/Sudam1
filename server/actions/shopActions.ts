@@ -11,6 +11,7 @@ import { isSameDayKST, isDifferentWeekKST } from '../../utils/timeUtils.js';
 import { CONSUMABLE_ITEMS, MATERIAL_ITEMS, ACTION_POINT_PURCHASE_COSTS_DIAMONDS, MAX_ACTION_POINT_PURCHASES_PER_DAY, ACTION_POINT_PURCHASE_REFILL_AMOUNT, SHOP_BORDER_ITEMS } from '../../constants';
 import { addItemsToInventory } from '../../utils/inventoryUtils.js';
 import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
+import * as guildService from '../guildService.js';
 
 type HandleActionResult = { 
     clientResponse?: any;
@@ -70,6 +71,12 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 if (!user.isAdmin) {
                     user.gold -= totalGoldCost;
                     user.diamonds -= totalDiamondCost;
+                    
+                    // Update Guild Mission Progress for diamonds spent
+                    if (totalDiamondCost > 0 && user.guildId) {
+                        const guilds = await db.getKV<Record<string, any>>('guilds') || {};
+                        await guildService.updateGuildMissionProgress(user.guildId, 'diamondsSpent', totalDiamondCost, guilds);
+                    }
                 }
 
                 // 인벤토리를 깊은 복사하여 새로운 배열로 할당 (참조 문제 방지)
@@ -188,6 +195,12 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 }
                 user.gold -= totalCost.gold;
                 user.diamonds -= totalCost.diamonds;
+                
+                // Update Guild Mission Progress for diamonds spent
+                if (totalCost.diamonds > 0 && user.guildId) {
+                    const guilds = await db.getKV<Record<string, any>>('guilds') || {};
+                    await guildService.updateGuildMissionProgress(user.guildId, 'diamondsSpent', totalCost.diamonds, guilds);
+                }
             }
             
             // 인벤토리를 깊은 복사하여 새로운 배열로 할당 (참조 문제 방지)
@@ -254,6 +267,12 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                 user.diamonds -= cost;
                 user.actionPointPurchasesToday = purchasesToday + 1;
                 user.lastActionPointPurchaseDate = now;
+                
+                // Update Guild Mission Progress for diamonds spent
+                if (cost > 0 && user.guildId) {
+                    const guilds = await db.getKV<Record<string, any>>('guilds') || {};
+                    await guildService.updateGuildMissionProgress(user.guildId, 'diamondsSpent', cost, guilds);
+                }
             }
             user.actionPoints.current += ACTION_POINT_PURCHASE_REFILL_AMOUNT;
             
@@ -280,6 +299,12 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
                     return { error: '다이아가 부족합니다.' };
                 }
                 user.diamonds -= EXPANSION_COST_DIAMONDS;
+                
+                // Update Guild Mission Progress for diamonds spent
+                if (user.guildId) {
+                    const guilds = await db.getKV<Record<string, any>>('guilds') || {};
+                    await guildService.updateGuildMissionProgress(user.guildId, 'diamondsSpent', EXPANSION_COST_DIAMONDS, guilds);
+                }
             }
             
             user.inventorySlots[category] = Math.min(MAX_INVENTORY_SIZE, user.inventorySlots[category] + EXPANSION_AMOUNT);
@@ -307,6 +332,12 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             if (!user.isAdmin) {
                 user.gold -= cost;
                 user.diamonds -= diamondCost;
+                
+                // Update Guild Mission Progress for diamonds spent
+                if (diamondCost > 0 && user.guildId) {
+                    const guilds = await db.getKV<Record<string, any>>('guilds') || {};
+                    await guildService.updateGuildMissionProgress(user.guildId, 'diamondsSpent', diamondCost, guilds);
+                }
             }
 
             user.ownedBorders.push(borderId);
@@ -521,6 +552,12 @@ export const handleShopAction = async (volatileState: VolatileState, action: Ser
             if (!user.isAdmin) {
                 user.gold -= totalGoldCost;
                 user.diamonds -= totalDiamondCost;
+                
+                // Update Guild Mission Progress for diamonds spent
+                if (totalDiamondCost > 0 && user.guildId) {
+                    const guilds = await db.getKV<Record<string, any>>('guilds') || {};
+                    await guildService.updateGuildMissionProgress(user.guildId, 'diamondsSpent', totalDiamondCost, guilds);
+                }
             }
 
             // 인벤토리 업데이트

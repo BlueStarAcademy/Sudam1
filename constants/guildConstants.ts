@@ -18,15 +18,15 @@ export const GUILD_DONATION_GOLD_LIMIT = 5;
 export const GUILD_DONATION_DIAMOND_LIMIT = 3;
 
 export const GUILD_DONATION_GOLD_REWARDS = {
-    guildCoins: [1, 10],
-    researchPoints: [100, 150],
+    guildCoins: [1, 5],
+    researchPoints: [10, 50],
     guildXp: 10,
     contribution: 10,
 };
 
 export const GUILD_DONATION_DIAMOND_REWARDS = {
     guildCoins: [10, 30],
-    researchPoints: [300, 500],
+    researchPoints: [100, 300],
     guildXp: 30,
     contribution: 30,
 };
@@ -122,9 +122,9 @@ export const GUILD_BOSSES: GuildBossInfo[] = [
         maxHp: 5000000, hp: 5000000, stats: BOSS_STATS,
         strategyGuide: '집중력과 안정감 위주로 세팅하고, 회복 불가/억제 연구를 통해 보스의 회복을 막는 것이 핵심입니다.',
         skills: [
-            { id: '청해_물결의압박', name: '물결의 압박', description: '매 턴 집중력 대결을 통해 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['청해_물결의압박' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: CoreStat.Concentration, onSuccess: [{ type: 'damage', value: [5000, 8000] }], onFailure: [{ type: 'damage', value: [8000, 12000] }] },
-            { id: '청해_심해의고요', name: '심해의 고요', description: '안정감 대결을 통해 현재 체력에 비례한 큰 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['청해_심해의고요' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: CoreStat.Stability, onSuccess: [{ type: 'hp_percent', value: [10, 20] }], onFailure: [{ type: 'hp_percent', value: [25, 40] }] },
-            { id: '청해_회복억제', name: '회복 억제[패시브]', description: '유저가 회복을 시도하면 일정 확률로 회복 효과를 감소시킵니다.', type: 'passive', image: BOSS_SKILL_ICON_MAP['청해_회복억제' as keyof typeof BOSS_SKILL_ICON_MAP], passiveTrigger: 'on_user_heal', passiveChance: 0.40, passiveEffect: [{ type: 'debuff', debuffType: 'user_heal_reduction_percent', debuffValue: [50, 50], debuffDuration: 1 }] },
+            { id: '청해_물결의압박', name: '물결의 압박', description: '매 턴 집중력 대결을 통해 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['청해_물결의압박'], checkStat: CoreStat.Concentration, onSuccess: [{ type: 'damage', value: [5000, 8000] }], onFailure: [{ type: 'damage', value: [8000, 12000] }] },
+            { id: '청해_심해의고요', name: '심해의 고요', description: '안정감 대결을 통해 현재 체력에 비례한 큰 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['청해_심해의고요'], checkStat: CoreStat.Stability, onSuccess: [{ type: 'hp_percent', value: [10, 20] }], onFailure: [{ type: 'hp_percent', value: [25, 40] }] },
+            { id: '청해_회복억제', name: '회복 억제[패시브]', description: '유저가 회복을 시도하면 일정 확률로 회복 효과를 감소시킵니다.', type: 'passive', image: BOSS_SKILL_ICON_MAP['청해_회복억제'], passiveTrigger: 'on_user_heal', passiveChance: 0.40, passiveEffect: [{ type: 'debuff', debuffType: 'user_heal_reduction_percent', debuffValue: [50, 50], debuffDuration: 1 }] },
         ],
         recommendedStats: [CoreStat.Concentration, CoreStat.Stability],
         recommendedResearch: [GuildResearchId.boss_skill_heal_block]
@@ -134,9 +134,9 @@ export const GUILD_BOSSES: GuildBossInfo[] = [
         maxHp: 4500000, hp: 4500000, stats: BOSS_STATS,
         strategyGuide: '전투력과 사고속도를 높여 폭발적인 피해를 막고, 점화 연구로 지속 피해를 누적시키는 것이 좋습니다.',
         skills: [
-            { id: '홍염_불꽃돌파', name: '불꽃 돌파', description: '전투력 대결을 통해 강력한 단일 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['홍염_불꽃돌파' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: CoreStat.CombatPower, onSuccess: [{ type: 'damage', value: [8000, 10000] }], onFailure: [{ type: 'damage', value: [12000, 18000] }] },
-            { id: '홍염_광열의폭발', name: '광열의 폭발', description: '사고속도 대결을 통해 현재 체력에 비례한 폭발적인 피해를 줍니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['홍염_광열의폭발' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: CoreStat.ThinkingSpeed, onSuccess: [{ type: 'hp_percent', value: [5, 10] }], onFailure: [{ type: 'hp_percent', value: [25, 40] }] },
-            { id: '홍염_화상', name: '화상[패시브]', description: '매 턴 안정감 대결에 실패하면 화상 피해를 입습니다.', type: 'passive', image: BOSS_SKILL_ICON_MAP['홍염_화상' as keyof typeof BOSS_SKILL_ICON_MAP], passiveTrigger: 'every_turn', checkStat: CoreStat.Stability, passiveEffect: [{ type: 'hp_percent', value: [10, 20] }] }
+            { id: '홍염_불꽃돌파', name: '불꽃 돌파', description: '전투력 대결을 통해 강력한 단일 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['홍염_불꽃돌파'], checkStat: CoreStat.CombatPower, onSuccess: [{ type: 'damage', value: [8000, 10000] }], onFailure: [{ type: 'damage', value: [12000, 18000] }] },
+            { id: '홍염_광열의폭발', name: '광열의 폭발', description: '사고속도 대결을 통해 현재 체력에 비례한 폭발적인 피해를 줍니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['홍염_광열의폭발'], checkStat: CoreStat.ThinkingSpeed, onSuccess: [{ type: 'hp_percent', value: [5, 10] }], onFailure: [{ type: 'hp_percent', value: [25, 40] }] },
+            { id: '홍염_화상', name: '화상[패시브]', description: '매 턴 안정감 대결에 실패하면 화상 피해를 입습니다.', type: 'passive', image: BOSS_SKILL_ICON_MAP['홍염_화상'], passiveTrigger: 'every_turn', checkStat: CoreStat.Stability, passiveEffect: [{ type: 'hp_percent', value: [10, 20] }] }
         ],
         recommendedStats: [CoreStat.CombatPower, CoreStat.ThinkingSpeed],
         recommendedResearch: [GuildResearchId.boss_skill_ignite]
@@ -146,9 +146,9 @@ export const GUILD_BOSSES: GuildBossInfo[] = [
         maxHp: 5200000, hp: 5200000, stats: BOSS_STATS,
         strategyGuide: '자연의 치유를 막기 위해 회복 불가/억제 연구는 필수입니다. 균형 잡힌 능력치로 숲의 압박을 버텨내세요.',
         skills: [
-            { id: '녹수_숲의압박', name: '숲의 압박', description: '집중력과 판단력에 따라 피해량이 결정되는 지속적인 공격입니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['녹수_숲의압박' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: [CoreStat.Concentration, CoreStat.Judgment], onSuccess: [{ type: 'damage', value: [4000, 5000] }], onFailure: [{ type: 'damage', value: [5000, 7000] }] },
-            { id: '녹수_포자확산', name: '포자 확산', description: '여러 능력치를 동시에 시험하여 성공 횟수에 따라 피해량이 달라집니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['녹수_포자확산' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: [CoreStat.Concentration, CoreStat.Judgment, CoreStat.Stability], onSuccess: [], onFailure: [] },
-            { id: '녹수_자연의치유', name: '자연의 치유[패시브]', description: '매 턴 안정감 대결에 실패하면 자신의 체력을 회복합니다.', type: 'passive', image: BOSS_SKILL_ICON_MAP['녹수_자연의치유' as keyof typeof BOSS_SKILL_ICON_MAP], passiveTrigger: 'every_turn', checkStat: CoreStat.Stability, passiveEffect: [{ type: 'heal', value: [3000, 5000] }] }
+            { id: '녹수_숲의압박', name: '숲의 압박', description: '집중력과 판단력에 따라 피해량이 결정되는 지속적인 공격입니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['녹수_숲의압박'], checkStat: [CoreStat.Concentration, CoreStat.Judgment], onSuccess: [{ type: 'damage', value: [4000, 5000] }], onFailure: [{ type: 'damage', value: [5000, 7000] }] },
+            { id: '녹수_포자확산', name: '포자 확산', description: '여러 능력치를 동시에 시험하여 성공 횟수에 따라 피해량이 달라집니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['녹수_포자확산'], checkStat: [CoreStat.Concentration, CoreStat.Judgment, CoreStat.Stability], onSuccess: [], onFailure: [] },
+            { id: '녹수_자연의치유', name: '자연의 치유[패시브]', description: '매 턴 안정감 대결에 실패하면 자신의 체력을 회복합니다.', type: 'passive', image: BOSS_SKILL_ICON_MAP['녹수_자연의치유'], passiveTrigger: 'every_turn', checkStat: CoreStat.Stability, passiveEffect: [{ type: 'heal', value: [3000, 5000] }] }
         ],
         recommendedStats: [CoreStat.Concentration, CoreStat.Stability, CoreStat.Judgment],
         recommendedResearch: [GuildResearchId.boss_skill_heal_block, GuildResearchId.boss_skill_regen]
@@ -158,9 +158,9 @@ export const GUILD_BOSSES: GuildBossInfo[] = [
         maxHp: 4800000, hp: 4800000, stats: BOSS_STATS,
         strategyGuide: '어떤 능력치가 시험받을지 모르므로, 모든 능력치를 골고루 올리는 것이 중요합니다. 특히 계산력과 안정감, 판단력이 중요하게 작용합니다.',
         skills: [
-            { id: '현묘_혼란의수수께끼', name: '혼란의 수수께끼', description: '매 턴 무작위 능력치 대결을 통해 예측 불가능한 피해를 줍니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['현묘_혼란의수수께끼' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: Object.values(CoreStat), onSuccess: [{ type: 'damage', value: [6000, 7000] }], onFailure: [{ type: 'damage', value: [8000, 12000] }] },
-            { id: '현묘_뒤바뀐계산', name: '뒤바뀐 계산', description: '계산력 대결을 통해 막대한 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['현묘_뒤바뀐계산' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: CoreStat.Calculation, onSuccess: [{ type: 'damage', value: [5000, 6000] }], onFailure: [{ type: 'damage', value: [7000, 13000] }] },
-            { id: '현묘_심리전', name: '심리전', description: '안정감과 판단력의 합산 능력치에 따라 피해량이 극단적으로 변합니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['현묘_심리전' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: [CoreStat.Stability, CoreStat.Judgment], onSuccess: [{ type: 'damage', value: [1500, 3000] }], onFailure: [{ type: 'damage', value: [8000, 15000] }] }
+            { id: '현묘_혼란의수수께끼', name: '혼란의 수수께끼', description: '매 턴 무작위 능력치 대결을 통해 예측 불가능한 피해를 줍니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['현묘_혼란의수수께끼'], checkStat: Object.values(CoreStat), onSuccess: [{ type: 'damage', value: [6000, 7000] }], onFailure: [{ type: 'damage', value: [8000, 12000] }] },
+            { id: '현묘_뒤바뀐계산', name: '뒤바뀐 계산', description: '계산력 대결을 통해 막대한 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['현묘_뒤바뀐계산'], checkStat: CoreStat.Calculation, onSuccess: [{ type: 'damage', value: [5000, 6000] }], onFailure: [{ type: 'damage', value: [7000, 13000] }] },
+            { id: '현묘_심리전', name: '심리전', description: '안정감과 판단력의 합산 능력치에 따라 피해량이 극단적으로 변합니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['현묘_심리전'], checkStat: [CoreStat.Stability, CoreStat.Judgment], onSuccess: [{ type: 'damage', value: [1500, 3000] }], onFailure: [{ type: 'damage', value: [8000, 15000] }] }
         ],
         recommendedStats: [CoreStat.Calculation, CoreStat.Stability, CoreStat.Judgment],
         recommendedResearch: []
@@ -170,9 +170,9 @@ export const GUILD_BOSSES: GuildBossInfo[] = [
         maxHp: 6000000, hp: 6000000, stats: BOSS_STATS,
         strategyGuide: '모든 능력치의 총합이 중요합니다. 집중력으로 결계를 돌파하고 안정감으로 심판의 빛 피해를 줄이는 것이 공략의 핵심입니다.',
         skills: [
-            { id: '백광_천벌의일격', name: '천벌의 일격', description: '전투력과 사고속도를 동시에 시험하여, 성공 횟수에 따라 피해량이 결정됩니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['백광_천벌의일격' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: [CoreStat.CombatPower, CoreStat.ThinkingSpeed], onSuccess: [], onFailure: [] },
-            { id: '백광_광휘의결계', name: '광휘의 결계', description: '집중력 대결에 실패하면 큰 피해와 함께 전투력 감소 디버프에 걸립니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['백광_광휘의결계' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: CoreStat.Concentration, onSuccess: [{ type: 'damage', value: [5000, 6000] }], onFailure: [{ type: 'damage', value: [8000, 10000] }, { type: 'debuff', debuffType: 'user_combat_power_reduction_percent', debuffValue: [50, 50], debuffDuration: 3 }] },
-            { id: '백광_심판의빛', name: '심판의 빛', description: '안정감 대결 결과에 따라 체력 비례 고정 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['백광_심판의빛' as keyof typeof BOSS_SKILL_ICON_MAP], checkStat: CoreStat.Stability, onSuccess: [{ type: 'hp_percent', value: [5, 12] }], onFailure: [{ type: 'hp_percent', value: [20, 40] }] }
+            { id: '백광_천벌의일격', name: '천벌의 일격', description: '전투력과 사고속도를 동시에 시험하여, 성공 횟수에 따라 피해량이 결정됩니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['백광_천벌의일격'], checkStat: [CoreStat.CombatPower, CoreStat.ThinkingSpeed], onSuccess: [], onFailure: [] },
+            { id: '백광_광휘의결계', name: '광휘의 결계', description: '집중력 대결에 실패하면 큰 피해와 함께 전투력 감소 디버프에 걸립니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['백광_광휘의결계'], checkStat: CoreStat.Concentration, onSuccess: [{ type: 'damage', value: [5000, 6000] }], onFailure: [{ type: 'damage', value: [8000, 10000] }, { type: 'debuff', debuffType: 'user_combat_power_reduction_percent', debuffValue: [50, 50], debuffDuration: 3 }] },
+            { id: '백광_심판의빛', name: '심판의 빛', description: '안정감 대결 결과에 따라 체력 비례 고정 피해를 입힙니다.', type: 'active', image: BOSS_SKILL_ICON_MAP['백광_심판의빛'], checkStat: CoreStat.Stability, onSuccess: [{ type: 'hp_percent', value: [5, 12] }], onFailure: [{ type: 'hp_percent', value: [20, 40] }] }
         ],
         recommendedStats: Object.values(CoreStat),
         recommendedResearch: []

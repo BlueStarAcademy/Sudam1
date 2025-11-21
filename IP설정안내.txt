@@ -1,0 +1,32 @@
+IP 주소를 192.168.219.156으로 변경하는 방법:
+
+방법 1: 관리자 권한으로 배치 파일 실행
+1. set-ip.bat 파일을 우클릭
+2. "관리자 권한으로 실행" 선택
+
+방법 2: Windows 설정을 통한 수동 설정
+1. Windows 설정 열기 (Win + I)
+2. "네트워크 및 인터넷" 클릭
+3. "이더넷" 또는 "어댑터 옵션 변경" 클릭
+4. "이더넷" 어댑터를 우클릭 → "속성" 선택
+5. "인터넷 프로토콜 버전 4(TCP/IPv4)" 선택 → "속성" 클릭
+6. "다음 IP 주소 사용" 선택
+   - IP 주소: 192.168.219.156
+   - 서브넷 마스크: 255.255.255.0
+   - 기본 게이트웨이: 192.168.219.1
+7. "다음 DNS 서버 주소 사용" 선택
+   - 기본 설정 DNS 서버: 8.8.8.8
+   - 대체 DNS 서버: 8.8.4.4
+8. "확인" 클릭
+
+방법 3: PowerShell 관리자 권한으로 실행
+1. PowerShell을 관리자 권한으로 실행
+2. 다음 명령어 실행:
+   $adapter = Get-NetAdapter | Where-Object {$_.Status -eq 'Up'} | Select-Object -First 1
+   Remove-NetIPAddress -InterfaceAlias $adapter.Name -Confirm:$false -ErrorAction SilentlyContinue
+   New-NetIPAddress -InterfaceAlias $adapter.Name -IPAddress '192.168.219.156' -PrefixLength 24 -DefaultGateway '192.168.219.1'
+   Set-DnsClientServerAddress -InterfaceAlias $adapter.Name -ServerAddresses '8.8.8.8','8.8.4.4'
+
+설정 후 확인:
+ipconfig
+

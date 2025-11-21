@@ -219,14 +219,14 @@ export const createDefaultGuild = (id: string, name: string, description: string
         name,
         description,
         isPublic,
-        icon: '/images/guild/icon1.png',
+        icon: '/images/guild/profile/icon1.png',
         level: 1,
         xp: 0,
         researchPoints: 0,
         members: [{
             userId: creator.id,
             nickname: creator.nickname,
-            role: 'master',
+            role: 'leader',
             joinedAt: now,
             contribution: 0,
             weeklyContribution: 0,
@@ -256,6 +256,8 @@ export const createDefaultGuild = (id: string, name: string, description: string
         lastMissionReset: now,
         lastWeeklyContributionReset: now,
         chatHistory: [],
+        checkIns: {},
+        dailyCheckInRewardsClaimed: [],
         memberLimit: GUILD_INITIAL_MEMBER_LIMIT,
         research: (Object.values(GuildResearchId) as GuildResearchId[]).reduce((acc, researchId) => {
             (acc as any)[researchId] = { level: 1 };

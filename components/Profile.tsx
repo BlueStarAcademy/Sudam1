@@ -263,7 +263,7 @@ const StatSummaryPanel: React.FC<{ title: string; color: string; children: React
 
 
 const Profile: React.FC<ProfileProps> = () => {
-    const { currentUserWithStatus, allUsers, handlers, waitingRoomChats, hasClaimableQuest, presets, homeBoardPosts } = useAppContext();
+    const { currentUserWithStatus, allUsers, handlers, waitingRoomChats, hasClaimableQuest, presets, homeBoardPosts, guilds } = useAppContext();
     const [detailedStatsType, setDetailedStatsType] = useState<'strategic' | 'playful' | null>(null);
     const [isMobilePanelOpen, setIsMobilePanelOpen] = useState(false);
     const [hasNewMessage, setHasNewMessage] = useState(false);
@@ -272,7 +272,6 @@ const Profile: React.FC<ProfileProps> = () => {
     const [showMannerRankModal, setShowMannerRankModal] = useState(false);
     const [isGuildCreateModalOpen, setIsGuildCreateModalOpen] = useState(false);
     const [isGuildJoinModalOpen, setIsGuildJoinModalOpen] = useState(false);
-    const [guildInfo, setGuildInfo] = useState<Guild | null>(null);
 
     useEffect(() => {
         const calculateTime = () => {
@@ -291,41 +290,18 @@ const Profile: React.FC<ProfileProps> = () => {
         return () => clearInterval(interval);
     }, []);
 
-    // Load guild info when user has a guild
-    const loadGuildInfoRef = useRef(false);
+    // Get guild info directly from guilds state
+    const guildInfo = useMemo(() => {
+        if (!currentUserWithStatus?.guildId) return null;
+        return guilds[currentUserWithStatus.guildId] || null;
+    }, [currentUserWithStatus?.guildId, guilds]);
+    
+    // 길드에 소속되어 있는데 길드 정보가 없으면 즉시 가져오기
     useEffect(() => {
-        // 이미 로딩 중이거나 길드 ID가 없으면 무시
-        if (loadGuildInfoRef.current || !currentUserWithStatus?.guildId) {
-            if (!currentUserWithStatus?.guildId) {
-                setGuildInfo(null);
-                loadGuildInfoRef.current = false;
-            }
-            return;
+        if (currentUserWithStatus?.guildId && !guildInfo) {
+            handlers.handleAction({ type: 'GET_GUILD_INFO' });
         }
-        
-        const loadGuildInfo = async () => {
-            if (!currentUserWithStatus?.guildId) return;
-            
-            try {
-                loadGuildInfoRef.current = true;
-                const result: any = await handlers.handleAction({ type: 'GET_GUILD_INFO' });
-                if (result?.clientResponse?.guild) {
-                    setGuildInfo(result.clientResponse.guild);
-                } else if (result?.error) {
-                    // 에러가 발생하면 길드 정보 초기화
-                    setGuildInfo(null);
-                    console.warn('Failed to load guild info:', result.error);
-                }
-            } catch (error) {
-                console.error('Failed to load guild info:', error);
-                setGuildInfo(null);
-            } finally {
-                loadGuildInfoRef.current = false;
-            }
-        };
-        loadGuildInfo();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [currentUserWithStatus?.guildId]);
+    }, [currentUserWithStatus?.guildId, guildInfo, handlers]);
     
     if (!currentUserWithStatus) return null;
 
@@ -588,28 +564,37 @@ const Profile: React.FC<ProfileProps> = () => {
 
             <div className="flex-grow flex flex-col min-h-0 border-t border-color mt-2 pt-2">
                 <div className="bg-tertiary/30 p-2 rounded-md mb-2">
-                    {currentUserWithStatus.guildId && guildInfo ? (
-                        <button
-                            onClick={() => window.location.hash = '#/guild'}
-                            className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-tertiary/50 transition-colors cursor-pointer"
-                            title="길드 홈 보기"
-                        >
-                            <div className="flex-shrink-0 w-10 h-10 rounded-md bg-secondary/50 border border-color flex items-center justify-center">
-                                {guildInfo.emblem ? (
-                                    <span className="text-2xl">{guildInfo.emblem}</span>
-                                ) : (
-                                    <img src="/images/button/guild.png" alt="길드" className="w-8 h-8 object-contain" />
-                                )}
-                            </div>
-                            <div className="flex-1 min-w-0 text-left">
-                                <div className="font-semibold text-white truncate" style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }}>
-                                    {guildInfo.name}
+                    {currentUserWithStatus.guildId ? (
+                        guildInfo ? (
+                            <button
+                                onClick={() => window.location.hash = '#/guild'}
+                                className="w-full flex items-center gap-2 p-2 rounded-md hover:bg-tertiary/50 transition-all cursor-pointer border border-color/50 hover:border-accent/50"
+                                title="길드 홈 보기"
+                            >
+                                <div className="flex-shrink-0 w-10 h-10 rounded-md bg-secondary/50 border border-color flex items-center justify-center overflow-hidden">
+                                    {guildInfo.icon ? (
+                                        <img src={guildInfo.icon.startsWith('/images/guild/icon') ? guildInfo.icon.replace('/images/guild/icon', '/images/guild/profile/icon') : guildInfo.icon} alt={guildInfo.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                        <img src="/images/button/guild.png" alt="길드" className="w-8 h-8 object-contain" />
+                                    )}
                                 </div>
-                                <div className="text-xs text-gray-400">
-                                    레벨 {guildInfo.level}
+                                <div className="flex-1 min-w-0 text-left">
+                                    <div className="font-semibold text-white truncate" style={{ fontSize: 'clamp(0.75rem, 2vw, 0.875rem)' }}>
+                                        {guildInfo.name}
+                                    </div>
+                                    <div className="text-xs text-gray-400">
+                                        Lv.{guildInfo.level || 1}
+                                    </div>
                                 </div>
+                                <div className="flex-shrink-0 text-accent">
+                                    →
+                                </div>
+                            </button>
+                        ) : (
+                            <div className="w-full flex items-center justify-center p-2 text-sm text-gray-400">
+                                길드 정보 로딩 중...
                             </div>
-                        </button>
+                        )
                     ) : (
                         <div className="flex items-center gap-2">
                             {/* 길드 아이콘 버튼 */}
@@ -656,7 +641,7 @@ const Profile: React.FC<ProfileProps> = () => {
                 </div>
             </div>
         </>
-    ), [currentUserWithStatus, handlers, mannerRank, mannerStyle, totalMannerScore, availablePoints, coreStatBonuses, guildInfo]);
+    ), [currentUserWithStatus, handlers, mannerRank, mannerStyle, totalMannerScore, availablePoints, coreStatBonuses, guildInfo, guilds]);
     
     const LobbyCards = (
         <div className="grid grid-cols-12 grid-rows-2 gap-2 lg:gap-4 h-full">
@@ -879,28 +864,37 @@ const Profile: React.FC<ProfileProps> = () => {
 
                             <div className="flex-grow flex flex-col min-h-0 border-t border-color mt-1 pt-1">
                                 <div className="bg-tertiary/30 p-1 rounded-md mb-1">
-                                    {currentUserWithStatus.guildId && guildInfo ? (
-                                        <button
-                                            onClick={() => window.location.hash = '#/guild'}
-                                            className="w-full flex items-center gap-1 p-1 rounded-md hover:bg-tertiary/50 transition-colors cursor-pointer"
-                                            title="길드 홈 보기"
-                                        >
-                                            <div className="flex-shrink-0 w-6 h-6 rounded-md bg-secondary/50 border border-color flex items-center justify-center">
-                                                {guildInfo.emblem ? (
-                                                    <span className="text-sm">{guildInfo.emblem}</span>
-                                                ) : (
-                                                    <img src="/images/button/guild.png" alt="길드" className="w-5 h-5 object-contain" />
-                                                )}
-                                            </div>
-                                            <div className="flex-1 min-w-0 text-left">
-                                                <div className="font-semibold text-white text-[9px] truncate">
-                                                    {guildInfo.name}
+                                    {currentUserWithStatus.guildId ? (
+                                        guildInfo ? (
+                                            <button
+                                                onClick={() => window.location.hash = '#/guild'}
+                                                className="w-full flex items-center gap-1 p-1 rounded-md hover:bg-tertiary/50 transition-all cursor-pointer border border-color/50 hover:border-accent/50"
+                                                title="길드 홈 보기"
+                                            >
+                                                <div className="flex-shrink-0 w-6 h-6 rounded-md bg-secondary/50 border border-color flex items-center justify-center overflow-hidden">
+                                                    {guildInfo.icon ? (
+                                                        <img src={guildInfo.icon.startsWith('/images/guild/icon') ? guildInfo.icon.replace('/images/guild/icon', '/images/guild/profile/icon') : guildInfo.icon} alt={guildInfo.name} className="w-full h-full object-cover" />
+                                                    ) : (
+                                                        <img src="/images/button/guild.png" alt="길드" className="w-5 h-5 object-contain" />
+                                                    )}
                                                 </div>
-                                                <div className="text-[8px] text-gray-400">
-                                                    Lv.{guildInfo.level}
+                                                <div className="flex-1 min-w-0 text-left">
+                                                    <div className="font-semibold text-white text-[9px] truncate">
+                                                        {guildInfo.name}
+                                                    </div>
+                                                    <div className="text-[8px] text-gray-400">
+                                                        Lv.{guildInfo.level || 1}
+                                                    </div>
                                                 </div>
+                                                <div className="flex-shrink-0 text-accent text-xs">
+                                                    →
+                                                </div>
+                                            </button>
+                                        ) : (
+                                            <div className="w-full flex items-center justify-center p-1 text-[9px] text-gray-400">
+                                                길드 정보 로딩 중...
                                             </div>
-                                        </button>
+                                        )
                                     ) : (
                                         <div className="flex items-center gap-1">
                                             <div className="flex-1 flex gap-1">
@@ -1048,8 +1042,6 @@ const Profile: React.FC<ProfileProps> = () => {
                     onSuccess={async (guild: Guild) => {
                         console.log('[Profile] Guild created, opening guild home modal:', guild);
                         setIsGuildCreateModalOpen(false);
-                        // 길드 정보 업데이트
-                        setGuildInfo(guild);
                         // 길드 생성 성공 시 길드 홈 페이지로 이동
                         window.location.hash = '#/guild';
                     }}
@@ -1060,8 +1052,6 @@ const Profile: React.FC<ProfileProps> = () => {
                     onClose={() => setIsGuildJoinModalOpen(false)}
                     onSuccess={async (guild: Guild) => {
                         setIsGuildJoinModalOpen(false);
-                        // 길드 정보 업데이트
-                        setGuildInfo(guild);
                         // 길드 가입 성공 시 길드 홈 페이지로 이동
                         window.location.hash = '#/guild';
                     }}

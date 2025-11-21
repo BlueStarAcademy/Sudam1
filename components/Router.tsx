@@ -15,6 +15,8 @@ import TournamentArena from './arenas/TournamentArena.js';
 import SinglePlayerLobby from './SinglePlayerLobby.js';
 import TowerLobby from './TowerLobby.js';
 import GuildHome from './guild/GuildHome.js';
+import GuildBoss from './guild/GuildBoss.js';
+import GuildWar from './guild/GuildWar.js';
 
 // 게임 라우트 로더 컴포넌트 (게임이 로드될 때까지 대기)
 const GameRouteLoader: React.FC<{ gameId: string }> = ({ gameId }) => {
@@ -157,6 +159,10 @@ const Router: React.FC = () => {
             return <TowerLobby />;
         case 'guild':
             return <GuildHome />;
+        case 'guildboss':
+            return <GuildBoss />;
+        case 'guildwar':
+            return <GuildWar />;
         default:
             window.location.hash = '#/profile';
             return null;

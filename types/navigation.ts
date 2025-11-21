@@ -2,7 +2,7 @@
 import { GameMode } from './enums.js';
 
 export type AppRoute = {
-    view: 'login' | 'register' | 'profile' | 'lobby' | 'waiting' | 'game' | 'admin' | 'tournament' | 'singleplayer' | 'guild' | 'tower';
+    view: 'login' | 'register' | 'profile' | 'lobby' | 'waiting' | 'game' | 'admin' | 'tournament' | 'singleplayer' | 'guild' | 'guildboss' | 'guildwar' | 'tower';
     params: any;
 };
 
@@ -17,6 +17,8 @@ export function parseHash(hash: string): AppRoute {
         case 'tournament': return { view: 'tournament', params: { type: rest[0] || null } };
         case 'singleplayer': return { view: 'singleplayer', params: {} };
         case 'guild': return { view: 'guild', params: {} };
+        case 'guildboss': return { view: 'guildboss', params: {} };
+        case 'guildwar': return { view: 'guildwar', params: {} };
         case 'tower': return { view: 'tower', params: {} };
         case 'admin': return { view: 'admin', params: {} };
         case 'register': return { view: 'register', params: {} };

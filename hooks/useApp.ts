@@ -807,6 +807,8 @@ export const useApp = () => {
                 if (action.type === 'TOGGLE_EQUIP_ITEM' || action.type === 'USE_ITEM') {
                     setUpdateTrigger(prev => prev + 1);
                 }
+                // Return error object so components can handle it
+                return { error: errorMessage };
             } else {
                 const result = await res.json();
                 if (result.error || result.message) {
@@ -1553,6 +1555,7 @@ export const useApp = () => {
             gameModeAvailability?: Record<string, boolean>;
             announcementInterval?: number;
             homeBoardPosts?: any[];
+            guilds?: Record<string, any>;
         }) => {
                 const userEntries = Object.entries(users || {});
                 // nickname이 없거나 비어 있는 경우 제외
@@ -1606,6 +1609,7 @@ export const useApp = () => {
                 if (otherData.gameModeAvailability !== undefined) setGameModeAvailability(otherData.gameModeAvailability || {});
                 if (otherData.announcementInterval !== undefined) setAnnouncementInterval(otherData.announcementInterval || 3);
                 if (otherData.homeBoardPosts !== undefined) setHomeBoardPosts(otherData.homeBoardPosts || []);
+                if (otherData.guilds !== undefined) setGuilds(otherData.guilds || {});
             }
         };
 

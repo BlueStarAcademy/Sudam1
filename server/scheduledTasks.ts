@@ -364,6 +364,22 @@ export async function processWeeklyResetAndRematch(): Promise<void> {
             await db.updateUser(updatedUser);
         }
         
+        // 길드 미션 초기화
+        const { resetWeeklyGuildMissions } = await import('./guildService.js');
+        const guilds = await db.getKV<Record<string, types.Guild>>('guilds') || {};
+        for (const guild of Object.values(guilds)) {
+            // 마지막 초기화가 이번 주가 아니면 초기화
+            if (!guild.lastMissionReset || isDifferentWeekKST(guild.lastMissionReset, now)) {
+                resetWeeklyGuildMissions(guild, now);
+            }
+        }
+        if (Object.keys(guilds).length > 0) {
+            await db.setKV('guilds', guilds);
+            const { broadcast } = await import('./socket.js');
+            await broadcast({ type: 'GUILD_UPDATE', payload: { guilds } });
+            console.log(`[WeeklyReset] Reset all guild missions`);
+        }
+        
         lastWeeklyResetTimestamp = now;
         console.log(`[WeeklyReset] Reset all tournament scores, bot scores, and rematched competitors`);
     }

@@ -5,8 +5,16 @@ import { User, CoreStat, InventoryItem, SpecialStat, MythicStat } from '../types
 import { calculateUserEffects } from './effectService.js';
 
 // This function is moved from the client to the server.
-export const calculateTotalStats = (user: User): Record<CoreStat, number> => {
+export const calculateTotalStats = (user: User | null | undefined): Record<CoreStat, number> => {
     const finalStats: Record<CoreStat, number> = {} as any;
+    
+    if (!user) {
+        // Return all zeros if user is null/undefined
+        for (const key of Object.values(CoreStat)) {
+            finalStats[key] = 0;
+        }
+        return finalStats;
+    }
     
     // 1. Start with base stats and spent points
     const baseWithSpent: Record<CoreStat, number> = {} as any;
@@ -21,7 +29,8 @@ export const calculateTotalStats = (user: User): Record<CoreStat, number> => {
     // 3. Calculate final stats
     for (const key of Object.values(CoreStat)) {
         const baseValue = baseWithSpent[key];
-        const finalValue = Math.floor((baseValue + bonuses[key].flat) * (1 + bonuses[key].percent / 100));
+        const bonus = bonuses[key] || { flat: 0, percent: 0 };
+        const finalValue = Math.floor((baseValue + bonus.flat) * (1 + bonus.percent / 100));
         finalStats[key] = finalValue;
     }
     

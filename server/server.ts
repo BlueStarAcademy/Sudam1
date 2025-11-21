@@ -135,8 +135,20 @@ const startServer = async () => {
     // --- Initialize Database on Start ---
     try {
         await db.initializeDatabase();
-    } catch (err) {
+    } catch (err: any) {
         console.error("Error during server startup:", err);
+        
+        // 데이터베이스 연결 오류인 경우 더 자세한 안내
+        if (err.code === 'P1001' || err.message?.includes("Can't reach database server")) {
+            console.error("\n[Server] Database connection failed!");
+            console.error("[Server] Please ensure:");
+            console.error("[Server] 1. DATABASE_URL environment variable is set in .env file");
+            console.error("[Server] 2. Database server is running and accessible");
+            console.error("[Server] 3. Network connection allows access to the database");
+            console.error("\n[Server] Example DATABASE_URL format:");
+            console.error("[Server] postgresql://user:password@host:port/database");
+        }
+        
         (process as any).exit(1);
     }
 
@@ -644,7 +656,8 @@ const startServer = async () => {
                             // 캐시 업데이트하여 다음 루프에서 중복 감지 방지
                             const { updateGameCache } = await import('./gameCache.js');
                             updateGameCache(latestGame);
-                            gamesToBroadcast[updatedGame.id] = latestGame;
+                            // 최신 상태를 브로드캐스트하지 않음 (이미 다른 곳에서 브로드캐스트되었을 가능성이 높음)
+                            // 무한 루프 방지: 최신 상태를 감지한 경우에는 브로드캐스트하지 않고 로컬 상태만 업데이트
                             updatedGames[i] = latestGame;
                             // originalGamesJson도 업데이트하여 다음 루프에서 변경으로 감지되지 않도록 함
                             originalGamesJson[i] = JSON.stringify(latestGame);
@@ -665,17 +678,22 @@ const startServer = async () => {
             }
             
             // 실시간 게임 상태 업데이트 브로드캐스트 (게임 참가자에게만 전송)
+            // 무한 루프 방지: 실제로 변경된 게임만 브로드캐스트 (JSON 비교로 실제 변경 여부 확인)
             if (Object.keys(gamesToBroadcast).length > 0) {
                 const { broadcastToGameParticipants } = await import('./socket.js');
                 for (const [gameId, game] of Object.entries(gamesToBroadcast)) {
-                    broadcastToGameParticipants(gameId, { type: 'GAME_UPDATE', payload: { [gameId]: game } }, game);
-                    
-                    // activeGames 배열도 업데이트하여 다음 루프에서 올바른 비교가 이루어지도록 함
                     const gameIndex = activeGames.findIndex(g => g.id === gameId);
                     if (gameIndex !== -1) {
-                        activeGames[gameIndex] = game;
-                        // originalGamesJson도 업데이트하여 다음 루프에서 변경으로 감지되지 않도록 함
-                        originalGamesJson[gameIndex] = JSON.stringify(game);
+                        // 실제로 변경된 경우에만 브로드캐스트 (무한 루프 방지)
+                        const currentGameJson = JSON.stringify(game);
+                        if (currentGameJson !== originalGamesJson[gameIndex]) {
+                            broadcastToGameParticipants(gameId, { type: 'GAME_UPDATE', payload: { [gameId]: game } }, game);
+                            
+                            // activeGames 배열도 업데이트하여 다음 루프에서 올바른 비교가 이루어지도록 함
+                            activeGames[gameIndex] = game;
+                            // originalGamesJson도 업데이트하여 다음 루프에서 변경으로 감지되지 않도록 함
+                            originalGamesJson[gameIndex] = currentGameJson;
+                        }
                     }
                 }
             }

@@ -46,12 +46,18 @@ const GameRankingBoard: React.FC<GameRankingBoardProps> = ({ isTopmost }) => {
         
         if (activeTab === 'combat') {
             const result = allUsers
-                .filter(user => user && user.id)
+                .filter(user => user && user.id && user.inventory !== undefined)
                 .map(user => {
-                    const totalStats = calculateTotalStats(user);
-                    const sum = Object.values(totalStats).reduce((acc, value) => acc + value, 0);
-                    return { user, value: sum };
+                    try {
+                        const totalStats = calculateTotalStats(user);
+                        const sum = Object.values(totalStats).reduce((acc, value) => acc + value, 0);
+                        return { user, value: sum };
+                    } catch (error) {
+                        console.error('[GameRankingBoard] Error calculating stats for user:', user?.id, error);
+                        return { user, value: 0 };
+                    }
                 })
+                .filter(item => item.value >= 0) // 에러가 발생한 경우 제외
                 .sort((a, b) => b.value - a.value)
                 .slice(0, 50); // 상위 50위까지만 표시
             if (IS_DEV) {

@@ -82,11 +82,45 @@ const seedInitialData = async () => {
 
 export const initializeDatabase = async () => {
     if (isInitialized) return;
-    const existingUsers = await listUsers();
-    if (existingUsers.length === 0) {
-        await seedInitialData();
+    
+    // 데이터베이스 연결 확인 및 재시도
+    let retries = 3;
+    let lastError: any = null;
+    
+    while (retries > 0) {
+        try {
+            const existingUsers = await listUsers();
+            if (existingUsers.length === 0) {
+                await seedInitialData();
+            }
+            isInitialized = true;
+            console.log('[DB] Database initialized successfully');
+            return;
+        } catch (error: any) {
+            lastError = error;
+            retries--;
+            
+            // Prisma 연결 오류인 경우
+            if (error.code === 'P1001' || error.message?.includes("Can't reach database server")) {
+                console.warn(`[DB] Database connection failed. Retries left: ${retries}`);
+                if (retries > 0) {
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // 2초 대기 후 재시도
+                    continue;
+                }
+            }
+            
+            // 다른 오류는 즉시 throw
+            throw error;
+        }
     }
-    isInitialized = true;
+    
+    // 모든 재시도 실패
+    console.error('[DB] Failed to connect to database after 3 attempts.');
+    console.error('[DB] Please check:');
+    console.error('[DB] 1. DATABASE_URL environment variable is set correctly');
+    console.error('[DB] 2. Database server is running and accessible');
+    console.error('[DB] 3. Network connection is stable');
+    throw lastError;
 };
 
 

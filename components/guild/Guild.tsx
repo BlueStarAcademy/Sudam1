@@ -1,6 +1,5 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useEffect } from 'react';
 import { useAppContext } from '../../hooks/useAppContext.js';
-import GuildLobby from './GuildLobby.js';
 // FIX: Changed to named import as GuildDashboard is not a default export.
 import { GuildDashboard } from './GuildDashboard.js';
 import type { Guild as GuildType } from '../../types/index.js';
@@ -15,16 +14,19 @@ const Guild: React.FC = () => {
         return guilds[currentUserWithStatus.guildId];
     }, [currentUserWithStatus?.guildId, guilds]);
     
+    // 길드가 없으면 프로필로 리다이렉트
+    useEffect(() => {
+        if (!currentUserWithStatus?.guildId) {
+            window.location.hash = '#/profile';
+        }
+    }, [currentUserWithStatus?.guildId]);
+    
     if (!currentUserWithStatus) {
         return <div className="flex items-center justify-center h-full">사용자 정보를 불러오는 중...</div>;
     }
     
-    if (!currentUserWithStatus.guildId) {
-        return <GuildLobby />;
-    }
-
-    if (!myGuild) {
-        // This prevents GuildDashboard from unmounting during brief state inconsistencies
+    if (!currentUserWithStatus.guildId || !myGuild) {
+        // 길드가 없으면 로딩 표시 (리다이렉트 중)
         return <div className="flex items-center justify-center h-full">길드 정보 로딩 중...</div>;
     }
 

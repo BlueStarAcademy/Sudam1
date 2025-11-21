@@ -62,6 +62,11 @@ export const updateGuildMissionProgress = async (guildId: string, missionType: G
                 mission.isCompleted = true;
                 missionUpdated = true;
                 
+                // 미션 완료 시 길드 XP 자동 추가 (보상 받기 전에도)
+                const finalXp = calculateGuildMissionXp(mission.guildReward.guildXp, guild.level);
+                guild.xp += finalXp;
+                checkGuildLevelUp(guild);
+                
                 // Add a system message to guild chat to notify users to claim their reward
                 if (!guild.chatHistory) guild.chatHistory = [];
                 const message: ChatMessage = {

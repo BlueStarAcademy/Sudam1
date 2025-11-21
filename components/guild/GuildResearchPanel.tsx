@@ -127,45 +127,45 @@ const ResearchItemPanel: React.FC<{
 
 
     return (
-         <div className={`flex items-stretch gap-3 bg-secondary p-3 rounded-lg transition-all duration-300 ${isResearchingThis ? 'border-2 border-accent ring-2 ring-accent' : 'border-2 border-transparent'}`}>
-            <div className="flex-shrink-0 w-20 h-20 bg-tertiary rounded-md flex items-center justify-center">
-                <img src={project.image} alt={project.name} className="w-16 h-16 object-contain" />
+         <div className={`flex items-stretch gap-4 bg-gray-900/50 p-3 rounded-lg transition-all duration-300 border-2 ${isResearchingThis ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.5)]' : 'border-gray-700/50 hover:border-gray-600/70'}`}>
+            <div className="flex-shrink-0 w-20 h-20 bg-gray-800 rounded-md flex items-center justify-center border border-gray-700/50 shadow-lg">
+                <img src={project.image} alt={project.name} className="w-16 h-16 object-contain drop-shadow-lg" />
             </div>
-            <div className="flex-grow flex flex-col justify-between gap-1">
+            <div className="flex-grow flex flex-col justify-between gap-1 min-w-0">
                 <div>
-                    <h4 className="font-bold text-primary">{project.name}</h4>
-                    <p className="text-xs text-tertiary mt-0.5">{project.description}</p>
+                    <h4 className="font-bold text-white truncate">{project.name}</h4>
+                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{project.description}</p>
                 </div>
                 <div className="text-xs space-y-0.5">
-                    <p>현재 레벨: <span className="font-bold text-highlight">{currentLevel} / {project.maxLevel}</span></p>
+                    <p>현재 레벨: <span className="font-bold text-yellow-300">{currentLevel} / {project.maxLevel}</span></p>
                     <p>
-                        현재 효과: <span className="font-bold text-highlight">{currentEffectString}</span>
+                        현재 효과: <span className="font-bold text-green-400">{currentEffectString}</span>
                     </p>
                     {!isMaxLevel && (
-                        <p>다음 레벨: <span className="font-bold text-green-400">{nextEffectString}</span></p>
+                        <p>다음 레벨: <span className="font-bold text-blue-400">{nextEffectString}</span></p>
                     )}
                 </div>
             </div>
-            <div className="w-48 flex-shrink-0 flex flex-col justify-between">
+            <div className="w-48 flex-shrink-0 flex flex-col justify-between gap-2">
                 {isResearchingThis ? (
-                    <div className="text-center bg-tertiary p-2 rounded-md h-full flex flex-col justify-center">
-                        <p className="text-xs text-secondary">연구 진행 중...</p>
-                        <p className="font-mono font-bold text-2xl text-highlight">{formatTimeLeft(timeLeft)}</p>
+                    <div className="text-center bg-gradient-to-br from-blue-900/60 to-blue-800/40 p-3 rounded-md h-full flex flex-col justify-center border border-blue-500/50 shadow-lg">
+                        <p className="text-xs text-blue-300 mb-2">연구 진행 중...</p>
+                        <p className="font-mono font-bold text-2xl text-blue-200">{formatTimeLeft(timeLeft)}</p>
                     </div>
                 ) : (
-                    <div className="bg-tertiary p-2 rounded-md text-xs space-y-0.5 h-full flex flex-col justify-center">
+                    <div className="bg-gray-800/60 p-2 rounded-md text-xs space-y-1 h-full flex flex-col justify-center border border-gray-700/50">
                         {isMaxLevel ? (
                             <p className="text-center font-bold text-green-400">최고 레벨 달성</p>
                         ) : (
                             <>
-                                <p>필요 포인트: <span className={`font-semibold ${canAfford ? 'text-primary' : 'text-red-400'}`}>{cost.toLocaleString()} RP</span></p>
-                                <p>소요 시간: <span className="font-semibold text-primary">{formatTimeLeft(timeMs)}</span></p>
-                                <p>필요 길드 Lv: <span className={`font-semibold ${meetsGuildLevel ? 'text-primary' : 'text-red-400'}`}>{project.requiredGuildLevel?.[currentLevel] ?? nextLevel}</span></p>
+                                <p>필요 포인트: <span className={`font-semibold ${canAfford ? 'text-yellow-300' : 'text-red-400'}`}>{cost.toLocaleString()} RP</span></p>
+                                <p>소요 시간: <span className="font-semibold text-gray-300">{formatTimeLeft(timeMs)}</span></p>
+                                <p>필요 길드 Lv: <span className={`font-semibold ${meetsGuildLevel ? 'text-gray-300' : 'text-red-400'}`}>{project.requiredGuildLevel?.[currentLevel] ?? nextLevel}</span></p>
                             </>
                         )}
                     </div>
                 )}
-                 <Button onClick={handleStartResearch} disabled={!canStartResearch} colorScheme={canStartResearch ? 'blue' : 'gray'} className="w-full !text-sm !py-2 mt-1">
+                 <Button onClick={handleStartResearch} disabled={!canStartResearch} colorScheme={canStartResearch ? 'blue' : 'gray'} className="w-full !text-sm !py-2">
                     {isMaxLevel ? '최고 레벨' : '연구 시작'}
                 </Button>
             </div>
@@ -193,21 +193,21 @@ const GuildResearchPanel: React.FC<GuildResearchPanelProps & { onClose: () => vo
     ];
 
     return (
-        <DraggableWindow title="길드 연구소" onClose={onClose} windowId="guild-research" initialWidth={900}>
+        <DraggableWindow title="길드 연구소" onClose={onClose} windowId="guild-research" initialWidth={900} variant="store">
             <div className="flex flex-col h-full">
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
                     <h3 className="text-xl font-bold text-highlight">길드 연구</h3>
-                    <div className="bg-tertiary p-2 rounded-lg text-center">
-                        <p className="text-xs text-secondary">보유 연구 포인트</p>
-                        <p className="font-bold text-lg text-primary">{(guild.researchPoints ?? 0).toLocaleString()} RP</p>
+                    <div className="bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 p-3 rounded-lg text-center border border-accent/30 shadow-lg backdrop-blur-sm">
+                        <p className="text-xs text-gray-400 mb-1">보유 연구 포인트</p>
+                        <p className="font-bold text-xl text-yellow-300">{(guild.researchPoints ?? 0).toLocaleString()} RP</p>
                     </div>
                 </div>
-                <div className="flex bg-tertiary/70 p-1 rounded-lg mb-4 flex-shrink-0">
+                <div className="flex bg-gray-900/70 p-1 rounded-lg mb-4 flex-shrink-0">
                     {tabs.map(tab => (
                         <button
                             key={tab.id}
                             onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === tab.id ? 'bg-accent' : 'text-tertiary hover:bg-secondary/50'}`}
+                            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === tab.id ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}
                         >
                             {tab.label}
                         </button>

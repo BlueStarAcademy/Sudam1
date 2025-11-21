@@ -997,3 +997,18 @@ input[type="range"]::-moz-range-thumb {
     text-shadow: 0 0 10px #fff, 0 0 20px #00ffff, 0 0 30px #00ffff;
   }
 }
+
+@keyframes float-up-and-fade {
+  from {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+  to {
+    transform: translateY(-50px) scale(1.2);
+    opacity: 0;
+  }
+}
+
+.animate-float-up-and-fade {
+  animation: float-up-and-fade 2s ease-out forwards;
+}

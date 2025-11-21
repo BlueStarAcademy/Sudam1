@@ -33,8 +33,8 @@ const GuildCreateModal: React.FC<GuildCreateModalProps> = ({ onClose, onSuccess 
             return;
         }
 
-        if (name.length < 2 || name.length > 20) {
-            setError('길드 이름은 2자 이상 20자 이하여야 합니다.');
+        if (name.length < 2 || name.length > 6) {
+            setError('길드 이름은 2자 이상 6자 이하여야 합니다.');
             return;
         }
 
@@ -122,10 +122,10 @@ const GuildCreateModal: React.FC<GuildCreateModalProps> = ({ onClose, onSuccess 
                         value={name}
                         onChange={(e) => setName(e.target.value)}
                         placeholder="길드 이름을 입력하세요"
-                        maxLength={20}
+                        maxLength={6}
                         className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-700 focus:border-blue-500 focus:outline-none"
                     />
-                    <p className="text-xs text-gray-500 mt-1">2-20자</p>
+                    <p className="text-xs text-gray-500 mt-1">2-6자</p>
                 </div>
 
                 <div className="mb-4">

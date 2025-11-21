@@ -265,7 +265,7 @@ const TowerLobby: React.FC = () => {
                                             </div>
                                         </div>
                                         <p className="text-amber-200/80 mt-2 text-[10px]">* 순위권 밖: 1층 이상 클리어한 사용자</p>
-                                        <p className="text-amber-200/80 text-[10px]">* 보상은 메일로 지급되며, 30일 이내에 수령해주세요.</p>
+                                        <p className="text-amber-200/80 text-[10px]">* 보상은 매월 1일 0시(KST)에 메일로 지급되며, 30일 이내에 수령해주세요.</p>
                                     </div>
                                 </div>
                                 <div className="border-t border-amber-700/40 pt-3">

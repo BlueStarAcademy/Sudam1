@@ -4,6 +4,7 @@ import { type ServerAction, type User, type VolatileState, InventoryItem, ItemOp
 import { ItemGrade } from '../../types/enums.js';
 import { broadcast } from '../socket.js';
 import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
+import * as guildService from '../guildService.js';
 import {
     EQUIPMENT_POOL,
     MAIN_STAT_DEFINITIONS,
@@ -802,6 +803,12 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             
             user.gold -= goldCost; // Deduct gold
             updateQuestProgress(user, 'enhancement_attempt');
+            
+            // Update Guild Mission Progress for equipment enhancements
+            if (user.guildId) {
+                const guilds = await db.getKV<Record<string, any>>('guilds') || {};
+                await guildService.updateGuildMissionProgress(user.guildId, 'equipmentEnhancements', 1, guilds);
+            }
 
             const baseSuccessRate = ENHANCEMENT_SUCCESS_RATES[item.stars];
             const failBonusRate = ENHANCEMENT_FAIL_BONUS_RATES[item.grade] || 0.5;
@@ -1142,6 +1149,12 @@ export const handleInventoryAction = async (volatileState: VolatileState, action
             user.inventory = JSON.parse(JSON.stringify(updatedInventory));
             
             updateQuestProgress(user, 'craft_attempt');
+            
+            // Update Guild Mission Progress for material crafts
+            if (user.guildId) {
+                const guilds = await db.getKV<Record<string, any>>('guilds') || {};
+                await guildService.updateGuildMissionProgress(user.guildId, 'materialCrafts', quantity, guilds);
+            }
             
             try {
                 // 데이터베이스에 저장

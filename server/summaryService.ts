@@ -14,6 +14,7 @@ import { randomUUID } from 'crypto';
 // FIX: Correctly import aiUser and getAiUser.
 import { aiUserId, getAiUser } from './aiPlayer.js';
 import { createItemInstancesFromReward, addItemsToInventory } from '../utils/inventoryUtils.js';
+import * as guildService from './guildService.js';
 
 const getXpForLevel = (level: number): number => {
     if (level < 1) return 0;
@@ -922,6 +923,16 @@ const processPlayerSummary = async (
         updateQuestProgress(updatedPlayer, 'participate', mode, 1);
         if (isWinner) {
             updateQuestProgress(updatedPlayer, 'win', mode, 1);
+            
+            // Update Guild Mission Progress for wins
+            if (updatedPlayer.guildId) {
+                const guilds = await db.getKV<Record<string, any>>('guilds') || {};
+                if (isStrategic) {
+                    await guildService.updateGuildMissionProgress(updatedPlayer.guildId, 'strategicWins', 1, guilds);
+                } else if (isPlayful) {
+                    await guildService.updateGuildMissionProgress(updatedPlayer.guildId, 'playfulWins', 1, guilds);
+                }
+            }
         }
     }
 

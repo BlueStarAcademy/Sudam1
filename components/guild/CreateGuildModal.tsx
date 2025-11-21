@@ -19,8 +19,8 @@ const CreateGuildModal: React.FC<CreateGuildModalProps> = ({ onClose }) => {
     const [isPublic, setIsPublic] = useState(true);
 
     const handleCreate = () => {
-        if (name.trim().length < 2 || name.trim().length > 12) {
-            alert('길드 이름은 2~12자 사이여야 합니다.');
+        if (name.trim().length < 2 || name.trim().length > 6) {
+            alert('길드 이름은 2~6자 사이여야 합니다.');
             return;
         }
         if (containsProfanity(name) || containsProfanity(description)) {
@@ -40,7 +40,7 @@ const CreateGuildModal: React.FC<CreateGuildModalProps> = ({ onClose }) => {
     return (
         <DraggableWindow title="길드 창설" onClose={onClose} windowId="create-guild">
             <div className="space-y-4">
-                <input type="text" placeholder="길드 이름 (2-12자)" value={name} onChange={e => setName(e.target.value)} className="w-full bg-secondary p-2 rounded-md border border-color" maxLength={12} />
+                <input type="text" placeholder="길드 이름 (2-6자)" value={name} onChange={e => setName(e.target.value)} className="w-full bg-secondary p-2 rounded-md border border-color" maxLength={6} />
                 <textarea placeholder="길드 소개 (100자 이내)" value={description} onChange={e => setDescription(e.target.value)} maxLength={100} className="w-full bg-secondary p-2 rounded-md border border-color h-24" />
                 <div className="flex items-center justify-between p-2 bg-secondary/50 rounded-md">
                     <label className="font-semibold text-text-secondary">공개 설정</label>

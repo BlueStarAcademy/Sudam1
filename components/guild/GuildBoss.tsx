@@ -468,7 +468,7 @@ const GuildBoss: React.FC = () => {
     
     const bossIndex = useMemo(() => (currentBoss?.id || 'boss_1').split('_')[1], [currentBoss]);
     const backgroundStyle = useMemo(() => ({
-        backgroundImage: `url(/images/guild/boss${bossIndex}bg.png)`,
+        backgroundImage: `url(/images/guild/boss/boss${bossIndex}bg.png)`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundColor: 'rgb(var(--bg-tertiary))', // Fallback color

@@ -80,8 +80,8 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
                 return { error: '길드 이름을 입력해주세요.' };
             }
             const trimmedName = name.trim();
-            if (trimmedName.length < 2 || trimmedName.length > 20) {
-                return { error: '길드 이름은 2자 이상 20자 이하여야 합니다.' };
+            if (trimmedName.length < 2 || trimmedName.length > 6) {
+                return { error: '길드 이름은 2자 이상 6자 이하여야 합니다.' };
             }
             
             // Validate description if provided
@@ -129,13 +129,30 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
                 currencyService.spendDiamonds(user, GUILD_CREATION_COST, '길드 창설');
             }
             
-            if (Object.values(guilds).some(g => g.name.toLowerCase() === trimmedName.toLowerCase())) {
+            // Check for duplicate name using Prisma (to ensure consistency with delete operations)
+            const existingGuild = await guildRepo.getGuildByName(trimmedName);
+            if (existingGuild) {
                 return { error: '이미 사용 중인 길드 이름입니다.' };
             }
 
             const guildId = `guild-${globalThis.crypto.randomUUID()}`;
             const newGuild = createDefaultGuild(guildId, trimmedName, trimmedDescription || undefined, isPublic, user);
             guilds[guildId] = newGuild;
+            
+            // Also create guild in Prisma database for consistency
+            try {
+                await guildRepo.createGuild({
+                    name: trimmedName,
+                    leaderId: user.id,
+                    description: trimmedDescription || undefined,
+                    emblem: newGuild.icon,
+                    settings: { isPublic },
+                });
+                // Creator is automatically added as leader by createGuild
+            } catch (error) {
+                console.error('[CREATE_GUILD] Failed to create guild in Prisma:', error);
+                // Continue even if Prisma creation fails - KV store is primary
+            }
             
             // Update user's guildId
             user.guildId = guildId;
@@ -370,9 +387,10 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
             
             await guildService.updateGuildMissionProgress(user.guildId, 'checkIns', 1, guilds);
             
+            needsSave = true;
             await db.setKV('guilds', guilds);
             await broadcast({ type: 'GUILD_UPDATE', payload: { guilds } });
-            return { clientResponse: { guilds } };
+            return { clientResponse: { guilds, updatedUser: user } };
         }
         case 'GUILD_CLAIM_CHECK_IN_REWARD': {
              const { milestoneIndex } = payload;
@@ -407,12 +425,14 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
             if (!mission) return { error: '미션을 찾을 수 없습니다.' };
             if (!mission.isCompleted) return { error: '아직 완료되지 않은 미션입니다.' };
             if (mission.claimedBy.includes(user.id)) return { error: '이미 수령한 보상입니다.' };
-
-            // Grant Guild XP EVERY time a member claims.
-            const finalXp = calculateGuildMissionXp(mission.guildReward.guildXp, guild.level);
-            guild.xp += finalXp;
-            guildService.checkGuildLevelUp(guild);
             
+            // 초기화 후 지난 보상은 받을 수 없도록 체크
+            const now = Date.now();
+            if (guild.lastMissionReset && isDifferentWeekKST(guild.lastMissionReset, now)) {
+                return { error: '이미 초기화된 미션이므로 보상을 받을 수 없습니다.' };
+            }
+
+            // XP는 미션 완료 시 이미 추가되었으므로 여기서는 개인 보상만 지급
             // Grant personal reward (Guild Coins)
             user.guildCoins = (user.guildCoins || 0) + mission.personalReward.guildCoins;
         
@@ -476,7 +496,7 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
 
             await db.setKV('guilds', guilds);
             await db.updateUser(user);
-            await broadcast({ guilds });
+            await broadcast({ type: 'GUILD_UPDATE', payload: { guilds } });
             return {
                 clientResponse: {
                     updatedUser: user, 
@@ -712,21 +732,55 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
             if (!user.guildId) return { error: "가입한 길드가 없습니다." };
             const guild = guilds[user.guildId];
             if (!guild) return { error: "길드를 찾을 수 없습니다." };
-            return { clientResponse: { guild } };
+            // 아이콘 경로 수정
+            const guildWithFixedIcon = {
+                ...guild,
+                icon: guild.icon?.startsWith('/images/guild/icon') 
+                    ? guild.icon.replace('/images/guild/icon', '/images/guild/profile/icon')
+                    : (guild.icon || '/images/guild/profile/icon1.png')
+            };
+            return { clientResponse: { guild: guildWithFixedIcon } };
         }
         
         case 'LIST_GUILDS': {
             const { searchTerm, page = 1, pageSize = 20 } = payload || {};
-            const allGuilds = Object.values(guilds);
-            let filteredGuilds = allGuilds.filter(g => g.isPublic);
-            
-            if (searchTerm && searchTerm.trim()) {
-                const term = searchTerm.toLowerCase().trim();
-                filteredGuilds = filteredGuilds.filter(g => 
-                    g.name.toLowerCase().includes(term) || 
-                    g.description.toLowerCase().includes(term)
-                );
-            }
+            // Use Prisma to get guilds list (ensures consistency with delete operations)
+            const allGuildsFromDb = await guildRepo.listGuilds(searchTerm, pageSize * page);
+            // Merge with KV store data for additional fields (isPublic, members, etc.)
+            let filteredGuilds = allGuildsFromDb
+                .map(dbGuild => {
+                    const kvGuild = guilds[dbGuild.id];
+                    // If guild exists in KV store, use it; otherwise create a basic guild object
+                    if (kvGuild) {
+                        // 아이콘 경로 수정
+                        const fixedIcon = kvGuild.icon?.startsWith('/images/guild/icon')
+                            ? kvGuild.icon.replace('/images/guild/icon', '/images/guild/profile/icon')
+                            : (kvGuild.icon || '/images/guild/profile/icon1.png');
+                        return {
+                            ...kvGuild,
+                            icon: fixedIcon,
+                            level: dbGuild.level,
+                            memberCount: dbGuild.memberCount,
+                        };
+                    } else {
+                        // Guild exists in DB but not in KV store - create basic object
+                        const dbIcon = dbGuild.emblem || '/images/guild/profile/icon1.png';
+                        return {
+                            id: dbGuild.id,
+                            name: dbGuild.name,
+                            description: dbGuild.description,
+                            icon: dbIcon.startsWith('/images/guild/icon') 
+                                ? dbIcon.replace('/images/guild/icon', '/images/guild/profile/icon')
+                                : dbIcon,
+                            level: dbGuild.level,
+                            members: [],
+                            memberCount: dbGuild.memberCount,
+                            memberLimit: 30,
+                            isPublic: true, // Default to public
+                        };
+                    }
+                })
+                .filter(g => g.isPublic !== false); // Only show public guilds
             
             // Sort by level (descending), then by name
             filteredGuilds.sort((a, b) => {
@@ -746,9 +800,9 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
                         description: g.description,
                         icon: g.icon,
                         level: g.level,
-                        memberCount: g.members.length,
-                        memberLimit: g.memberLimit,
-                        isPublic: g.isPublic,
+                        memberCount: g.memberCount || g.members?.length || 0,
+                        memberLimit: g.memberLimit || 30,
+                        isPublic: g.isPublic !== false,
                     })),
                     total: filteredGuilds.length,
                     page,

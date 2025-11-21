@@ -55,7 +55,7 @@ const GuildLobby: React.FC<GuildLobbyProps> = () => {
                         <div key={guild.id} className="bg-panel p-4 rounded-lg flex items-center justify-between gap-4">
                             <div className="flex items-center gap-4 min-w-0">
                                 <div className="w-12 h-12 bg-tertiary rounded-md flex-shrink-0">
-                                     {guild.icon && <img src={guild.icon} alt={guild.name} className="w-full h-full object-cover p-1" />}
+                                     {guild.icon && <img src={guild.icon.startsWith('/images/guild/icon') ? guild.icon.replace('/images/guild/icon', '/images/guild/profile/icon') : guild.icon} alt={guild.name} className="w-full h-full object-cover p-1" />}
                                 </div>
                                 <div className="min-w-0">
                                     <h3 className="font-bold text-lg">{guild.name} <span className="text-sm text-secondary">(Lv.{guild.level || 1})</span></h3>

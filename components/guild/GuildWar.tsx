@@ -1,7 +1,7 @@
 import React, { useState, useMemo } from 'react';
-import { useAppContext } from '../../hooks/useAppContext';
-import BackButton from '../BackButton';
-import Button from '../Button';
+import { useAppContext } from '../../hooks/useAppContext.js';
+import BackButton from '../BackButton.js';
+import Button from '../Button.js';
 
 interface Board {
     id: string;
@@ -19,8 +19,8 @@ const GuildWar = () => {
     const [selectedBoard, setSelectedBoard] = useState<Board | null>(null);
 
     // Mock data for UI layout
-    const myGuild = { id: 'g1', name: '청룡 길드', emblem: '/images/guild/icon1.png', stars: 8, totalScore: 125 };
-    const opponentGuild = { id: 'g2', name: '백호 길드', emblem: '/images/guild/icon2.png', stars: 5, totalScore: 88 };
+    const myGuild = { id: 'g1', name: '청룡 길드', emblem: '/images/guild/profile/icon1.png', stars: 8, totalScore: 125 };
+    const opponentGuild = { id: 'g2', name: '백호 길드', emblem: '/images/guild/profile/icon2.png', stars: 5, totalScore: 88 };
     
     const boards: Board[] = [
         { id: 'top-left', name: '좌상귀', myStars: 2, opponentStars: 1, boardSize: 9, initialStones: {black: 10, white: 10}, highestScorer: '길드원A', scoreDiff: 15.5 },
