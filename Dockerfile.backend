@@ -14,6 +14,8 @@ RUN npm ci --omit=dev
 
 FROM base AS build-deps
 # Install all dependencies including dev for Prisma generation
+# Also install wget and unzip for KataGo download
+RUN apk add --no-cache wget unzip
 COPY package.json package-lock.json ./
 RUN npm ci
 
@@ -21,6 +23,15 @@ FROM build-deps AS build
 # Copy schema and generate Prisma client
 COPY prisma ./prisma
 RUN npx prisma generate --schema prisma/schema.prisma
+
+# Download KataGo Linux binary and model
+RUN mkdir -p /app/katago && \
+    wget https://github.com/lightvector/KataGo/releases/download/v1.16.3/katago-v1.16.3-linux-x64.zip -O /tmp/katago.zip && \
+    unzip /tmp/katago.zip -d /tmp/katago_extract && \
+    mv /tmp/katago_extract/katago /app/katago/katago && \
+    chmod +x /app/katago/katago && \
+    wget https://media.katagotraining.org/uploaded/models/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz -P /app/katago && \
+    rm -rf /tmp/katago.zip /tmp/katago_extract
 
 # Copy source code
 COPY . .
@@ -49,12 +60,11 @@ COPY --from=build /app/constants ./constants
 COPY --from=build /app/profanity.js ./profanity.js
 COPY --from=build /app/package.json ./package.json
 
-# Copy KataGo binary and model (if they exist)
-# Note: Linux KataGo binary needs to be downloaded separately
-# Place it in katago/katago (Linux binary, not .exe)
-COPY --from=build /app/katago/katago ./katago/katago 2>/dev/null || true
-COPY --from=build /app/katago/*.bin.gz ./katago/ 2>/dev/null || true
-RUN chmod +x ./katago/katago 2>/dev/null || true
+# Copy KataGo binary and model (downloaded in build stage)
+RUN mkdir -p ./katago
+COPY --from=build /app/katago/katago ./katago/katago
+COPY --from=build /app/katago/*.bin.gz ./katago/
+RUN chmod +x ./katago/katago || true
 
 # Create non-root user
 RUN addgroup -g 1001 -S nodejs && \
