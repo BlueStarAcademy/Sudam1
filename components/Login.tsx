@@ -113,8 +113,23 @@ const Login: React.FC = () => {
         </div>
 
         <div className="flex justify-center gap-3">
-             <Button disabled colorScheme="yellow" className="w-full">카카오</Button>
-             <Button disabled colorScheme="gray" className="w-full">구글</Button>
+             <Button 
+                colorScheme="yellow" 
+                className="w-full"
+                onClick={async () => {
+                    try {
+                        const response = await fetch('/api/auth/kakao/url');
+                        const data = await response.json();
+                        if (data.url) {
+                            window.location.href = data.url;
+                        }
+                    } catch (err: any) {
+                        setError('카카오 로그인에 실패했습니다.');
+                    }
+                }}
+             >
+                카카오 로그인
+             </Button>
         </div>
       </div>
     </div>

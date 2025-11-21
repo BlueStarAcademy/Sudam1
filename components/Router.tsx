@@ -5,6 +5,8 @@ import { LiveGameSession } from '../types.js';
 import { GameMode } from '../types.js';
 import Login from './Login.js';
 import Register from './Register.js';
+import KakaoCallback from './KakaoCallback.js';
+import SetNickname from './SetNickname.js';
 import Profile from './Profile.js';
 import Lobby from './Lobby.js';
 import WaitingRoom from './waiting-room/WaitingRoom.js';
@@ -75,7 +77,20 @@ const Router: React.FC = () => {
         if (currentRoute.view === 'register') {
             return <Register />;
         }
+        if (currentRoute.view === 'kakao-callback') {
+            return <KakaoCallback />;
+        }
         return <Login />;
+    }
+    
+    // 닉네임이 없거나 임시 닉네임인 경우 닉네임 설정 화면으로 이동
+    if (currentUser && (!currentUser.nickname || currentUser.nickname.startsWith('user_'))) {
+        if (currentRoute.view === 'set-nickname') {
+            return <SetNickname />;
+        }
+        // 다른 페이지 접근 시 닉네임 설정 화면으로 리다이렉트
+        window.location.hash = '#/set-nickname';
+        return <SetNickname />;
     }
     
     // If user is logged in, but their game is still active, force them into the game view
@@ -106,6 +121,8 @@ const Router: React.FC = () => {
     }
 
     switch (currentRoute.view) {
+        case 'set-nickname':
+            return <SetNickname />;
         case 'profile':
             return <Profile />;
         case 'lobby':

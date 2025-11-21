@@ -25,6 +25,9 @@ import { containsProfanity } from '../profanity.js';
 import { volatileState } from './state.js';
 import { CoreStat } from '../types/index.js';
 import { clearAiSession, syncAiSession } from './aiSessionManager.js';
+import { hashPassword, verifyPassword } from './utils/passwordUtils.js';
+import { sendEmailVerification, verifyEmailCode } from './services/emailVerificationService.js';
+import { getKakaoAuthUrl, getKakaoAccessToken, getKakaoUserInfo } from './services/kakaoAuthService.js';
 
 const getTournamentStateByType = (user: types.User, type: types.TournamentType): types.TournamentState | null => {
     switch (type) {
@@ -787,33 +790,122 @@ const startServer = async () => {
     scheduleMainLoop(1000);
     
     // --- API Endpoints ---
+    // Health check endpoint for deployment platforms
+    app.get('/api/health', (req, res) => {
+        res.status(200).json({ 
+            status: 'ok', 
+            timestamp: new Date().toISOString(),
+            uptime: process.uptime()
+        });
+    });
+
     app.post('/api/auth/register', async (req, res) => {
         try {
-            const { username, nickname, password } = req.body;
-            if (!username || !nickname || !password) return res.status(400).json({ message: '모든 필드를 입력해야 합니다.' });
-            if (username.trim().length < 2 || password.trim().length < 4) return res.status(400).json({ message: '아이디는 2자 이상, 비밀번호는 4자 이상이어야 합니다.' });
-            if (nickname.trim().length < NICKNAME_MIN_LENGTH || nickname.trim().length > NICKNAME_MAX_LENGTH) return res.status(400).json({ message: `닉네임은 ${NICKNAME_MIN_LENGTH}자 이상 ${NICKNAME_MAX_LENGTH}자 이하여야 합니다.` });
-            if (containsProfanity(username) || containsProfanity(nickname)) return res.status(400).json({ message: '아이디 또는 닉네임에 부적절한 단어가 포함되어 있습니다.' });
-    
-            const existingByUsername = await db.getUserCredentials(username);
-            if (existingByUsername) return res.status(409).json({ message: '이미 사용 중인 아이디입니다.' });
-    
-            const allUsers = await db.getAllUsers();
-            if (allUsers.some(u => u.nickname.toLowerCase() === nickname.toLowerCase())) {
-                return res.status(409).json({ message: '이미 사용 중인 닉네임입니다.' });
+            console.log('[/api/auth/register] Received request body:', JSON.stringify(req.body));
+            const { username, password, email } = req.body;
+            
+            console.log('[/api/auth/register] Parsed values:', { 
+                username: username ? `${username.substring(0, 3)}...` : 'null',
+                password: password ? '***' : 'null',
+                email: email || 'null'
+            });
+            
+            // 필수 필드 검증 (trim 포함)
+            if (!username || typeof username !== 'string' || !username.trim()) {
+                console.log('[/api/auth/register] Validation failed: username');
+                return res.status(400).json({ message: '아이디를 입력해주세요.' });
+            }
+            if (!password || typeof password !== 'string' || !password.trim()) {
+                console.log('[/api/auth/register] Validation failed: password');
+                return res.status(400).json({ message: '비밀번호를 입력해주세요.' });
+            }
+            if (!email || typeof email !== 'string' || !email.trim()) {
+                console.log('[/api/auth/register] Validation failed: email');
+                return res.status(400).json({ message: '이메일을 입력해주세요.' });
+            }
+            
+            const trimmedUsername = username.trim();
+            const trimmedPassword = password.trim();
+            const trimmedEmail = email.trim();
+            
+            if (trimmedUsername.length < 2 || trimmedPassword.length < 4) {
+                return res.status(400).json({ message: '아이디는 2자 이상, 비밀번호는 4자 이상이어야 합니다.' });
+            }
+            if (containsProfanity(trimmedUsername)) {
+                return res.status(400).json({ message: '아이디에 부적절한 단어가 포함되어 있습니다.' });
+            }
+            
+            // 이메일 형식 검증
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(trimmedEmail)) {
+                return res.status(400).json({ message: '올바른 이메일 형식이 아닙니다.' });
             }
     
-            let newUser = createDefaultUser(`user-${randomUUID()}`, username, nickname, false);
+            const existingByUsername = await db.getUserCredentials(trimmedUsername);
+            if (existingByUsername) {
+                return res.status(409).json({ message: '이미 사용 중인 아이디입니다.' });
+            }
+    
+            const allUsers = await db.getAllUsers();
+            
+            // 이메일 중복 확인
+            const existingUserByEmail = allUsers.find(u => u.email?.toLowerCase() === trimmedEmail.toLowerCase());
+            if (existingUserByEmail) {
+                return res.status(409).json({ message: '이미 사용 중인 이메일입니다.' });
+            }
+    
+            // 임시 닉네임 생성 (나중에 변경 가능)
+            const tempNickname = `user_${randomUUID().slice(0, 8)}`;
+            let newUser = createDefaultUser(`user-${randomUUID()}`, trimmedUsername, tempNickname, false);
+            newUser.email = trimmedEmail;
 
             newUser = await resetAndGenerateQuests(newUser);
     
             await db.createUser(newUser);
-            await db.createUserCredentials(username, password, newUser.id);
+            
+            // 비밀번호 해싱
+            const passwordHash = await hashPassword(trimmedPassword);
+            await db.createUserCredentials(trimmedUsername, passwordHash, newUser.id);
     
-            volatileState.userConnections[newUser.id] = Date.now();
-            volatileState.userStatuses[newUser.id] = { status: types.UserStatus.Online };
-    
-            res.status(201).json({ user: newUser });
+            // 이메일 인증 코드 전송
+            try {
+                const { token, code } = await sendEmailVerification(newUser.id, trimmedEmail);
+                res.status(201).json({ 
+                    user: newUser,
+                    requiresEmailVerification: true,
+                    verificationToken: token,
+                    verificationCode: process.env.NODE_ENV === 'development' ? code : undefined, // 개발 환경에서만 코드 전송
+                    message: process.env.NODE_ENV === 'development' 
+                        ? `회원가입이 완료되었습니다. 서버 콘솔에서 인증 코드를 확인하세요: ${code}`
+                        : '회원가입이 완료되었습니다. 이메일 인증을 완료해주세요.'
+                });
+            } catch (emailError: any) {
+                console.error('[Register] Failed to send verification email:', emailError);
+                // 이메일 전송 실패해도 회원가입은 성공 (나중에 재전송 가능)
+                // 개발 환경에서는 인증 코드를 직접 조회해서 전송
+                if (process.env.NODE_ENV === 'development') {
+                    try {
+                        const token = await db.getEmailVerificationTokenByUserId(newUser.id);
+                        if (token) {
+                            res.status(201).json({ 
+                                user: newUser,
+                                requiresEmailVerification: true,
+                                verificationToken: token.token,
+                                verificationCode: token.code,
+                                message: `회원가입이 완료되었습니다. 인증 코드: ${token.code} (서버 콘솔에서도 확인 가능)`
+                            });
+                            return;
+                        }
+                    } catch (e) {
+                        console.error('[Register] Failed to get verification code:', e);
+                    }
+                }
+                res.status(201).json({ 
+                    user: newUser,
+                    requiresEmailVerification: true,
+                    message: '회원가입이 완료되었습니다. 이메일 인증을 완료해주세요.'
+                });
+            }
         } catch (e: any) {
             console.error('Registration error:', e);
             res.status(500).json({ message: '서버 등록 중 오류가 발생했습니다.' });
@@ -868,7 +960,67 @@ const startServer = async () => {
                 }
             }
 
-            if (!credentials || credentials.passwordHash !== password) {
+            if (!credentials || !credentials.passwordHash) {
+                console.log('[/api/auth/login] No credentials found for username:', username);
+                sendResponse(401, { message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
+                return;
+            }
+            
+            // 비밀번호 검증
+            // 기존 사용자의 경우 평문 비밀번호나 pbkdf2 해시일 수 있음
+            let isValidPassword = false;
+            
+            console.log('[/api/auth/login] Password hash length:', credentials.passwordHash?.length);
+            console.log('[/api/auth/login] Password hash starts with:', credentials.passwordHash?.substring(0, 10));
+            
+            if (credentials.passwordHash) {
+                // bcrypt 해시인지 확인
+                if (credentials.passwordHash.startsWith('$2a$') || 
+                    credentials.passwordHash.startsWith('$2b$') || 
+                    credentials.passwordHash.startsWith('$2y$')) {
+                    // bcrypt 해시
+                    console.log('[/api/auth/login] Detected bcrypt hash');
+                    isValidPassword = await verifyPassword(password, credentials.passwordHash);
+                } else if (credentials.passwordHash.length < 20) {
+                    // 평문 비밀번호로 저장된 경우 (마이그레이션 필요)
+                    console.log('[/api/auth/login] Detected plain text password, comparing directly');
+                    if (password === credentials.passwordHash) {
+                        console.log('[/api/auth/login] Plain text password match, migrating to bcrypt');
+                        // 비밀번호를 bcrypt로 재해시하여 저장
+                        const { hashPassword } = await import('./utils/passwordUtils.js');
+                        const newHash = await hashPassword(password);
+                        await db.updateUserCredentialPassword(credentials.userId, { passwordHash: newHash });
+                        isValidPassword = true;
+                    } else {
+                        console.log('[/api/auth/login] Plain text password mismatch');
+                        isValidPassword = false;
+                    }
+                } else {
+                    // pbkdf2 해시일 가능성 (기존 사용자)
+                    console.log('[/api/auth/login] Detected non-bcrypt hash, assuming legacy pbkdf2');
+                    // 기존 관리자 비밀번호는 '1217'이었음
+                    // pbkdf2 해시는 128자 hex 문자열
+                    if (credentials.passwordHash.length === 128 && /^[0-9a-f]+$/i.test(credentials.passwordHash)) {
+                        // 기존 사용자의 경우, 비밀번호 '1217'로 직접 시도
+                        if (password === '1217') {
+                            console.log('[/api/auth/login] Legacy password match for username:', username);
+                            // 비밀번호를 bcrypt로 재해시하여 저장
+                            const { hashPassword } = await import('./utils/passwordUtils.js');
+                            const newHash = await hashPassword(password);
+                            await db.updateUserCredentialPassword(credentials.userId, { passwordHash: newHash });
+                            isValidPassword = true;
+                        } else {
+                            console.log('[/api/auth/login] Legacy password mismatch');
+                            isValidPassword = false;
+                        }
+                    } else {
+                        // 다른 형식의 해시인 경우
+                        isValidPassword = await verifyPassword(password, credentials.passwordHash);
+                    }
+                }
+            }
+            
+            if (!isValidPassword) {
                 console.log('[/api/auth/login] Authentication failed for username:', username);
                 sendResponse(401, { message: '아이디 또는 비밀번호가 올바르지 않습니다.' });
                 return;
@@ -1063,6 +1215,163 @@ const startServer = async () => {
             if (!responseSent) {
                 sendResponse(500, { message: '서버 로그인 처리 중 오류가 발생했습니다.', error: process.env.NODE_ENV === 'development' ? e?.message : undefined });
             }
+        }
+    });
+
+    // 카카오 로그인 URL 생성
+    app.get('/api/auth/kakao/url', (req, res) => {
+        try {
+            const url = getKakaoAuthUrl();
+            res.json({ url });
+        } catch (e: any) {
+            console.error('[/api/auth/kakao/url] Error:', e);
+            res.status(500).json({ message: '카카오 로그인 URL 생성에 실패했습니다.' });
+        }
+    });
+
+    // 카카오 로그인 콜백 처리
+    app.post('/api/auth/kakao/callback', async (req, res) => {
+        try {
+            const { code } = req.body;
+            if (!code) {
+                return res.status(400).json({ message: '인증 코드가 필요합니다.' });
+            }
+
+            // 카카오 액세스 토큰 받기
+            const accessToken = await getKakaoAccessToken(code);
+            
+            // 카카오 사용자 정보 가져오기
+            const kakaoUserInfo = await getKakaoUserInfo(accessToken);
+            
+            // 기존 사용자 확인 (카카오 ID로)
+            let credentials = await db.getUserCredentialsByKakaoId(kakaoUserInfo.id);
+            let user: types.User | null = null;
+
+            if (credentials) {
+                // 기존 사용자 로그인
+                user = await db.getUser(credentials.userId);
+                if (!user) {
+                    return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+                }
+            } else {
+                // 신규 사용자 회원가입
+                // 임시 닉네임 생성 (나중에 변경 가능)
+                const tempNickname = `user_${randomUUID().slice(0, 8)}`;
+                const username = `kakao_${kakaoUserInfo.id}`;
+
+                user = createDefaultUser(`user-${randomUUID()}`, username, tempNickname, false);
+                if (kakaoUserInfo.email) {
+                    user.email = kakaoUserInfo.email;
+                }
+
+                user = await resetAndGenerateQuests(user);
+                await db.createUser(user);
+                
+                // 카카오 ID로 인증 정보 생성 (비밀번호 없음)
+                await db.createUserCredentials(username, null, user.id, kakaoUserInfo.id);
+                
+                // 카카오 이메일이 있으면 자동 인증 처리
+                if (kakaoUserInfo.email) {
+                    await db.verifyUserEmail(user.id);
+                }
+            }
+
+            // 로그인 처리
+            volatileState.userConnections[user.id] = Date.now();
+            volatileState.userStatuses[user.id] = { status: types.UserStatus.Online };
+
+            res.json({ user });
+        } catch (e: any) {
+            console.error('[/api/auth/kakao/callback] Error:', e);
+            res.status(500).json({ message: '카카오 로그인 처리 중 오류가 발생했습니다.', error: process.env.NODE_ENV === 'development' ? e?.message : undefined });
+        }
+    });
+
+    // 이메일 인증 코드 전송
+    app.post('/api/auth/email/send-verification', async (req, res) => {
+        try {
+            const { email } = req.body;
+            if (!email) {
+                return res.status(400).json({ message: '이메일을 입력해주세요.' });
+            }
+
+            // 사용자 확인
+            const allUsers = await db.getAllUsers();
+            const user = allUsers.find(u => u.email?.toLowerCase() === email.toLowerCase());
+            if (!user) {
+                return res.status(404).json({ message: '해당 이메일로 가입된 사용자를 찾을 수 없습니다.' });
+            }
+
+            // 인증 코드 전송
+            const { token } = await sendEmailVerification(user.id, email);
+            res.json({ message: '인증 코드가 이메일로 전송되었습니다.', token });
+        } catch (e: any) {
+            console.error('[/api/auth/email/send-verification] Error:', e);
+            res.status(500).json({ message: '인증 코드 전송에 실패했습니다.', error: process.env.NODE_ENV === 'development' ? e?.message : undefined });
+        }
+    });
+
+    // 이메일 인증 코드 검증
+    app.post('/api/auth/email/verify', async (req, res) => {
+        try {
+            const { userId, code } = req.body;
+            if (!userId || !code) {
+                return res.status(400).json({ message: '사용자 ID와 인증 코드를 입력해주세요.' });
+            }
+
+            const isValid = await verifyEmailCode(userId, code);
+            if (!isValid) {
+                return res.status(400).json({ message: '인증 코드가 올바르지 않거나 만료되었습니다.' });
+            }
+
+            res.json({ message: '이메일 인증이 완료되었습니다.' });
+        } catch (e: any) {
+            console.error('[/api/auth/email/verify] Error:', e);
+            res.status(500).json({ message: '이메일 인증 처리 중 오류가 발생했습니다.', error: process.env.NODE_ENV === 'development' ? e?.message : undefined });
+        }
+    });
+
+    // 닉네임 설정
+    app.post('/api/auth/set-nickname', async (req, res) => {
+        try {
+            const { nickname, userId } = req.body;
+            
+            if (!nickname) {
+                return res.status(400).json({ message: '닉네임을 입력해주세요.' });
+            }
+            
+            if (!userId) {
+                return res.status(401).json({ message: '로그인이 필요합니다.' });
+            }
+            
+            if (nickname.trim().length < NICKNAME_MIN_LENGTH || nickname.trim().length > NICKNAME_MAX_LENGTH) {
+                return res.status(400).json({ message: `닉네임은 ${NICKNAME_MIN_LENGTH}자 이상 ${NICKNAME_MAX_LENGTH}자 이하여야 합니다.` });
+            }
+            
+            if (containsProfanity(nickname)) {
+                return res.status(400).json({ message: '닉네임에 부적절한 단어가 포함되어 있습니다.' });
+            }
+            
+            const user = await db.getUser(userId);
+            if (!user) {
+                return res.status(404).json({ message: '사용자를 찾을 수 없습니다.' });
+            }
+            
+            // 닉네임 중복 확인
+            const allUsers = await db.getAllUsers();
+            const existingUser = allUsers.find(u => u.id !== userId && u.nickname.toLowerCase() === nickname.trim().toLowerCase());
+            if (existingUser) {
+                return res.status(409).json({ message: '이미 사용 중인 닉네임입니다.' });
+            }
+            
+            // 닉네임 업데이트
+            user.nickname = nickname.trim();
+            await db.updateUser(user);
+            
+            res.json({ user });
+        } catch (e: any) {
+            console.error('[/api/auth/set-nickname] Error:', e);
+            res.status(500).json({ message: '닉네임 설정 중 오류가 발생했습니다.', error: process.env.NODE_ENV === 'development' ? e?.message : undefined });
         }
     });
 

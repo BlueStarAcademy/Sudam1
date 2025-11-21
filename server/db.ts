@@ -12,8 +12,17 @@ import {
     getUserCredentialByUsername,
     getUserCredentialByUserId,
     createUserCredential,
-    deleteUserCredentialByUsername
+    deleteUserCredentialByUsername,
+    getUserCredentialByKakaoId,
+    updateUserCredential
 } from './prisma/credentialService.ts';
+import {
+    createEmailVerificationToken as prismaCreateEmailVerificationToken,
+    getEmailVerificationTokenByUserId as prismaGetEmailVerificationTokenByUserId,
+    getEmailVerificationTokenByToken as prismaGetEmailVerificationTokenByToken,
+    deleteEmailVerificationTokens as prismaDeleteEmailVerificationTokens,
+    verifyUserEmail as prismaVerifyUserEmail
+} from './prisma/emailVerificationService.ts';
 
 // --- Initialization and Seeding ---
 let isInitialized = false;
@@ -64,7 +73,9 @@ const seedInitialData = async () => {
             }
             
             try {
-                await createUserCredential(originalUser.username, cred.passwordHash, cred.userId);
+                // initialData에서 cred는 { hash, salt, userId } 형태
+                const passwordHash = (cred as any).hash || (cred as any).passwordHash;
+                await createUserCredential(originalUser.username, passwordHash, cred.userId);
                 console.log(`[DB] Created credentials for: ${username}`);
             } catch (error: any) {
                 // UNIQUE 제약조건 위반 등은 무시 (이미 존재하는 경우)
@@ -192,8 +203,44 @@ export const getUserCredentialsByUserId = async (userId: string): Promise<UserCr
     const cred = await getUserCredentialByUserId(userId);
     return cred ? { username: cred.username, passwordHash: cred.passwordHash, userId: cred.userId } : null;
 };
-export const createUserCredentials = async (username: string, passwordHash: string, userId: string): Promise<void> => {
-    await createUserCredential(username, passwordHash, userId);
+export const createUserCredentials = async (username: string, passwordHash: string | null, userId: string, kakaoId?: string | null): Promise<void> => {
+    await createUserCredential(username, passwordHash, userId, kakaoId);
+};
+
+export const getUserCredentialsByKakaoId = async (kakaoId: string): Promise<UserCredentials | null> => {
+    const cred = await getUserCredentialByKakaoId(kakaoId);
+    return cred ? { username: cred.username, passwordHash: cred.passwordHash, userId: cred.userId } : null;
+};
+export const updateUserCredentialPassword = async (userId: string, updates: { passwordHash?: string | null; kakaoId?: string | null; emailVerified?: boolean }): Promise<void> => {
+    await updateUserCredential(userId, updates);
+};
+
+// --- Email Verification Functions ---
+export const createEmailVerificationToken = async (data: {
+    userId: string;
+    email: string;
+    token: string;
+    code: string;
+    expiresAt: Date;
+}): Promise<void> => {
+    await prismaCreateEmailVerificationToken(data);
+};
+
+export const getEmailVerificationTokenByUserId = async (userId: string) => {
+    return await prismaGetEmailVerificationTokenByUserId(userId);
+};
+
+export const getEmailVerificationTokenByToken = async (token: string) => {
+    return await prismaGetEmailVerificationTokenByToken(token);
+};
+
+export const deleteEmailVerificationTokens = async (userId: string): Promise<void> => {
+    await prismaDeleteEmailVerificationTokens(userId);
+};
+
+export const verifyUserEmail = async (userId: string): Promise<void> => {
+    await prismaVerifyUserEmail(userId);
+    await updateUserCredential(userId, { emailVerified: true });
 };
 
 // --- Game Functions ---

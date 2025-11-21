@@ -1,0 +1,49 @@
+# Railway 배포 시 제외할 파일/디렉토리
+
+# 개발 파일
+.env
+.env.local
+.env.*.local
+*.log
+.DS_Store
+
+# 의존성 (Railway에서 자동 설치)
+node_modules/
+
+# 빌드 아티팩트 (필요시 재생성)
+dist/
+build/
+
+# 개발 도구
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 테스트
+coverage/
+.nyc_output/
+
+# Git
+.git/
+.gitignore
+
+# 문서 (선택적)
+docs/
+*.md
+!README.md
+
+# 로컬 데이터베이스
+*.sqlite
+*.sqlite3
+database.sqlite
+
+# KataGo 바이너리 (용량이 크므로 별도 처리 필요)
+katago/
+!katago/*.cfg
+
+# 임시 파일
+tmp/
+temp/
+*.tmp
+
