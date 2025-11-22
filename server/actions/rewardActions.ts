@@ -14,7 +14,7 @@ import {
     MONTHLY_MILESTONE_THRESHOLDS,
     BASE_TOURNAMENT_REWARDS,
     TOURNAMENT_SCORE_REWARDS
-} from '../../constants.js';
+} from '../../constants/index.js';
 import { calculateRanks } from '../tournamentService.js';
 import { addItemsToInventory, createItemInstancesFromReward } from '../../utils/inventoryUtils.js';
 import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';

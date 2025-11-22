@@ -26,7 +26,7 @@ import {
     BLACKSMITH_XP_REQUIRED_FOR_LEVEL_UP,
     BLACKSMITH_COMBINABLE_GRADES_BY_LEVEL,
     calculateEnhancementGoldCost
-} from '../../constants.js';
+} from '../../constants/index.js';
 import {
     BLACKSMITH_ENHANCEMENT_XP_GAIN,
     BLACKSMITH_DISASSEMBLY_XP_GAIN,

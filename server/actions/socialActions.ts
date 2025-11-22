@@ -7,7 +7,7 @@ import { containsProfanity } from '../../profanity.js';
 import * as tournamentService from '../tournamentService.js';
 import * as summaryService from '../summaryService.js';
 import { broadcast } from '../socket.js';
-import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants.js';
+import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../../constants/index.js';
 import { clearAiSession } from '../aiSessionManager.js';
 import { getSelectiveUserUpdate } from '../utils/userUpdateHelper.js';
 

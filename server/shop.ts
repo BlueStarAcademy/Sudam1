@@ -10,7 +10,7 @@ import {
     SUB_OPTION_POOLS,
     SPECIAL_STATS_DATA,
     MYTHIC_STATS_DATA,
-} from '../constants.js';
+} from '../constants/index.js';
 
 const getRandomInt = (min: number, max: number): number => {
     return Math.floor(Math.random() * (max - min + 1)) + min;
