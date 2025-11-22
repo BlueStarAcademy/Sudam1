@@ -331,8 +331,8 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
             title={modalTitle}
             onClose={() => handleClose(session, onClose)} 
             windowId="tower-summary-redesigned"
-            initialWidth={isMobile ? 500 : 750}
-            initialHeight={isMobile ? 480 : 620}
+            initialWidth={isMobile ? 600 : 900}
+            initialHeight={isMobile ? 560 : 760}
         >
             <div className={`text-white ${isMobile ? 'text-sm' : 'text-[clamp(0.875rem,2.5vw,1.125rem)]'} flex flex-col ${isMobile ? 'max-h-[85vh]' : 'h-full'} overflow-y-auto`}>
                 {/* Title */}
