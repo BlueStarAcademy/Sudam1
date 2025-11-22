@@ -1,4 +1,4 @@
-import * as types from '../../types.js';
+import * as types from '../../types/index.js';
 import * as db from '../db.js';
 import { getOmokLogic } from '../omokLogic.js';
 import { handleSharedAction, updateSharedGameState } from './shared.js';

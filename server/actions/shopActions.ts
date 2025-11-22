@@ -3,7 +3,7 @@
 
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, InventoryItem } from '../../types.js';
+import { type ServerAction, type User, type VolatileState, InventoryItem } from '../../types/index.js';
 import * as shop from '../shop.js';
 import { SHOP_ITEMS } from '../shop.js';
 import { broadcast } from '../socket.js';

@@ -1,6 +1,6 @@
-import * as types from '../../types.js';
+import * as types from '../../types/index.js';
 import { Database } from 'sqlite';
-import { User } from '../../types.js';
+import { User } from '../../types/index.js';
 import { rowToUser } from './mappers.js';
 
 export const getAllUsers = async (db: Database): Promise<User[]> => {

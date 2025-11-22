@@ -1,4 +1,4 @@
-import { User } from '../../types.js';
+import { User } from '../../types/index.js';
 
 /**
  * 액션 타입에 따라 필요한 User 필드만 반환하는 헬퍼 함수

@@ -1,6 +1,6 @@
 import prisma from "../prismaClient.js";
 import type { Prisma } from "@prisma/client";
-import type { User } from "../../types.js";
+import type { User } from "../../types/index.js";
 import { deserializeUser, serializeUser, PrismaUserWithStatus } from "./userAdapter.js";
 
 const toBigInt = (value: number | undefined): bigint => {

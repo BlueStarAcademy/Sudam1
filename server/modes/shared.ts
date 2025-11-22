@@ -1,11 +1,11 @@
 import * as summaryService from '../summaryService.js';
-import { LiveGameSession, RPSChoice, GameStatus, HandleActionResult, VolatileState, ServerAction, User, Player, ChatMessage, UserStatus } from '../../types.js';
+import { LiveGameSession, RPSChoice, GameStatus, HandleActionResult, VolatileState, ServerAction, User, Player, ChatMessage, UserStatus } from '../../types/index.js';
 import * as db from '../db.js';
 import { randomUUID } from 'crypto';
 import { ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_SIMULTANEOUS_PLACEMENT_TIME_LIMIT, CURLING_TURN_TIME_LIMIT, PLAYFUL_MODE_FOUL_LIMIT, SPECIAL_GAME_MODES } from '../../constants';
 import { aiUserId } from '../aiPlayer.js';
 import { updateQuestProgress } from '../questService.js';
-import * as types from '../../types.js';
+import * as types from '../../types/index.js';
 import { broadcast } from '../socket.js';
 
 // FIX: Corrected the type definition for `rpsStatusMap`. `Partial` takes one type argument, and the original code provided two. This also fixes a typo with an extra '>' and resolves subsequent parsing errors on the following lines.

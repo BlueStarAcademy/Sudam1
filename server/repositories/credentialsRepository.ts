@@ -1,5 +1,5 @@
 import { Database } from 'sqlite';
-import { UserCredentials } from '../../types.js';
+import { UserCredentials } from '../../types/index.js';
 
 export const getUserCredentials = async (db: Database, username: string): Promise<UserCredentials | null> => {
     const credentials = await db.get<UserCredentials>('SELECT * FROM user_credentials WHERE username = ?', username.toLowerCase());

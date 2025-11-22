@@ -1,5 +1,5 @@
 import * as summaryService from '../summaryService.js';
-import * as types from '../../types.js';
+import * as types from '../../types/index.js';
 import * as db from '../db.js';
 import { getGoLogic, processMove } from '../goLogic.js';
 import { getGameResult } from '../gameModes.js';

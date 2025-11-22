@@ -1,4 +1,4 @@
-import * as types from '../../types.js';
+import * as types from '../../types/index.js';
 // FIX: Changed import path to avoid circular dependency
 import { transitionToPlaying } from './shared.js';
 import * as summaryService from '../summaryService.js';

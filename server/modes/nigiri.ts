@@ -1,5 +1,5 @@
 
-import * as types from '../../types.js';
+import * as types from '../../types/index.js';
 import { transitionToPlaying } from './shared.js';
 
 export const initializeNigiri = (game: types.LiveGameSession, now: number) => {

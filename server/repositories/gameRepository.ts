@@ -1,6 +1,6 @@
 import { Database } from 'sqlite';
-import { LiveGameSession } from '../../types.js';
-import * as types from '../../types.js';
+import { LiveGameSession } from '../../types/index.js';
+import * as types from '../../types/index.js';
 import { rowToGame } from './mappers.js';
 
 export const getLiveGame = async (db: Database, id: string): Promise<LiveGameSession | null> => {

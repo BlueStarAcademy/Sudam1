@@ -1,6 +1,6 @@
 // @ts-nocheck
 import type { Prisma } from "@prisma/client";
-import type { User, InventoryItem, Equipment, Mail, QuestLog } from "../../types.js";
+import type { User, InventoryItem, Equipment, Mail, QuestLog } from "../../types/index.js";
 import { createDefaultBaseStats, createDefaultSpentStatPoints, createDefaultQuests } from "../initialData.ts";
 import { LeagueTier } from "../../types/enums.js";
 import { SINGLE_PLAYER_STAGES } from "../../constants/singlePlayerConstants.js";

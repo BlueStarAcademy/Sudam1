@@ -1,6 +1,6 @@
 import * as db from '../db.js';
 // FIX: Import the full namespace to access enums like CoreStat.
-import * as types from '../../types.js';
+import * as types from '../../types/index.js';
 import { AVATAR_POOL, BORDER_POOL, SPECIAL_GAME_MODES, NICKNAME_MAX_LENGTH, NICKNAME_MIN_LENGTH } from '../../constants';
 import { containsProfanity } from '../../profanity.js';
 import { UserStatus } from '../../types/enums.js';

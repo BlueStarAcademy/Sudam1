@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as db from '../db.js';
-import { type ServerAction, type User, type VolatileState, ChatMessage, UserStatus, type Negotiation, TournamentType, GameMode } from '../../types.js';
-import * as types from '../../types.js';
+import { type ServerAction, type User, type VolatileState, ChatMessage, UserStatus, type Negotiation, TournamentType, GameMode } from '../../types/index.js';
+import * as types from '../../types/index.js';
 import { updateQuestProgress } from './../questService.js';
 import { containsProfanity } from '../../profanity.js';
 import * as tournamentService from '../tournamentService.js';

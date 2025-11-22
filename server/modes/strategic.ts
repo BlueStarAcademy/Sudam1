@@ -1,6 +1,6 @@
 // FIX: Correctly import summaryService to resolve module not found error.
 import * as summaryService from '../summaryService.js';
-import * as types from '../../types.js';
+import * as types from '../../types/index.js';
 import { UserStatus } from '../../types/enums.js';
 import * as db from '../db.js';
 import { getGoLogic, processMove } from '../goLogic.js';

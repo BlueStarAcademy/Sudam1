@@ -1,5 +1,5 @@
-import type { LiveGameSession } from '../../types.js';
-import { Player } from '../../types.js';
+import type { LiveGameSession } from '../../types/index.js';
+import { Player } from '../../types/index.js';
 
 export const NO_CAPTURE_TARGET = 999;
 

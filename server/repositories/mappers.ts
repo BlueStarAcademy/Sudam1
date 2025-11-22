@@ -1,5 +1,5 @@
 import { createDefaultQuests, createDefaultBaseStats, createDefaultSpentStatPoints, defaultStats } from '../initialData.js';
-import * as types from '../../types.js';
+import * as types from '../../types/index.js';
 
 const safeParse = (jsonString: string | null, defaultValue: any, contextId: string, fieldName: string) => {
     if (jsonString === null || jsonString === undefined) return defaultValue;

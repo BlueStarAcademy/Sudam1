@@ -1,5 +1,5 @@
 import prisma from "../prismaClient.js";
-import type { LiveGameSession, GameStatus } from "../../types.js";
+import type { LiveGameSession, GameStatus } from "../../types/index.js";
 
 const ENDED_STATUSES: GameStatus[] = ["ended", "no_contest"];
 
