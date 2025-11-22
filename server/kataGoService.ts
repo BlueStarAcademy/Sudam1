@@ -220,17 +220,22 @@ class KataGoManager {
             let actualKataGoPath = KATAGO_PATH;
             let actualModelPath = MODEL_PATH;
             
-            // 프로젝트 루트의 katago 폴더 경로 (가장 일반적인 위치)
-            const projectKatagoPath = path.resolve(PROJECT_ROOT, 'katago/katago.exe');
+            // 프로젝트 루트의 katago 폴더 경로 (Windows와 Linux 모두 지원)
+            const projectKatagoPathWin = path.resolve(PROJECT_ROOT, 'katago/katago.exe');
+            const projectKatagoPathLinux = path.resolve(PROJECT_ROOT, 'katago/katago');
             const projectModelPath = path.resolve(PROJECT_ROOT, 'katago/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz');
             
             const pathsToTry = [
                 // 1. 환경 변수로 명시적으로 설정된 경로 (최우선)
                 ...(process.env.KATAGO_PATH ? [KATAGO_PATH] : []),
-                // 2. 프로젝트 루트의 katago 폴더 (가장 일반적인 위치)
-                projectKatagoPath,
-                // 3. 기타 대체 경로들
+                // 2. 프로젝트 루트의 katago 폴더 (Linux - 확장자 없음)
+                projectKatagoPathLinux,
+                // 3. 프로젝트 루트의 katago 폴더 (Windows - .exe 확장자)
+                projectKatagoPathWin,
+                // 4. 기타 대체 경로들 (Linux 먼저 시도)
+                path.resolve(__dirname, '../katago/katago'),
                 path.resolve(__dirname, '../katago/katago.exe'),
+                path.resolve(__dirname, '../../katago/katago'),
                 path.resolve(__dirname, '../../katago/katago.exe'),
                 'C:\\katago\\katago.exe',
                 'D:\\katago\\katago.exe',
