@@ -19,7 +19,10 @@
     "force-restore-equipment": "npx tsx --tsconfig server/tsconfig.json server/forceRestoreEquipment.ts",
     "sync-equipment": "npx tsx --tsconfig server/tsconfig.json server/syncEquipmentInventory.ts",
     "emergency-restore-all": "npx tsx --tsconfig server/tsconfig.json server/emergencyRestoreAll.ts",
-    "optimize-db": "npx tsx --tsconfig server/tsconfig.json server/scripts/optimizeDatabase.ts"
+    "optimize-db": "npx tsx --tsconfig server/tsconfig.json server/scripts/optimizeDatabase.ts",
+    "optimize-images": "node scripts/optimizeImages.js",
+    "build": "vite build",
+    "build:optimized": "npm run optimize-images && vite build"
   },
   "dependencies": {
     "@aws-sdk/client-ses": "^3.936.0",
@@ -52,7 +55,11 @@
     "@vitejs/plugin-react": "^4.3.1",
     "autoprefixer": "^10.4.19",
     "concurrently": "^8.2.2",
+    "imagemin": "^9.0.1",
+    "imagemin-mozjpeg": "^10.0.0",
+    "imagemin-pngquant": "^10.0.0",
     "postcss": "^8.4.39",
+    "sharp": "^0.34.5",
     "tailwindcss": "3.4.3",
     "ts-node": "^10.9.2",
     "tsx": "^4.16.2",
