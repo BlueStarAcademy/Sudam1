@@ -429,9 +429,6 @@ maxVisits = ${KATAGO_MAX_VISITS}
                 this.readyPromise = null;
                 reject(new Error(errorMsg));
             });
-        });
-
-        return this.readyPromise;
     }
 
     private cleanup() {
