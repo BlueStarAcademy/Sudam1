@@ -70,6 +70,7 @@ COPY --from=build /app/utils ./utils
 COPY --from=build /app/constants ./constants
 COPY --from=build /app/profanity.ts ./profanity.ts
 COPY --from=build /app/package.json ./package.json
+COPY --from=build /app/tsconfig.base.json ./tsconfig.base.json
 
 # Copy KataGo binary and model (downloaded in build stage)
 RUN mkdir -p ./katago
