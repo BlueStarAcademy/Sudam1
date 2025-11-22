@@ -15,7 +15,8 @@ RUN npm ci --omit=dev
 FROM base AS build-deps
 # Install all dependencies including dev for Prisma generation
 # Also install wget and unzip for KataGo download
-RUN apk add --no-cache wget unzip
+# Install build tools for mozjpeg (imagemin-mozjpeg dependency)
+RUN apk add --no-cache wget unzip autoconf automake libtool pkgconfig nasm
 COPY package.json package-lock.json ./
 RUN npm ci
 
