@@ -1,6 +1,6 @@
 
 import { randomUUID } from 'crypto';
-import { type InventoryItem, type EquipmentSlot, type ItemOptions, type ItemOption, CoreStat, SpecialStat, MythicStat, type ItemOptionType, type BorderInfo } from '../types.js';
+import { type InventoryItem, type EquipmentSlot, type ItemOptions, type ItemOption, CoreStat, SpecialStat, MythicStat, type ItemOptionType, type BorderInfo } from '../types/index.js';
 import { ItemGrade } from '../types/enums.js';
 import {
     EQUIPMENT_POOL,

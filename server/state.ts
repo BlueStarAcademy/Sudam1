@@ -1,4 +1,4 @@
-import { VolatileState } from '../types.js';
+import { VolatileState } from '../types/index.js';
 
 export const volatileState: VolatileState = {
     userConnections: {},

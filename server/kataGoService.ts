@@ -2,8 +2,8 @@ import { spawn, ChildProcess } from 'child_process';
 import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
-import { LiveGameSession, AnalysisResult, Player, Point, RecommendedMove } from '../types.js';
-import * as types from '../types.js';
+import { LiveGameSession, AnalysisResult, Player, Point, RecommendedMove } from '../types/index.js';
+import * as types from '../types/index.js';
 import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);

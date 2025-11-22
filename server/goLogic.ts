@@ -1,5 +1,5 @@
-import * as types from '../types.js';
-import type { LiveGameSession, Point, BoardState, Player as PlayerType } from '../types.js';
+import * as types from '../types/index.js';
+import type { LiveGameSession, Point, BoardState, Player as PlayerType } from '../types/index.js';
 
 // This is the new pure function for calculating move results.
 // It does not depend on the 'game' closure and does not mutate any state.

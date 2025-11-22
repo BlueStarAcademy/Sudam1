@@ -1,6 +1,6 @@
 
 
-import { User, CoreStat, SpecialStat, MythicStat } from '../types.js';
+import { User, CoreStat, SpecialStat, MythicStat } from '../types/index.js';
 import { ACTION_POINT_REGEN_INTERVAL_MS } from '../constants';
 
 export interface MannerEffects {

@@ -1,7 +1,7 @@
 
 
-import { User } from '../types.js';
-import * as types from '../types.js';
+import { User } from '../types/index.js';
+import * as types from '../types/index.js';
 import * as db from './db.js';
 import { regenerateActionPoints } from './effectService.js';
 

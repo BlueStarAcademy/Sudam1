@@ -1,4 +1,4 @@
-import { Player, type LiveGameSession } from '../types.js';
+import { Player, type LiveGameSession } from '../types/index.js';
 
 interface AiSession {
     gameId: string;

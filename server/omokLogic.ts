@@ -1,5 +1,5 @@
-import * as types from '../types.js';
-import type { LiveGameSession, Point, Player, BoardState } from '../types.js';
+import * as types from '../types/index.js';
+import type { LiveGameSession, Point, Player, BoardState } from '../types/index.js';
 
 export const getOmokLogic = (game: LiveGameSession) => {
     const { settings: { boardSize } } = game;

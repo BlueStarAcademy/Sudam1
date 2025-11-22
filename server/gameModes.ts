@@ -1,10 +1,10 @@
 
 import { getGoLogic } from './goLogic.js';
 import { NO_CONTEST_MOVE_THRESHOLD, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, STRATEGIC_ACTION_BUTTONS_EARLY, STRATEGIC_ACTION_BUTTONS_MID, STRATEGIC_ACTION_BUTTONS_LATE, PLAYFUL_ACTION_BUTTONS_EARLY, PLAYFUL_ACTION_BUTTONS_MID, PLAYFUL_ACTION_BUTTONS_LATE, RANDOM_DESCRIPTIONS, ALKKAGI_TURN_TIME_LIMIT, ALKKAGI_PLACEMENT_TIME_LIMIT, TIME_BONUS_SECONDS_PER_POINT } from '../constants';
-import * as types from '../types.js';
+import * as types from '../types/index.js';
 import { analyzeGame } from './kataGoService.js';
-import type { LiveGameSession, AppState, Negotiation, ActionButton, GameMode } from '../types.js';
-import { GameCategory } from '../types.js';
+import type { LiveGameSession, AppState, Negotiation, ActionButton, GameMode } from '../types/index.js';
+import { GameCategory } from '../types/index.js';
 import { aiUserId, makeAiMove, getAiUser } from './aiPlayer.js';
 import { syncAiSession } from './aiSessionManager.js';
 // FIX: The imported functions were not found. They are now exported from `standard.ts` with the correct names.

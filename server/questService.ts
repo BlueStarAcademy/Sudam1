@@ -1,6 +1,6 @@
 
 
-import * as types from '../types.js';
+import * as types from '../types/index.js';
 import { SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES } from '../constants';
 
 export const updateQuestProgress = (user: types.User, type: 'win' | 'participate' | 'action_button' | 'tournament_participate' | 'enhancement_attempt' | 'craft_attempt' | 'chat_greeting' | 'tournament_complete' | 'login' | 'claim_daily_milestone_100' | 'claim_weekly_milestone_100', mode?: types.GameMode, amount: number = 1) => {

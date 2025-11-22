@@ -1,4 +1,4 @@
-import { TournamentState, PlayerForTournament, CoreStat, CommentaryLine, Match, User, Round, TournamentType, TournamentSimulationStatus } from '../types.js';
+import { TournamentState, PlayerForTournament, CoreStat, CommentaryLine, Match, User, Round, TournamentType, TournamentSimulationStatus } from '../types/index.js';
 import { calculateTotalStats } from './statService.js';
 import { randomUUID } from 'crypto';
 import { TOURNAMENT_DEFINITIONS, NEIGHBORHOOD_MATCH_REWARDS, NATIONAL_MATCH_REWARDS, WORLD_MATCH_REWARDS } from '../constants';

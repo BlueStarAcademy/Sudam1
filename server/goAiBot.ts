@@ -4,9 +4,9 @@
  * KataGo를 사용하지 않고 직접 구현한 바둑 AI
  */
 
-import { LiveGameSession, Player, Point } from '../types.js';
+import { LiveGameSession, Player, Point } from '../types/index.js';
 import { getGoLogic, processMove } from './goLogic.js';
-import * as types from '../types.js';
+import * as types from '../types/index.js';
 import * as summaryService from './summaryService.js';
 import { getCaptureTarget, NO_CAPTURE_TARGET } from './utils/captureTargets.ts';
 import * as db from './db.js';

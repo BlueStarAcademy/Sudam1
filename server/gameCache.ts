@@ -1,4 +1,4 @@
-import { LiveGameSession, User } from '../types.js';
+import { LiveGameSession, User } from '../types/index.js';
 import { volatileState } from './state.js';
 import * as db from './db.js';
 

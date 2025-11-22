@@ -1,9 +1,9 @@
-import { User, GameMode, LiveGameSession, Player, Point, AlkkagiStone, BoardState, Equipment, InventoryItem, LeagueTier, CoreStat, RecommendedMove } from '../types.js';
+import { User, GameMode, LiveGameSession, Player, Point, AlkkagiStone, BoardState, Equipment, InventoryItem, LeagueTier, CoreStat, RecommendedMove } from '../types/index.js';
 import { defaultStats, createDefaultInventory, createDefaultQuests, createDefaultBaseStats, createDefaultSpentStatPoints } from './initialData.js';
 import { getOmokLogic } from './omokLogic.js';
 import { getGoLogic, processMove } from './goLogic.js';
 import { DICE_GO_MAIN_ROLL_TIME, DICE_GO_LAST_CAPTURE_BONUS_BY_TOTAL_ROUNDS, ALKKAGI_PLACEMENT_TIME_LIMIT, ALKKAGI_TURN_TIME_LIMIT, SPECIAL_GAME_MODES, SINGLE_PLAYER_STAGES, ALKKAGI_SIMULTANEOUS_PLACEMENT_TIME_LIMIT, CURLING_TURN_TIME_LIMIT, BATTLE_PLACEMENT_ZONES } from '../constants';
-import * as types from '../types.js';
+import * as types from '../types/index.js';
 import { analyzeGame } from './kataGoService.js';
 import * as summaryService from './summaryService.js';
 import { makeGoAiBotMove } from './goAiBot.js';

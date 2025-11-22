@@ -1,6 +1,6 @@
 
 // FIX: Import missing types from the centralized types file.
-import { LiveGameSession, Player, User, GameSummary, StatChange, GameMode, InventoryItem, SpecialStat, WinReason, SinglePlayerStageInfo, QuestReward, Mail } from '../types.js';
+import { LiveGameSession, Player, User, GameSummary, StatChange, GameMode, InventoryItem, SpecialStat, WinReason, SinglePlayerStageInfo, QuestReward, Mail } from '../types/index.js';
 import * as db from './db.js';
 import { clearAiSession } from './aiSessionManager.js';
 import { SPECIAL_GAME_MODES, NO_CONTEST_MANNER_PENALTY, NO_CONTEST_RANKING_PENALTY, CONSUMABLE_ITEMS, PLAYFUL_GAME_MODES, SINGLE_PLAYER_STAGES } from '../constants';

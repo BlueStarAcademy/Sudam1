@@ -1,7 +1,7 @@
 
 
 import * as db from './db.js';
-import * as types from '../types.js';
+import * as types from '../types/index.js';
 import type { WeeklyCompetitor } from '../types/index.js';
 import { RANKING_TIERS, SEASONAL_TIER_REWARDS, BORDER_POOL, LEAGUE_DATA, LEAGUE_WEEKLY_REWARDS, SPECIAL_GAME_MODES, PLAYFUL_GAME_MODES, SEASONAL_TIER_BORDERS, DAILY_QUESTS, WEEKLY_QUESTS, MONTHLY_QUESTS, TOURNAMENT_DEFINITIONS, BOT_NAMES, AVATAR_POOL } from '../constants';
 import { randomUUID } from 'crypto';
@@ -9,7 +9,7 @@ import { getKSTDate, getCurrentSeason, getPreviousSeason, SeasonInfo, isDifferen
 import { resetAndGenerateQuests } from './gameActions.js';
 import * as tournamentService from './tournamentService.js';
 import { calculateTotalStats } from './statService.js';
-import { TournamentType } from '../types.js';
+import { TournamentType } from '../types/index.js';
 import { startTournamentSessionForUser } from './actions/tournamentActions.js';
 import { broadcast } from './socket.js';
 import * as mailRepo from './prisma/mailRepository.js';

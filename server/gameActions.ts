@@ -1,8 +1,8 @@
 import { randomUUID } from 'crypto';
 import * as db from './db.js';
 // FIX: Import GameMode to resolve TS2304 error.
-import { type ServerAction, type User, type VolatileState, InventoryItem, Quest, QuestLog, Negotiation, Player, LeagueTier, TournamentType, GameMode } from '../types.js';
-import * as types from '../types.js';
+import { type ServerAction, type User, type VolatileState, InventoryItem, Quest, QuestLog, Negotiation, Player, LeagueTier, TournamentType, GameMode } from '../types/index.js';
+import * as types from '../types/index.js';
 import { isDifferentDayKST, isDifferentWeekKST, isDifferentMonthKST } from '../utils/timeUtils.js';
 import * as effectService from './effectService.js';
 import { regenerateActionPoints } from './effectService.js';

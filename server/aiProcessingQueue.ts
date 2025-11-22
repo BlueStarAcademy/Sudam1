@@ -4,7 +4,7 @@
  * 동시에 처리할 수 있는 AI 게임 수를 제한합니다.
  */
 
-import { LiveGameSession, Player } from '../types.js';
+import { LiveGameSession, Player } from '../types/index.js';
 import { makeAiMove, aiUserId } from './aiPlayer.js';
 import { getCachedGame } from './gameCache.js';
 import * as db from './db.js';
