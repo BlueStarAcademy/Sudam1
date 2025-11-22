@@ -26,7 +26,8 @@ COPY . .
 # Reinstall dependencies to ensure everything is available (including vite)
 RUN npm ci
 
-# Generate Prisma client
+# Generate Prisma client (DATABASE_URL not needed for generation, but prisma.config.ts requires it)
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate --schema prisma/schema.prisma
 
 # Build frontend
