@@ -27,8 +27,7 @@ const uiImages = [
     '/images/gibo.png',
     '/images/mail.png',
     '/images/store.png',
-    '/images/bag.png',
-    '/images/BlankEquipmentsSlot.png'
+    '/images/bag.png'
 ];
 
 const allUrls = new Set<string>();

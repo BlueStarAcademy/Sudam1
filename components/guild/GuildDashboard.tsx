@@ -86,49 +86,6 @@ const GuildDonationPanel: React.FC<{ guildDonationAnimation: { coins: number; re
             donationInFlight.current = false;
         }
     };
-    
-    const goldAnimation = useMemo(() => {
-        if (!guildDonationAnimation || guildDonationAnimation.type !== 'gold' || !goldButtonPos) return null;
-        return (
-            <div 
-                className="fixed -translate-x-1/2 -translate-y-full animate-float-up-and-fade z-[100] pointer-events-none whitespace-nowrap" 
-                style={{ 
-                    animationDelay: '0ms',
-                    top: `${goldButtonPos.top}px`,
-                    left: `${goldButtonPos.left}px`
-                }}
-            >
-                <div className="flex items-center gap-2 bg-gradient-to-r from-amber-900/95 via-yellow-900/95 to-amber-800/95 px-4 py-2 rounded-lg border-2 border-amber-400/60 shadow-[0_4px_12px_rgba(251,191,36,0.6)] backdrop-blur-sm">
-                    <img src="/images/guild/tokken.png" alt="Coin" className="w-5 h-5 drop-shadow-md flex-shrink-0" />
-                    <span className="text-sm font-bold text-yellow-300 drop-shadow-lg whitespace-nowrap">+{guildDonationAnimation.coins}</span>
-                    <img src="/images/guild/button/guildlab.png" alt="Research" className="w-5 h-5 drop-shadow-md flex-shrink-0" />
-                    <span className="text-sm font-bold text-blue-300 drop-shadow-lg whitespace-nowrap">+{guildDonationAnimation.research} RP</span>
-                </div>
-            </div>
-        );
-    }, [guildDonationAnimation, goldButtonPos]);
-
-    const diamondAnimation = useMemo(() => {
-        if (!guildDonationAnimation || guildDonationAnimation.type !== 'diamond' || !diamondButtonPos) return null;
-        return (
-            <div 
-                className="fixed -translate-x-1/2 -translate-y-full animate-float-up-and-fade z-[100] pointer-events-none whitespace-nowrap" 
-                style={{ 
-                    animationDelay: '0ms',
-                    top: `${diamondButtonPos.top}px`,
-                    left: `${diamondButtonPos.left}px`
-                }}
-            >
-                <div className="flex items-center gap-2 bg-gradient-to-r from-blue-900/95 via-indigo-900/95 to-purple-900/95 px-4 py-2 rounded-lg border-2 border-blue-400/60 shadow-[0_4px_12px_rgba(59,130,246,0.6)] backdrop-blur-sm">
-                    <img src="/images/guild/tokken.png" alt="Coin" className="w-5 h-5 drop-shadow-md flex-shrink-0" />
-                    <span className="text-sm font-bold text-yellow-300 drop-shadow-lg whitespace-nowrap">+{guildDonationAnimation.coins}</span>
-                    <img src="/images/guild/button/guildlab.png" alt="Research" className="w-5 h-5 drop-shadow-md flex-shrink-0" />
-                    <span className="text-sm font-bold text-blue-300 drop-shadow-lg whitespace-nowrap">+{guildDonationAnimation.research} RP</span>
-                </div>
-            </div>
-        );
-    }, [guildDonationAnimation, diamondButtonPos]);
-
 
     return (
         <div className="bg-gradient-to-br from-stone-900/95 via-neutral-800/90 to-stone-900/95 p-3 rounded-xl flex flex-col relative overflow-visible border-2 border-stone-600/60 shadow-2xl backdrop-blur-md flex-shrink-0" style={{ height: '180px', minHeight: '180px', maxHeight: '180px' }}>
