@@ -237,6 +237,13 @@ const processTowerGameSummary = async (game: LiveGameSession) => {
         // 클리어한 층 재도전 여부 확인
         const isCleared = floor <= userTowerFloor;
         
+        // towerFloor 업데이트 (endGame에서 이미 업데이트했을 수 있지만, 여기서도 확인하여 보장)
+        if (floor > userTowerFloor) {
+            user.towerFloor = floor;
+            user.lastTowerClearTime = Date.now();
+            console.log(`[Tower Summary] Updating towerFloor: ${userTowerFloor} -> ${floor}`);
+        }
+        
         if (isCleared) {
             // 클리어한 층 재도전 시 보상 없음
             console.log(`[Tower Summary] Floor ${floor} - Already cleared, no reward on retry`);

@@ -388,6 +388,18 @@ const TowerSummaryModal: React.FC<TowerSummaryModalProps> = ({ session, currentU
                                     isMobile={isMobile}
                                     mobileTextScale={mobileTextScale}
                                 />
+                            ) : isEnded && !analysisResult ? (
+                                // 계가 결과가 없지만 게임이 종료된 경우 경기 내용 텍스트 표시
+                                <div className={`${isMobile ? 'p-1' : 'p-1.5'} bg-gray-800/50 rounded-lg space-y-0.5 flex-shrink-0`}>
+                                    <p className="text-center text-gray-300" style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>
+                                        {isWinner ? '층을 클리어했습니다!' : '층 클리어에 실패했습니다.'}
+                                    </p>
+                                    {winReasonText || failureReason ? (
+                                        <p className={`text-center font-semibold ${isWinner ? 'text-green-400' : 'text-red-400'}`} style={{ fontSize: isMobile ? `${10 * mobileTextScale}px` : '12px' }}>
+                                            {winReasonText || failureReason}
+                                        </p>
+                                    ) : null}
+                                </div>
                             ) : !isScoring && !isEnded ? (
                                 <p className="text-center text-gray-400">계가 결과가 없습니다.</p>
                             ) : null}

@@ -221,18 +221,30 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
             match &&
             !match.isFinished; // 경기가 이미 완료되었으면 시작하지 않음
         
+        // 디버깅: 조건 확인 로그 (프로덕션에서도 출력)
+        if (localTournament.status === 'round_in_progress' && !hasValidConditions) {
+            console.log('[useTournamentSimulation] Conditions check:', {
+                status: localTournament.status,
+                hasCurrentSimulatingMatch: !!localTournament.currentSimulatingMatch,
+                hasSimulationSeed: !!localTournament.simulationSeed,
+                hasCompleted: hasCompletedRef.current,
+                isSimulating: isSimulatingRef.current,
+                hasMatch: !!match,
+                matchFinished: match?.isFinished
+            });
+        }
+        
         // isSimulating이 true인데 실제로 interval이 없으면 리셋 (hasValidConditions 체크 전에)
         // 단, hasValidConditions가 false이면 무조건 리셋
         if (isSimulatingRef.current && !simulationIntervalRef.current) {
-            if (import.meta.env.DEV) {
-                console.warn(`[useTournamentSimulation] isSimulating is true but no interval exists, resetting...`);
-            }
+            console.warn(`[useTournamentSimulation] isSimulating is true but no interval exists, resetting...`);
             isSimulatingRef.current = false;
             // 리셋 후에는 시뮬레이션을 시작하지 않고 종료 (다음 useEffect 실행 시 hasValidConditions 체크)
             return;
         }
         
         if (hasValidConditions) {
+            console.log('[useTournamentSimulation] Starting simulation with valid conditions');
             // match는 이미 위에서 확인했으므로 다시 확인할 필요 없음
             if (!match) {
                 if (import.meta.env.DEV) {
@@ -367,6 +379,8 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
             // interval이 제대로 설정되면 시뮬레이션이 시작됨
             // interval 설정에 실패하면 isSimulating을 false로 리셋해야 함
             isSimulatingRef.current = true;
+            
+            console.log('[useTournamentSimulation] Setting up interval for simulation');
             
             try {
                 // 1초마다 시뮬레이션 진행
@@ -550,17 +564,15 @@ export const useTournamentSimulation = (tournament: TournamentState | null, curr
                 // interval이 제대로 설정되었는지 확인
                 if (!simulationIntervalRef.current) {
                     // interval 설정 실패 시 리셋
-                    if (import.meta.env.DEV) {
-                        console.error(`[useTournamentSimulation] Failed to create interval`);
-                    }
+                    console.error(`[useTournamentSimulation] Failed to create interval`);
                     isSimulatingRef.current = false;
                     hasCompletedRef.current = false;
+                } else {
+                    console.log('[useTournamentSimulation] Interval created successfully');
                 }
             } catch (error) {
                 // interval 설정 중 에러 발생 시 리셋
-                if (import.meta.env.DEV) {
-                    console.error(`[useTournamentSimulation] Error starting simulation:`, error);
-                }
+                console.error(`[useTournamentSimulation] Error starting simulation:`, error);
                 isSimulatingRef.current = false;
                 hasCompletedRef.current = false;
                 if (simulationIntervalRef.current) {
