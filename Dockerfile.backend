@@ -20,6 +20,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM build-deps AS build
+# Override NODE_ENV to ensure devDependencies are installed
+ENV NODE_ENV=development
+
 # Copy all source code first
 COPY . .
 
@@ -30,8 +33,8 @@ RUN npm ci
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate --schema prisma/schema.prisma
 
-# Build frontend
-RUN npm run build
+# Build frontend - use npx to ensure vite is found
+RUN npx vite build
 
 # Download KataGo Linux binary and model
 # Use eigenavx2 build for CPU-only Railway deployment (faster than eigen)
