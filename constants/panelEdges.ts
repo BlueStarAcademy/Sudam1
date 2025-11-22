@@ -1,4 +1,4 @@
-import { PanelEdgeStyle } from '../types.js';
+import { PanelEdgeStyle } from '../types/index.js';
 
 type EdgeImages = { topLeft: string | null; topRight: string | null; bottomLeft: string | null; bottomRight: string | null };
 

@@ -1,4 +1,4 @@
-import { InventoryItem, EquipmentSlot, CoreStat, SpecialStat, MythicStat, ItemOption } from '../types.js';
+import { InventoryItem, EquipmentSlot, CoreStat, SpecialStat, MythicStat, ItemOption } from '../types/index.js';
 import { ItemGrade } from '../types/enums.js';
 
 export const emptySlotImages: Record<EquipmentSlot, string> = {

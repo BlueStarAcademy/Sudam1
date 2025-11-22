@@ -1,4 +1,4 @@
-import { GameMode, GameSettings } from '../types';
+import { GameMode, GameSettings } from '../types/index.js';
 import { AlkkagiLayoutType } from '../types/enums.js';
 
 // 랭킹전 기본 설정

@@ -1,5 +1,5 @@
 
-import { GameMode } from "../types.js";
+import { GameMode } from "../types/index.js";
 
 export type AppRoute = {
     view: 'login' | 'register' | 'kakao-callback' | 'set-nickname' | 'profile' | 'lobby' | 'waiting' | 'game' | 'admin' | 'tournament' | 'singleplayer' | 'guild' | 'tower';

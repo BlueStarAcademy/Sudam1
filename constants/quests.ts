@@ -1,4 +1,4 @@
-import { Quest, QuestReward } from '../types.js';
+import { Quest, QuestReward } from '../types/index.js';
 
 export const DAILY_QUESTS: Omit<Quest, 'id' | 'progress' | 'isClaimed'>[] = [
     { title: '출석하기', description: '게임에 접속하여 출석체크하기', target: 1, reward: { gold: 50 }, activityPoints: 10 },

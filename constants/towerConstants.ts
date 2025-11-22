@@ -1,4 +1,4 @@
-import { SinglePlayerStageInfo } from '../types.js';
+import { SinglePlayerStageInfo } from '../types/index.js';
 
 // 도전의 탑 스테이지 정보 (1-20층: 따내기 바둑)
 export const TOWER_STAGES: SinglePlayerStageInfo[] = [

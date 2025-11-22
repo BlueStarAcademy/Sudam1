@@ -1,5 +1,5 @@
 
-import { TournamentDefinition, TournamentType, QuestReward } from '../types.js';
+import { TournamentDefinition, TournamentType, QuestReward } from '../types/index.js';
 import { LeagueTier } from '../types/enums.js';
 
 export const TOURNAMENT_DEFINITIONS: Record<TournamentType, TournamentDefinition> = {

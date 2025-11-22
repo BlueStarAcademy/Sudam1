@@ -1,4 +1,4 @@
-import { LeagueTier, QuestReward, LeagueRewardTier } from '../types.js';
+import { LeagueTier, QuestReward, LeagueRewardTier } from '../types/index.js';
 
 export const LEAGUE_DATA: { tier: LeagueTier, name: string, scoreThreshold: number, icon: string }[] = [
     { tier: LeagueTier.Sprout, name: '새싹 리그', scoreThreshold: 0, icon: '/images/tire/auto1.png' },

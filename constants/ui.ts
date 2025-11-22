@@ -1,4 +1,4 @@
-import { AvatarInfo, BorderInfo, GameMode, ShopBorderItem } from '../types.js';
+import { AvatarInfo, BorderInfo, GameMode, ShopBorderItem } from '../types/index.js';
 
 export const AVATAR_POOL: AvatarInfo[] = [
     { id: 'profile_1', name: '기본 아바타 1', url: '/images/profiles/profile1.png', requiredLevel: 1, type: 'any' },

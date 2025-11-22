@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { InventoryItem, InventoryItemType } from '../types.js';
+import { InventoryItem, InventoryItemType } from '../types/index.js';
 import { ItemGrade } from '../types/enums.js';
 import { CONSUMABLE_ITEMS, MATERIAL_ITEMS } from '../constants';
 

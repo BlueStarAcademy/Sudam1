@@ -1,4 +1,4 @@
-import { SinglePlayerStageInfo, GameMode, Player, SinglePlayerLevel, SinglePlayerMissionInfo, SinglePlayerMissionLevelInfo } from '../types.js';
+import { SinglePlayerStageInfo, GameMode, Player, SinglePlayerLevel, SinglePlayerMissionInfo, SinglePlayerMissionLevelInfo } from '../types/index.js';
 
 // 레벨별 수련과제 데이터 생성 헬퍼
 const createMissionLevels = (

@@ -1,4 +1,4 @@
-import { ActionButton, GameMode } from '../types.js';
+import { ActionButton, GameMode } from '../types/index.js';
 import { ItemGrade } from '../types/enums.js';
 
 type CombinationGreatSuccessRates = {

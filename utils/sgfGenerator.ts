@@ -1,4 +1,4 @@
-import { LiveGameSession, User, Player, GameMode, Point, Move } from '../types.js';
+import { LiveGameSession, User, Player, GameMode, Point, Move } from '../types/index.js';
 import { SPECIAL_GAME_MODES } from '../constants/gameModes.js';
 
 /**

@@ -1,4 +1,4 @@
-import { TournamentState, PlayerForTournament, CoreStat, CommentaryLine, Match } from '../types';
+import { TournamentState, PlayerForTournament, CoreStat, CommentaryLine, Match } from '../types/index.js';
 
 const EARLY_GAME_DURATION = 15;
 const MID_GAME_DURATION = 20;

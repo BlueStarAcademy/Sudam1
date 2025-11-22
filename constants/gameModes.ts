@@ -1,4 +1,4 @@
-import { GameMode } from '../types';
+import { GameMode } from '../types/index.js';
 
 export const SPECIAL_GAME_MODES = [
   { mode: GameMode.Standard, name: "클래식 바둑", description: "일반적인 클래식 바둑입니다.", available: true, image: "/images/simbols/simbol1.png" },
