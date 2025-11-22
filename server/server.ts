@@ -1672,4 +1672,9 @@ const startServer = async () => {
 
 };
 
-startServer();
+// Start server with error handling
+startServer().catch((error) => {
+    console.error('[Server] Fatal error during startup:', error);
+    console.error('[Server] Stack trace:', error.stack);
+    process.exit(1);
+});
