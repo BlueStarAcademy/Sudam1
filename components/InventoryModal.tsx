@@ -514,15 +514,23 @@ const InventoryModal: React.FC<InventoryModalProps> = ({ currentUser: propCurren
     // 뷰포트 크기에 비례한 창 크기 계산 (85% 너비, 최소 400px, 최대 950px)
     // 브라우저가 작아질수록 창도 함께 작아지도록 비율 기반 계산
     const calculatedWidth = useMemo(() => {
+        // 데스크톱에서는 고정 크기 사용 (최소 1100px), 모바일에서만 화면 비율 사용
+        if (windowWidth >= 768) {
+            return Math.max(1100, Math.min(1200, windowWidth * 0.9)); // 데스크톱: 1100-1200px
+        }
         const baseWidth = windowWidth * 0.85;
         return Math.max(400, Math.min(950, baseWidth));
     }, [windowWidth]);
     
     // 뷰포트 크기에 비례한 창 높이 계산 (90% 높이, 최소 520px, 최대 1000px) - 인벤토리 슬롯 2줄 이상 보이도록
     const calculatedHeight = useMemo(() => {
+        // 데스크톱에서는 고정 크기 사용 (최소 800px), 모바일에서만 화면 비율 사용
+        if (windowWidth >= 768) {
+            return Math.max(800, Math.min(900, windowHeight * 0.85)); // 데스크톱: 800-900px
+        }
         const baseHeight = windowHeight * 0.90;
         return Math.max(520, Math.min(1000, baseHeight));
-    }, [windowHeight]);
+    }, [windowHeight, windowWidth]);
     
     // 모바일 감지 (768px 이하를 모바일로 간주)
     const isMobile = useMemo(() => windowWidth < 768, [windowWidth]);

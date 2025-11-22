@@ -289,7 +289,7 @@ const ShopModal: React.FC<ShopModalProps> = ({ currentUser: propCurrentUser, onC
                     onConfirm={handleConfirmPurchase}
                 />
             )}
-            <DraggableWindow title="상점" onClose={onClose} windowId="shop" initialWidth={700} isTopmost={isTopmost && !purchasingItem}>
+            <DraggableWindow title="상점" onClose={onClose} windowId="shop" initialWidth={900} initialHeight={750} isTopmost={isTopmost && !purchasingItem}>
                 <div className="h-[calc(var(--vh,1vh)*60)] flex flex-col relative">
                     <div className="flex bg-gray-900/70 p-1 rounded-lg mb-4 flex-shrink-0">
                         <button onClick={() => setActiveTab('equipment')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === 'equipment' ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}>장비</button>

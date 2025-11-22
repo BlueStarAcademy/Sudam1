@@ -131,21 +131,37 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
     
     const calculatedWidth = useMemo(() => {
         if (!initialWidth) return undefined;
-        // 브라우저 너비에 비례하여 조정 (최소 400px, 최대 initialWidth)
+        
+        // 모바일이 아닐 때는 initialWidth를 최소값으로 보장 (데스크톱에서는 고정 크기 사용)
+        if (!isMobile) {
+            // 데스크톱: initialWidth를 최소값으로 보장하되, 화면이 너무 작으면 화면 크기에 맞춤
+            const minWidth = Math.min(initialWidth, windowWidth - 40); // 화면에서 40px 여유 공간
+            return Math.max(initialWidth * 0.9, minWidth); // initialWidth의 90% 이상 보장
+        }
+        
+        // 모바일: 화면 크기에 맞춤
         const baseWidth = initialWidth;
         const viewportRatio = windowWidth / 1920; // 기준 해상도 1920px
         const adjustedWidth = Math.max(400, Math.min(baseWidth, baseWidth * viewportRatio));
         return adjustedWidth;
-    }, [initialWidth, windowWidth]);
+    }, [initialWidth, windowWidth, isMobile]);
     
     const calculatedHeight = useMemo(() => {
         if (!initialHeight) return undefined;
-        // 브라우저 높이에 비례하여 조정 (최소 300px, 최대 initialHeight)
+        
+        // 모바일이 아닐 때는 initialHeight를 최소값으로 보장 (데스크톱에서는 고정 크기 사용)
+        if (!isMobile) {
+            // 데스크톱: initialHeight를 최소값으로 보장하되, 화면이 너무 작으면 화면 크기에 맞춤
+            const minHeight = Math.min(initialHeight, windowHeight - 40); // 화면에서 40px 여유 공간
+            return Math.max(initialHeight * 0.9, minHeight); // initialHeight의 90% 이상 보장
+        }
+        
+        // 모바일: 화면 크기에 맞춤
         const baseHeight = initialHeight;
         const viewportRatio = windowHeight / 1080; // 기준 해상도 1080px
         const adjustedHeight = Math.max(300, Math.min(baseHeight, baseHeight * viewportRatio));
         return adjustedHeight;
-    }, [initialHeight, windowHeight]);
+    }, [initialHeight, windowHeight, isMobile]);
 
     useEffect(() => {
         const handleResize = () => {
