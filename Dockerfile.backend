@@ -20,6 +20,9 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 FROM build-deps AS build
+# Copy package files first to ensure consistency
+COPY package.json package-lock.json ./
+
 # Copy node_modules from build-deps (includes devDependencies like vite)
 COPY --from=build-deps /app/node_modules ./node_modules
 
@@ -27,7 +30,7 @@ COPY --from=build-deps /app/node_modules ./node_modules
 COPY prisma ./prisma
 RUN npx prisma generate --schema prisma/schema.prisma
 
-# Build frontend
+# Build frontend - copy rest of source code (node_modules is ignored by .dockerignore)
 COPY . .
 RUN npm run build
 
