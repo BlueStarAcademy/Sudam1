@@ -27,20 +27,23 @@ RUN npx prisma generate --schema prisma/schema.prisma
 # Download KataGo Linux binary and model
 # Use eigenavx2 build for CPU-only Railway deployment (faster than eigen)
 # Try multiple release versions in case one doesn't exist
-RUN mkdir -p /app/katago && \
+RUN mkdir -p /app/katago /tmp/katago_extract && \
     cd /tmp && \
-    (wget -q https://github.com/lightvector/KataGo/releases/download/v1.16.4/katago-v1.16.4-eigenavx2-linux-x64.zip -O katago.zip || \
-     wget -q https://github.com/lightvector/KataGo/releases/download/v1.16.3/katago-v1.16.3-eigenavx2-linux-x64.zip -O katago.zip || \
-     wget -q https://github.com/lightvector/KataGo/releases/download/v1.16.2/katago-v1.16.2-eigenavx2-linux-x64.zip -O katago.zip || \
-     wget -q https://github.com/lightvector/KataGo/releases/download/v1.16.1/katago-v1.16.1-eigenavx2-linux-x64.zip -O katago.zip || \
-     wget -q https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-linux-x64.zip -O katago.zip) && \
-    unzip -q katago.zip && \
-    find . -name "katago" -type f | head -1 | xargs -I {} cp {} /app/katago/katago && \
+    (wget -q --no-check-certificate https://github.com/lightvector/KataGo/releases/download/v1.16.4/katago-v1.16.4-eigenavx2-linux-x64.zip -O katago.zip && echo "Downloaded v1.16.4" || \
+     (wget -q --no-check-certificate https://github.com/lightvector/KataGo/releases/download/v1.16.3/katago-v1.16.3-eigenavx2-linux-x64.zip -O katago.zip && echo "Downloaded v1.16.3" || \
+      (wget -q --no-check-certificate https://github.com/lightvector/KataGo/releases/download/v1.16.2/katago-v1.16.2-eigenavx2-linux-x64.zip -O katago.zip && echo "Downloaded v1.16.2" || \
+       (wget -q --no-check-certificate https://github.com/lightvector/KataGo/releases/download/v1.16.1/katago-v1.16.1-eigenavx2-linux-x64.zip -O katago.zip && echo "Downloaded v1.16.1" || \
+        wget -q --no-check-certificate https://github.com/lightvector/KataGo/releases/download/v1.16.0/katago-v1.16.0-eigenavx2-linux-x64.zip -O katago.zip && echo "Downloaded v1.16.0")))) && \
+    test -f katago.zip && \
+    unzip -q katago.zip -d katago_extract && \
+    KATAGO_BIN=$(find katago_extract -name "katago" -type f | head -1) && \
+    test -n "$KATAGO_BIN" && \
+    cp "$KATAGO_BIN" /app/katago/katago && \
     chmod +x /app/katago/katago && \
     cd /app/katago && \
-    wget -q https://media.katagotraining.org/uploaded/models/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz && \
-    cd / && \
-    rm -rf /tmp/katago.zip /tmp/katago-*
+    wget -q --no-check-certificate https://media.katagotraining.org/uploaded/models/kata1-b28c512nbt-s9853922560-d5031756885.bin.gz && \
+    test -f kata1-b28c512nbt-s9853922560-d5031756885.bin.gz && \
+    rm -rf /tmp/katago.zip /tmp/katago_extract
 
 # Copy source code
 COPY . .
