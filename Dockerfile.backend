@@ -24,6 +24,10 @@ FROM build-deps AS build
 COPY prisma ./prisma
 RUN npx prisma generate --schema prisma/schema.prisma
 
+# Build frontend
+COPY . .
+RUN npm run build
+
 # Download KataGo Linux binary and model
 # Use eigenavx2 build for CPU-only Railway deployment (faster than eigen)
 # Try multiple release versions in case one doesn't exist
@@ -72,6 +76,10 @@ COPY --from=build /app/assets.ts ./assets.ts
 COPY --from=build /app/profanity.ts ./profanity.ts
 COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/tsconfig.base.json ./tsconfig.base.json
+
+# Copy frontend build
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/public ./public
 
 # Copy KataGo binary and model (downloaded in build stage)
 RUN mkdir -p ./katago

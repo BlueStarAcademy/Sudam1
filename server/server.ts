@@ -1,5 +1,7 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import process from 'process';
 import http from 'http';
@@ -216,6 +218,17 @@ const startServer = async () => {
     app.use('/@esbuild', (_req, res) => {
         res.status(204).end();
     });
+
+    // Serve static files from public directory
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    const publicPath = path.join(__dirname, '..', 'public');
+    app.use('/images', express.static(path.join(publicPath, 'images')));
+    app.use('/sounds', express.static(path.join(publicPath, 'sounds')));
+    
+    // Serve frontend build files
+    const distPath = path.join(__dirname, '..', 'dist');
+    app.use(express.static(distPath));
     
     // TODO: compression 패키지 설치 후 압축 미들웨어 추가
     // npm install compression @types/compression
@@ -1669,6 +1682,23 @@ const startServer = async () => {
         }
     });
 
+    // SPA fallback: serve index.html for all non-API routes (must be after all API routes)
+    app.get('*', (req, res) => {
+        // Skip API and WebSocket routes
+        if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+            return res.status(404).json({ message: 'Not found' });
+        }
+        // Serve index.html for SPA routing
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const distPath = path.join(__dirname, '..', 'dist');
+        res.sendFile(path.join(distPath, 'index.html'), (err) => {
+            if (err) {
+                console.error('[SPA] Error serving index.html:', err);
+                res.status(500).json({ message: 'Frontend not found' });
+            }
+        });
+    });
 
 };
 
