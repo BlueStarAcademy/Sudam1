@@ -295,24 +295,30 @@ class KataGoManager {
                     
                     // 모델 파일 다운로드
                     const https = await import('https');
-                    const fsPromises = await import('fs/promises');
                     
                     console.log(`[KataGo] Downloading model from ${modelUrl}...`);
-                    const file = await fsPromises.open(modelPath, 'w');
-                    const writeStream = file.createWriteStream();
+                    const writeStream = fs.createWriteStream(modelPath);
                     
                     await new Promise<void>((resolve, reject) => {
                         https.get(modelUrl, (response) => {
                             if (response.statusCode !== 200) {
+                                writeStream.close();
+                                fs.unlinkSync(modelPath); // 실패한 파일 삭제
                                 reject(new Error(`Failed to download model: HTTP ${response.statusCode}`));
                                 return;
                             }
                             response.pipe(writeStream);
-                            response.on('end', () => {
+                            writeStream.on('finish', () => {
                                 writeStream.close();
                                 resolve();
                             });
-                        }).on('error', reject);
+                        }).on('error', (err) => {
+                            writeStream.close();
+                            if (fs.existsSync(modelPath)) {
+                                fs.unlinkSync(modelPath);
+                            }
+                            reject(err);
+                        });
                     });
                     
                     actualModelPath = modelPath;
