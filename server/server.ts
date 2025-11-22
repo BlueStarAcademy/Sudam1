@@ -226,9 +226,13 @@ const startServer = async () => {
     app.use('/images', express.static(path.join(publicPath, 'images')));
     app.use('/sounds', express.static(path.join(publicPath, 'sounds')));
     
-    // Serve frontend build files
+    // Serve frontend build files (CSS, JS, assets)
     const distPath = path.join(__dirname, '..', 'dist');
-    app.use(express.static(distPath));
+    app.use(express.static(distPath, {
+        maxAge: '1y', // Cache static assets for 1 year
+        etag: true,
+        lastModified: true
+    }));
     
     // TODO: compression 패키지 설치 후 압축 미들웨어 추가
     // npm install compression @types/compression
