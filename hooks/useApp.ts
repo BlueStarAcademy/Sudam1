@@ -1443,7 +1443,14 @@ export const useApp = () => {
                 }
                 
                 // Return result for actions that need it (preserve original structure)
-                if (result && (result.clientResponse || result.guild || result.gameId)) {
+                // Include donationResult and other specific response fields
+                if (result && (
+                    result.clientResponse || 
+                    result.guild || 
+                    result.gameId ||
+                    result.donationResult ||
+                    result.clientResponse?.donationResult
+                )) {
                     return result;
                 }
             }

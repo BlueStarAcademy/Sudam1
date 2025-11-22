@@ -27,12 +27,12 @@ const Popover: React.FC<{
     const canTransfer = isMaster && member.role !== GuildMemberRole.Master;
 
     return (
-        <div className="absolute z-10 -top-1 right-full mr-2 w-32 bg-secondary border border-color rounded-lg shadow-xl p-2 space-y-1">
-            {canPromoteToVice && <Button onClick={onPromote} className="w-full !text-xs !py-1">부길드장 임명</Button>}
-            {canDemote && <Button onClick={onDemote} colorScheme="yellow" className="w-full !text-xs !py-1">부길드장 해임</Button>}
-            {canTransfer && <Button onClick={onTransfer} colorScheme="orange" className="w-full !text-xs !py-1">길드장 위임</Button>}
-            {canKick && <Button onClick={onKick} colorScheme="red" className="w-full !text-xs !py-1">추방</Button>}
-            <Button onClick={onClose} colorScheme="gray" className="w-full !text-xs !py-1">닫기</Button>
+        <div className="absolute z-20 -top-1 right-full mr-2 w-36 bg-gradient-to-br from-stone-900/98 via-neutral-800/95 to-stone-900/98 border-2 border-stone-600/60 rounded-xl shadow-2xl p-2 space-y-1.5 backdrop-blur-md">
+            {canPromoteToVice && <Button onClick={onPromote} className="w-full !text-xs !py-2 border border-blue-500/50 bg-gradient-to-r from-blue-600/90 to-indigo-600/90 text-white shadow-lg hover:shadow-xl transition-all">부길드장 임명</Button>}
+            {canDemote && <Button onClick={onDemote} className="w-full !text-xs !py-2 border border-yellow-500/50 bg-gradient-to-r from-yellow-600/90 to-amber-600/90 text-white shadow-lg hover:shadow-xl transition-all">부길드장 해임</Button>}
+            {canTransfer && <Button onClick={onTransfer} className="w-full !text-xs !py-2 border border-orange-500/50 bg-gradient-to-r from-orange-600/90 to-red-600/90 text-white shadow-lg hover:shadow-xl transition-all">길드장 위임</Button>}
+            {canKick && <Button onClick={onKick} className="w-full !text-xs !py-2 border border-red-500/50 bg-gradient-to-r from-red-600/90 to-rose-600/90 text-white shadow-lg hover:shadow-xl transition-all">추방</Button>}
+            <Button onClick={onClose} className="w-full !text-xs !py-2 border border-stone-500/50 bg-gradient-to-r from-stone-700/90 to-neutral-700/90 text-white shadow-lg hover:shadow-xl transition-all">닫기</Button>
         </div>
     );
 };
@@ -130,66 +130,86 @@ const GuildMembersPanel: React.FC<GuildMembersPanelProps> = ({ guild, myMemberIn
     };
 
     return (
-        <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                <h3 className="text-xl font-bold text-highlight">길드원 목록 ({(guild.members?.length || 0)} / {memberLimit})</h3>
-                {myMemberInfo && myMemberInfo.role !== 'leader' && (
-                    <Button onClick={handleLeaveGuild} colorScheme="red" className="!text-xs !py-1">길드 탈퇴</Button>
-                )}
-                {myMemberInfo && myMemberInfo.role === 'leader' && (guild.members?.length || 0) === 1 && (
-                    <Button onClick={handleLeaveGuild} colorScheme="red" className="!text-xs !py-1">길드 해체</Button>
-                )}
-            </div>
-             <div className="flex text-xs text-tertiary px-2 py-1 mb-2 font-semibold">
-                <div className="flex-1">길드원</div>
-                <div className="flex items-center gap-4 flex-shrink-0">
-                    <div className="w-20 text-center">주간 기여도</div>
-                    <div className="w-20 text-center">누적 기여도</div>
-                    <div className="w-24 text-center">최근 접속</div>
-                    {canManage && <div className="w-16 text-center">관리</div>}
+        <div className="flex flex-col h-full bg-gradient-to-br from-stone-900/95 via-neutral-800/90 to-stone-900/95 rounded-xl border-2 border-stone-600/60 shadow-2xl backdrop-blur-md p-6 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-stone-500/10 via-gray-500/5 to-stone-500/10 pointer-events-none"></div>
+            <div className="relative z-10 flex flex-col h-full">
+                <div className="flex justify-between items-center mb-6 flex-shrink-0">
+                    <h3 className="text-2xl font-bold text-highlight drop-shadow-lg flex items-center gap-2">
+                        <span className="text-2xl">👥</span>
+                        <span>길드원 목록 <span className="text-lg text-primary">({(guild.members?.length || 0)} / {memberLimit})</span></span>
+                    </h3>
+                    {myMemberInfo && myMemberInfo.role !== 'leader' && (
+                        <Button onClick={handleLeaveGuild} colorScheme="red" className="!text-xs !py-2 !px-4 border-2 border-red-500/50 shadow-lg hover:shadow-xl transition-all">길드 탈퇴</Button>
+                    )}
+                    {myMemberInfo && myMemberInfo.role === 'leader' && (guild.members?.length || 0) === 1 && (
+                        <Button onClick={handleLeaveGuild} colorScheme="red" className="!text-xs !py-2 !px-4 border-2 border-red-500/50 shadow-lg hover:shadow-xl transition-all">길드 해체</Button>
+                    )}
                 </div>
-            </div>
-            <div className="overflow-y-auto pr-2 flex-grow">
-                <ul className="space-y-2">
-                    {sortedMembers.map(member => {
-                        const user = allUsers.find(u => u.id === member.userId);
-                        const userStatus = onlineUsers.find(u => u.id === member.userId);
-                        const avatarUrl = user ? AVATAR_POOL.find(a => a.id === user.avatarId)?.url : undefined;
-                        const borderUrl = user ? BORDER_POOL.find(b => b.id === user.borderId)?.url : undefined;
-                        const isOnline = !!userStatus;
-                        const isClickable = user && user.id !== currentUserWithStatus?.id;
+                <div className="flex text-sm text-highlight px-5 py-4 mb-4 font-bold bg-gradient-to-r from-stone-800/95 via-neutral-700/85 to-stone-800/95 rounded-xl border-2 border-stone-600/50 shadow-lg backdrop-blur-md">
+                    <div className="flex-1 text-base">길드원</div>
+                    <div className="flex items-center gap-4 flex-shrink-0">
+                        <div className="w-24 text-center">주간 기여도</div>
+                        <div className="w-24 text-center">누적 기여도</div>
+                        <div className="w-28 text-center">최근 접속</div>
+                        {canManage && <div className="w-20 text-center">관리</div>}
+                    </div>
+                </div>
+                <div className="overflow-y-auto pr-3 flex-grow">
+                    <ul className="space-y-4">
+                        {sortedMembers.map(member => {
+                            const user = allUsers.find(u => u.id === member.userId);
+                            const userStatus = onlineUsers.find(u => u.id === member.userId);
+                            const avatarUrl = user ? AVATAR_POOL.find(a => a.id === user.avatarId)?.url : undefined;
+                            const borderUrl = user ? BORDER_POOL.find(b => b.id === user.borderId)?.url : undefined;
+                            const isOnline = !!userStatus;
+                            const isClickable = user && user.id !== currentUserWithStatus?.id;
 
-                        return (
-                            <li
-                                key={member.userId}
-                                onClick={isClickable ? (e) => { e?.stopPropagation(); handlers.openViewingUser(member.userId); } : undefined}
-                                title={isClickable ? `${member.nickname || 'Unknown'} 프로필 보기` : ''}
-                                className={`bg-secondary p-2 rounded-lg flex items-center gap-3 ${isClickable ? 'cursor-pointer hover:bg-tertiary transition-colors' : ''}`}
-                            >
-                                <div className="flex items-center gap-3 flex-1 min-w-0">
+                            return (
+                                <li
+                                    key={member.userId}
+                                    onClick={isClickable ? (e) => { e?.stopPropagation(); handlers.openViewingUser(member.userId); } : undefined}
+                                    title={isClickable ? `${member.nickname || 'Unknown'} 프로필 보기` : ''}
+                                    className={`bg-gradient-to-r from-stone-800/95 via-neutral-700/90 to-stone-800/95 p-5 rounded-xl flex items-center gap-5 border-2 border-stone-600/50 shadow-xl backdrop-blur-md transition-all duration-200 ${
+                                        isClickable 
+                                            ? 'cursor-pointer hover:from-stone-700/98 hover:via-neutral-600/95 hover:to-stone-700/98 hover:border-stone-500/70 hover:shadow-2xl hover:-translate-y-1 hover:scale-[1.02]' 
+                                            : ''
+                                    } ${
+                                        member.role === 'leader' 
+                                            ? 'border-yellow-500/70 bg-gradient-to-r from-yellow-900/40 via-amber-900/30 to-yellow-900/40 shadow-[0_6px_20px_rgba(251,191,36,0.4)] ring-2 ring-yellow-400/20' 
+                                            : member.role === 'officer'
+                                            ? 'border-blue-500/70 bg-gradient-to-r from-blue-900/40 via-indigo-900/30 to-blue-900/40 shadow-[0_6px_20px_rgba(59,130,246,0.4)] ring-2 ring-blue-400/20'
+                                            : ''
+                                    }`}
+                                >
+                                <div className="flex items-center gap-5 flex-1 min-w-0">
                                     <div className="relative flex-shrink-0">
-                                         <Avatar userId={member.userId} userName={member.nickname || 'Unknown'} size={40} avatarUrl={avatarUrl} borderUrl={borderUrl} />
-                                         {isOnline && <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-secondary"></div>}
+                                         <Avatar userId={member.userId} userName={member.nickname || 'Unknown'} size={56} avatarUrl={avatarUrl} borderUrl={borderUrl} />
+                                         {isOnline && <div className="absolute bottom-0 right-0 w-5 h-5 bg-green-500 rounded-full border-2 border-stone-800 shadow-xl animate-pulse ring-2 ring-green-400/50"></div>}
                                     </div>
-                                    <div className="min-w-0">
-                                        <p className="font-bold truncate">{member.nickname || 'Unknown'}</p>
-                                        <p className={`text-xs ${getRoleColor(member.role)}`}>{getRoleName(member.role)}</p>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="font-bold text-xl truncate drop-shadow-lg mb-1">{member.nickname || 'Unknown'}</p>
+                                        <p className={`text-sm font-bold ${getRoleColor(member.role)} drop-shadow-md`}>{getRoleName(member.role)}</p>
                                     </div>
                                 </div>
-                                <div className="flex items-center gap-4 flex-shrink-0">
-                                    <div className="text-center text-sm w-20">
-                                        <p className="font-bold">{member.weeklyContribution || 0}</p>
+                                <div className="flex items-center gap-6 flex-shrink-0">
+                                    <div className="text-center w-24">
+                                        <p className="font-bold text-lg text-primary drop-shadow-lg">{member.weeklyContribution || 0}</p>
                                     </div>
-                                    <div className="text-center text-sm w-20">
-                                        <p className="font-bold">{member.contributionTotal || 0}</p>
+                                    <div className="text-center w-24">
+                                        <p className="font-bold text-lg text-accent drop-shadow-lg">{member.contributionTotal || 0}</p>
                                     </div>
-                                    <div className="text-center text-sm w-24">
-                                        <p className="truncate">{isOnline ? <span className="text-green-400">온라인</span> : (user?.lastLoginAt ? formatLastLogin(user.lastLoginAt) : '알 수 없음')}</p>
+                                    <div className="text-center w-28">
+                                        <p className="truncate text-sm font-semibold">{isOnline ? <span className="text-green-400 drop-shadow-lg">온라인</span> : (user?.lastLoginAt ? <span className="text-tertiary">{formatLastLogin(user.lastLoginAt)}</span> : <span className="text-tertiary">알 수 없음</span>)}</p>
                                     </div>
                                     {(isMaster || isVice) && (
-                                        <div className="relative w-16 text-center">
+                                        <div className="relative w-20 text-center">
                                             {member.userId !== myMemberInfo?.userId && (
-                                                <Button onClick={(e) => { e?.stopPropagation(); setManagingMember(member); }} className="!text-xs !py-1">관리</Button>
+                                                <Button 
+                                                    onClick={(e) => { e?.stopPropagation(); setManagingMember(member); }} 
+                                                    className="!text-xs !py-2.5 !px-4 border-2 border-cyan-500/60 bg-gradient-to-r from-cyan-600/95 via-blue-600/95 to-indigo-600/95 text-white shadow-lg hover:shadow-xl hover:scale-105 transition-all duration-200 font-semibold"
+                                                >
+                                                    관리
+                                                </Button>
                                             )}
                                             {managingMember?.userId === member.userId && (
                                                 <Popover 
@@ -210,9 +230,11 @@ const GuildMembersPanel: React.FC<GuildMembersPanelProps> = ({ guild, myMemberIn
                         );
                     })}
                 </ul>
+                </div>
             </div>
         </div>
     );
 };
 
 export default GuildMembersPanel;
+

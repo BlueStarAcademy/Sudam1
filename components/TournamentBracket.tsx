@@ -2369,6 +2369,14 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
             const hasNextMatch = safeRounds.some(r => 
                 r.matches.some(m => m.isUserMatch && !m.isFinished)
             );
+            
+            // round_complete에서 bracket_ready로 변경될 때 (다음경기 버튼을 눌렀을 때) 상태 초기화
+            if (prevStatus === 'round_complete' && hasNextMatch) {
+                // 다음 회차의 선수 정보로 갱신하기 위해 초기화
+                setInitialMatchPlayers({ p1: null, p2: null });
+                initialMatchPlayersSetRef.current = false;
+            }
+            
             if (!hasNextMatch) {
                 // 마지막 경기였으면 완료된 경기 화면 유지
                 const lastFinishedUserMatch = [...safeRounds].reverse().flatMap(r => r.matches).find(m => m.isUserMatch && m.isFinished);
@@ -2519,9 +2527,13 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                         const conditionChanged = (initialMatchPlayers.p1 && p1 && initialMatchPlayers.p1.condition !== p1.condition) ||
                                                  (initialMatchPlayers.p2 && p2 && initialMatchPlayers.p2.condition !== p2.condition);
                         
+                        // round_complete에서 bracket_ready로 변경될 때 (다음경기 버튼을 눌렀을 때) 강제로 갱신
+                        const isTransitionFromRoundComplete = prevStatus === 'round_complete';
+                        
                         // 선수 ID가 변경되었거나, 컨디션이 변경되었거나, initialMatchPlayersSetRef가 false이면 업데이트
                         // 특히 전국/월드챔피언십에서 다음 라운드로 이동할 때 선수 ID가 변경되므로 항상 확인
-                        const shouldUpdate = !initialMatchPlayersSetRef.current || 
+                        const shouldUpdate = isTransitionFromRoundComplete ||
+                            !initialMatchPlayersSetRef.current || 
                             initialMatchPlayers.p1?.id !== p1?.id || 
                             initialMatchPlayers.p2?.id !== p2?.id ||
                             conditionChanged ||
@@ -2907,6 +2919,11 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                         <Button 
                             onClick={async () => {
                                 try {
+                                    // 상태 초기화: SGF 뷰어, 실시간 중계, 스코어 보드, 선수 정보 클리어
+                                    setLastUserMatchSgfIndex(null);
+                                    setInitialMatchPlayers({ p1: null, p2: null });
+                                    initialMatchPlayersSetRef.current = false;
+                                    
                                     await onStartNextRound();
                                     // 다음 회차로 넘어갔으므로 bracket_ready 상태가 되고 "경기 시작" 버튼이 표시됨
                                 } catch (error) {
@@ -2938,6 +2955,11 @@ export const TournamentBracket: React.FC<TournamentBracketProps> = (props) => {
                         <Button 
                             onClick={async () => {
                                 try {
+                                    // 상태 초기화: SGF 뷰어, 실시간 중계, 스코어 보드, 선수 정보 클리어
+                                    setLastUserMatchSgfIndex(null);
+                                    setInitialMatchPlayers({ p1: null, p2: null });
+                                    initialMatchPlayersSetRef.current = false;
+                                    
                                     await onStartNextRound();
                                     // 다음 라운드로 넘어갔으므로 탭 변경 트리거
                                     setNextRoundTrigger(prev => prev + 1);

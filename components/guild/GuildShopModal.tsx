@@ -56,25 +56,41 @@ const ShopItemCard: React.FC<{ item: GuildShopItem }> = ({ item }) => {
     };
 
     return (
-        <div className="bg-secondary rounded-lg p-3 flex flex-col items-center text-center border-2 border-color">
-             <div className="relative w-24 h-24 bg-tertiary rounded-md mb-2 flex items-center justify-center">
-                 <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-md" />
-                <img src={item.image} alt={item.name} className="w-full h-full object-contain p-2 relative" />
+        <div className="bg-gradient-to-br from-stone-900/95 via-neutral-800/90 to-stone-900/95 rounded-xl p-3 flex flex-col items-center text-center border-2 border-stone-600/60 shadow-xl hover:shadow-2xl transition-all hover:border-stone-500/80 relative overflow-hidden h-full">
+            <div className="absolute inset-0 bg-gradient-to-br from-stone-500/10 via-gray-500/5 to-stone-500/10 pointer-events-none"></div>
+            <div className="relative z-10 w-full flex flex-col h-full">
+             <div className="relative w-20 h-20 bg-gradient-to-br from-stone-800/90 to-stone-900/90 rounded-lg mb-2 flex items-center justify-center border-2 border-stone-600/60 shadow-lg mx-auto flex-shrink-0">
+                 <img src={gradeBackgrounds[item.grade]} alt={item.grade} className="absolute inset-0 w-full h-full object-cover rounded-lg opacity-80" />
+                <img src={item.image} alt={item.name} className="w-full h-full object-contain p-2 relative z-10 drop-shadow-xl" />
             </div>
-            <h3 className="text-base font-bold text-primary">{item.name}</h3>
-            <p className="text-xs text-tertiary mt-1 h-10">{item.description}</p>
-            <div className="flex flex-col items-stretch justify-center gap-1 my-2 w-full">
-                 <Button onClick={handleBuy} disabled={!canPurchase} colorScheme="green" className="w-full !text-xs !py-2.5">
-                    <div className="flex items-center justify-center gap-1.5 whitespace-nowrap">
+            <h3 className="text-xs font-bold text-white mb-0.5 drop-shadow-lg line-clamp-1 flex-shrink-0">{item.name}</h3>
+            <p className="text-[9px] text-stone-300/80 mb-2 h-8 leading-tight line-clamp-2 flex-shrink-0">{item.description}</p>
+            <div className="flex flex-col items-stretch justify-center gap-1.5 mt-auto w-full flex-shrink-0">
+                <button
+                    onClick={handleBuy}
+                    disabled={!canPurchase}
+                    className={`w-full py-2 rounded-lg font-bold text-xs transition-all relative overflow-hidden group ${
+                        canPurchase 
+                            ? 'bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white shadow-lg shadow-amber-500/30 hover:shadow-xl hover:shadow-amber-500/40 hover:scale-[1.02] active:scale-[0.98]' 
+                            : 'bg-stone-700/50 text-stone-400 cursor-not-allowed'
+                    }`}
+                >
+                    {canPurchase && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                    )}
+                    <div className="relative z-10 flex items-center justify-center gap-1.5 whitespace-nowrap">
                         <span>구매</span>
                         <div className="flex items-center gap-1">
-                            <img src="/images/guild/tokken.png" alt="길드 코인" className="w-4 h-4" /> 
-                            {item.cost.toLocaleString()}
+                            <img src="/images/guild/tokken.png" alt="길드 코인" className="w-4 h-4 drop-shadow-md" /> 
+                            <span className="font-bold text-[10px]">{item.cost.toLocaleString()}</span>
                         </div>
                     </div>
-                </Button>
+                </button>
             </div>
-            <p className="text-xs text-tertiary">{item.limitType === 'weekly' ? '주간' : '월간'} 구매: {remaining}/{item.limit}</p>
+            <p className="text-[9px] text-stone-400 bg-stone-800/50 px-1.5 py-0.5 rounded-md border border-stone-700/50 mt-1 flex-shrink-0">
+                {item.limitType === 'weekly' ? '주간' : '월간'} <span className={`font-bold ${remaining > 0 ? 'text-amber-300' : 'text-red-400'}`}>{remaining}/{item.limit}</span>
+            </p>
+            </div>
         </div>
     );
 };
@@ -94,27 +110,57 @@ const GuildShopModal: React.FC<GuildShopModalProps> = ({ onClose, isTopmost }) =
     }, [activeTab]);
 
     return (
-        <DraggableWindow title="길드 상점" onClose={onClose} windowId="guild-shop" initialWidth={750} isTopmost={isTopmost}>
-            <div className="flex flex-col h-full">
-                <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                    <h3 className="text-xl font-bold text-highlight">길드 상점</h3>
-                    <div className="bg-tertiary p-2 rounded-lg text-center">
-                        <p className="text-xs text-secondary">보유 길드 코인</p>
-                        <p className="font-bold text-lg text-primary flex items-center gap-1">
-                             <img src="/images/guild/tokken.png" alt="Guild Coin" className="w-5 h-5" />
-                             {(currentUserWithStatus?.guildCoins ?? 0).toLocaleString()}
-                        </p>
+        <DraggableWindow title="길드 상점" onClose={onClose} windowId="guild-shop" initialWidth={1000} initialHeight={850} isTopmost={isTopmost} variant="store">
+            <div className="flex flex-col h-full relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-stone-950/50 via-neutral-900/30 to-stone-950/50 pointer-events-none"></div>
+                <div className="relative z-10 flex flex-col h-full">
+                <div className="flex justify-between items-center mb-3 flex-shrink-0">
+                    <div className="flex items-center gap-2.5">
+                        <div className="w-10 h-10 bg-gradient-to-br from-amber-600/80 to-orange-600/80 rounded-xl flex items-center justify-center border-2 border-amber-400/50 shadow-lg shadow-amber-500/20">
+                            <span className="text-xl">🛒</span>
+                        </div>
+                        <h3 className="text-xl font-bold bg-gradient-to-r from-amber-300 to-orange-300 bg-clip-text text-transparent">길드 상점</h3>
+                    </div>
+                    <div className="bg-gradient-to-br from-amber-900/90 via-yellow-800/80 to-amber-900/90 p-3 rounded-xl text-center border-2 border-amber-500/60 shadow-2xl backdrop-blur-md relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-yellow-400/10 to-amber-500/15 pointer-events-none"></div>
+                        <div className="relative z-10">
+                            <p className="text-[10px] text-amber-200/80 mb-0.5 font-semibold">보유 길드 코인</p>
+                            <p className="font-bold text-lg text-yellow-300 drop-shadow-lg flex items-center justify-center gap-1.5">
+                                <img src="/images/guild/tokken.png" alt="Guild Coin" className="w-5 h-5 drop-shadow-md" />
+                                {(currentUserWithStatus?.guildCoins ?? 0).toLocaleString()}
+                            </p>
+                        </div>
                     </div>
                 </div>
-                <div className="flex bg-tertiary/70 p-1 rounded-lg mb-4 flex-shrink-0">
-                    <button onClick={() => setActiveTab('equipment')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === 'equipment' ? 'bg-accent' : 'text-tertiary hover:bg-secondary/50'}`}>장비</button>
-                    <button onClick={() => setActiveTab('material')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === 'material' ? 'bg-accent' : 'text-tertiary hover:bg-secondary/50'}`}>재료</button>
-                    <button onClick={() => setActiveTab('consumable')} className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === 'consumable' ? 'bg-accent' : 'text-tertiary hover:bg-secondary/50'}`}>소모품</button>
+                <div className="flex bg-gradient-to-r from-stone-800/90 via-neutral-800/80 to-stone-800/90 p-1 rounded-xl mb-3 flex-shrink-0 border border-stone-600/50 shadow-lg">
+                    {(['equipment', 'material', 'consumable'] as ShopTab[]).map(tab => {
+                        const tabColors = {
+                            equipment: { active: 'from-purple-600 to-indigo-600', inactive: 'text-purple-300/70 hover:text-purple-300' },
+                            material: { active: 'from-blue-600 to-cyan-600', inactive: 'text-blue-300/70 hover:text-blue-300' },
+                            consumable: { active: 'from-green-600 to-emerald-600', inactive: 'text-green-300/70 hover:text-green-300' },
+                        };
+                        const colors = tabColors[tab] || { active: 'from-accent to-accent/80', inactive: 'text-tertiary' };
+                        const labels = { equipment: '장비', material: '재료', consumable: '소모품' };
+                        return (
+                            <button
+                                key={tab}
+                                onClick={() => setActiveTab(tab)}
+                                className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                                    activeTab === tab 
+                                        ? `bg-gradient-to-r ${colors.active} text-white shadow-lg` 
+                                        : `${colors.inactive} hover:bg-stone-700/50`
+                                }`}
+                            >
+                                {labels[tab]}
+                            </button>
+                        );
+                    })}
                 </div>
-                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 overflow-y-auto pr-2 flex-1">
+                 <div className="grid grid-cols-3 gap-2.5 overflow-y-auto pr-2 flex-1 min-h-0">
                     {shopItemsForTab.map(item => (
                         <ShopItemCard key={item.itemId} item={item} />
                     ))}
+                </div>
                 </div>
             </div>
         </DraggableWindow>

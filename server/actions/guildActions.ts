@@ -44,6 +44,7 @@ const getResearchTimeMs = (researchId: GuildResearchId, level: number): number =
 
 export const handleGuildAction = async (volatileState: VolatileState, action: ServerAction & { userId: string }, user: User): Promise<HandleActionResult> => {
     const { type, payload } = action;
+    console.log(`[handleGuildAction] Received action: ${type}, userId: ${user.id}`);
     let needsSave = false;
     
     // Get guilds from database
@@ -356,6 +357,14 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
             }
             if(description !== undefined) guild.description = description;
             if(isPublic !== undefined) guild.isPublic = isPublic;
+            if(icon !== undefined) {
+                guild.icon = icon;
+                // DB에도 업데이트 (emblem 필드)
+                const dbGuilds = await db.getKV<Record<string, Guild>>('guilds') || {};
+                if (dbGuilds[guildId]) {
+                    dbGuilds[guildId].emblem = icon;
+                }
+            }
             await db.setKV('guilds', guilds);
             await broadcast({ type: 'GUILD_UPDATE', payload: { guilds } });
             return { clientResponse: { guilds } };
@@ -375,6 +384,7 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
         }
 
         case 'GUILD_CHECK_IN': {
+            console.log(`[handleGuildAction] Processing GUILD_CHECK_IN for user ${user.id}, guildId: ${user.guildId}`);
             const now = Date.now();
             if (!user.guildId) return { error: '길드에 가입되어 있지 않습니다.' };
             const guild = guilds[user.guildId];
@@ -390,6 +400,7 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
             needsSave = true;
             await db.setKV('guilds', guilds);
             await broadcast({ type: 'GUILD_UPDATE', payload: { guilds } });
+            console.log(`[handleGuildAction] GUILD_CHECK_IN completed successfully`);
             return { clientResponse: { guilds, updatedUser: user } };
         }
         case 'GUILD_CLAIM_CHECK_IN_REWARD': {
@@ -446,6 +457,7 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
         }
         case 'GUILD_DONATE_GOLD':
         case 'GUILD_DONATE_DIAMOND': {
+            console.log(`[handleGuildAction] Processing ${type} for user ${user.id}, guildId: ${user.guildId}`);
             if (!user.guildId) return { error: '길드에 가입되어 있지 않습니다.' };
             const guild = guilds[user.guildId];
             if (!guild) return { error: '길드를 찾을 수 없습니다.' };
@@ -497,6 +509,7 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
             await db.setKV('guilds', guilds);
             await db.updateUser(user);
             await broadcast({ type: 'GUILD_UPDATE', payload: { guilds } });
+            console.log(`[handleGuildAction] ${type} completed successfully`);
             return {
                 clientResponse: {
                     updatedUser: user, 
@@ -505,7 +518,7 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
                         coins: gainedGuildCoins,
                         research: gainedResearchPoints,
                     }
-                } 
+                }
             };
         }
         
@@ -729,17 +742,33 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
         }
 
         case 'GET_GUILD_INFO': {
-            if (!user.guildId) return { error: "가입한 길드가 없습니다." };
-            const guild = guilds[user.guildId];
-            if (!guild) return { error: "길드를 찾을 수 없습니다." };
-            // 아이콘 경로 수정
-            const guildWithFixedIcon = {
-                ...guild,
-                icon: guild.icon?.startsWith('/images/guild/icon') 
-                    ? guild.icon.replace('/images/guild/icon', '/images/guild/profile/icon')
-                    : (guild.icon || '/images/guild/profile/icon1.png')
-            };
-            return { clientResponse: { guild: guildWithFixedIcon } };
+            try {
+                if (!user.guildId) return { error: "가입한 길드가 없습니다." };
+                const guild = guilds[user.guildId];
+                if (!guild) return { error: "길드를 찾을 수 없습니다." };
+                
+                // members 배열이 없으면 빈 배열로 초기화
+                if (!guild.members) {
+                    guild.members = [];
+                    await db.setKV('guilds', guilds);
+                }
+                
+                // 아이콘 경로 수정
+                const guildWithFixedIcon = {
+                    ...guild,
+                    members: guild.members || [],
+                    icon: guild.icon?.startsWith('/images/guild/icon') 
+                        ? guild.icon.replace('/images/guild/icon', '/images/guild/profile/icon')
+                        : (guild.icon || '/images/guild/profile/icon1.png')
+                };
+                return { clientResponse: { guild: guildWithFixedIcon } };
+            } catch (error: any) {
+                console.error('[handleGuildAction] GET_GUILD_INFO error:', error);
+                console.error('[handleGuildAction] Error stack:', error.stack);
+                console.error('[handleGuildAction] User:', { id: user.id, guildId: user.guildId });
+                console.error('[handleGuildAction] Guilds keys:', Object.keys(guilds));
+                return { error: `길드 정보를 가져오는 중 오류가 발생했습니다: ${error.message || '알 수 없는 오류'}` };
+            }
         }
         
         case 'LIST_GUILDS': {
@@ -929,6 +958,7 @@ export const handleGuildAction = async (volatileState: VolatileState, action: Se
 
         
         default:
+            console.log(`[handleGuildAction] Unknown guild action type: ${type}`);
             return { error: 'Unknown guild action type.' };
     }
 };

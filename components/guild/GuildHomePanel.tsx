@@ -41,6 +41,7 @@ const GuildCheckInPanel: React.FC<{ guild: GuildType }> = ({ guild }) => {
         const result = await handlers.handleAction({ type: 'GUILD_CHECK_IN' });
         if (result?.error) {
             console.error('[GuildCheckInPanel] Check-in failed:', result.error);
+            alert(result.error);
         } else {
             // 성공 시 길드 정보를 다시 가져옴
             await handlers.handleAction({ type: 'GET_GUILD_INFO' });
@@ -52,8 +53,8 @@ const GuildCheckInPanel: React.FC<{ guild: GuildType }> = ({ guild }) => {
     };
 
     return (
-        <div className="bg-gradient-to-br from-emerald-900/95 via-emerald-800/90 to-green-900/95 p-4 rounded-xl flex flex-col h-full border-3 border-emerald-400/80 shadow-2xl backdrop-blur-md relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 via-emerald-400/10 to-cyan-500/15 pointer-events-none"></div>
+        <div className="bg-gradient-to-br from-stone-900/95 via-neutral-800/90 to-stone-900/95 p-4 rounded-xl flex flex-col h-full border-2 border-stone-600/60 shadow-2xl backdrop-blur-md relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-stone-500/10 via-gray-500/5 to-stone-500/10 pointer-events-none"></div>
             <div className="relative z-10">
                 <div className="flex justify-between items-center mb-3">
                     <h3 className="font-bold text-lg text-highlight drop-shadow-lg flex items-center gap-2">
@@ -128,8 +129,8 @@ const GuildCheckInPanel: React.FC<{ guild: GuildType }> = ({ guild }) => {
 };
 
 const GuildAnnouncementPanel: React.FC<{ guild: GuildType }> = ({ guild }) => (
-    <div className="bg-gradient-to-br from-amber-900/95 via-yellow-800/90 to-orange-900/95 p-4 rounded-xl flex flex-col h-full border-3 border-amber-400/80 shadow-2xl backdrop-blur-md relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-yellow-400/10 to-orange-500/15 pointer-events-none"></div>
+    <div className="bg-gradient-to-br from-stone-900/95 via-neutral-800/90 to-stone-900/95 p-4 rounded-xl flex flex-col h-full border-2 border-stone-600/60 shadow-2xl backdrop-blur-md relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-stone-500/10 via-gray-500/5 to-stone-500/10 pointer-events-none"></div>
         <h3 className="font-bold text-lg text-highlight mb-3 flex-shrink-0 relative z-10 drop-shadow-lg flex items-center gap-2">
             <span className="text-xl">📢</span>
             <span>길드 공지</span>
@@ -175,8 +176,8 @@ const GuildChat: React.FC<{ guild: GuildType, myMemberInfo: GuildMember | undefi
     };
 
     return (
-        <div className="bg-gradient-to-br from-blue-900/95 via-indigo-800/90 to-purple-900/95 p-4 rounded-xl h-full flex flex-col border-3 border-blue-400/80 shadow-2xl backdrop-blur-md relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 via-indigo-400/10 to-purple-500/15 pointer-events-none"></div>
+        <div className="bg-gradient-to-br from-stone-900/95 via-neutral-800/90 to-stone-900/95 p-4 rounded-xl h-full flex flex-col border-2 border-stone-600/60 shadow-2xl backdrop-blur-md relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-stone-500/10 via-gray-500/5 to-stone-500/10 pointer-events-none"></div>
             <h3 className="font-bold text-lg text-highlight mb-3 flex-shrink-0 relative z-10 drop-shadow-lg flex items-center gap-2">
                 <span className="text-xl">💬</span>
                 <span>길드 채팅</span>

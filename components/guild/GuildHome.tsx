@@ -10,7 +10,7 @@ interface GuildHomeProps {
 
 const GuildHome: React.FC<GuildHomeProps> = ({ initialGuild }) => {
     const { currentUserWithStatus, guilds, handlers } = useAppContext();
-    const [guildDonationAnimation, setGuildDonationAnimation] = useState<{ coins: number; research: number } | null>(null);
+    const [guildDonationAnimation, setGuildDonationAnimation] = useState<{ coins: number; research: number; type: 'gold' | 'diamond' } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const animationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const hasLoadedRef = useRef(false);
@@ -103,7 +103,7 @@ const GuildHome: React.FC<GuildHomeProps> = ({ initialGuild }) => {
     }
 
     // 길드가 있으면 대시보드 표시
-    return <GuildDashboard guild={myGuild} guildDonationAnimation={guildDonationAnimation} onDonationComplete={(coins, research) => setGuildDonationAnimation({ coins, research })} />;
+    return <GuildDashboard guild={myGuild} guildDonationAnimation={guildDonationAnimation} onDonationComplete={(coins, research, type) => setGuildDonationAnimation({ coins, research, type })} />;
 };
 
 export default GuildHome;

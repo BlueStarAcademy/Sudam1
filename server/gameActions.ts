@@ -156,12 +156,14 @@ export const updateQuestProgress = (user: User, type: 'win' | 'participate' | 'a
 };
 
 export const handleAction = async (volatileState: VolatileState, action: ServerAction & { userId: string }): Promise<HandleActionResult> => {
+    const { type, payload } = action;
+    const gameId = payload?.gameId;
+    console.log(`[handleAction] Received action: ${type}, userId: ${action.userId}, gameId: ${gameId || 'none'}`);
+    
     const user = await db.getUser(action.userId);
     if (!user) {
         return { error: 'User not found.' };
     }
-    const { type, payload } = action;
-    const gameId = payload?.gameId;
     
 
     // 관리자 액션은 먼저 처리 (gameId가 있어도 관리자 액션은 여기서 처리)
@@ -171,6 +173,27 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     if (type === 'START_TOWER_GAME' || type === 'CONFIRM_TOWER_GAME_START' || type === 'TOWER_REFRESH_PLACEMENT' || type === 'TOWER_ADD_TURNS' || type === 'END_TOWER_GAME') {
         const { handleTowerAction } = await import('./actions/towerActions.js');
         return handleTowerAction(volatileState, action, user);
+    }
+
+    // Guild actions should be handled before game actions (they don't require gameId)
+    if (type.startsWith('GUILD_') || 
+        type.startsWith('CREATE_GUILD') || 
+        type.startsWith('JOIN_GUILD') || 
+        type.startsWith('LEAVE_GUILD') || 
+        type.startsWith('KICK_GUILD') || 
+        type.startsWith('UPDATE_GUILD') || 
+        type.startsWith('SEND_GUILD') || 
+        type.startsWith('GET_GUILD') || 
+        type.startsWith('LIST_GUILDS') ||
+        type.startsWith('START_GUILD') || 
+        type.startsWith('DONATE_TO_GUILD') || 
+        type.startsWith('PURCHASE_GUILD') || 
+        type.startsWith('END_GUILD')) {
+        console.log(`[handleAction] Routing GUILD action: ${type} to handleGuildAction`);
+        const { handleGuildAction } = await import('./actions/guildActions.js');
+        const result = await handleGuildAction(volatileState, action, user);
+        console.log(`[handleAction] GUILD action ${type} result:`, result?.error ? `ERROR: ${result.error}` : 'SUCCESS');
+        return result;
     }
 
     // Game Actions (require gameId)
@@ -297,21 +320,7 @@ export const handleAction = async (volatileState: VolatileState, action: ServerA
     if (['UPDATE_AVATAR', 'UPDATE_BORDER', 'CHANGE_NICKNAME', 'RESET_STAT_POINTS', 'CONFIRM_STAT_ALLOCATION', 'UPDATE_MBTI', 'SAVE_PRESET', 'APPLY_PRESET', 'UPDATE_REJECTION_SETTINGS'].includes(type)) return handleUserAction(volatileState, action, user);
     if (type.includes('SINGLE_PLAYER')) return handleSinglePlayerAction(volatileState, action, user);
     if (type === 'MANNER_ACTION') return mannerService.handleMannerAction(volatileState, action, user);
-    // Guild actions
-    if (type.startsWith('CREATE_GUILD') || 
-        type.startsWith('JOIN_GUILD') || 
-        type.startsWith('LEAVE_GUILD') || 
-        type.startsWith('KICK_GUILD') || 
-        type.startsWith('UPDATE_GUILD') || 
-        type.startsWith('SEND_GUILD') || 
-        type.startsWith('GET_GUILD') || 
-        type.startsWith('LIST_GUILDS') ||
-        type.startsWith('START_GUILD') || 
-        type.startsWith('DONATE_TO_GUILD') || 
-        type.startsWith('PURCHASE_GUILD') || 
-        type.startsWith('END_GUILD')) {
-        return handleGuildAction(volatileState, action, user);
-    }
+    // Guild actions are now handled above (before game actions)
     // LEAVE_AI_GAME은 gameId를 가지지만 소셜 액션으로 처리해야 함
     if (type === 'LEAVE_AI_GAME') return handleSocialAction(volatileState, action, user);
     

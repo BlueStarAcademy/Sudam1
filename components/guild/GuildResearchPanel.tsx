@@ -127,47 +127,103 @@ const ResearchItemPanel: React.FC<{
 
 
     return (
-         <div className={`flex items-stretch gap-4 bg-gray-900/50 p-3 rounded-lg transition-all duration-300 border-2 ${isResearchingThis ? 'border-blue-500 ring-2 ring-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.5)]' : 'border-gray-700/50 hover:border-gray-600/70'}`}>
-            <div className="flex-shrink-0 w-20 h-20 bg-gray-800 rounded-md flex items-center justify-center border border-gray-700/50 shadow-lg">
-                <img src={project.image} alt={project.name} className="w-16 h-16 object-contain drop-shadow-lg" />
-            </div>
-            <div className="flex-grow flex flex-col justify-between gap-1 min-w-0">
-                <div>
-                    <h4 className="font-bold text-white truncate">{project.name}</h4>
-                    <p className="text-xs text-gray-400 mt-0.5 line-clamp-2">{project.description}</p>
-                </div>
-                <div className="text-xs space-y-0.5">
-                    <p>현재 레벨: <span className="font-bold text-yellow-300">{currentLevel} / {project.maxLevel}</span></p>
-                    <p>
-                        현재 효과: <span className="font-bold text-green-400">{currentEffectString}</span>
-                    </p>
-                    {!isMaxLevel && (
-                        <p>다음 레벨: <span className="font-bold text-blue-400">{nextEffectString}</span></p>
-                    )}
-                </div>
-            </div>
-            <div className="w-48 flex-shrink-0 flex flex-col justify-between gap-2">
-                {isResearchingThis ? (
-                    <div className="text-center bg-gradient-to-br from-blue-900/60 to-blue-800/40 p-3 rounded-md h-full flex flex-col justify-center border border-blue-500/50 shadow-lg">
-                        <p className="text-xs text-blue-300 mb-2">연구 진행 중...</p>
-                        <p className="font-mono font-bold text-2xl text-blue-200">{formatTimeLeft(timeLeft)}</p>
+         <div className={`bg-gradient-to-br from-stone-900/95 via-neutral-800/90 to-stone-900/95 rounded-xl transition-all duration-300 border-2 relative overflow-hidden ${
+            isResearchingThis 
+                ? 'border-emerald-500/80 ring-2 ring-emerald-500/50 shadow-[0_0_25px_rgba(16,185,129,0.6)]' 
+                : 'border-stone-600/60 hover:border-stone-500/80 hover:shadow-xl'
+        }`}>
+            <div className="absolute inset-0 bg-gradient-to-br from-stone-500/10 via-gray-500/5 to-stone-500/10 pointer-events-none"></div>
+            <div className="relative z-10 p-4">
+                <div className="grid grid-cols-[80px_1fr_280px] gap-4 items-center">
+                    {/* 아이콘 */}
+                    <div className="flex-shrink-0 w-20 h-20 bg-gradient-to-br from-stone-800/90 to-stone-900/90 rounded-xl flex items-center justify-center border-2 border-stone-600/60 shadow-xl relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 via-teal-500/10 to-emerald-500/15 pointer-events-none"></div>
+                        <img src={project.image} alt={project.name} className="w-16 h-16 object-contain drop-shadow-2xl relative z-10" />
                     </div>
-                ) : (
-                    <div className="bg-gray-800/60 p-2 rounded-md text-xs space-y-1 h-full flex flex-col justify-center border border-gray-700/50">
-                        {isMaxLevel ? (
-                            <p className="text-center font-bold text-green-400">최고 레벨 달성</p>
+                    
+                    {/* 연구 정보 */}
+                    <div className="flex-grow min-w-0">
+                        <div className="flex items-start justify-between gap-3 mb-2">
+                            <div className="flex-grow min-w-0">
+                                <h4 className="font-bold text-base text-white truncate mb-1 drop-shadow-lg">{project.name}</h4>
+                                <p className="text-xs text-stone-300/80 line-clamp-1 leading-relaxed">{project.description}</p>
+                            </div>
+                            <div className="flex-shrink-0 flex items-center gap-2 bg-stone-800/60 px-3 py-1 rounded-lg border border-stone-700/50">
+                                <span className="text-xs text-stone-400">레벨</span>
+                                <span className="font-bold text-amber-300 text-sm">{currentLevel}/{project.maxLevel}</span>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="bg-stone-800/40 px-2 py-1.5 rounded-lg border border-stone-700/50">
+                                <span className="text-stone-400">현재:</span>
+                                <span className="font-bold text-emerald-400 ml-1">{currentEffectString}</span>
+                            </div>
+                            {!isMaxLevel && (
+                                <div className="bg-stone-800/40 px-2 py-1.5 rounded-lg border border-stone-700/50">
+                                    <span className="text-stone-400">다음:</span>
+                                    <span className="font-bold text-cyan-400 ml-1">{nextEffectString}</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    
+                    {/* 우측 정보 및 버튼 */}
+                    <div className="flex-shrink-0 flex flex-col gap-2">
+                        {isResearchingThis ? (
+                            <div className="text-center bg-gradient-to-br from-emerald-900/90 via-teal-800/80 to-emerald-900/90 p-3 rounded-xl border-2 border-emerald-500/70 shadow-2xl relative overflow-hidden">
+                                <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/20 via-teal-400/10 to-emerald-500/15 pointer-events-none"></div>
+                                <div className="relative z-10">
+                                    <p className="text-[10px] text-emerald-300 mb-1 font-semibold">연구 진행 중</p>
+                                    <p className="font-mono font-bold text-xl text-emerald-200 drop-shadow-lg">{formatTimeLeft(timeLeft)}</p>
+                                </div>
+                            </div>
                         ) : (
-                            <>
-                                <p>필요 포인트: <span className={`font-semibold ${canAfford ? 'text-yellow-300' : 'text-red-400'}`}>{cost.toLocaleString()} RP</span></p>
-                                <p>소요 시간: <span className="font-semibold text-gray-300">{formatTimeLeft(timeMs)}</span></p>
-                                <p>필요 길드 Lv: <span className={`font-semibold ${meetsGuildLevel ? 'text-gray-300' : 'text-red-400'}`}>{project.requiredGuildLevel?.[currentLevel] ?? nextLevel}</span></p>
-                            </>
+                            <div className="bg-gradient-to-br from-stone-800/80 to-stone-900/80 p-2.5 rounded-xl text-xs space-y-1.5 border-2 border-stone-600/60 shadow-lg">
+                                {isMaxLevel ? (
+                                    <p className="text-center font-bold text-emerald-400 text-xs py-1">✨ 최고 레벨 ✨</p>
+                                ) : (
+                                    <>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-stone-400">포인트:</span>
+                                            <span className={`font-bold ${canAfford ? 'text-amber-300' : 'text-red-400'}`}>{cost.toLocaleString()}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-stone-400">시간:</span>
+                                            <span className="font-semibold text-stone-300 text-[10px]">{formatTimeLeft(timeMs)}</span>
+                                        </div>
+                                        <div className="flex justify-between items-center">
+                                            <span className="text-stone-400">길드Lv:</span>
+                                            <span className={`font-bold text-[10px] ${meetsGuildLevel ? 'text-stone-300' : 'text-red-400'}`}>{project.requiredGuildLevel?.[currentLevel] ?? nextLevel}</span>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
                         )}
+                        <button
+                            onClick={handleStartResearch}
+                            disabled={!canStartResearch}
+                            className={`w-full py-2.5 rounded-xl font-bold text-sm transition-all duration-200 relative overflow-hidden group ${
+                                canStartResearch 
+                                    ? 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 text-white shadow-lg shadow-emerald-500/40 hover:shadow-xl hover:shadow-emerald-500/50 hover:scale-[1.02] active:scale-[0.98]' 
+                                    : 'bg-stone-700/50 text-stone-400 cursor-not-allowed'
+                            }`}
+                        >
+                            {canStartResearch && (
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-700"></div>
+                            )}
+                            <span className="relative z-10 flex items-center justify-center gap-2">
+                                {isMaxLevel ? (
+                                    <>✨ 최고 레벨</>
+                                ) : (
+                                    <>
+                                        <span>🔬</span>
+                                        <span>연구 시작</span>
+                                    </>
+                                )}
+                            </span>
+                        </button>
                     </div>
-                )}
-                 <Button onClick={handleStartResearch} disabled={!canStartResearch} colorScheme={canStartResearch ? 'blue' : 'gray'} className="w-full !text-sm !py-2">
-                    {isMaxLevel ? '최고 레벨' : '연구 시작'}
-                </Button>
+                </div>
             </div>
         </div>
     );
@@ -193,25 +249,48 @@ const GuildResearchPanel: React.FC<GuildResearchPanelProps & { onClose: () => vo
     ];
 
     return (
-        <DraggableWindow title="길드 연구소" onClose={onClose} windowId="guild-research" initialWidth={900} variant="store">
-            <div className="flex flex-col h-full">
+        <DraggableWindow title="길드 연구소" onClose={onClose} windowId="guild-research" initialWidth={1100} initialHeight={850} variant="store">
+            <div className="flex flex-col h-full relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-stone-950/50 via-neutral-900/30 to-stone-950/50 pointer-events-none"></div>
+                <div className="relative z-10 flex flex-col h-full">
                 <div className="flex justify-between items-center mb-4 flex-shrink-0">
-                    <h3 className="text-xl font-bold text-highlight">길드 연구</h3>
-                    <div className="bg-gradient-to-br from-gray-900/80 via-gray-800/70 to-gray-900/80 p-3 rounded-lg text-center border border-accent/30 shadow-lg backdrop-blur-sm">
-                        <p className="text-xs text-gray-400 mb-1">보유 연구 포인트</p>
-                        <p className="font-bold text-xl text-yellow-300">{(guild.researchPoints ?? 0).toLocaleString()} RP</p>
+                    <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-gradient-to-br from-emerald-600/80 to-teal-600/80 rounded-xl flex items-center justify-center border-2 border-emerald-400/50 shadow-lg shadow-emerald-500/20">
+                            <span className="text-2xl">🔬</span>
+                        </div>
+                        <h3 className="text-2xl font-bold bg-gradient-to-r from-emerald-300 to-teal-300 bg-clip-text text-transparent">길드 연구소</h3>
+                    </div>
+                    <div className="bg-gradient-to-br from-amber-900/90 via-yellow-800/80 to-amber-900/90 p-4 rounded-xl text-center border-2 border-amber-500/60 shadow-2xl backdrop-blur-md relative overflow-hidden">
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-yellow-400/10 to-amber-500/15 pointer-events-none"></div>
+                        <div className="relative z-10">
+                            <p className="text-xs text-amber-200/80 mb-1 font-semibold">보유 연구 포인트</p>
+                            <p className="font-bold text-2xl text-yellow-300 drop-shadow-lg">{(guild.researchPoints ?? 0).toLocaleString()} <span className="text-lg">RP</span></p>
+                        </div>
                     </div>
                 </div>
-                <div className="flex bg-gray-900/70 p-1 rounded-lg mb-4 flex-shrink-0">
-                    {tabs.map(tab => (
-                        <button
-                            key={tab.id}
-                            onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 py-2 text-sm font-semibold rounded-md transition-all ${activeTab === tab.id ? 'bg-blue-600' : 'text-gray-400 hover:bg-gray-700/50'}`}
-                        >
-                            {tab.label}
-                        </button>
-                    ))}
+                <div className="flex bg-gradient-to-r from-stone-800/90 via-neutral-800/80 to-stone-800/90 p-1.5 rounded-xl mb-4 flex-shrink-0 border border-stone-600/50 shadow-lg">
+                    {tabs.map(tab => {
+                        const tabColors = {
+                            [GuildResearchCategory.development]: { active: 'from-emerald-600 to-teal-600', inactive: 'text-emerald-300/70 hover:text-emerald-300' },
+                            [GuildResearchCategory.boss]: { active: 'from-red-600 to-orange-600', inactive: 'text-red-300/70 hover:text-red-300' },
+                            [GuildResearchCategory.stats]: { active: 'from-blue-600 to-cyan-600', inactive: 'text-blue-300/70 hover:text-blue-300' },
+                            [GuildResearchCategory.rewards]: { active: 'from-purple-600 to-pink-600', inactive: 'text-purple-300/70 hover:text-purple-300' },
+                        };
+                        const colors = tabColors[tab.id] || { active: 'from-accent to-accent/80', inactive: 'text-tertiary' };
+                        return (
+                            <button
+                                key={tab.id}
+                                onClick={() => setActiveTab(tab.id)}
+                                className={`flex-1 py-2.5 text-sm font-bold rounded-lg transition-all ${
+                                    activeTab === tab.id 
+                                        ? `bg-gradient-to-r ${colors.active} text-white shadow-lg shadow-${colors.active.split(' ')[1]}/30` 
+                                        : `${colors.inactive} hover:bg-stone-700/50`
+                                }`}
+                            >
+                                {tab.label}
+                            </button>
+                        );
+                    })}
                 </div>
                 <div className="space-y-3 overflow-y-auto pr-2 flex-1">
                     {researchProjectsForTab.map(({ id, project }) => (
@@ -225,6 +304,7 @@ const GuildResearchPanel: React.FC<GuildResearchPanelProps & { onClose: () => vo
                             isAnyResearchActive={!!researchInProgressId}
                         />
                     ))}
+                </div>
                 </div>
             </div>
         </DraggableWindow>

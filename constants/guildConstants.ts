@@ -108,7 +108,7 @@ export const GUILD_SHOP_ITEMS: GuildShopItem[] = [
     { itemId: '골드 꾸러미2', name: '골드 꾸러미2', description: '100 ~ 1,000 골드 획득', cost: 40, image: '/images/Box/GoldBox2.png', type: 'consumable', limit: 5, limitType: 'weekly', grade: ItemGrade.Uncommon },
     { itemId: '골드 꾸러미3', name: '골드 꾸러미3', description: '500 ~ 3,000 골드 획득', cost: 60, image: '/images/Box/GoldBox3.png', type: 'consumable', limit: 3, limitType: 'weekly', grade: ItemGrade.Rare },
     { itemId: '골드 꾸러미4', name: '골드 꾸러미4', description: '1,000 ~ 10,000 골드 획득', cost: 80, image: '/images/Box/GoldBox4.png', type: 'consumable', limit: 1, limitType: 'weekly', grade: ItemGrade.Epic },
-    { itemId: '보너스 스탯 +5', name: '보너스 스탯 +5', description: '모든 능력치에 자유롭게 분배할 수 있는 보너스 스탯 포인트를 5개 획득합니다.', cost: 5000, image: '/images/statpoint.png', type: 'consumable', limit: 1, limitType: 'monthly', grade: ItemGrade.Legendary },
+    { itemId: '보너스 스탯 +5', name: '보너스 스탯 +5', description: '모든 능력치에 자유롭게 분배할 수 있는 보너스 스탯 포인트를 5개 획득합니다.', cost: 5000, image: '/images/button/statpoint.png', type: 'consumable', limit: 1, limitType: 'monthly', grade: ItemGrade.Legendary },
 ];
 
 const BOSS_STATS: Record<CoreStat, number> = {

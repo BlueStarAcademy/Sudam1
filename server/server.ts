@@ -229,9 +229,16 @@ const startServer = async () => {
     // Serve frontend build files (CSS, JS, assets)
     const distPath = path.join(__dirname, '..', 'dist');
     app.use(express.static(distPath, {
-        maxAge: '1y', // Cache static assets for 1 year
+        maxAge: '1h', // Cache HTML for 1 hour (shorter for SPA updates)
         etag: true,
-        lastModified: true
+        lastModified: true,
+        index: false, // Don't serve index.html for directory requests
+        setHeaders: (res, filePath) => {
+            // Set proper MIME types for JS modules
+            if (filePath.endsWith('.js')) {
+                res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
+            }
+        }
     }));
     
     // TODO: compression 패키지 설치 후 압축 미들웨어 추가
@@ -1660,9 +1667,12 @@ const startServer = async () => {
             
             volatileState.userConnections[userId] = Date.now();
 
+            console.log(`[/api/action] Calling handleAction for type: ${req.body.type}`);
             const result = await handleAction(volatileState, req.body);
+            console.log(`[/api/action] handleAction result for ${req.body.type}:`, result?.error ? `ERROR: ${result.error}` : 'SUCCESS');
             
             if (result.error) {
+                console.log(`[/api/action] Returning 400 error for ${req.body.type}: ${result.error}`);
                 return res.status(400).json({ message: result.error });
             }
             
@@ -1687,10 +1697,16 @@ const startServer = async () => {
     });
 
     // SPA fallback: serve index.html for all non-API routes (must be after all API routes)
-    app.get('*', (req, res) => {
+    app.get('*', (req, res, next) => {
         // Skip API and WebSocket routes
         if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
             return res.status(404).json({ message: 'Not found' });
+        }
+        // Skip static asset requests (JS, CSS, images, etc.) - let express.static handle them
+        if (req.path.startsWith('/assets/') || 
+            req.path.match(/\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot|map)$/i)) {
+            // If express.static didn't find the file, return 404
+            return res.status(404).json({ message: 'Static file not found' });
         }
         // Serve index.html for SPA routing
         const __filename = fileURLToPath(import.meta.url);
