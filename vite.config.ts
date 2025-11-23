@@ -123,4 +123,45 @@ export default defineConfig({
     },
   },
   logLevel: 'warn', // Vite 로그 레벨을 warn으로 설정하여 일반적인 프록시 오류를 줄임
+  build: {
+    // 코드 스플리팅 최적화
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // React와 React DOM을 별도 청크로 분리
+          'react-vendor': ['react', 'react-dom'],
+          // 큰 컴포넌트들을 별도 청크로 분리
+          'game-components': [
+            './Game.tsx',
+            './components/GameArena.tsx',
+            './components/game/Sidebar.tsx',
+          ],
+          // 모달들을 별도 청크로 분리
+          'modals': [
+            './components/InventoryModal.tsx',
+            './components/ShopModal.tsx',
+            './components/QuestsModal.tsx',
+            './components/MailboxModal.tsx',
+            './components/BlacksmithModal.tsx',
+          ],
+        },
+      },
+    },
+    // 청크 크기 경고 임계값 증가 (큰 게임 애플리케이션이므로)
+    chunkSizeWarningLimit: 1000,
+    // 소스맵은 프로덕션에서 비활성화하여 빌드 속도 향상
+    sourcemap: false,
+    // Minification 최적화 (esbuild가 기본값이며 더 빠름)
+    minify: 'esbuild',
+    // terser를 사용하려면 terser 패키지 설치 필요
+    // minify: 'terser',
+    // terserOptions: {
+    //   compress: {
+    //     drop_console: true, // console.log 제거 (프로덕션)
+    //     drop_debugger: true,
+    //   },
+    // },
+    // CSS 코드 스플리팅
+    cssCodeSplit: true,
+  },
 })

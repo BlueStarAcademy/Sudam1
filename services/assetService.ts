@@ -58,15 +58,63 @@ addUrls(uiImages);
 
 export const ALL_IMAGE_URLS = Array.from(allUrls);
 
-export const preloadImages = (urls: string[]): Promise<(Event | string)[]> => {
-    const promises = urls.map(url => {
+// 우선순위에 따라 이미지를 점진적으로 로드
+export const preloadImages = (urls: string[], options?: { priority?: 'high' | 'low', batchSize?: number }): Promise<(Event | string)[]> => {
+    const { priority = 'low', batchSize = 10 } = options || {};
+    
+    // 우선순위가 높으면 즉시 로드, 낮으면 배치로 나눠서 로드
+    if (priority === 'high') {
+        const promises = urls.map(url => {
+            return new Promise<Event | string>((resolve) => {
+                const img = new Image();
+                img.src = url;
+                img.onload = resolve;
+                img.onerror = (err) => resolve(`Failed to load ${url}: ${err.toString()}`); 
+            });
+        });
+        return Promise.all(promises);
+    }
+    
+    // 낮은 우선순위: 배치로 나눠서 점진적 로드
+    const batches: string[][] = [];
+    for (let i = 0; i < urls.length; i += batchSize) {
+        batches.push(urls.slice(i, i + batchSize));
+    }
+    
+    // 첫 번째 배치는 즉시 로드
+    const firstBatch = batches[0] || [];
+    const firstBatchPromises = firstBatch.map(url => {
         return new Promise<Event | string>((resolve) => {
             const img = new Image();
             img.src = url;
             img.onload = resolve;
-            // Resolve on error too, so one failed image doesn't block everything.
             img.onerror = (err) => resolve(`Failed to load ${url}: ${err.toString()}`); 
         });
     });
-    return Promise.all(promises);
+    
+    // 나머지 배치는 requestIdleCallback을 사용하여 백그라운드에서 로드
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+        const remainingBatches = batches.slice(1);
+        remainingBatches.forEach((batch, index) => {
+            requestIdleCallback(() => {
+                batch.forEach(url => {
+                    const img = new Image();
+                    img.src = url;
+                });
+            }, { timeout: (index + 1) * 1000 }); // 각 배치마다 1초씩 지연
+        });
+    } else {
+        // requestIdleCallback을 지원하지 않는 브라우저는 setTimeout 사용
+        const remainingBatches = batches.slice(1);
+        remainingBatches.forEach((batch, index) => {
+            setTimeout(() => {
+                batch.forEach(url => {
+                    const img = new Image();
+                    img.src = url;
+                });
+            }, (index + 1) * 1000);
+        });
+    }
+    
+    return Promise.all(firstBatchPromises);
 };

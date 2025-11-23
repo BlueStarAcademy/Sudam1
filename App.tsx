@@ -1,15 +1,24 @@
-import React, { useMemo, useState, useEffect, useRef } from 'react';
+import React, { useMemo, useState, useEffect, useRef, Suspense, lazy } from 'react';
 import Header from './components/Header.js';
 import { AppProvider } from './contexts/AppContext.js';
 import { useAppContext } from './hooks/useAppContext.js';
 import Router from './components/Router.js';
 import NegotiationModal from './components/NegotiationModal.js';
 import ChallengeReceivedModal from './components/ChallengeReceivedModal.js';
-import InventoryModal from './components/InventoryModal.js';
-import MailboxModal from './components/MailboxModal.js';
-import QuestsModal from './components/QuestsModal.js';
-import ShopModal from './components/ShopModal.js';
-import UserProfileModal from './components/UserProfileModal.js';
+// 큰 모달들은 lazy loading으로 로드
+const InventoryModal = lazy(() => import('./components/InventoryModal.js'));
+const MailboxModal = lazy(() => import('./components/MailboxModal.js'));
+const QuestsModal = lazy(() => import('./components/QuestsModal.js'));
+const ShopModal = lazy(() => import('./components/ShopModal.js'));
+const UserProfileModal = lazy(() => import('./components/UserProfileModal.js'));
+const EncyclopediaModal = lazy(() => import('./components/modals/EncyclopediaModal.js'));
+const PastRankingsModal = lazy(() => import('./components/modals/PastRankingsModal.js'));
+const AdminModerationModal = lazy(() => import('./components/AdminModerationModal.js'));
+const BlacksmithModal = lazy(() => import('./components/BlacksmithModal.js'));
+const BlacksmithHelpModal = lazy(() => import('./components/blacksmith/BlacksmithHelpModal.js'));
+const GameRecordListModal = lazy(() => import('./components/GameRecordListModal.js'));
+const GameRecordViewerModal = lazy(() => import('./components/GameRecordViewerModal.js'));
+// 작은 모달들은 즉시 로드
 import InfoModal from './components/InfoModal.js';
 import DisassemblyResultModal from './components/DisassemblyResultModal.js';
 import StatAllocationModal from './components/StatAllocationModal.js';
@@ -17,9 +26,6 @@ import ItemDetailModal from './components/ItemDetailModal.js';
 import ProfileEditModal from './components/ProfileEditModal.js';
 import ItemObtainedModal from './components/ItemObtainedModal.js';
 import BulkItemObtainedModal from './components/BulkItemObtainedModal.js';
-import EncyclopediaModal from './components/modals/EncyclopediaModal.js';
-import PastRankingsModal from './components/modals/PastRankingsModal.js';
-import AdminModerationModal from './components/AdminModerationModal.js';
 import RewardSummaryModal from './components/RewardSummaryModal.js';
 import { preloadImages, ALL_IMAGE_URLS } from './services/assetService.js';
 import CraftingResultModal from './components/CraftingResultModal.js';
@@ -27,15 +33,14 @@ import { audioService } from './services/audioService.js';
 import SettingsModal from './components/SettingsModal.js';
 import ClaimAllSummaryModal from './components/ClaimAllSummaryModal.js';
 import MbtiInfoModal from './components/MbtiInfoModal.js';
-import BlacksmithModal from './components/BlacksmithModal.js';
-import BlacksmithHelpModal from './components/blacksmith/BlacksmithHelpModal.js';
 import CombinationResultModal from './components/blacksmith/CombinationResultModal.js';
 import EnhancementModal from './components/EnhancementModal';
 import EquipmentEffectsModal from './components/EquipmentEffectsModal';
 import EnhancementResultModal from './components/modals/EnhancementResultModal.js';
 import InstallPrompt from './components/InstallPrompt.js';
-import GameRecordListModal from './components/GameRecordListModal.js';
-import GameRecordViewerModal from './components/GameRecordViewerModal.js';
+
+// Lazy 로드된 모달을 위한 로딩 컴포넌트
+const ModalLoadingFallback = () => null;
 
 function usePrevious<T>(value: T): T | undefined {
     const ref = useRef<T | undefined>(undefined);
@@ -114,7 +119,9 @@ const AppContent: React.FC = () => {
 
     useEffect(() => {
         if (currentUser) {
-            preloadImages(ALL_IMAGE_URLS).then(() => {
+            // 우선순위가 높은 이미지들만 먼저 로드 (UI에 즉시 필요한 것들)
+            // 나머지는 백그라운드에서 점진적으로 로드
+            preloadImages(ALL_IMAGE_URLS, { priority: 'low', batchSize: 15 }).then(() => {
                 setIsPreloading(false);
             });
         } else {
@@ -223,12 +230,28 @@ const AppContent: React.FC = () => {
             {currentUserWithStatus && (
                 <>
                     {modals.isSettingsModalOpen && <SettingsModal onClose={handlers.closeSettingsModal} isTopmost={topmostModalId === 'settings'} />}
-                    {modals.isInventoryOpen && <InventoryModal currentUser={currentUserWithStatus} onClose={handlers.closeInventory} onAction={handlers.handleAction} onStartEnhance={handlers.openEnhancingItem} enhancementAnimationTarget={modals.enhancementAnimationTarget} onAnimationComplete={handlers.clearEnhancementAnimation} isTopmost={topmostModalId === 'inventory'} />}
-                    {modals.isMailboxOpen && <MailboxModal currentUser={currentUserWithStatus} onClose={handlers.closeMailbox} onAction={handlers.handleAction} isTopmost={topmostModalId === 'mailbox'} />}
-                    {modals.isQuestsOpen && <QuestsModal currentUser={currentUserWithStatus} onClose={handlers.closeQuests} onAction={handlers.handleAction} isTopmost={topmostModalId === 'quests'} />}
+                    {modals.isInventoryOpen && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <InventoryModal currentUser={currentUserWithStatus} onClose={handlers.closeInventory} onAction={handlers.handleAction} onStartEnhance={handlers.openEnhancingItem} enhancementAnimationTarget={modals.enhancementAnimationTarget} onAnimationComplete={handlers.clearEnhancementAnimation} isTopmost={topmostModalId === 'inventory'} />
+                        </Suspense>
+                    )}
+                    {modals.isMailboxOpen && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <MailboxModal currentUser={currentUserWithStatus} onClose={handlers.closeMailbox} onAction={handlers.handleAction} isTopmost={topmostModalId === 'mailbox'} />
+                        </Suspense>
+                    )}
+                    {modals.isQuestsOpen && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <QuestsModal currentUser={currentUserWithStatus} onClose={handlers.closeQuests} onAction={handlers.handleAction} isTopmost={topmostModalId === 'quests'} />
+                        </Suspense>
+                    )}
                     {modals.rewardSummary && <RewardSummaryModal summary={modals.rewardSummary} onClose={handlers.closeRewardSummary} isTopmost={topmostModalId === 'rewardSummary'} />}
                     {modals.isClaimAllSummaryOpen && modals.claimAllSummary && <ClaimAllSummaryModal summary={modals.claimAllSummary} onClose={handlers.closeClaimAllSummary} isTopmost={topmostModalId === 'claimAllSummary'} />}
-                    {modals.isShopOpen && <ShopModal currentUser={currentUserWithStatus} onClose={handlers.closeShop} onAction={handlers.handleAction} isTopmost={topmostModalId === 'shop'} initialTab={modals.shopInitialTab} />}
+                    {modals.isShopOpen && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <ShopModal currentUser={currentUserWithStatus} onClose={handlers.closeShop} onAction={handlers.handleAction} isTopmost={topmostModalId === 'shop'} initialTab={modals.shopInitialTab} />
+                        </Suspense>
+                    )}
                     
                     {modals.lastUsedItemResult && modals.lastUsedItemResult.length === 1 && <ItemObtainedModal item={modals.lastUsedItemResult[0]} onClose={handlers.closeItemObtained} isTopmost={topmostModalId === 'itemObtained'} />}
                     {modals.lastUsedItemResult && modals.lastUsedItemResult.length > 1 && <BulkItemObtainedModal items={modals.lastUsedItemResult} onClose={handlers.closeItemObtained} isTopmost={topmostModalId === 'itemObtained'} tournamentScoreChange={modals.tournamentScoreChange} />}
@@ -242,13 +265,29 @@ const AppContent: React.FC = () => {
                         });
                         return <CraftingResultModal result={modals.craftResult} onClose={handlers.closeCraftResult} isTopmost={topmostModalId === 'craftResult'} />;
                     })()}
-                    {modals.viewingUser && <UserProfileModal user={modals.viewingUser} onClose={handlers.closeViewingUser} onViewItem={handlers.openViewingItem} isTopmost={topmostModalId === 'viewingUser'} />}
+                    {modals.viewingUser && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <UserProfileModal user={modals.viewingUser} onClose={handlers.closeViewingUser} onViewItem={handlers.openViewingItem} isTopmost={topmostModalId === 'viewingUser'} />
+                        </Suspense>
+                    )}
                     {modals.isInfoModalOpen && <InfoModal onClose={handlers.closeInfoModal} isTopmost={topmostModalId === 'infoModal'} />}
-                    {modals.isEncyclopediaOpen && <EncyclopediaModal onClose={handlers.closeEncyclopedia} isTopmost={topmostModalId === 'encyclopedia'} />}
+                    {modals.isEncyclopediaOpen && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <EncyclopediaModal onClose={handlers.closeEncyclopedia} isTopmost={topmostModalId === 'encyclopedia'} />
+                        </Suspense>
+                    )}
                     {modals.isStatAllocationModalOpen && <StatAllocationModal currentUser={currentUserWithStatus} onClose={handlers.closeStatAllocationModal} onAction={handlers.handleAction} isTopmost={topmostModalId === 'statAllocation'} />}
                     {modals.isProfileEditModalOpen && <ProfileEditModal currentUser={currentUserWithStatus} onClose={handlers.closeProfileEditModal} onAction={handlers.handleAction} isTopmost={topmostModalId === 'profileEdit'} />}
-                    {modals.pastRankingsInfo && <PastRankingsModal info={modals.pastRankingsInfo} onClose={handlers.closePastRankings} isTopmost={topmostModalId === 'pastRankings'} />}
-                    {modals.moderatingUser && <AdminModerationModal user={modals.moderatingUser} currentUser={currentUserWithStatus} onClose={handlers.closeModerationModal} onAction={handlers.handleAction} isTopmost={topmostModalId === 'moderatingUser'} />}
+                    {modals.pastRankingsInfo && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <PastRankingsModal info={modals.pastRankingsInfo} onClose={handlers.closePastRankings} isTopmost={topmostModalId === 'pastRankings'} />
+                        </Suspense>
+                    )}
+                    {modals.moderatingUser && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <AdminModerationModal user={modals.moderatingUser} currentUser={currentUserWithStatus} onClose={handlers.closeModerationModal} onAction={handlers.handleAction} isTopmost={topmostModalId === 'moderatingUser'} />
+                        </Suspense>
+                    )}
                     {modals.viewingItem && <ItemDetailModal item={modals.viewingItem.item} isOwnedByCurrentUser={modals.viewingItem.isOwnedByCurrentUser} onClose={handlers.closeViewingItem} onStartEnhance={handlers.openEnhancementFromDetail} isTopmost={topmostModalId === 'viewingItem'} />}
                     {activeNegotiation && (() => {
                         // Check if this is a received challenge (current user is opponent, and it's the initial turn)
@@ -318,32 +357,48 @@ const AppContent: React.FC = () => {
                         );
                     })()}
                     {modals.isMbtiInfoModalOpen && <MbtiInfoModal onClose={handlers.closeMbtiInfoModal} isTopmost={topmostModalId === 'mbtiInfo'} />}
-                    {modals.isBlacksmithModalOpen && <BlacksmithModal 
-                        onClose={handlers.closeBlacksmithModal} 
-                        isTopmost={topmostModalId === 'blacksmith'} 
-                        selectedItemForEnhancement={modals.blacksmithSelectedItemForEnhancement} 
-                        activeTab={modals.blacksmithActiveTab} 
-                        onSetActiveTab={handlers.setBlacksmithActiveTab} 
-                        enhancementOutcome={enhancementOutcome} 
-                    />}
+                    {modals.isBlacksmithModalOpen && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <BlacksmithModal 
+                                onClose={handlers.closeBlacksmithModal} 
+                                isTopmost={topmostModalId === 'blacksmith'} 
+                                selectedItemForEnhancement={modals.blacksmithSelectedItemForEnhancement} 
+                                activeTab={modals.blacksmithActiveTab} 
+                                onSetActiveTab={handlers.setBlacksmithActiveTab} 
+                                enhancementOutcome={enhancementOutcome} 
+                            />
+                        </Suspense>
+                    )}
                     {modals.combinationResult && <CombinationResultModal result={modals.combinationResult} onClose={handlers.closeCombinationResult} isTopmost={topmostModalId === 'combinationResult'} />}
-                    {modals.isBlacksmithHelpOpen && <BlacksmithHelpModal onClose={handlers.closeBlacksmithHelp} isTopmost={topmostModalId === 'blacksmithHelp'} currentUser={currentUserWithStatus} />}
+                    {modals.isBlacksmithHelpOpen && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <BlacksmithHelpModal onClose={handlers.closeBlacksmithHelp} isTopmost={topmostModalId === 'blacksmithHelp'} currentUser={currentUserWithStatus} />
+                        </Suspense>
+                    )}
                     {modals.isEnhancementResultModalOpen && enhancementOutcome && <EnhancementResultModal result={enhancementOutcome} onClose={handlers.closeEnhancementModal} isTopmost={topmostModalId === 'enhancementResult'} />}
                     {modals.isClaimAllSummaryOpen && modals.claimAllSummary && <ClaimAllSummaryModal summary={modals.claimAllSummary} onClose={handlers.closeClaimAllSummary} isTopmost={topmostModalId === 'claimAllSummary'} />}
                     {modals.isMbtiInfoModalOpen && <MbtiInfoModal onClose={handlers.closeMbtiInfoModal} isTopmost={topmostModalId === 'mbtiInfo'} />}
                     {modals.isEquipmentEffectsModalOpen && <EquipmentEffectsModal onClose={handlers.closeEquipmentEffectsModal} isTopmost={topmostModalId === 'equipmentEffects'} mainOptionBonuses={mainOptionBonuses} combatSubOptionBonuses={combatSubOptionBonuses} specialStatBonuses={specialStatBonuses} aggregatedMythicStats={aggregatedMythicStats} />}
-                    {modals.isGameRecordListOpen && currentUserWithStatus && <GameRecordListModal 
-                        currentUser={currentUserWithStatus} 
-                        onClose={handlers.closeGameRecordList} 
-                        onAction={handlers.handleAction}
-                        onViewRecord={handlers.openGameRecordViewer}
-                        isTopmost={topmostModalId === 'gameRecordList'}
-                    />}
-                    {modals.viewingGameRecord && <GameRecordViewerModal 
-                        record={modals.viewingGameRecord} 
-                        onClose={handlers.closeGameRecordViewer}
-                        isTopmost={topmostModalId === 'gameRecordViewer'}
-                    />}
+                    {modals.isGameRecordListOpen && currentUserWithStatus && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <GameRecordListModal 
+                                currentUser={currentUserWithStatus} 
+                                onClose={handlers.closeGameRecordList} 
+                                onAction={handlers.handleAction}
+                                onViewRecord={handlers.openGameRecordViewer}
+                                isTopmost={topmostModalId === 'gameRecordList'}
+                            />
+                        </Suspense>
+                    )}
+                    {modals.viewingGameRecord && (
+                        <Suspense fallback={ModalLoadingFallback()}>
+                            <GameRecordViewerModal 
+                                record={modals.viewingGameRecord} 
+                                onClose={handlers.closeGameRecordViewer}
+                                isTopmost={topmostModalId === 'gameRecordViewer'}
+                            />
+                        </Suspense>
+                    )}
                 </>
             )}
             <InstallPrompt />
