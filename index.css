@@ -179,7 +179,8 @@ html[data-theme="green"] {
 }
 
 html {
-  font-size: 0.8vw; /* Base font size scales with viewport width */
+  /* 고정 폰트 크기로 일관성 유지 (로컬과 배포 환경 동일하게) */
+  font-size: 16px; /* Base font size - fixed for consistency */
 }
 
 @media (max-width: 1023px), (orientation: portrait) {

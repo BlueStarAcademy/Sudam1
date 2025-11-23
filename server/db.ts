@@ -148,11 +148,48 @@ export const setKV = async <T>(key: string, value: T): Promise<void> => {
 };
 
 // --- User Functions ---
+// 사용자 정보 메모리 캐시 (짧은 TTL로 빠른 응답)
+interface CachedUser {
+    user: User;
+    timestamp: number;
+}
+
+const userCache = new Map<string, CachedUser>();
+const CACHE_TTL = 2000; // 2초 캐시 (데이터 일관성과 성능의 균형)
+
 export const getAllUsers = async (): Promise<User[]> => {
     return listUsers();
 };
+
 export const getUser = async (id: string): Promise<User | null> => {
-    return prismaGetUserById(id);
+    // 캐시 확인
+    const cached = userCache.get(id);
+    const now = Date.now();
+    
+    if (cached && (now - cached.timestamp) < CACHE_TTL) {
+        return cached.user;
+    }
+    
+    // 캐시 미스 또는 만료 - DB에서 조회
+    const user = await prismaGetUserById(id);
+    
+    if (user) {
+        // 캐시에 저장
+        userCache.set(id, {
+            user: JSON.parse(JSON.stringify(user)), // 깊은 복사
+            timestamp: now
+        });
+    } else {
+        // 사용자가 없으면 캐시에서도 제거
+        userCache.delete(id);
+    }
+    
+    return user;
+};
+
+// 사용자 정보가 업데이트되면 캐시 무효화
+export const invalidateUserCache = (userId: string) => {
+    userCache.delete(userId);
 };
 export const getUserByNickname = async (nickname: string): Promise<User | null> => {
     return prismaGetUserByNickname(nickname);
@@ -185,6 +222,8 @@ export const updateUser = async (user: User): Promise<void> => {
     }
 
     await prismaUpdateUser(user);
+    // 사용자 정보 업데이트 후 캐시 무효화
+    invalidateUserCache(user.id);
 };
 export const deleteUser = async (id: string): Promise<void> => {
     const user = await prismaGetUserById(id);
@@ -192,6 +231,8 @@ export const deleteUser = async (id: string): Promise<void> => {
 
     await deleteUserCredentialByUsername(user.username);
     await prismaDeleteUser(id);
+    // 사용자 삭제 후 캐시 무효화
+    invalidateUserCache(id);
 };
 
 // --- User Credentials Functions ---

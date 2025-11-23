@@ -1,11 +1,26 @@
 import "dotenv/config";
 import { PrismaClient } from "../generated/prisma/client.ts";
 
+// DATABASE_URL에 연결 풀링 파라미터 추가 (없는 경우)
+const getDatabaseUrl = () => {
+  const url = process.env.DATABASE_URL || '';
+  if (!url) return url;
+  
+  // 이미 연결 풀링 파라미터가 있는지 확인
+  if (url.includes('connection_limit') || url.includes('pool_timeout')) {
+    return url;
+  }
+  
+  // 연결 풀링 파라미터 추가
+  const separator = url.includes('?') ? '&' : '?';
+  return `${url}${separator}connection_limit=20&pool_timeout=10`;
+};
+
 const prisma = new PrismaClient({
   log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   datasources: {
     db: {
-      url: process.env.DATABASE_URL,
+      url: getDatabaseUrl(),
     },
   },
 });

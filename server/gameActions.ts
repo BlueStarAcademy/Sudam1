@@ -158,8 +158,13 @@ export const updateQuestProgress = (user: User, type: 'win' | 'participate' | 'a
 export const handleAction = async (volatileState: VolatileState, action: ServerAction & { userId: string }): Promise<HandleActionResult> => {
     const { type, payload } = action;
     const gameId = payload?.gameId;
-    console.log(`[handleAction] Received action: ${type}, userId: ${action.userId}, gameId: ${gameId || 'none'}`);
     
+    // 프로덕션에서는 상세 로깅 제거 (성능 향상)
+    if (process.env.NODE_ENV === 'development') {
+        console.log(`[handleAction] Received action: ${type}, userId: ${action.userId}, gameId: ${gameId || 'none'}`);
+    }
+    
+    // 캐시된 사용자 정보 사용 (빠른 응답)
     const user = await db.getUser(action.userId);
     if (!user) {
         return { error: 'User not found.' };

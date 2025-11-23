@@ -1667,17 +1667,21 @@ const startServer = async () => {
             
             volatileState.userConnections[userId] = Date.now();
 
-            console.log(`[/api/action] Calling handleAction for type: ${req.body.type}`);
+            // 프로덕션에서는 상세 로깅 제거 (성능 향상)
+            if (process.env.NODE_ENV === 'development') {
+                console.log(`[/api/action] Calling handleAction for type: ${req.body.type}`);
+            }
+            
             const result = await handleAction(volatileState, req.body);
-            console.log(`[/api/action] handleAction result for ${req.body.type}:`, result?.error ? `ERROR: ${result.error}` : 'SUCCESS');
             
             if (result.error) {
-                console.log(`[/api/action] Returning 400 error for ${req.body.type}: ${result.error}`);
+                if (process.env.NODE_ENV === 'development') {
+                    console.log(`[/api/action] Returning 400 error for ${req.body.type}: ${result.error}`);
+                }
                 return res.status(400).json({ message: result.error });
             }
             
-            // 디버깅 로그 제거 (과도한 로깅 방지)
-            
+            // 성공 응답 즉시 반환 (불필요한 로깅 제거)
             res.status(200).json({ success: true, ...result.clientResponse });
         } catch (e: any) {
             console.error(`[API] Action error for ${req.body?.type}:`, e);

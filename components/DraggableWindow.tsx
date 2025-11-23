@@ -35,7 +35,7 @@ const SETTINGS_KEY = 'draggableWindowSettings';
 
 
 
-const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onClose, children, initialWidth = 500, initialHeight, modal = true, closeOnOutsideClick = true, isTopmost = true, headerContent, zIndex = 50, variant = 'default' }) => {
+const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onClose, children, initialWidth = 800, initialHeight, modal = true, closeOnOutsideClick = true, isTopmost = true, headerContent, zIndex = 50, variant = 'default' }) => {
 
     const [position, setPosition] = useState({ x: 0, y: 0 });
 
@@ -134,9 +134,10 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
         
         // 모바일이 아닐 때는 initialWidth를 최소값으로 보장 (데스크톱에서는 고정 크기 사용)
         if (!isMobile) {
-            // 데스크톱: initialWidth를 최소값으로 보장하되, 화면이 너무 작으면 화면 크기에 맞춤
+            // 데스크톱: initialWidth를 최대한 보장하되, 화면이 너무 작으면 화면 크기에 맞춤
             const minWidth = Math.min(initialWidth, windowWidth - 40); // 화면에서 40px 여유 공간
-            return Math.max(initialWidth * 0.9, minWidth); // initialWidth의 90% 이상 보장
+            // initialWidth를 최소한 95% 이상 보장 (90%에서 95%로 증가)
+            return Math.max(initialWidth * 0.95, minWidth);
         }
         
         // 모바일: 화면 크기에 맞춤
@@ -525,7 +526,7 @@ const DraggableWindow: React.FC<DraggableWindowProps> = ({ title, windowId, onCl
 
                     width: isMobile ? '95vw' : (calculatedWidth ? `${calculatedWidth}px` : (initialWidth ? `${initialWidth}px` : undefined)),
 
-                    minWidth: isMobile ? '95vw' : (calculatedWidth ? `${calculatedWidth}px` : (initialWidth ? `${Math.max(400, initialWidth)}px` : '400px')),
+                    minWidth: isMobile ? '95vw' : (calculatedWidth ? `${calculatedWidth}px` : (initialWidth ? `${Math.max(600, initialWidth)}px` : '600px')),
 
                     maxWidth: isMobile ? '95vw' : 'calc(100vw - 40px)', // Re-enable maxWidth
 
